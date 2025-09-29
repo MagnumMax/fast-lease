@@ -25,7 +25,7 @@
     <div class="flex-1">
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="bg-slate-50">
-        <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto px-6 py-8 space-y-6">
+      <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -41,22 +41,18 @@
                 </a>
               </div>
             </div>
-            <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Ежемесячный платеж</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900" id="deal-payment">—</p>
+            <div class="mt-6 grid gap-3 grid-cols-3">
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Ежемесячный платеж</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-payment">—</p>
               </div>
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Следующий платеж</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900" id="deal-next-payment">—</p>
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Следующий платеж</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-next-payment">—</p>
               </div>
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Остаток выкупа</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900" id="deal-remaining">—</p>
-              </div>
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Автоматические платежи</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">Включены</p>
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Остаток выкупа</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-remaining">—</p>
               </div>
             </div>
           </section>
@@ -99,51 +95,18 @@
               </div>
 
               <div data-tab="docs" class="tab-panel hidden space-y-6">
-                <div class="grid gap-6 lg:grid-cols-2">
-                  <div>
-                    <h3 class="text-lg font-semibold text-slate-900 mb-4">Документы сделки</h3>
-                    <div id="deal-documents"></div>
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-900">Документы сделки</h3>
+                  <ul id="deal-documents" class="mt-4 space-y-3"></ul>
+                  <div class="mt-4 flex items-center justify-between">
+                    <button id="add-doc" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                      <i data-lucide="upload" class="h-4 w-4"></i>
+                      Загрузить документы
+                    </button>
+                    <span class="text-xs text-slate-500">PDF, JPG, PNG до 10MB</span>
                   </div>
-                  <div>
-                    <h3 class="text-lg font-semibold text-slate-900 mb-4">Загрузить документы</h3>
-                    <div class="space-y-4">
-                      <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-6 text-center">
-                        <div class="flex flex-col items-center gap-3">
-                          <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
-                            <i data-lucide="upload-cloud" class="h-6 w-6 text-slate-600"></i>
-                          </div>
-                          <div>
-                            <p class="text-sm font-medium text-slate-900">Перетащите файлы или нажмите для выбора</p>
-                            <p class="text-xs text-slate-500 mt-1">PDF, JPG, PNG до 10MB</p>
-                          </div>
-                          <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" class="sr-only" id="client-docs-upload" />
-                          <label for="client-docs-upload" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 cursor-pointer">
-                            <i data-lucide="folder-open" class="h-4 w-4"></i>
-                            Выбрать файлы
-                          </label>
-                        </div>
-                      </div>
-
-                      <div id="uploaded-docs" class="space-y-3"></div>
-
-                      <div class="rounded-xl bg-blue-50 border border-blue-200 p-4">
-                        <div class="flex items-start gap-3">
-                          <div class="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
-                            <i data-lucide="info" class="h-3 w-3 text-blue-600"></i>
-                          </div>
-                          <div>
-                            <p class="text-sm font-medium text-blue-900">Какие документы нужны?</p>
-                            <ul class="text-sm text-blue-700 mt-2 space-y-1">
-                              <li>• Фото регистрационной карты автомобиля</li>
-                              <li>• Сертификат о зарплате</li>
-                              <li>• Договор аренды жилья</li>
-                              <li>• Банковская выписка</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" class="sr-only" id="client-docs-upload" />
+                  <div id="uploaded-docs" class="mt-3 space-y-3"></div>
                 </div>
               </div>
 
@@ -154,8 +117,11 @@
           </section>
         </div>
       </main>
-    </div>
   </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -168,7 +134,7 @@
     }
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, renderTable, bindTabs } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, renderTable, bindTabs, mountMobileBottomNav } = shared;
     const { clientNav } = shared;
 
     const basePath = '../../..';
@@ -184,6 +150,14 @@
       containerId: 'page-header',
       title: 'Детали сделки FL-2025-1042',
       breadcrumbs: ['Клиент', 'Сделки', 'Rolls-Royce Cullinan'],
+      basePath,
+    });
+
+    // Mount mobile bottom navigation
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: clientNav,
+      activePath: '/client/deals/index.html',
       basePath,
     });
 
@@ -289,71 +263,25 @@
       `
       )
       .join('');
-
-    // Функционал загрузки документов клиента
+    // Упрощенная загрузка документов
     const uploadedDocsContainer = document.getElementById('uploaded-docs');
     const fileInput = document.getElementById('client-docs-upload');
+    const addDocBtn = document.getElementById('add-doc');
     let uploadedFiles = [];
 
-    // Загрузка файлов по клику
-    fileInput.addEventListener('change', handleFileUpload);
-
-    // Drag & Drop функционал
-    const uploadArea = fileInput.closest('.border-dashed');
-
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-      uploadArea.addEventListener(eventName, preventDefaults, false);
-    });
-
-    function preventDefaults(e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-      uploadArea.addEventListener(eventName, highlight, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-      uploadArea.addEventListener(eventName, unhighlight, false);
-    });
-
-    function highlight(e) {
-      uploadArea.classList.add('border-slate-900', 'bg-slate-100');
-    }
-
-    function unhighlight(e) {
-      uploadArea.classList.remove('border-slate-900', 'bg-slate-100');
-    }
-
-    uploadArea.addEventListener('drop', handleDrop, false);
-    uploadArea.addEventListener('click', () => fileInput.click());
-
-    function handleDrop(e) {
-      const dt = e.dataTransfer;
-      const files = dt.files;
-      handleFiles(files);
-    }
-
-    function handleFileUpload(e) {
-      const files = e.target.files;
-      handleFiles(files);
-    }
-
-    function handleFiles(files) {
-      [...files].forEach(file => {
-        if (file.size <= 10 * 1024 * 1024) { // 10MB limit
-          uploadedFiles.push({
-            file: file,
-            id: Date.now() + Math.random(),
-            uploadDate: new Date().toISOString(),
-            status: 'uploading'
-          });
-        }
+    addDocBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+      const files = [...e.target.files];
+      files.forEach(file => {
+        uploadedFiles.push({
+          file,
+          id: Date.now() + Math.random(),
+          uploadDate: new Date().toISOString(),
+        });
       });
       updateUploadedDocsDisplay();
-      simulateUpload();
-    }
+      e.target.value = '';
+    });
 
     function updateUploadedDocsDisplay() {
       uploadedDocsContainer.innerHTML = uploadedFiles
@@ -361,53 +289,22 @@
           (item) => `
           <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3" id="doc-${item.id}">
             <div class="flex items-center gap-3">
-              <div class="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
-                <i data-lucide="file-text" class="h-4 w-4 text-slate-600"></i>
+              <div class="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                <i data-lucide="check-circle" class="h-4 w-4 text-emerald-600"></i>
               </div>
               <div>
                 <p class="text-sm font-medium text-slate-900">${item.file.name}</p>
-                <p class="text-xs text-slate-500">${formatFileSize(item.file.size)} • Загружается...</p>
+                <p class="text-xs text-slate-500">${formatFileSize(item.file.size)} • Загружено ${formatDate(item.uploadDate)}</p>
               </div>
             </div>
-            <div class="flex items-center gap-2">
-              <div class="h-4 w-4 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin"></div>
-              <button onclick="removeUploadedFile(${item.id})" class="text-slate-400 hover:text-slate-600">
-                <i data-lucide="x" class="h-4 w-4"></i>
-              </button>
-            </div>
+            <button onclick="removeUploadedFile(${item.id})" class="text-slate-400 hover:text-slate-600">
+              <i data-lucide="trash-2" class="h-4 w-4"></i>
+            </button>
           </div>
         `
         )
         .join('');
       applyIcons();
-    }
-
-    function simulateUpload() {
-      setTimeout(() => {
-        uploadedFiles.forEach(item => {
-          item.status = 'completed';
-          const docElement = document.getElementById(`doc-${item.id}`);
-          if (docElement) {
-            docElement.innerHTML = `
-              <div class="flex items-center justify-between w-full">
-                <div class="flex items-center gap-3">
-                  <div class="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center">
-                    <i data-lucide="check-circle" class="h-4 w-4 text-emerald-600"></i>
-                  </div>
-                  <div>
-                    <p class="text-sm font-medium text-slate-900">${item.file.name}</p>
-                    <p class="text-xs text-slate-500">${formatFileSize(item.file.size)} • Загружено ${formatDate(item.uploadDate)}</p>
-                  </div>
-                </div>
-                <button onclick="removeUploadedFile(${item.id})" class="text-slate-400 hover:text-slate-600">
-                  <i data-lucide="trash-2" class="h-4 w-4"></i>
-                </button>
-              </div>
-            `;
-          }
-        });
-        applyIcons();
-      }, 2000);
     }
 
     window.removeUploadedFile = function(id) {

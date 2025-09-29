@@ -24,11 +24,13 @@ main {
 .timeline-step::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 1.25rem;
+  /* Align the vertical line to the center of the 8px (2rem) indicator */
+  left: 1rem;
+  /* Start line from indicator center for cleaner alignment */
+  top: 1rem;
   width: 2px;
-  height: 100%;
-  background: rgba(59, 130, 246, 0.4);
+  height: calc(100% - 1rem);
+  background: rgba(59, 130, 246, 0.35);
 }
 
 .timeline-step:last-child::before {
@@ -41,8 +43,13 @@ main {
 }
 
 .timeline-step.is-done > .step-indicator {
-  background: rgba(37, 99, 235, 0.12);
+  background: #dbeafe; /* solid light blue, no transparency */
   color: #2563eb;
+}
+
+/* Fine-tune indicator position to avoid drift across breakpoints */
+.timeline-step .step-indicator {
+  top: 0.5rem; /* override utility class top-1.5 */
 }
 
 .card-grid {
@@ -317,11 +324,6 @@ body:has(#sidebar):has(#page-header) {
   body:has(.mobile-bottom-nav) main {
     padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   }
-  
-  /* Also add padding to body to ensure all content is visible */
-  body:has(.mobile-bottom-nav) {
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
-  }
 }
 
 /* Profile dropdown mobile styles */
@@ -361,5 +363,30 @@ body:has(#sidebar):has(#page-header) {
 @media (min-width: 1024px) {
   .mobile-bottom-nav {
     display: none !important;
+  }
+}
+
+/* Unified content container paddings for cabinet pages */
+/* Scope to layouts that have both sidebar and fixed header to avoid affecting public pages */
+body:has(#sidebar):has(#page-header) main > .mx-auto.w-full.max-w-6xl {
+  padding-left: 1rem;  /* px-4 */
+  padding-right: 1rem; /* px-4 */
+  padding-top: 1rem;   /* py-4 */
+  padding-bottom: 1rem;/* py-4 */
+}
+
+@media (min-width: 640px) {
+  body:has(#sidebar):has(#page-header) main > .mx-auto.w-full.max-w-6xl {
+    padding-left: 1.5rem;  /* sm:px-6 */
+    padding-right: 1.5rem; /* sm:px-6 */
+    padding-top: 1.5rem;   /* sm:py-6 */
+    padding-bottom: 1.5rem;/* sm:py-6 */
+  }
+}
+
+@media (min-width: 1024px) {
+  body:has(#sidebar):has(#page-header) main > .mx-auto.w-full.max-w-6xl {
+    padding-top: 2rem;   /* lg:py-8 */
+    padding-bottom: 2rem;/* lg:py-8 */
   }
 }
