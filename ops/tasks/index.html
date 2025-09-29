@@ -33,6 +33,30 @@
             </div>
           </section>
 
+          <!-- Filters & Saved Views Toolbar -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="relative">
+                  <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
+                  <input id="tasks-search" type="text" class="w-64 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Поиск задач" />
+                </div>
+                <select id="tasks-status" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:ring-slate-900">
+                  <option value="">Все статусы</option>
+                  <option value="new">Новые</option>
+                  <option value="in-progress">В работе</option>
+                  <option value="done">Выполнено</option>
+                  <option value="cancelled">Отменено</option>
+                </select>
+                <button id="tasks-clear-filters" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:border-slate-900">
+                  <i data-lucide="x" class="h-4 w-4"></i>
+                  Сбросить
+                </button>
+              </div>
+              
+            </div>
+          </section>
+
           <!-- Kanban Board Section -->
           <section id="kanban" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <!-- Kanban columns will render here -->
@@ -114,109 +138,34 @@
       { id: 6, title: 'Обновить информацию о страховке', owner: 'Анна', due: 'След. понедельник · 12:00', priority: 'normal', source: 'Авто', status: 'cancelled', creator: 'system' }
     ];
 
-    // Define task statuses to match the deals structure
-    const statuses = [
-      {
-        title: 'Новые',
-        key: 'new',
-        tasks: tasks.filter(task => task.status === 'new')
-      },
-      {
-        title: 'В работе',
-        key: 'in-progress',
-        tasks: tasks.filter(task => task.status === 'in-progress')
-      },
-      {
-        title: 'Выполнено',
-        key: 'done',
-        tasks: tasks.filter(task => task.status === 'done')
-      },
-      {
-        title: 'Отменено',
-        key: 'cancelled',
-        tasks: tasks.filter(task => task.status === 'cancelled')
-      }
-    ];
+    // Filters helpers
 
-    // Render Kanban board using the deals page style
-    const kanban = document.getElementById('kanban');
-    kanban.innerHTML = statuses
-      .map(
-        (column) => `
-        <article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <header class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
-            <span class="badge badge-info">${column.tasks.length}</span>
-          </header>
-          <div class="mt-4 flex-1 space-y-3" data-column="${column.key}">
-            ${column.tasks
-              .map(
-                (task) => `
-                <div class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900 cursor-move" data-id="${task.id}">
-                  <div class="flex items-center justify-between">
-                    <span class="font-semibold text-slate-900">${task.title}</span>
-                    <span class="text-xs text-slate-400">${task.due}</span>
-                  </div>
-                  <p class="truncate text-sm text-slate-600">${task.owner}</p>
-                  <div class="mt-2 flex items-center justify-between">
-                    <span class="badge ${task.priority === 'high' ? 'badge-danger' : 'badge-info'}">${task.priority === 'high' ? 'Высокий' : 'Нормальный'}</span>
-                    <span class="text-xs text-slate-500">${task.source}</span>
-                  </div>
-                </div>
-              `)
-              .join('')}
-          </div>
-        </article>
-      `
-      )
-      .join('');
+    const readFilters = () => {
+      const q = (document.getElementById('tasks-search')?.value || '').trim().toLowerCase();
+      const status = document.getElementById('tasks-status')?.value || '';
+      return { q, status };
+    };
 
-    // Initialize SortableJS for drag and drop functionality
-    statuses.forEach((column) => {
-      initSortable(`[data-column="${column.key}"]`, {
-        group: 'tasks',
-        animation: 150,
-        handle: '.group',
-        onEnd: function (evt) {
-          // Update task status when moved between columns
-          const taskId = parseInt(evt.item.getAttribute('data-id'));
-          const newStatus = evt.to.getAttribute('data-column');
-          
-          // Find and update the task
-          const task = tasks.find(t => t.id === taskId);
-          if (task) {
-            task.status = newStatus;
-            // Re-render the Kanban board to reflect changes
-            renderKanbanBoard();
-          }
-        }
+    const filterTasks = (items) => {
+      const { q, status } = readFilters();
+      return items.filter((t) => {
+        const matchesQuery = !q || `${t.title} ${t.owner} ${t.source}`.toLowerCase().includes(q);
+        const matchesStatus = !status || t.status === status;
+        return matchesQuery && matchesStatus;
       });
-    });
+    };
+
+    const kanban = document.getElementById('kanban');
 
     // Function to render tasks in Kanban board (for updates)
     function renderKanbanBoard() {
-      // Re-initialize the statuses with updated tasks
+      // Build statuses from filtered tasks
+      const filtered = filterTasks(tasks);
       const updatedStatuses = [
-        {
-          title: 'Новые',
-          key: 'new',
-          tasks: tasks.filter(task => task.status === 'new')
-        },
-        {
-          title: 'В работе',
-          key: 'in-progress',
-          tasks: tasks.filter(task => task.status === 'in-progress')
-        },
-        {
-          title: 'Выполнено',
-          key: 'done',
-          tasks: tasks.filter(task => task.status === 'done')
-        },
-        {
-          title: 'Отменено',
-          key: 'cancelled',
-          tasks: tasks.filter(task => task.status === 'cancelled')
-        }
+        { title: 'Новые', key: 'new', tasks: filtered.filter(task => task.status === 'new') },
+        { title: 'В работе', key: 'in-progress', tasks: filtered.filter(task => task.status === 'in-progress') },
+        { title: 'Выполнено', key: 'done', tasks: filtered.filter(task => task.status === 'done') },
+        { title: 'Отменено', key: 'cancelled', tasks: filtered.filter(task => task.status === 'cancelled') }
       ];
 
       // Re-render the Kanban board
@@ -261,12 +210,10 @@
             // Update task status when moved between columns
             const taskId = parseInt(evt.item.getAttribute('data-id'));
             const newStatus = evt.to.getAttribute('data-column');
-            
-            // Find and update the task
             const task = tasks.find(t => t.id === taskId);
             if (task) {
               task.status = newStatus;
-              // Re-render the Kanban board to reflect changes
+              // Re-render the Kanban board reflecting current filters
               renderKanbanBoard();
             }
           }
@@ -277,6 +224,21 @@
         applyIcons();
       }, 100);
     }
+
+    // Initial render and wiring
+    renderKanbanBoard();
+
+    document.getElementById('tasks-search')?.addEventListener('input', () => renderKanbanBoard());
+    document.getElementById('tasks-status')?.addEventListener('change', () => renderKanbanBoard());
+    document.getElementById('tasks-clear-filters')?.addEventListener('click', () => {
+      const s = document.getElementById('tasks-search');
+      const st = document.getElementById('tasks-status');
+      if (s) s.value = '';
+      if (st) st.value = '';
+      renderKanbanBoard();
+    });
+
+    
 
     bindModal({ openSelector: '#create-task', modalId: 'modal' });
 

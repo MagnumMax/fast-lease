@@ -70,7 +70,7 @@
     }
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons } = shared;
+    const { mountSidebar, mountHeader, applyIcons, mountMobileBottomNav } = shared;
     const { opsNav } = shared;
 
     const basePath = '../../..';
@@ -80,6 +80,13 @@
       containerId: 'page-header',
       title: 'Автомобиль Aurora Atlas X',
       breadcrumbs: ['Операции', 'Автомобили', 'Rolls-Royce Cullinan'],
+      basePath,
+    });
+
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: opsNav,
+      activePath: '/ops/cars/index.html',
       basePath,
     });
 
@@ -151,5 +158,6 @@
 
     applyIcons();
   </script>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>
 </html>

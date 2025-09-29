@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Клиент Максим Кузьмин</title>
+  <title>Fast Lease — Клиент Michael Adams</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -22,7 +22,7 @@
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Клиент</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Максим Кузьмин</h1>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Michael Adams</h1>
                 <p class="text-sm text-slate-500">ID: CL-0104 · Программа lease-to-own · Клиент с 2023 года</p>
               </div>
               <div class="flex items-center gap-3">
@@ -31,6 +31,10 @@
                   <i data-lucide="mail" class="h-4 w-4"></i>
                   Написать письмо
                 </button>
+                <a href="../../deals/deal-7801/index.html" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                  <i data-lucide="rocket" class="h-4 w-4"></i>
+                  Следующий шаг
+                </a>
               </div>
             </div>
           </section>
@@ -39,10 +43,10 @@
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 class="text-sm font-semibold text-slate-800">Контактная информация</h2>
               <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
-                <div><dt>Email</dt><dd class="font-medium text-slate-900">max.kuzmin@fastlease.io</dd></div>
-                <div><dt>Телефон</dt><dd class="font-medium text-slate-900">+7 999 123-45-67</dd></div>
-                <div><dt>Адрес</dt><dd class="font-medium text-slate-900">Москва, ул. Сретенка, 18</dd></div>
-                <div><dt>Паспорт</dt><dd class="font-medium text-slate-900">4509 123456</dd></div>
+                <div><dt>Email</dt><dd class="font-medium text-slate-900">michael.adams@fastlease.io</dd></div>
+                <div><dt>Телефон</dt><dd class="font-medium text-slate-900">+44 7700 900104</dd></div>
+                <div><dt>Адрес</dt><dd class="font-medium text-slate-900">London, 221B Baker Street</dd></div>
+                <div><dt>Passport</dt><dd class="font-medium text-slate-900">GBR 123456789</dd></div>
               </dl>
               <div class="mt-6 rounded-xl bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
                 <p>История клиента: 2 завершённые сделки, без просрочек. Наличие рекомендательного бонуса — да.</p>
@@ -59,6 +63,8 @@
             </article>
           </section>
 
+          
+
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 class="text-sm font-semibold text-slate-800">История сделок</h2>
             <div id="deal-history" class="mt-4"></div>
@@ -67,6 +73,27 @@
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <h2 class="text-sm font-semibold text-slate-800">Документы клиента</h2>
             <div id="client-documents" class="mt-4 space-y-3"></div>
+            <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <h3 class="text-sm font-semibold text-slate-800">Загрузка документов</h3>
+              <p class="mt-1 text-xs text-slate-500">Допустимые типы: PDF, JPG, PNG, DOC, DOCX. Максимальный размер: 5MB.</p>
+              <div class="mt-3 flex items-center gap-4">
+                <select id="client-doc-type" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
+                  <option value="">Выберите тип документа</option>
+                  <option value="Паспорт РФ">Паспорт РФ</option>
+                  <option value="3-НДФЛ 2024">3-НДФЛ 2024</option>
+                  <option value="Договор аренды жилья">Договор аренды жилья</option>
+                  <option value="Другое">Другое</option>
+                </select>
+                <input type="file" id="client-file-upload" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,application/pdf,image/*">
+                <button id="client-trigger-upload" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
+                  <i data-lucide="upload" class="h-4 w-4"></i>
+                  Загрузить документ
+                </button>
+                <span id="client-file-name" class="text-sm text-slate-500"></span>
+              </div>
+              <p id="client-upload-error" class="mt-2 text-xs text-red-600 hidden"></p>
+              <p id="client-upload-success" class="mt-2 text-xs text-green-700 hidden"></p>
+            </div>
           </section>
         </div>
       </main>
@@ -84,7 +111,7 @@
     }
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate } = shared;
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, mountMobileBottomNav, enableGlobalSearch } = shared;
     const { opsNav } = shared;
 
     const basePath = '../../..';
@@ -93,7 +120,16 @@
     mountHeader({
       containerId: 'page-header',
       title: 'Карточка клиента',
-      breadcrumbs: ['Операции', 'Клиенты', 'Максим Кузьмин'],
+      breadcrumbs: ['Операции', 'Клиенты', 'Michael Adams'],
+      basePath,
+    });
+
+    enableGlobalSearch({ basePath });
+
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: opsNav,
+      activePath: '/ops/clients/index.html',
       basePath,
     });
 
@@ -133,7 +169,7 @@
               <p class="text-xs text-slate-500">${doc.status}</p>
             </div>
           </div>
-          <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
+          <button class="doc-update-btn inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900" data-doc-name="${doc.name}">
             <i data-lucide="upload" class="h-4 w-4"></i>
             Обновить
           </button>
@@ -142,7 +178,69 @@
       )
       .join('');
 
+    // Client upload interactions & validation
+    const clientUploadTrigger = document.getElementById('client-trigger-upload');
+    const clientUploadInput = document.getElementById('client-file-upload');
+    const clientUploadError = document.getElementById('client-upload-error');
+    const clientUploadSuccess = document.getElementById('client-upload-success');
+    const clientDocTypeSelect = document.getElementById('client-doc-type');
+
+    if (clientUploadTrigger && clientUploadInput) {
+      clientUploadTrigger.addEventListener('click', () => clientUploadInput.click());
+
+      clientUploadInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        const type = clientDocTypeSelect ? clientDocTypeSelect.value : '';
+        const fileNameEl = document.getElementById('client-file-name');
+        if (!file) return;
+
+        // Reset messages
+        clientUploadError.classList.add('hidden');
+        clientUploadSuccess.classList.add('hidden');
+        if (fileNameEl) fileNameEl.textContent = `Выбран файл: ${type ? type + ': ' : ''}${file.name}`;
+
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        const allowedExt = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+        const ext = (file.name.split('.').pop() || '').toLowerCase();
+        const isAllowed = allowedExt.includes(ext);
+
+        if (!isAllowed) {
+          clientUploadError.textContent = 'Недопустимый формат файла. Разрешены: PDF, JPG, PNG, DOC, DOCX.';
+          clientUploadError.classList.remove('hidden');
+          clientUploadInput.value = '';
+          return;
+        }
+        if (file.size > maxSize) {
+          clientUploadError.textContent = 'Файл слишком большой. Максимальный размер — 5MB.';
+          clientUploadError.classList.remove('hidden');
+          clientUploadInput.value = '';
+          return;
+        }
+
+        // Simulate persisting uploaded doc
+        try {
+          const key = 'client-104-uploads';
+          const prev = JSON.parse(localStorage.getItem(key) || '[]');
+          prev.push({ name: file.name, type: type || 'Документ', size: file.size, ts: Date.now() });
+          localStorage.setItem(key, JSON.stringify(prev));
+        } catch {}
+
+        clientUploadSuccess.textContent = 'Документ загружен и отправлен на проверку.';
+        clientUploadSuccess.classList.remove('hidden');
+      });
+    }
+
+    // Wire existing "Обновить" buttons to preselect type and open picker
+    document.querySelectorAll('#client-documents .doc-update-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const docName = btn.getAttribute('data-doc-name') || '';
+        if (clientDocTypeSelect) clientDocTypeSelect.value = docName;
+        if (clientUploadInput) clientUploadInput.click();
+      });
+    });
+
     applyIcons();
   </script>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>
 </html>

@@ -47,7 +47,22 @@
                 Экспортировать PDF
               </button>
             </div>
-            <div class="mt-6" id="invoice-table"></div>
+            <div class="mt-6 flex flex-col gap-4">
+              <div class="flex flex-wrap items-center gap-3 text-sm">
+                <div class="relative">
+                  <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
+                  <input id="invoice-filter-search" type="text" class="w-64 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Поиск (номер/дата)" />
+                </div>
+                <select id="invoice-filter-status" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                  <option value="">Все статусы</option>
+                  <option>Оплачен</option>
+                  <option>Ожидает оплаты</option>
+                </select>
+                
+              </div>
+              <div class="mt-4 hidden md:block" id="invoice-table"></div>
+              <div class="mt-4 md:hidden space-y-4" id="invoice-cards"></div>
+            </div>
           </section>
         </div>
       </main>
@@ -94,16 +109,68 @@
       { id: 'INV-2024-009', dueDate: '2024-10-15', amount: 3260, status: 'Оплачен', link: '../../client/invoices/invoice-2024-001/index.html' },
     ];
 
-    renderTable({
-      containerId: 'invoice-table',
-      columns: [
-        { key: 'id', label: 'Инвойс', render: (row) => `<a href="${row.link}" class="text-slate-900 hover:underline">${row.id}</a>` },
-        { key: 'dueDate', label: 'Дата', render: (row) => formatDate(row.dueDate) },
-        { key: 'amount', label: 'Сумма', render: (row) => formatCurrency(row.amount, 'AED') },
-        { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
-      ],
-      data: invoices,
-    });
+    
+
+    const invoiceFilters = { query: '', status: '' };
+
+    function applyInvoiceFilters() {
+      const q = (invoiceFilters.query || '').toLowerCase();
+      const status = invoiceFilters.status || '';
+      const filtered = invoices.filter(inv =>
+        (!q || inv.id.toLowerCase().includes(q) || formatDate(inv.dueDate).toLowerCase().includes(q)) &&
+        (!status || inv.status === status)
+      );
+      renderTable({
+        containerId: 'invoice-table',
+        columns: [
+          { key: 'id', label: 'Инвойс', render: (row) => `<a href="${row.link}" class="text-slate-900 hover:underline">${row.id}</a>` },
+          { key: 'dueDate', label: 'Дата', render: (row) => formatDate(row.dueDate) },
+          { key: 'amount', label: 'Сумма', render: (row) => formatCurrency(row.amount, 'AED') },
+          { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
+        ],
+        data: filtered,
+      });
+      renderInvoiceCards(filtered);
+      setTimeout(() => applyIcons(), 50);
+    }
+
+    function renderInvoiceCards(data) {
+      const container = document.getElementById('invoice-cards');
+      if (!container) return;
+      container.innerHTML = data
+        .map(
+          (row) => `
+          <a href="${row.link}" class="block rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-900">${row.id}</p>
+                <p class="text-sm text-slate-500">${formatDate(row.dueDate)}</p>
+              </div>
+              ${statusBadge(row.status)}
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Сумма: ${formatCurrency(row.amount, 'AED')}</p>
+          </a>
+        `
+        )
+        .join('');
+    }
+
+    // Initial render
+    applyInvoiceFilters();
+
+    const searchInput = document.getElementById('invoice-filter-search');
+    const statusSelect = document.getElementById('invoice-filter-status');
+    
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => { invoiceFilters.query = searchInput.value; applyInvoiceFilters(); });
+      searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyInvoiceFilters(); });
+    }
+    if (statusSelect) {
+      statusSelect.addEventListener('change', () => { invoiceFilters.status = statusSelect.value; applyInvoiceFilters(); });
+    }
+
+    
 
     const upcoming = invoices[0];
     document.getElementById('summary-upcoming').textContent = formatCurrency(upcoming.amount, 'AED');
@@ -111,9 +178,7 @@
     document.getElementById('summary-paid').textContent = formatCurrency(3260 * 8, 'AED');
     document.getElementById('summary-overdue').textContent = '0 AED';
 
-    setTimeout(() => {
-      applyIcons();
-    }, 100);
+    setTimeout(() => { applyIcons(); }, 50);
   </script>
 
   <!-- Mobile Bottom Navigation -->

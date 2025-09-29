@@ -38,7 +38,28 @@
           </section>
 
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div id="cars-table"></div>
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-wrap items-center gap-3 text-sm">
+                <div class="relative">
+                  <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
+                  <input id="car-filter-search" type="text" class="w-64 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Поиск автомобиля (VIN/название)" />
+                </div>
+                <select id="car-filter-type" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                  <option value="">Все типы</option>
+                  <option>Люксовый SUV</option>
+                  <option>Люксовый седан</option>
+                  <option>Спорткар</option>
+                  <option>Электрокар</option>
+                </select>
+                <select id="car-filter-year" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                  <option value="">Все годы</option>
+                  <option>2024</option>
+                </select>
+                
+              </div>
+              <div class="mt-4 hidden md:block" id="cars-table"></div>
+              <div class="mt-4 md:hidden space-y-4" id="cars-cards"></div>
+              </div>
           </section>
         </div>
       </main>
@@ -94,11 +115,68 @@
       { key: 'battery', label: 'Батарея' },
     ];
 
-    renderTable({ containerId: 'cars-table', columns, data: cars });
+    const filters = { query: '', type: '', year: '' };
 
-    setTimeout(() => {
-      applyIcons();
-    }, 100);
+    function applyFilters() {
+      const q = (filters.query || '').toLowerCase();
+      const type = filters.type || '';
+      const year = String(filters.year || '');
+      const filtered = cars.filter(c =>
+        (!q || c.name.toLowerCase().includes(q) || c.vin.toLowerCase().includes(q)) &&
+        (!type || c.type === type) &&
+        (!year || String(c.year) === year)
+      );
+      renderTable({ containerId: 'cars-table', columns, data: filtered });
+      renderCarCards(filtered);
+      setTimeout(() => applyIcons(), 50);
+    }
+
+    // Initial render
+    renderTable({ containerId: 'cars-table', columns, data: cars });
+    renderCarCards(cars);
+    setTimeout(() => applyIcons(), 50);
+
+    // Bind filter controls
+    const searchInput = document.getElementById('car-filter-search');
+    const typeSelect = document.getElementById('car-filter-type');
+    const yearSelect = document.getElementById('car-filter-year');
+    
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => { filters.query = searchInput.value; applyFilters(); });
+      searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyFilters(); });
+    }
+    if (typeSelect) {
+      typeSelect.addEventListener('change', () => { filters.type = typeSelect.value; applyFilters(); });
+    }
+    if (yearSelect) {
+      yearSelect.addEventListener('change', () => { filters.year = yearSelect.value; applyFilters(); });
+    }
+
+    function renderCarCards(data) {
+      const container = document.getElementById('cars-cards');
+      if (!container) return;
+      container.innerHTML = data
+        .map(
+          (row) => `
+          <a href="car-aurora/index.html" class="block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-slate-900">${row.name}</span>
+              <span class="text-xs text-slate-400">VIN: ${row.vin}</span>
+            </div>
+            <p class="truncate text-sm text-slate-600">${row.type} · ${row.year}</p>
+            <div class="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-600">
+              <span class="inline-flex items-center gap-2"><i data-lucide="badge-dollar-sign" class="h-3.5 w-3.5"></i>Стоимость: ${row.price}</span>
+              <span class="inline-flex items-center gap-2"><i data-lucide="gauge" class="h-3.5 w-3.5"></i>Пробег: ${row.mileage}</span>
+              <span class="inline-flex items-center gap-2"><i data-lucide="battery" class="h-3.5 w-3.5"></i>Батарея: ${row.battery}</span>
+            </div>
+          </a>
+        `
+        )
+        .join('');
+    }
+
+    
   </script>
   <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>

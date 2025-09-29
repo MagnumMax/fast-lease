@@ -111,6 +111,10 @@ export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "
           <h1 class="text-2xl font-semibold text-slate-900">${title}</h1>
         </div>
         <div class="flex items-center gap-3">
+          <div class="relative hidden md:block">
+            <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
+            <input id="global-search-input" type="text" class="w-56 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Глобальный поиск" />
+          </div>
           <button class="notifications-btn relative inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900">
             <i data-lucide="bell" class="h-4 w-4"></i>
             <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white">3</span>
@@ -167,6 +171,29 @@ export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "
       }
     });
   }
+}
+
+export function enableGlobalSearch({ basePath = "" } = {}) {
+  const input = document.getElementById('global-search-input');
+  if (!input) return;
+
+  const navigate = (href) => {
+    window.location.href = `${basePath}${href}`;
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    const q = (input.value || '').trim().toLowerCase();
+    try { localStorage.setItem('globalSearchQuery', input.value || ''); } catch {}
+
+    if (!q) return navigate('/ops/deals/index.html');
+    if (q.includes('максим кузьмин')) return navigate('/ops/clients/client-104/index.html');
+    if (q.startsWith('fl-') || q.startsWith('app-')) return navigate('/ops/deals/index.html');
+    if (q.includes('inv') || q.includes('инвойс')) return navigate('/client/invoices/index.html');
+    if (q.includes('rolls') || q.includes('bentley') || q.includes('lamborghini') || q.includes('tesla') || q.includes('авто')) return navigate('/ops/cars/index.html');
+    if (q.includes('клиент')) return navigate('/ops/clients/index.html');
+    return navigate('/ops/deals/index.html');
+  });
 }
 
 export function renderTable({ containerId, columns, data }) {

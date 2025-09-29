@@ -33,10 +33,20 @@
                   <i data-lucide="list" class="h-4 w-4"></i>
                   Список
                 </button>
-                <button class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
-                  <i data-lucide="filter" class="h-4 w-4"></i>
-                  Фильтры
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
+                    <input id="deal-search" type="text" class="w-56 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Поиск: клиент, авто, ID" />
+                  </div>
+                  <select id="deal-status" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900">
+                    <option value="all">Все статусы</option>
+                    <option value="applications">Заявки</option>
+                    <option value="documents">Документы</option>
+                    <option value="handover">Выдача</option>
+                    <option value="active">Активные</option>
+                  </select>
+                  
+                </div>
               </div>
             </div>
           </section>
@@ -64,7 +74,7 @@
     }
 
     const shared = await getShared('../../assets');
-    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, initSortable, mountMobileBottomNav } = shared;
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, initSortable, mountMobileBottomNav, enableGlobalSearch } = shared;
     const { opsNav } = shared;
 
     const basePath = '../..';
@@ -77,6 +87,8 @@
       basePath,
     });
 
+    enableGlobalSearch({ basePath });
+
     mountMobileBottomNav({
       containerId: 'mobile-bottom-nav',
       items: opsNav,
@@ -84,7 +96,7 @@
       basePath,
     });
 
-    const pipeline = [
+    const pipelineOriginal = [
       {
         title: 'Заявки',
         key: 'applications',
@@ -118,60 +130,132 @@
         ],
       },
     ];
+    let searchValue = '';
+    let statusFilter = 'all';
 
-    const kanban = document.getElementById('kanban');
-    kanban.innerHTML = pipeline
-      .map(
-        (column) => `
-        <article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <header class="flex items-center justify-between">
-            <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
-            <span class="badge badge-info">${column.deals.length}</span>
-          </header>
-          <div class="mt-4 flex-1 space-y-3" data-column="${column.key}">
-            ${column.deals
-              .map(
-                (deal) => `
-                <a href="../../ops/deals/deal-7801/index.html" class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
-                  <div class="flex items-center justify-between">
-                    <span class="font-semibold text-slate-900">${deal.id}</span>
-                    <span class="text-xs text-slate-400">${formatDate(deal.updatedAt)}</span>
-                  </div>
-                  <p class="truncate text-sm text-slate-600">${deal.client} · ${deal.car}</p>
-                  <span class="mt-2 inline-flex items-center gap-2 text-xs text-slate-500">
-                    <i data-lucide="workflow" class="h-3.5 w-3.5"></i>
-                    ${deal.stage}
-                  </span>
-                </a>
-              `)
-              .join('')}
-          </div>
-        </article>
-      `
-      )
-      .join('');
+    
 
-    pipeline.forEach((column) => {
-      initSortable(`[data-column="${column.key}"]`, {
-        group: 'deals',
-        animation: 150,
-        handle: '.group',
+    function getFilteredPipeline() {
+      const byStatus = statusFilter === 'all' ? pipelineOriginal : pipelineOriginal.filter(c => c.key === statusFilter);
+      if (!searchValue) return byStatus.map(c => ({...c, deals: [...c.deals]}));
+      const q = searchValue.toLowerCase();
+      return byStatus.map(c => ({
+        ...c,
+        deals: c.deals.filter(d => `${d.id} ${d.client} ${d.car}`.toLowerCase().includes(q))
+      }));
+    }
+
+    function getClientLink(client) {
+      return client === 'Максим Кузьмин'
+        ? '../../ops/clients/client-104/index.html'
+        : '../../ops/clients/index.html';
+    }
+
+    function renderKanban() {
+      const pipeline = getFilteredPipeline();
+      const kanban = document.getElementById('kanban');
+      kanban.innerHTML = pipeline
+        .map(
+          (column) => `
+          <article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <header class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
+              <span class="badge badge-info">${column.deals.length}</span>
+            </header>
+            <div class="mt-4 flex-1 space-y-3" data-column="${column.key}">
+              ${column.deals
+                .map(
+                  (deal) => `
+                  <a href="../../ops/deals/deal-7801/index.html" class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
+                    <div class="flex items-center justify-between">
+                      <span class="font-semibold text-slate-900">${deal.id}</span>
+                      <span class="text-xs text-slate-400">${formatDate(deal.updatedAt)}</span>
+                    </div>
+                    <p class="truncate text-sm text-slate-600">${deal.client} · ${deal.car}</p>
+                    <span class="mt-2 inline-flex items-center gap-2 text-xs text-slate-500">
+                      <i data-lucide="workflow" class="h-3.5 w-3.5"></i>
+                      ${deal.stage}
+                    </span>
+                    <div class="mt-2 flex items-center gap-3 text-xs">
+                      <a href="${getClientLink(deal.client)}" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
+                        <i data-lucide="user" class="h-3.5 w-3.5"></i>
+                        Клиент
+                      </a>
+                      <a href="../../ops/cars/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
+                        <i data-lucide="car" class="h-3.5 w-3.5"></i>
+                        Авто
+                      </a>
+                      <a href="../../client/invoices/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
+                        <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
+                        Инвойсы
+                      </a>
+                    </div>
+                  </a>
+                `)
+                .join('')}
+            </div>
+          </article>
+        `
+        )
+        .join('');
+      // Re-init sortable for visible columns
+      pipeline.forEach((column) => {
+        initSortable(`[data-column="${column.key}"]`, {
+          group: 'deals',
+          animation: 150,
+          handle: '.group',
+        });
       });
+      setTimeout(() => applyIcons(), 50);
+    }
+
+    function renderTableView() {
+      const pipeline = getFilteredPipeline();
+      const dealsFlat = pipeline.flatMap((column) =>
+        column.deals.map((deal) => ({ ...deal, status: column.title }))
+      );
+
+      const columnsTable = [
+        { key: 'id', label: 'Deal ID', render: (row) => `<a href="../../ops/deals/deal-7801/index.html" class="text-slate-900 hover:underline">${row.id}</a>` },
+        { key: 'client', label: 'Клиент', render: (row) => `<a href="${getClientLink(row.client)}" class="text-slate-900 hover:underline">${row.client}</a>` },
+        { key: 'car', label: 'Автомобиль', render: (row) => `<a href="../../ops/cars/index.html" class="text-slate-900 hover:underline">${row.car}</a>` },
+        { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
+        { key: 'updatedAt', label: 'Обновлено', render: (row) => formatDate(row.updatedAt) },
+        { key: 'links', label: 'Навигация', render: (row) => `
+          <div class="flex items-center gap-3">
+            <a href="${getClientLink(row.client)}" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="user" class="h-3.5 w-3.5"></i>Клиент</a>
+            <a href="../../ops/cars/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="car" class="h-3.5 w-3.5"></i>Авто</a>
+            <a href="../../client/invoices/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="credit-card" class="h-3.5 w-3.5"></i>Инвойсы</a>
+          </div>
+        ` },
+      ];
+
+      renderTable({ containerId: 'table-container', columns: columnsTable, data: dealsFlat });
+      setTimeout(() => applyIcons(), 50);
+    }
+
+    // Initial render
+    renderKanban();
+    renderTableView();
+
+    // Bind filters
+    const searchInput = document.getElementById('deal-search');
+    const statusSelect = document.getElementById('deal-status');
+    
+
+    searchInput?.addEventListener('input', (e) => {
+      searchValue = e.target.value;
+      renderKanban();
+      renderTableView();
     });
 
-    const dealsFlat = pipeline.flatMap((column) =>
-      column.deals.map((deal) => ({ ...deal, status: column.title }))
-    );
+    statusSelect?.addEventListener('change', (e) => {
+      statusFilter = e.target.value;
+      renderKanban();
+      renderTableView();
+    });
 
-    const columnsTable = [
-      { key: 'id', label: 'Deal ID', render: (row) => `<a href="../../ops/deals/deal-7801/index.html" class="text-slate-900 hover:underline">${row.id}</a>` },
-      { key: 'client', label: 'Клиент' },
-      { key: 'car', label: 'Автомобиль' },
-      { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
-      { key: 'updatedAt', label: 'Обновлено', render: (row) => formatDate(row.updatedAt) },
-    ];
-
-    renderTable({ containerId: 'table-container', columns: columnsTable, data: dealsFlat });
+    
 
     const kanbanView = document.getElementById('kanban');
     const tableView = document.getElementById('deal-table');
@@ -189,6 +273,8 @@
     setTimeout(() => {
       applyIcons();
     }, 100);
+
+    
   </script>
   <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>
