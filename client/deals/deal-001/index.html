@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Детали сделки FL-2025-1042</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="../../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto px-6 py-8 space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Сделка</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">FL-2025-1042 · Rolls-Royce Cullinan</h1>
+                <p class="text-sm text-slate-500">Программа lease-to-own на 36 месяцев. Дата создания — 12 декабря 2024.</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="badge badge-success">Активна</span>
+                <a href="../../../client/invoices/index.html" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-900">
+                  <i data-lucide="credit-card" class="h-4 w-4"></i>
+                  График платежей
+                </a>
+              </div>
+            </div>
+            <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div class="rounded-xl bg-slate-50/80 p-4">
+                <p class="text-xs uppercase tracking-wide text-slate-400">Ежемесячный платеж</p>
+                <p class="mt-2 text-lg font-semibold text-slate-900" id="deal-payment">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-4">
+                <p class="text-xs uppercase tracking-wide text-slate-400">Следующий платеж</p>
+                <p class="mt-2 text-lg font-semibold text-slate-900" id="deal-next-payment">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-4">
+                <p class="text-xs uppercase tracking-wide text-slate-400">Остаток выкупа</p>
+                <p class="mt-2 text-lg font-semibold text-slate-900" id="deal-remaining">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-4">
+                <p class="text-xs uppercase tracking-wide text-slate-400">Автоматические платежи</p>
+                <p class="mt-2 text-lg font-semibold text-slate-900">Включены</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
+              <div class="flex flex-wrap items-center gap-2">
+                <button data-tab="summary" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Сводка</button>
+                <button data-tab="plan" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">График платежей</button>
+                <button data-tab="docs" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Документы</button>
+                <button data-tab="history" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">История</button>
+              </div>
+              <div class="flex items-center gap-3 text-sm">
+                <span class="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-600"><i data-lucide="shield-check" class="h-4 w-4"></i> Все SLA соблюдаются</span>
+              </div>
+            </div>
+
+            <div class="space-y-6 p-6">
+              <div data-tab="summary" class="tab-panel space-y-6">
+                <div class="grid gap-6 lg:grid-cols-2">
+                  <article class="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+                    <h2 class="text-sm font-semibold text-slate-800">Основная информация</h2>
+                    <dl class="mt-4 space-y-3 text-sm text-slate-600">
+                      <div class="flex justify-between"><dt>VIN</dt><dd>5YJSA1E26LF123456</dd></div>
+                      <div class="flex justify-between"><dt>Срок программы</dt><dd>36 месяцев</dd></div>
+                      <div class="flex justify-between"><dt>Дата выдачи</dt><dd>12.12.2024</dd></div>
+                      <div class="flex justify-between"><dt>Пробег</dt><dd>18 400 км</dd></div>
+                    </dl>
+                  </article>
+
+                  <article class="rounded-2xl border border-slate-200 bg-white p-5">
+                    <h2 class="text-sm font-semibold text-slate-800">График KPI сделки</h2>
+                    <canvas id="dealChart" height="220"></canvas>
+                  </article>
+                </div>
+              </div>
+
+              <div data-tab="plan" class="tab-panel hidden">
+                <div id="payment-plan"></div>
+              </div>
+
+              <div data-tab="docs" class="tab-panel hidden space-y-6">
+                <div class="grid gap-6 lg:grid-cols-2">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-900 mb-4">Документы сделки</h3>
+                    <div id="deal-documents"></div>
+                  </div>
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-900 mb-4">Загрузить документы</h3>
+                    <div class="space-y-4">
+                      <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-6 text-center">
+                        <div class="flex flex-col items-center gap-3">
+                          <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
+                            <i data-lucide="upload-cloud" class="h-6 w-6 text-slate-600"></i>
+                          </div>
+                          <div>
+                            <p class="text-sm font-medium text-slate-900">Перетащите файлы или нажмите для выбора</p>
+                            <p class="text-xs text-slate-500 mt-1">PDF, JPG, PNG до 10MB</p>
+                          </div>
+                          <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" class="sr-only" id="client-docs-upload" />
+                          <label for="client-docs-upload" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 cursor-pointer">
+                            <i data-lucide="folder-open" class="h-4 w-4"></i>
+                            Выбрать файлы
+                          </label>
+                        </div>
+                      </div>
+
+                      <div id="uploaded-docs" class="space-y-3"></div>
+
+                      <div class="rounded-xl bg-blue-50 border border-blue-200 p-4">
+                        <div class="flex items-start gap-3">
+                          <div class="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
+                            <i data-lucide="info" class="h-3 w-3 text-blue-600"></i>
+                          </div>
+                          <div>
+                            <p class="text-sm font-medium text-blue-900">Какие документы нужны?</p>
+                            <ul class="text-sm text-blue-700 mt-2 space-y-1">
+                              <li>• Фото регистрационной карты автомобиля</li>
+                              <li>• Сертификат о зарплате</li>
+                              <li>• Договор аренды жилья</li>
+                              <li>• Банковская выписка</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div data-tab="history" class="tab-panel hidden space-y-4">
+                <ul id="deal-history" class="space-y-3"></ul>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../../assets/shared.js"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../../assets');
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, renderTable, bindTabs } = shared;
+    const { clientNav } = shared;
+
+    const basePath = '../../..';
+    mountSidebar({
+      containerId: 'sidebar',
+      role: 'Клиент',
+      items: clientNav,
+      activePath: '/client/deals/index.html',
+      basePath,
+    });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Детали сделки FL-2025-1042',
+      breadcrumbs: ['Клиент', 'Сделки', 'Rolls-Royce Cullinan'],
+      basePath,
+    });
+
+    bindTabs({ triggersSelector: '.deal-tab', panelsSelector: '.tab-panel' });
+    document.querySelector('[data-tab="summary"]').classList.add('bg-slate-900', 'text-white');
+
+    const deal = {
+      payment: 3260,
+      nextPayment: '2025-11-15',
+      remainingBuyout: 106000,
+    };
+
+    document.getElementById('deal-payment').textContent = formatCurrency(deal.payment, 'AED');
+    document.getElementById('deal-next-payment').textContent = formatDate(deal.nextPayment);
+    document.getElementById('deal-remaining').textContent = formatCurrency(deal.remainingBuyout, 'AED');
+
+    const kpiChart = new Chart(document.getElementById('dealChart'), {
+      type: 'line',
+      data: {
+        labels: ['Дек', 'Янв', 'Ноя', 'Дек', 'Янв', 'Фев'],
+        datasets: [
+          {
+            label: 'Платежи',
+            data: [3260, 3260, 3260, 3260, 3260, 3260],
+            borderColor: '#2563eb',
+            tension: 0.4,
+          },
+          {
+            label: 'Выкупной остаток',
+            data: [114500, 110800, 107500, 104200, 101100, 97800],
+            borderColor: '#cbd5f5',
+            borderDash: [6, 6],
+            tension: 0.4,
+          },
+        ],
+      },
+      options: {
+        plugins: { legend: { position: 'bottom' } },
+        scales: { y: { beginAtZero: false } },
+      },
+    });
+
+    const planColumns = [
+      { key: 'number', label: '№' },
+      {
+        key: 'dueDate',
+        label: 'Дата',
+        render: (row) => formatDate(row.dueDate),
+      },
+      {
+        key: 'amount',
+        label: 'Сумма',
+        render: (row) => formatCurrency(row.amount, 'AED'),
+      },
+      {
+        key: 'status',
+        label: 'Статус',
+        render: (row) => `<span class="badge ${row.status === 'Оплачен' ? 'badge-success' : row.status === 'План' ? 'badge-info' : 'badge-warning'}">${row.status}</span>`,
+      },
+    ];
+
+    const paymentPlan = [
+      { number: 13, dueDate: '2025-11-15', amount: 3260, status: 'План' },
+      { number: 12, dueDate: '2025-01-15', amount: 3260, status: 'Оплачен' },
+      { number: 11, dueDate: '2024-12-15', amount: 3260, status: 'Оплачен' },
+      { number: 10, dueDate: '2024-11-15', amount: 3260, status: 'Оплачен' },
+      { number: 9, dueDate: '2024-10-15', amount: 3260, status: 'Оплачен' },
+    ];
+
+    renderTable({ containerId: 'payment-plan', columns: planColumns, data: paymentPlan });
+
+    const documents = [
+      {
+        title: 'Договор лизинга',
+        status: 'Подписан 12.12.2024',
+        action: 'Скачать PDF',
+      },
+      {
+        title: 'График платежей (обновление)',
+        status: 'Версия 02/2025',
+        action: 'Открыть',
+      },
+      {
+        title: 'Акт приема-передачи',
+        status: 'Подпись ожидается',
+        action: 'Подписать',
+      },
+    ];
+
+    const documentsContainer = document.getElementById('deal-documents');
+    documentsContainer.innerHTML = documents
+      .map(
+        (doc) => `
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-slate-900">${doc.title}</p>
+            <p class="text-xs text-slate-500">${doc.status}</p>
+          </div>
+          <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900">
+            <i data-lucide="download" class="h-4 w-4"></i>${doc.action}
+          </button>
+        </div>
+      `
+      )
+      .join('');
+
+    // Функционал загрузки документов клиента
+    const uploadedDocsContainer = document.getElementById('uploaded-docs');
+    const fileInput = document.getElementById('client-docs-upload');
+    let uploadedFiles = [];
+
+    // Загрузка файлов по клику
+    fileInput.addEventListener('change', handleFileUpload);
+
+    // Drag & Drop функционал
+    const uploadArea = fileInput.closest('.border-dashed');
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      uploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+      uploadArea.classList.add('border-slate-900', 'bg-slate-100');
+    }
+
+    function unhighlight(e) {
+      uploadArea.classList.remove('border-slate-900', 'bg-slate-100');
+    }
+
+    uploadArea.addEventListener('drop', handleDrop, false);
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      handleFiles(files);
+    }
+
+    function handleFileUpload(e) {
+      const files = e.target.files;
+      handleFiles(files);
+    }
+
+    function handleFiles(files) {
+      [...files].forEach(file => {
+        if (file.size <= 10 * 1024 * 1024) { // 10MB limit
+          uploadedFiles.push({
+            file: file,
+            id: Date.now() + Math.random(),
+            uploadDate: new Date().toISOString(),
+            status: 'uploading'
+          });
+        }
+      });
+      updateUploadedDocsDisplay();
+      simulateUpload();
+    }
+
+    function updateUploadedDocsDisplay() {
+      uploadedDocsContainer.innerHTML = uploadedFiles
+        .map(
+          (item) => `
+          <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3" id="doc-${item.id}">
+            <div class="flex items-center gap-3">
+              <div class="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
+                <i data-lucide="file-text" class="h-4 w-4 text-slate-600"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-slate-900">${item.file.name}</p>
+                <p class="text-xs text-slate-500">${formatFileSize(item.file.size)} • Загружается...</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="h-4 w-4 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin"></div>
+              <button onclick="removeUploadedFile(${item.id})" class="text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="h-4 w-4"></i>
+              </button>
+            </div>
+          </div>
+        `
+        )
+        .join('');
+      applyIcons();
+    }
+
+    function simulateUpload() {
+      setTimeout(() => {
+        uploadedFiles.forEach(item => {
+          item.status = 'completed';
+          const docElement = document.getElementById(`doc-${item.id}`);
+          if (docElement) {
+            docElement.innerHTML = `
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-3">
+                  <div class="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <i data-lucide="check-circle" class="h-4 w-4 text-emerald-600"></i>
+                  </div>
+                  <div>
+                    <p class="text-sm font-medium text-slate-900">${item.file.name}</p>
+                    <p class="text-xs text-slate-500">${formatFileSize(item.file.size)} • Загружено ${formatDate(item.uploadDate)}</p>
+                  </div>
+                </div>
+                <button onclick="removeUploadedFile(${item.id})" class="text-slate-400 hover:text-slate-600">
+                  <i data-lucide="trash-2" class="h-4 w-4"></i>
+                </button>
+              </div>
+            `;
+          }
+        });
+        applyIcons();
+      }, 2000);
+    }
+
+    window.removeUploadedFile = function(id) {
+      uploadedFiles = uploadedFiles.filter(item => item.id !== id);
+      const docElement = document.getElementById(`doc-${id}`);
+      if (docElement) {
+        docElement.remove();
+      }
+    };
+
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    const history = [
+      { date: '2025-01-15', note: 'Автосписание прошло успешно', type: 'success' },
+      { date: '2025-01-02', note: 'Загружен чек ТО', type: 'info' },
+      { date: '2024-12-18', note: 'Подтвержден акт приема-передачи', type: 'success' },
+      { date: '2024-12-10', note: 'AI marked Emirates ID as verified', type: 'info' },
+    ];
+
+    const historyContainer = document.getElementById('deal-history');
+    historyContainer.innerHTML = history
+      .map(
+        (item) => `
+        <li class="flex items-center gap-4 rounded-xl border border-slate-200 px-4 py-3">
+          <div class="h-10 w-10 rounded-full ${item.type === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'} flex items-center justify-center">
+            <i data-lucide="${item.type === 'success' ? 'check-circle' : 'info'}" class="h-5 w-5"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-900">${item.note}</p>
+            <p class="text-xs text-slate-500">${formatDate(item.date)}</p>
+          </div>
+        </li>
+      `
+      )
+      .join('');
+
+    applyIcons();
+  </script>
+</body>
+</html>

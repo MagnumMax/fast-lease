@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Таск-менеджер</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1 flex flex-col">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="flex-1 bg-slate-50">
+        <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto px-6 py-8 space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Командные задачи</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Управление задачами</h1>
+              </div>
+              <div class="flex flex-wrap items-center gap-3 text-sm">
+                <button id="create-task" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800">
+                  <i data-lucide="plus" class="h-4 w-4"></i>
+                  Добавить задачу
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Kanban Board Section -->
+          <section id="kanban" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <!-- Kanban columns will render here -->
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
+    <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+      <h2 class="text-lg font-semibold text-slate-900">Создать задачу</h2>
+      <form id="modal-form" class="mt-4 space-y-4 text-sm text-slate-600">
+        <label class="space-y-1">
+          Заголовок
+          <input required class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+        </label>
+        <label class="space-y-1">
+          Исполнитель
+          <select class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900">
+            <option>Мария</option>
+            <option>Роман</option>
+            <option>Анна</option>
+          </select>
+        </label>
+        <label class="space-y-1">
+          Дедлайн
+          <input type="datetime-local" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+        </label>
+        <div class="flex justify-end gap-3">
+          <button type="button" data-close-modal class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">Отменить</button>
+          <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+            <i data-lucide="check" class="h-4 w-4"></i>
+            Сохранить
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../assets/shared.js"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons, bindModal, initSortable, formatDate } = shared;
+    const { opsNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/tasks/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Таск-менеджер',
+      breadcrumbs: ['Операции', 'Задачи'],
+      basePath,
+    });
+
+    // Updated tasks with status and creator information
+    const tasks = [
+      { id: 1, title: 'Перезвонить клиенту APP-2218', owner: 'Мария', due: 'Сегодня · 15:30', priority: 'high', source: 'Ручная', status: 'new', creator: 'user' },
+      { id: 2, title: 'Проверить VIN в Odoo (Rolls-Royce Cullinan)', owner: 'Роман', due: 'Сегодня · 17:00', priority: 'normal', source: 'AI', status: 'in-progress', creator: 'ai' },
+      { id: 3, title: 'Загрузить акт приема от сервиса', owner: 'Анна', due: 'Завтра · 11:00', priority: 'normal', source: 'Авто', status: 'in-progress', creator: 'system' },
+      { id: 4, title: 'Подтвердить оплату INV-2025-012', owner: 'Мария', due: 'Завтра · 14:00', priority: 'high', source: 'Finance', status: 'done', creator: 'system' },
+      { id: 5, title: 'Отправить документы в банк', owner: 'Роман', due: 'Пятница · 10:00', priority: 'normal', source: 'Ручная', status: 'new', creator: 'user' },
+      { id: 6, title: 'Обновить информацию о страховке', owner: 'Анна', due: 'След. понедельник · 12:00', priority: 'normal', source: 'Авто', status: 'cancelled', creator: 'system' }
+    ];
+
+    // Define task statuses to match the deals structure
+    const statuses = [
+      {
+        title: 'Новые',
+        key: 'new',
+        tasks: tasks.filter(task => task.status === 'new')
+      },
+      {
+        title: 'В работе',
+        key: 'in-progress',
+        tasks: tasks.filter(task => task.status === 'in-progress')
+      },
+      {
+        title: 'Выполнено',
+        key: 'done',
+        tasks: tasks.filter(task => task.status === 'done')
+      },
+      {
+        title: 'Отменено',
+        key: 'cancelled',
+        tasks: tasks.filter(task => task.status === 'cancelled')
+      }
+    ];
+
+    // Render Kanban board using the deals page style
+    const kanban = document.getElementById('kanban');
+    kanban.innerHTML = statuses
+      .map(
+        (column) => `
+        <article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <header class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
+            <span class="badge badge-info">${column.tasks.length}</span>
+          </header>
+          <div class="mt-4 flex-1 space-y-3" data-column="${column.key}">
+            ${column.tasks
+              .map(
+                (task) => `
+                <div class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900 cursor-move" data-id="${task.id}">
+                  <div class="flex items-center justify-between">
+                    <span class="font-semibold text-slate-900">${task.title}</span>
+                    <span class="text-xs text-slate-400">${task.due}</span>
+                  </div>
+                  <p class="truncate text-sm text-slate-600">${task.owner}</p>
+                  <div class="mt-2 flex items-center justify-between">
+                    <span class="badge ${task.priority === 'high' ? 'badge-danger' : 'badge-info'}">${task.priority === 'high' ? 'Высокий' : 'Нормальный'}</span>
+                    <span class="text-xs text-slate-500">${task.source}</span>
+                  </div>
+                </div>
+              `)
+              .join('')}
+          </div>
+        </article>
+      `
+      )
+      .join('');
+
+    // Initialize SortableJS for drag and drop functionality
+    statuses.forEach((column) => {
+      initSortable(`[data-column="${column.key}"]`, {
+        group: 'tasks',
+        animation: 150,
+        handle: '.group',
+        onEnd: function (evt) {
+          // Update task status when moved between columns
+          const taskId = parseInt(evt.item.getAttribute('data-id'));
+          const newStatus = evt.to.getAttribute('data-column');
+          
+          // Find and update the task
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            task.status = newStatus;
+            // Re-render the Kanban board to reflect changes
+            renderKanbanBoard();
+          }
+        }
+      });
+    });
+
+    // Function to render tasks in Kanban board (for updates)
+    function renderKanbanBoard() {
+      // Re-initialize the statuses with updated tasks
+      const updatedStatuses = [
+        {
+          title: 'Новые',
+          key: 'new',
+          tasks: tasks.filter(task => task.status === 'new')
+        },
+        {
+          title: 'В работе',
+          key: 'in-progress',
+          tasks: tasks.filter(task => task.status === 'in-progress')
+        },
+        {
+          title: 'Выполнено',
+          key: 'done',
+          tasks: tasks.filter(task => task.status === 'done')
+        },
+        {
+          title: 'Отменено',
+          key: 'cancelled',
+          tasks: tasks.filter(task => task.status === 'cancelled')
+        }
+      ];
+
+      // Re-render the Kanban board
+      kanban.innerHTML = updatedStatuses
+        .map(
+          (column) => `
+          <article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <header class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
+              <span class="badge badge-info">${column.tasks.length}</span>
+            </header>
+            <div class="mt-4 flex-1 space-y-3" data-column="${column.key}">
+              ${column.tasks
+                .map(
+                  (task) => `
+                  <div class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900 cursor-move" data-id="${task.id}">
+                    <div class="flex items-center justify-between">
+                      <span class="font-semibold text-slate-900">${task.title}</span>
+                      <span class="text-xs text-slate-400">${task.due}</span>
+                    </div>
+                    <p class="truncate text-sm text-slate-600">${task.owner}</p>
+                    <div class="mt-2 flex items-center justify-between">
+                      <span class="badge ${task.priority === 'high' ? 'badge-danger' : 'badge-info'}">${task.priority === 'high' ? 'Высокий' : 'Нормальный'}</span>
+                      <span class="text-xs text-slate-500">${task.source}</span>
+                    </div>
+                  </div>
+                `)
+                .join('')}
+            </div>
+          </article>
+        `
+        )
+        .join('');
+
+      // Re-initialize SortableJS for drag and drop functionality
+      updatedStatuses.forEach((column) => {
+        initSortable(`[data-column="${column.key}"]`, {
+          group: 'tasks',
+          animation: 150,
+          handle: '.group',
+          onEnd: function (evt) {
+            // Update task status when moved between columns
+            const taskId = parseInt(evt.item.getAttribute('data-id'));
+            const newStatus = evt.to.getAttribute('data-column');
+            
+            // Find and update the task
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+              task.status = newStatus;
+              // Re-render the Kanban board to reflect changes
+              renderKanbanBoard();
+            }
+          }
+        });
+      });
+
+      applyIcons();
+    }
+
+    bindModal({ openSelector: '#create-task', modalId: 'modal' });
+
+    document.getElementById('modal-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const button = event.target.querySelector('button[type="submit"]');
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Создаём</span>';
+      
+      // Simulate task creation
+      setTimeout(() => {
+        const formData = new FormData(event.target);
+        const newTask = {
+          id: tasks.length + 1,
+          title: event.target.querySelector('input').value,
+          owner: event.target.querySelector('select').value,
+          due: 'Сегодня · 15:30', // Simplified for demo
+          priority: 'normal', // Default priority
+          source: 'Ручная',
+          status: 'new',
+          creator: 'user'
+        };
+        
+        tasks.push(newTask);
+        renderKanbanBoard();
+        
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Добавлено</span>';
+        applyIcons();
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+          document.querySelector('[data-close-modal]').click();
+          // Reset form
+          event.target.reset();
+          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Сохранить</span>';
+          applyIcons();
+        }, 1000);
+      }, 900);
+    });
+
+    applyIcons();
+  </script>
+</body>
+</html>

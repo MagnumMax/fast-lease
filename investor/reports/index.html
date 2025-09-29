@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Финансовые отчеты</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto w-full max-w-5xl lg:ml-0 lg:mr-auto px-6 py-8 space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Финансовые отчеты</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Сформируйте выгрузку</h1>
+                <p class="text-sm text-slate-500">Выберите период, формат и тип отчета. Система проставит цифровую подпись автоматически.</p>
+              </div>
+              <span class="badge badge-info">Последний отчет — 07 янв 2025</span>
+            </div>
+
+            <form id="report-form" class="mt-6 space-y-4 text-sm text-slate-600">
+              <div class="grid gap-4 sm:grid-cols-3">
+                <label class="space-y-1">
+                  Тип отчета
+                  <select class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900">
+                    <option>Платежный календарь</option>
+                    <option>Доходность портфеля</option>
+                    <option>Движение денежных средств</option>
+                  </select>
+                </label>
+                <label class="space-y-1">
+                  Период с
+                  <input type="date" value="2024-12-01" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+                </label>
+                <label class="space-y-1">
+                  Период по
+                  <input type="date" value="2025-02-01" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+                </label>
+              </div>
+
+              <label class="space-y-1">
+                Формат отчета
+                <div class="flex gap-3">
+                  <label class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                    <input type="radio" name="format" value="pdf" checked />
+                    PDF
+                  </label>
+                  <label class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                    <input type="radio" name="format" value="xlsx" />
+                    XLSX
+                  </label>
+                  <label class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+                    <input type="radio" name="format" value="csv" />
+                    CSV
+                  </label>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3">
+                <input type="checkbox" checked />
+                Отправить копию в бухгалтерию по email
+              </label>
+
+              <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <i data-lucide="file-down" class="h-4 w-4"></i>
+                Сформировать отчет
+              </button>
+            </form>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-sm font-semibold text-slate-800">Последние выгрузки</h2>
+            <ul id="reports-list" class="mt-4 space-y-3 text-sm"></ul>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../assets/shared.js"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons, formatDate } = shared;
+    const { investorNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Инвестор', items: investorNav, activePath: '/investor/reports/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Финансовые отчёты',
+      breadcrumbs: ['Инвестор', 'Отчёты'],
+      basePath,
+    });
+
+    const reports = [
+      { id: 'REP-2025-004', type: 'Доходность портфеля', date: '2025-01-07', format: 'PDF', status: 'Готов' },
+      { id: 'REP-2024-099', type: 'Платежный календарь', date: '2024-12-02', format: 'XLSX', status: 'Готов' },
+      { id: 'REP-2024-083', type: 'Движение денежных средств', date: '2024-11-01', format: 'CSV', status: 'Готов' },
+    ];
+
+    document.getElementById('reports-list').innerHTML = reports
+      .map(
+        (report) => `
+        <li class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-slate-900">${report.type}</p>
+            <p class="text-xs text-slate-500">${report.id} · ${formatDate(report.date)}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-500">${report.format}</span>
+            <span class="badge badge-success">${report.status}</span>
+            <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
+              <i data-lucide="download" class="h-4 w-4"></i>
+              Скачать
+            </button>
+          </div>
+        </li>
+      `
+      )
+      .join('');
+
+    document.getElementById('report-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const button = event.target.querySelector('button[type="submit"]');
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Готовим отчёт</span>';
+      setTimeout(() => {
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Отчёт отправлен</span>';
+        applyIcons();
+      }, 1200);
+    });
+
+    applyIcons();
+  </script>
+</body>
+</html>

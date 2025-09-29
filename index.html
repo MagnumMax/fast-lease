@@ -1,615 +1,342 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal ERP - Интерактивный прототип</title>
-    
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- SortableJS for Drag-and-Drop Kanban -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-
-    <style>
-        /* Custom styles to match shadcn look and feel */
-        :root {
-            --background: 0 0% 100%;
-            --foreground: 222.2 84% 4.9%;
-            --card: 0 0% 100%;
-            --card-foreground: 222.2 84% 4.9%;
-            --popover: 0 0% 100%;
-            --popover-foreground: 222.2 84% 4.9%;
-            --primary: 222.2 47.4% 11.2%;
-            --primary-foreground: 210 40% 98%;
-            --secondary: 210 40% 96.1%;
-            --secondary-foreground: 222.2 47.4% 11.2%;
-            --muted: 210 40% 96.1%;
-            --muted-foreground: 215.4 16.3% 46.9%;
-            --accent: 210 40% 96.1%;
-            --accent-foreground: 222.2 47.4% 11.2%;
-            --border: 214.3 31.8% 91.4%;
-            --input: 214.3 31.8% 91.4%;
-            --ring: 222.2 84% 4.9%;
-            --radius: 0.5rem;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: hsl(var(--background));
-            color: hsl(var(--foreground));
-        }
-
-        .page-content { display: none; }
-        .page-content.active { display: block; }
-        
-        .nav-link.active {
-            background-color: hsl(var(--accent));
-            color: hsl(var(--accent-foreground));
-        }
-        
-        /* Custom scrollbar for a cleaner look */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: hsl(var(--background)); }
-        ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
-        
-        .kanban-card {
-            cursor: grab;
-        }
-        .kanban-card:active {
-            cursor: grabbing;
-        }
-        .sortable-ghost {
-            opacity: 0.4;
-            background: hsl(var(--accent));
-        }
-    </style>
-</head>
-<body class="bg-gray-50 text-gray-900">
-
-    <div class="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-        <!-- SIDEBAR -->
-        <div id="sidebar" class="hidden border-r bg-gray-100/40 lg:block">
-            <div class="flex h-full max-h-screen flex-col gap-2">
-                <div class="flex h-[60px] items-center border-b px-6">
-                    <a href="#" class="flex items-center gap-2 font-semibold">
-                        <svg id="logo-icon" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                        <span id="logo-text">Portal ERP</span>
-                    </a>
-                </div>
-                <div id="sidebar-nav" class="flex-1 overflow-auto py-2">
-                    <!-- Navigation links will be injected here by JS -->
-                </div>
-            </div>
-        </div>
-
-        <!-- MAIN CONTENT -->
-        <div class="flex flex-col">
-            <header class="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-gray-100/40 px-6">
-                <span class="lg:hidden text-lg font-semibold" id="mobile-header-title">Dashboard</span>
-                <div class="w-full flex-1">
-                    <!-- Can be used for search bar if needed -->
-                </div>
-                <div class="flex items-center gap-4">
-                    <span id="current-user" class="text-sm font-medium">client@example.com</span>
-                    <button class="rounded-full border w-8 h-8">
-                        <img src="https://i.pravatar.cc/32" class="rounded-full" alt="Avatar">
-                    </button>
-                </div>
-            </header>
-
-            <main id="main-content" class="flex-1 p-4 md:p-6 lg:p-8 overflow-y-auto">
-                <!-- Page content will be injected here by JS -->
-            </main>
-        </div>
-    </div>
-    
-    <!-- ROLE SWITCHER -->
-    <div id="role-switcher" class="fixed bottom-4 right-4 bg-white border rounded-lg shadow-lg p-2 space-y-2 z-50">
-        <h3 class="text-xs font-bold text-center text-gray-500 uppercase">Switch Role</h3>
-        <div class="flex flex-col gap-1">
-             <button data-role="client" class="role-btn px-3 py-1 text-sm rounded-md bg-gray-800 text-white">Клиент</button>
-             <button data-role="investor" class="role-btn px-3 py-1 text-sm rounded-md hover:bg-gray-100">Инвестор</button>
-             <button data-role="manager" class="role-btn px-3 py-1 text-sm rounded-md hover:bg-gray-100">Менеджер</button>
-             <button data-role="admin" class="role-btn px-3 py-1 text-sm rounded-md hover:bg-gray-100">Администратор</button>
-        </div>
-    </div>
-
-<script>
-    // --- MOCK DATA ---
-    const mockData = {
-        cars: [
-            { id: 1, name: 'Mercedes-Benz S-Class', year: 2023, mileage: 15000, price: '3,500 AED/mo', image: 'https://images.unsplash.com/photo-1617093219159-4a26d15a7b21?q=80&w=640&auto=format&fit=crop' },
-            { id: 2, name: 'BMW X7', year: 2023, mileage: 22000, price: '4,200 AED/mo', image: 'https://images.unsplash.com/photo-1555215695-3004980ad54e?q=80&w=640&auto=format&fit=crop' },
-            { id: 3, name: 'Audi Q8', year: 2022, mileage: 35000, price: '3,800 AED/mo', image: 'https://images.unsplash.com/photo-1612883584883-e23b4f65d1d2?q=80&w=640&auto=format&fit=crop' },
-            { id: 4, name: 'Toyota Land Cruiser', year: 2024, mileage: 5000, price: '3,900 AED/mo', image: 'https://images.unsplash.com/photo-1623759502288-004a8b79e398?q=80&w=640&auto=format&fit=crop' },
-            { id: 5, name: 'Porsche Cayenne', year: 2023, mileage: 18000, price: '5,500 AED/mo', image: 'https://images.unsplash.com/photo-1603386329095-f75a64344487?q=80&w=640&auto=format&fit=crop' },
-            { id: 6, name: 'Range Rover Vogue', year: 2023, mileage: 12000, price: '6,200 AED/mo', image: 'https://images.unsplash.com/photo-1628102603399-768f50c371f4?q=80&w=640&auto=format&fit=crop' },
-        ],
-        deals: [
-            { id: 'DXB-001', car: 'Mercedes-Benz S-Class', status: 'Активна', date: '2023-11-01', statusColor: 'bg-green-100 text-green-800' },
-            { id: 'DXB-002', car: 'Audi Q8', status: 'На рассмотрении', date: '2024-03-15', statusColor: 'bg-yellow-100 text-yellow-800' },
-            { id: 'DXB-003', car: 'BMW X7', status: 'Архив', date: '2021-05-20', statusColor: 'bg-gray-100 text-gray-800' },
-        ],
-        investorPortfolio: [
-            { id: 'VIN123', car: 'Mercedes-Benz S-Class', status: 'В лизинге', cost: 350000, income: 42000 },
-            { id: 'VIN456', car: 'BMW X7', status: 'Свободен', cost: 420000, income: 0 },
-            { id: 'VIN789', car: 'Audi Q8', status: 'В лизинге', cost: 380000, income: 22800 },
-            { id: 'VIN101', car: 'Toyota Land Cruiser', status: 'На обслуживании', cost: 290000, income: 78000 },
-            { id: 'VIN112', car: 'Porsche Cayenne', status: 'В лизинге', cost: 550000, income: 132000 },
-        ],
-        kanbanTasks: {
-            new: [
-                { id: 1, client: 'Ahmed Al Maktoum', car: 'Range Rover Vogue' },
-                { id: 2, client: 'Fatima Al Fahim', car: 'Porsche Cayenne' },
-            ],
-            scoring: [
-                { id: 3, client: 'John Smith', car: 'Toyota Land Cruiser' },
-            ],
-            approval: [
-                { id: 4, client: 'Anastasia Volkova', car: 'Audi Q8' },
-            ],
-            signing: [],
-            active: [
-                { id: 5, client: 'Omar bin Zayed', car: 'Mercedes-Benz S-Class' },
-            ]
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Fast Lease — Каталог автомобилей</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#f5f7ff',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              900: '#0f172a',
+            },
+          },
         },
-        registryClients: [
-            { id: 'C001', name: 'Ahmed Al Maktoum', email: 'ahmed.m@email.com', phone: '+971 50 123 4567', status: 'Активный клиент' },
-            { id: 'C002', name: 'John Smith', email: 'j.smith@email.com', phone: '+971 55 987 6543', status: 'Скоринг' },
-            { id: 'C003', name: 'Fatima Al Fahim', email: 'fatima.f@email.com', phone: '+971 52 111 2233', status: 'Новый лид' },
-            { id: 'C004', name: 'Anastasia Volkova', email: 'a.volkova@email.com', phone: '+971 56 444 5566', status: 'Одобрение' },
-            { id: 'C005', name: 'Omar bin Zayed', email: 'omar.z@email.com', phone: '+971 50 777 8899', status: 'Активный клиент' },
-        ],
-        users: [
-            { id: 1, name: 'Ivan Ivanov', email: 'ivanov@portal.erp', role: 'Операционный менеджер' },
-            { id: 2, name: 'Elena Petrova', email: 'petrova@portal.erp', role: 'Администратор' },
-            { id: 3, name: 'Sergey Smirnov', email: 'smirnov@portal.erp', role: 'Руководство' },
-        ]
+      },
     };
-
-    // --- NAVIGATION STRUCTURE ---
-    const navConfig = {
-        client: [
-            { id: 'client-dashboard', icon: 'home', text: 'Главная' },
-            { id: 'my-deals', icon: 'file-text', text: 'Мои Сделки' },
-            { id: 'catalog', icon: 'car', text: 'Каталог автомобилей' },
-            { id: 'client-support', icon: 'life-buoy', text: 'Поддержка' },
-            { id: 'client-profile', icon: 'user', text: 'Профиль' },
-        ],
-        investor: [
-            { id: 'investor-dashboard', icon: 'bar-chart-2', text: 'Дашборд' },
-            { id: 'investor-portfolio', icon: 'briefcase', text: 'Мой портфель' },
-            { id: 'investor-reports', icon: 'download', text: 'Финансовые отчеты' },
-            { id: 'investor-profile', icon: 'user', text: 'Профиль' },
-        ],
-        manager: [
-            { id: 'ops-dashboard', icon: 'layout-dashboard', text: 'Дашборд' },
-            { id: 'ops-kanban', icon: 'trello', text: 'Сделки (Канбан)' },
-            { text: 'Справочники', isHeading: true },
-            { id: 'ops-registry-clients', icon: 'users', text: 'Клиенты' },
-            { id: 'ops-registry-fleet', icon: 'car', text: 'Автопарк' },
-            { id: 'ops-registry-investors', icon: 'briefcase', text: 'Инвесторы' },
-        ],
-        admin: [
-            { id: 'admin-bpm', icon: 'git-merge', text: 'Управление процессами' },
-            { id: 'admin-ai-settings', icon: 'brain-circuit', text: 'Настройки AI' },
-            { id: 'admin-users', icon: 'users', text: 'Управление пользователями' },
-            { id: 'admin-integrations', icon: 'plug', text: 'Интеграции' },
-            { id: 'admin-templates', icon: 'file-text', text: 'Шаблоны' },
-            { id: 'admin-logs', icon: 'terminal', text: 'Логирование' },
-            { id: 'admin-settings', icon: 'settings', text: 'Настройки' },
-        ]
-    };
-
-    // --- PAGE TEMPLATES ---
-    const pageTemplates = {
-        // --- Client Pages ---
-        'client-dashboard': `
-            <h1 class="text-2xl font-bold mb-6">Добро пожаловать, Клиент!</h1>
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div class="lg:col-span-2 rounded-xl border bg-white text-gray-900 shadow p-6">
-                    <h3 class="font-semibold mb-4">Статус текущей сделки: Audi Q8</h3>
-                    <div class="relative pl-6">
-                        <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200"></div>
-                        <div class="relative mb-8">
-                            <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-800 ring-4 ring-white"></div>
-                            <p class="font-semibold">Заявка подана</p><p class="text-sm text-gray-500">15 Марта, 2024</p>
-                        </div>
-                        <div class="relative mb-8">
-                            <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-800 ring-4 ring-white"></div>
-                            <p class="font-semibold">На рассмотрении</p><p class="text-sm text-gray-500">В процессе</p>
-                        </div>
-                        <div class="relative">
-                            <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-200 ring-4 ring-white"></div>
-                            <p class="font-semibold text-gray-400">Одобрение</p>
-                        </div>
-                    </div>
+  </script>
+  <link rel="stylesheet" href="./assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/95 px-6 py-5 backdrop-blur-sm shadow-sm">
+        <div class="flex items-center justify-between h-full">
+          <button id="mobile-menu-toggle" class="lg:hidden inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900">
+            <i data-lucide="menu" class="h-4 w-4"></i>
+            <span>Меню</span>
+          </button>
+          <div class="lg:hidden">
+            <h1 class="text-lg font-semibold text-slate-900">Каталог автомобилей</h1>
+          </div>
+          <div class="hidden lg:block">
+            <!-- Desktop header content will be inserted here by mountHeader function -->
+          </div>
+        </div>
+      </header>
+      <main class="bg-slate-50">
+        <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-2 py-2 lg:ml-0 lg:mr-auto">
+          <div class="flex flex-col gap-8 lg:flex-row">
+            <aside class="lg:w-72">
+              <div class="sticky top-24 space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div>
+                  <h2 class="text-sm font-semibold text-slate-800">Фильтры</h2>
+                  <p class="mt-1 text-sm text-slate-500">Подберите автомобиль под ваши цели</p>
                 </div>
-                <div class="rounded-xl border bg-white text-gray-900 shadow p-6">
-                     <h3 class="font-semibold mb-4">Предстоящий платеж</h3>
-                     <p class="text-3xl font-bold">3,500 AED</p>
-                     <p class="text-sm text-gray-500 mb-4">по сделке DXB-001 до 01 Апреля, 2024</p>
-                     <button class="w-full bg-gray-800 text-white py-2 rounded-md hover:bg-gray-700">Оплатить</button>
-                     <h3 class="font-semibold mt-6 mb-4">Уведомления</h3>
-                     <ul class="space-y-2 text-sm">
-                        <li class="p-2 rounded-md bg-gray-100">Ваша заявка на Audi Q8 принята.</li>
-                        <li class="p-2 rounded-md bg-gray-100">Платеж по сделке DXB-001 успешно получен.</li>
-                     </ul>
+                <div class="space-y-3">
+                  <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Марка и модель</label>
+                  <select id="filter-brand" multiple class="h-28 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+                    <option value="Aurora">Aurora</option>
+                    <option value="Tesla">Tesla</option>
+                    <option value="BMW">BMW</option>
+                    <option value="Volvo">Volvo</option>
+                    <option value="Hyundai">Hyundai</option>
+                  </select>
                 </div>
-            </div>
-        `,
-        'catalog': `
-            <h1 class="text-2xl font-bold mb-6">Каталог автомобилей</h1>
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                ${mockData.cars.map(car => `
-                    <div class="rounded-xl border bg-white text-gray-900 shadow">
-                        <img src="${car.image}" alt="${car.name}" class="rounded-t-xl aspect-[4/3] object-cover w-full">
-                        <div class="p-4">
-                            <h3 class="font-semibold">${car.name}</h3>
-                            <p class="text-sm text-gray-500">${car.year} - ${car.mileage.toLocaleString()} км</p>
-                            <p class="font-bold my-2">${car.price}</p>
-                            <button class="w-full bg-gray-100 text-gray-800 py-2 text-sm rounded-md hover:bg-gray-200">Подробнее</button>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `,
-        'my-deals': `
-             <h1 class="text-2xl font-bold mb-6">Мои Сделки</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Автомобиль</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Дата</th></tr>
-                    </thead>
-                    <tbody>
-                        ${mockData.deals.map(deal => `
-                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${deal.id}</td><td class="px-6 py-4">${deal.car}</td><td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ${deal.statusColor}">${deal.status}</span></td><td class="px-6 py-4">${deal.date}</td></tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-             </div>
-        `,
-        // --- Investor Pages ---
-        'investor-dashboard': `
-            <h1 class="text-2xl font-bold mb-6">Дашборд Инвестора</h1>
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Общий ROI</h3><p class="text-3xl font-bold">14.2%</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Сумма инвестиций</h3><p class="text-3xl font-bold">1,990,000 AED</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Утилизация активов</h3><p class="text-3xl font-bold">80%</p></div>
-            </div>
-            <div class="grid gap-6 mt-6 md:grid-cols-5">
-                <div class="md:col-span-3 rounded-xl border bg-white p-6 shadow"><h3 class="font-semibold mb-4">Динамика доходности</h3><canvas id="investorChart"></canvas></div>
-                <div class="md:col-span-2 rounded-xl border bg-white p-6 shadow"><h3 class="font-semibold mb-4">Статус портфеля</h3>
-                    <ul class="space-y-3">
-                        <li class="flex justify-between"><span>В лизинге</span><span class="font-medium">4 авто</span></li>
-                        <li class="flex justify-between"><span>Свободно</span><span class="font-medium">1 авто</span></li>
-                        <li class="flex justify-between"><span>На обслуживании</span><span class="font-medium">0 авто</span></li>
-                    </ul>
+                <div class="space-y-3">
+                  <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Ежемесячный платеж</label>
+                  <input type="range" id="filter-payment" min="250" max="1200" step="50" value="1200" class="w-full" />
+                  <p class="text-sm text-slate-500">До <span id="filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
                 </div>
-            </div>
-        `,
-        'investor-portfolio': `
-             <h1 class="text-2xl font-bold mb-6">Мой портфель</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">VIN</th><th class="px-6 py-3">Автомобиль</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Закуп. стоимость</th><th class="px-6 py-3">Накопленный доход</th></tr>
-                    </thead>
-                    <tbody>
-                        ${mockData.investorPortfolio.map(asset => `
-                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${asset.id}</td><td class="px-6 py-4">${asset.car}</td><td class="px-6 py-4">${asset.status}</td><td class="px-6 py-4">${asset.cost.toLocaleString()} AED</td><td class="px-6 py-4">${asset.income.toLocaleString()} AED</td></tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-             </div>
-        `,
-        'investor-reports': `
-             <h1 class="text-2xl font-bold mb-6">Финансовые отчеты</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow p-6 max-w-md mx-auto">
-                 <h3 class="font-semibold mb-4">Сформировать отчет</h3>
-                 <div class="space-y-4">
-                    <div><label class="text-sm font-medium">Начало периода</label><input type="date" class="w-full mt-1 p-2 border rounded-md"></div>
-                    <div><label class="text-sm font-medium">Конец периода</label><input type="date" class="w-full mt-1 p-2 border rounded-md"></div>
-                    <button class="w-full bg-gray-800 text-white py-2 rounded-md hover:bg-gray-700">Сформировать и скачать (PDF)</button>
-                 </div>
-            </div>
-        `,
-        'investor-profile': `
-             <h1 class="text-2xl font-bold mb-6">Профиль Инвестора</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow p-6 max-w-2xl mx-auto">
-                 <h3 class="font-semibold mb-4">Контактные данные</h3>
-                 <p><strong>Имя:</strong> Investor Name</p>
-                 <p><strong>Email:</strong> investor@example.com</p>
-             </div>
-        `,
-        // --- Manager Pages ---
-        'ops-dashboard': `
-            <h1 class="text-2xl font-bold mb-6">Дашборд Менеджера</h1>
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Новые заявки сегодня</h3><p class="text-3xl font-bold">2</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Сделок в работе</h3><p class="text-3xl font-bold">3</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Просрочено задач</h3><p class="text-3xl font-bold text-red-600">0</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Среднее время сделки</h3><p class="text-3xl font-bold">2.5 дня</p></div>
-            </div>
-            <div class="rounded-xl border bg-white p-6 shadow mt-6">
-                <h3 class="font-semibold mb-4">Воронка сделок</h3>
-                <canvas id="managerChart"></canvas>
-            </div>
-        `,
-        'ops-kanban': `
-            <h1 class="text-2xl font-bold mb-6">Сделки (Канбан)</h1>
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                ${['Новые', 'Скоринг', 'Одобрение', 'Подписание', 'Активна'].map(stage => {
-                    const key = stage === 'Новые' ? 'new' : stage.toLowerCase();
-                    return `
-                    <div class="bg-gray-100 rounded-lg p-4">
-                        <h3 class="font-semibold mb-4 text-center">${stage} (${mockData.kanbanTasks[key]?.length || 0})</h3>
-                        <div id="kanban-${key}" class="space-y-4 min-h-[200px]">
-                            ${(mockData.kanbanTasks[key] || []).map(task => `
-                                <div class="kanban-card bg-white p-4 rounded-lg shadow border">
-                                    <p class="font-semibold">${task.client}</p>
-                                    <p class="text-sm text-gray-500">${task.car}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `}).join('')}
-            </div>
-        `,
-        'ops-registry-clients': `
-            <h1 class="text-2xl font-bold mb-6">Справочник: Клиенты</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Имя</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Телефон</th><th class="px-6 py-3">Статус</th></tr>
-                    </thead>
-                    <tbody>
-                        ${mockData.registryClients.map(client => `
-                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${client.id}</td><td class="px-6 py-4">${client.name}</td><td class="px-6 py-4">${client.email}</td><td class="px-6 py-4">${client.phone}</td><td class="px-6 py-4">${client.status}</td></tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-             </div>
-        `,
-        'ops-registry-fleet': `
-            <h1 class="text-2xl font-bold mb-6">Справочник: Автопарк</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Автомобиль</th><th class="px-6 py-3">Год</th><th class="px-6 py-3">Пробег</th><th class="px-6 py-3">Статус</th></tr>
-                    </thead>
-                    <tbody>
-                        ${mockData.cars.map(car => `
-                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">VIN${car.id}</td><td class="px-6 py-4">${car.name}</td><td class="px-6 py-4">${car.year}</td><td class="px-6 py-4">${car.mileage.toLocaleString()} км</td><td class="px-6 py-4">${car.id % 2 === 0 ? 'В лизинге' : 'Свободен'}</td></tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-             </div>
-        `,
-        'ops-registry-investors': `
-            <h1 class="text-2xl font-bold mb-6">Справочник: Инвесторы</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow">
-                <table class="w-full text-sm text-left">
-                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Имя/Название</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Объем инвестиций</th></tr>
-                    </thead>
-                    <tbody>
-                       <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">INV001</td><td class="px-6 py-4">Dubai Investment Fund</td><td class="px-6 py-4">contact@dif.ae</td><td class="px-6 py-4">10,000,000 AED</td></tr>
-                       <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">INV002</td><td class="px-6 py-4">Private Investor A</td><td class="px-6 py-4">investor.a@private.com</td><td class="px-6 py-4">2,500,000 AED</td></tr>
-                    </tbody>
-                </table>
-             </div>
-        `,
-        // --- Admin Pages ---
-        'admin-bpm': `
-            <h1 class="text-2xl font-bold mb-6">Управление процессами (BPMN)</h1>
-            <div class="rounded-xl border bg-white text-gray-900 shadow p-6">
-                <h3 class="font-semibold mb-4">Бизнес-процесс "Лизинговая сделка"</h3>
-                <div class="bg-gray-50 p-4 rounded-lg">
-                    <p class="font-mono text-sm">
-                        StartEvent -> Task (Получение лида из Kommo) -> Task (Скоринг клиента) -> ExclusiveGateway (Одобрено?) -> Task (Подписание договора) -> Task (Выдача авто) -> EndEvent
-                    </p>
+                <div class="space-y-3">
+                  <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Тип кузова</label>
+                  <div class="flex flex-wrap gap-2" id="filter-body">
+                    <button data-body="SUV" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">SUV</button>
+                    <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Седан</button>
+                    <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Хэтчбек</button>
+                    <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Пикап</button>
+                  </div>
                 </div>
-                 <button class="mt-4 bg-gray-800 text-white py-2 px-4 rounded-md hover:bg-gray-700">Редактировать в Camunda</button>
-            </div>
-        `,
-         'admin-users': `
-            <h1 class="text-2xl font-bold mb-6">Управление пользователями</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow">
-                <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Имя</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Роль</th><th class="px-6 py-3">Действия</th></tr>
-                    </thead>
-                    <tbody>
-                        ${mockData.users.map(user => `
-                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${user.id}</td><td class="px-6 py-4">${user.name}</td><td class="px-6 py-4">${user.email}</td><td class="px-6 py-4">${user.role}</td><td class="px-6 py-4"><button class="text-blue-600 hover:underline">Редактировать</button></td></tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-             </div>
-        `,
-        'admin-integrations': `
-            <h1 class="text-2xl font-bold mb-6">Статус интеграций</h1>
-            <div class="grid gap-6 md:grid-cols-3">
-                <div class="rounded-xl border bg-white p-6 shadow flex items-center justify-between"><h3 class="font-semibold">Odoo ERP</h3><span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Online</span></div>
-                <div class="rounded-xl border bg-white p-6 shadow flex items-center justify-between"><h3 class="font-semibold">Kommo CRM</h3><span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Online</span></div>
-                <div class="rounded-xl border bg-white p-6 shadow flex items-center justify-between"><h3 class="font-semibold">Stripe Gateway</h3><span class="px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800">Offline</span></div>
-            </div>
-        `,
-        'admin-settings': `
-             <h1 class="text-2xl font-bold mb-6">Настройки системы</h1>
-             <div class="rounded-xl border bg-white text-gray-900 shadow p-6 max-w-2xl">
-                 <h3 class="font-semibold text-lg border-b pb-2 mb-4">Общие</h3>
-                 <div class="space-y-4">
-                    <div><label class="text-sm font-medium">Название портала</label><input type="text" value="Portal ERP" class="w-full mt-1 p-2 border rounded-md"></div>
-                    <div><label class="text-sm font-medium">Основной email для уведомлений</label><input type="email" value="notify@portal.erp" class="w-full mt-1 p-2 border rounded-md"></div>
-                 </div>
-                 <h3 class="font-semibold text-lg border-b pb-2 mt-8 mb-4">Безопасность</h3>
-                 <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium">Включить двухфакторную аутентификацию (2FA)</label>
-                    <button class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200"><span class="inline-block h-4 w-4 transform rounded-full bg-white transition"></span></button>
-                 </div>
-            </div>
-        `,
-        // --- Dummy pages for placeholders ---
-        'client-profile': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Профиль клиента</h1>`,
-        'client-support': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Поддержка</h1>`,
-        'admin-ai-settings': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Настройки AI</h1>`,
-        'admin-templates': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Шаблоны</h1>`,
-        'admin-logs': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Логирование</h1>`,
-        'car-details': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Детали автомобиля</h1>`,
-        'login': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Вход</h1>`,
-        'onboarding': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Онбординг</h1>`,
-        'deal-details': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Детали сделки</h1>`,
-        'investor-asset-details': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Детали актива</h1>`,
-        
-    };
+                <button id="reset-filters" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Сбросить фильтры</button>
+              </div>
+            </aside>
 
-    // --- APPLICATION LOGIC ---
-    document.addEventListener('DOMContentLoaded', () => {
-        const sidebarNav = document.getElementById('sidebar-nav');
-        const mainContent = document.getElementById('main-content');
-        const currentUserEl = document.getElementById('current-user');
-        const mobileHeaderTitle = document.getElementById('mobile-header-title');
-        const roleSwitcher = document.getElementById('role-switcher');
-        
-        let currentRole = 'client';
-        let charts = {};
+            <section class="flex-1">
+              <header class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Lease-to-own</p>
+                  <h1 class="mt-2 text-2xl font-semibold text-slate-900">Каталог автомобилей</h1>
+                  <p class="mt-1 text-sm text-slate-500">Проверенные автомобили с прозрачными условиями владения</p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <div class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600">
+                    <span id="catalog-count" class="font-semibold text-slate-900">6</span> автомобилей найдено
+                  </div>
+                  <a href="./login/index.html" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    <i data-lucide="sparkles" class="h-4 w-4"></i>
+                    Подобрать с экспертом
+                  </a>
+                </div>
+              </header>
 
-        function initCharts(role) {
-            // Destroy previous charts if they exist
-            Object.values(charts).forEach(chart => chart.destroy());
-            charts = {};
-            
-            if (role === 'investor') {
-                const ctx = document.getElementById('investorChart')?.getContext('2d');
-                if (ctx) {
-                    charts.investor = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн'],
-                            datasets: [{
-                                label: 'Доходность',
-                                data: [12000, 19000, 15000, 25000, 22000, 30000],
-                                borderColor: 'rgb(31, 41, 55)',
-                                tension: 0.1
-                            }]
-                        },
-                    });
-                }
-            }
-            if (role === 'manager') {
-                const ctx = document.getElementById('managerChart')?.getContext('2d');
-                 if (ctx) {
-                    charts.manager = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: ['Новые', 'Скоринг', 'Одобрение', 'Подписание', 'Активна'],
-                            datasets: [{
-                                label: 'Кол-во сделок',
-                                data: [2, 1, 1, 0, 1],
-                                backgroundColor: 'rgba(31, 41, 55, 0.8)',
-                            }]
-                        },
-                         options: { indexAxis: 'y' }
-                    });
-                }
-            }
-        }
-        
-        function initKanban() {
-            const kanbanCols = ['new', 'scoring', 'approval', 'signing', 'active'];
-            kanbanCols.forEach(col => {
-                const el = document.getElementById(`kanban-${col}`);
-                if (el) {
-                    new Sortable(el, {
-                        group: 'kanban',
-                        animation: 150,
-                        ghostClass: 'sortable-ghost'
-                    });
-                }
-            });
-        }
-        
-        function renderPage(pageId) {
-            mainContent.innerHTML = pageTemplates[pageId] || `<h1 class="text-2xl font-bold">Страница не найдена: ${pageId}</h1>`;
-            
-            document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
-            const newPage = document.getElementById(`page-${pageId}`);
-            if (newPage) newPage.classList.add('active');
+              <div id="catalog-grid" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"></div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
 
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.toggle('active', link.dataset.page === pageId);
-            });
-            
-            const activeLink = navConfig[currentRole].find(link => link.id === pageId);
-            mobileHeaderTitle.textContent = activeLink ? activeLink.text : 'Dashboard';
+  <script src="./assets/shared.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
 
-            // Re-initialize dynamic components
-            initCharts(currentRole);
-            if(pageId === 'ops-kanban') {
-                initKanban();
-            }
-            lucide.createIcons();
-        }
+    const shared = await getShared('./assets');
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, clientNav } = shared;
 
-        function updateUIForRole(role) {
-            currentRole = role;
-            currentUserEl.textContent = `${role}@example.com`;
-            
-            // Update sidebar navigation
-            const navItems = navConfig[role];
-            sidebarNav.innerHTML = `
-                <nav class="grid items-start px-4 text-sm font-medium">
-                    ${navItems.map(item => item.isHeading ? 
-                        `<h3 class="px-3 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase">${item.text}</h3>` :
-                        `<a href="#" data-page="${item.id}" class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900">
-                            <i data-lucide="${item.icon}" class="h-4 w-4"></i>
-                            ${item.text}
-                        </a>`
-                    ).join('')}
-                </nav>
-            `;
-            
-            // Navigate to the first page of the new role
-            renderPage(navItems.find(item => !item.isHeading).id);
-        }
-
-        // --- Event Listeners ---
-        sidebarNav.addEventListener('click', (e) => {
-            const link = e.target.closest('.nav-link');
-            if (link && link.dataset.page) {
-                e.preventDefault();
-                renderPage(link.dataset.page);
-            }
-        });
-
-        roleSwitcher.addEventListener('click', (e) => {
-            const button = e.target.closest('.role-btn');
-            if (button && button.dataset.role) {
-                updateUIForRole(button.dataset.role);
-                // Update button styles
-                document.querySelectorAll('.role-btn').forEach(btn => {
-                    btn.classList.remove('bg-gray-800', 'text-white');
-                    btn.classList.add('hover:bg-gray-100');
-                });
-                button.classList.add('bg-gray-800', 'text-white');
-                button.classList.remove('hover:bg-gray-100');
-            }
-        });
-
-        // --- Initial Load ---
-        updateUIForRole('client');
+    const basePath = './';
+    mountSidebar({
+      containerId: 'sidebar',
+      role: 'Клиент',
+      items: clientNav,
+      activePath: '/index.html',
+      basePath,
     });
 
-</script>
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Каталог автомобилей',
+      breadcrumbs: ['Клиент', 'Каталог'],
+      basePath,
+    });
+
+    const cars = [
+      {
+        id: 'aurora-suv',
+        name: 'Rolls-Royce Cullinan',
+        brand: 'Rolls-Royce',
+        body: 'SUV',
+        payment: 890,
+        price: 42000,
+        range: 520,
+        acceleration: '5.8 сек',
+        image: 'https://picsum.photos/seed/aurora-suv/600/400',
+        badges: ['Электро', 'Страховка включена'],
+      },
+      {
+        id: 'tesla-model3',
+        name: 'Lamborghini Huracan',
+        brand: 'Lamborghini',
+        body: 'Sedan',
+        payment: 1120,
+        price: 56000,
+        range: 580,
+        acceleration: '3.1 сек',
+        image: 'https://picsum.photos/seed/tesla-model3/600/400',
+        badges: ['Свободная зарядка', 'Autopilot'],
+      },
+      {
+        id: 'volvo-xc40',
+        name: 'Rolls-Royce Ghost',
+        brand: 'Rolls-Royce',
+        body: 'SUV',
+        payment: 760,
+        price: 38900,
+        range: 420,
+        acceleration: '6.7 сек',
+        image: 'https://picsum.photos/seed/volvo-xc40/600/400',
+        badges: ['ADAS', 'Умная климатизация'],
+      },
+      {
+        id: 'bmw-i4',
+        name: 'Ferrari 488 Spider',
+        brand: 'Ferrari',
+        body: 'Sedan',
+        payment: 980,
+        price: 48900,
+        range: 510,
+        acceleration: '5.1 сек',
+        image: 'https://picsum.photos/seed/bmw-i4/600/400',
+        badges: ['M-package', 'HUD'],
+      },
+      {
+        id: 'hyundai-ioniq',
+        name: 'Bentley Bentayga',
+        brand: 'Bentley',
+        body: 'Hatchback',
+        payment: 650,
+        price: 35600,
+        range: 470,
+        acceleration: '7.4 сек',
+        image: 'https://picsum.photos/seed/ioniq5/600/400',
+        badges: ['V2L', 'Быстрая зарядка'],
+      },
+      {
+        id: 'rivian-r1t',
+        name: 'Bentley Continental GT',
+        brand: 'Bentley',
+        body: 'Pickup',
+        payment: 1150,
+        price: 68000,
+        range: 500,
+        acceleration: '3.5 сек',
+        image: 'https://picsum.photos/seed/rivian/600/400',
+        badges: ['Quad Motor', 'Пневмоподвеска'],
+      },
+    ];
+
+    const catalogGrid = document.getElementById('catalog-grid');
+    const catalogCount = document.getElementById('catalog-count');
+    const brandFilter = document.getElementById('filter-brand');
+    const paymentRange = document.getElementById('filter-payment');
+    const paymentLabel = document.getElementById('filter-payment-value');
+    const bodyFilter = document.getElementById('filter-body');
+    const selectedBodies = new Set();
+
+    function renderCatalog(items) {
+      catalogGrid.innerHTML = items
+        .map(
+          (car) => `
+          <article class="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+            <a href="./cars/${car.id}/index.html" class="relative block aspect-[4/3] overflow-hidden">
+              <img src="${car.image}" alt="${car.name}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              <div class="absolute left-4 top-4 flex gap-2">
+                ${car.badges
+                  .map((badge) => `<span class="rounded-full bg-white/80 px-2 py-1 text-xs font-medium text-slate-700">${badge}</span>`)
+                  .join('')}
+              </div>
+            </a>
+            <div class="flex flex-1 flex-col gap-4 p-5">
+              <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-slate-400">${car.brand}</p>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900">${car.name}</h3>
+              </div>
+              <dl class="grid grid-cols-2 gap-4 text-sm text-slate-500">
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Пробег на заряде</dt>
+                  <dd class="text-sm font-medium text-slate-900">${car.range} км</dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Разгон 0–100</dt>
+                  <dd class="text-sm font-medium text-slate-900">${car.acceleration}</dd>
+                </div>
+              </dl>
+              <div class="mt-auto flex items-center justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-wider text-slate-400">Ежемесячно</p>
+                  <p class="text-lg font-semibold text-slate-900">${formatCurrency(car.payment, 'AED')}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-xs uppercase tracking-wider text-slate-400">Выкуп</p>
+                  <p class="text-sm font-medium text-slate-700">${formatCurrency(car.price, 'AED')}</p>
+                </div>
+              </div>
+              <a href="./cars/${car.id}/index.html" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900">
+                Детали и расчёт
+                <i data-lucide="arrow-up-right" class="h-4 w-4"></i>
+              </a>
+            </div>
+          </article>
+        `
+        )
+        .join('');
+
+      catalogCount.textContent = items.length;
+      applyIcons();
+    }
+
+    function getSelectedBrands() {
+      return Array.from(brandFilter.selectedOptions).map((option) => option.value);
+    }
+
+    function filterCars() {
+      const brands = getSelectedBrands();
+      const maxPayment = Number(paymentRange.value);
+      const filtered = cars.filter((car) => {
+        const matchesBrand = brands.length ? brands.includes(car.brand) : true;
+        const matchesPayment = car.payment <= maxPayment;
+        const matchesBody = selectedBodies.size ? selectedBodies.has(car.body) : true;
+        return matchesBrand && matchesPayment && matchesBody;
+      });
+      renderCatalog(filtered);
+    }
+
+    brandFilter.addEventListener('change', filterCars);
+    paymentRange.addEventListener('input', () => {
+      paymentLabel.textContent = `${paymentRange.value.toLocaleString('en-GB')} AED`;
+      filterCars();
+    });
+
+    bodyFilter.querySelectorAll('.filter-chip').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const body = chip.dataset.body;
+        if (selectedBodies.has(body)) {
+          selectedBodies.delete(body);
+          chip.classList.remove('bg-slate-900', 'text-white');
+        } else {
+          selectedBodies.add(body);
+          chip.classList.add('bg-slate-900', 'text-white');
+        }
+        filterCars();
+      });
+    });
+
+    document.getElementById('reset-filters').addEventListener('click', () => {
+      brandFilter.selectedIndex = -1;
+      paymentRange.value = 1200;
+      paymentLabel.textContent = '4 400 AED';
+      selectedBodies.clear();
+      bodyFilter.querySelectorAll('.filter-chip').forEach((chip) => chip.classList.remove('bg-slate-900', 'text-white'));
+      renderCatalog(cars);
+    });
+
+    // Mobile menu toggle
+    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+
+    if (mobileMenuToggle && sidebar) {
+      mobileMenuToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+      });
+
+      // Close sidebar when clicking outside on mobile
+      document.addEventListener('click', (event) => {
+        if (window.innerWidth < 1024 && !sidebar.contains(event.target) && !mobileMenuToggle.contains(event.target)) {
+          sidebar.classList.remove('open');
+        }
+      });
+    }
+
+    renderCatalog(cars);
+    applyIcons();
+  </script>
 </body>
 </html>

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Новая заявка</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <header class="border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur">
+    <div class="mx-auto flex w-full max-w-5xl items-center justify-between">
+      <a href="../../client/dashboard/index.html" class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white font-semibold">FL</div>
+        <div>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Fast Lease</p>
+          <p class="text-base font-semibold text-slate-900">Новая заявка</p>
+        </div>
+      </a>
+      <a href="../../client/deals/index.html" class="text-sm text-slate-500 hover:text-slate-900">Вернуться к сделкам</a>
+    </div>
+  </header>
+
+  <main class="mx-auto w-full max-w-5xl px-6 py-8">
+    <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Пошаговый процесс</p>
+          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Заполните и загрузите данные</h1>
+          <p class="text-sm text-slate-500">Мы подскажем, если какой-то документ не пройдет проверку качества.</p>
+        </div>
+        <div class="text-sm text-slate-600">
+          Прогресс: <span id="step-progress" class="font-semibold text-slate-900">1/3</span>
+        </div>
+      </div>
+
+      <div class="mt-6 grid gap-6 lg:grid-cols-[240px_auto]">
+        <ol class="space-y-4" id="stepper"></ol>
+        <form id="application-form" class="space-y-6">
+          <div data-step="profile" class="step-panel space-y-4">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <label class="space-y-1 text-sm text-slate-600">
+                Паспорт серия и номер
+                <input type="text" required placeholder="1234 567890" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+              </label>
+              <label class="space-y-1 text-sm text-slate-600">
+                Дата рождения
+                <input type="date" required class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+              </label>
+              <label class="space-y-1 text-sm text-slate-600">
+                Город проживания
+                <input type="text" required placeholder="Москва" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+              </label>
+              <label class="space-y-1 text-sm text-slate-600">
+                Месячный доход (₽)
+                <input type="number" required placeholder="190 000" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+              </label>
+            </div>
+          </div>
+
+          <div data-step="documents" class="step-panel hidden space-y-4">
+            <p class="text-sm text-slate-600">Загрузите документы. Мы проверим их качество автоматически.</p>
+            <div class="space-y-4" id="documents-list"></div>
+          </div>
+
+          <div data-step="summary" class="step-panel hidden space-y-4">
+            <article class="rounded-xl bg-slate-50/80 p-5">
+              <h2 class="text-sm font-semibold text-slate-800">Сводка</h2>
+              <ul class="mt-3 space-y-2 text-sm text-slate-600" id="summary-list"></ul>
+            </article>
+            <p class="text-sm text-slate-500">После отправки заявки менеджер проверит данные и подготовит договор. Вы сможете подписать его онлайн.</p>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <button type="button" id="step-back" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-900">
+              <i data-lucide="arrow-left" class="h-4 w-4"></i>
+              Назад
+            </button>
+            <button type="button" id="step-next" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+              Далее
+              <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="../../assets/shared.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { applyIcons } = shared;
+
+    const steps = [
+      { id: 'profile', title: 'Personal Data', description: 'Emirates ID, contacts, residence address' },
+      { id: 'documents', title: 'Documents', description: 'Upload Emirates ID and salary certificate' },
+      { id: 'summary', title: 'Подтверждение', description: 'Проверьте данные перед отправкой' },
+    ];
+
+    let currentStepIndex = 0;
+
+    const stepper = document.getElementById('stepper');
+    const stepPanels = document.querySelectorAll('.step-panel');
+    const summaryList = document.getElementById('summary-list');
+
+    function renderStepper() {
+      stepper.innerHTML = steps
+        .map((step, index) => {
+          const state = index === currentStepIndex ? 'is-active' : index < currentStepIndex ? 'is-done' : '';
+          return `
+            <li class="relative pl-10 timeline-step ${state}">
+              <span class="step-indicator absolute left-0 top-1 flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-semibold">${index + 1}</span>
+              <div>
+                <p class="text-sm font-semibold text-slate-900">${step.title}</p>
+                <p class="text-xs text-slate-500">${step.description}</p>
+              </div>
+            </li>
+          `;
+        })
+        .join('');
+      applyIcons();
+    }
+
+    function updateSteps() {
+      document.getElementById('step-progress').textContent = `${currentStepIndex + 1}/${steps.length}`;
+      stepPanels.forEach((panel) => {
+        panel.classList.toggle('hidden', panel.dataset.step !== steps[currentStepIndex].id);
+      });
+      document.getElementById('step-back').disabled = currentStepIndex === 0;
+      document.getElementById('step-back').classList.toggle('opacity-50', currentStepIndex === 0);
+      document.getElementById('step-next').textContent = currentStepIndex === steps.length - 1 ? 'Отправить заявку' : 'Далее';
+      renderStepper();
+    }
+
+    document.getElementById('step-next').addEventListener('click', () => {
+      if (currentStepIndex === steps.length - 1) {
+        const button = document.getElementById('step-next');
+        button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Отправляем заявку</span>';
+        setTimeout(() => {
+          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Заявка отправлена</span>';
+          applyIcons();
+        }, 1200);
+        return;
+      }
+      currentStepIndex += 1;
+      updateSteps();
+    });
+
+    document.getElementById('step-back').addEventListener('click', () => {
+      if (currentStepIndex === 0) return;
+      currentStepIndex -= 1;
+      updateSteps();
+    });
+
+    const documents = [
+      { id: 'passport', name: 'Паспорт РФ', status: 'Ожидает загрузки' },
+      { id: 'income', name: 'Справка о доходах', status: 'Загружено (AI подтвердил)' },
+      { id: 'bank', name: 'Выписка по счету', status: 'Требует обновления за декабрь' },
+    ];
+
+    const documentsList = document.getElementById('documents-list');
+    documentsList.innerHTML = documents
+      .map(
+        (doc) => `
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-slate-900">${doc.name}</p>
+            <p class="text-xs text-slate-500">${doc.status}</p>
+          </div>
+          <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
+            <i data-lucide="upload" class="h-4 w-4"></i>
+            Загрузить
+          </button>
+        </div>
+      `
+      )
+      .join('');
+
+    summaryList.innerHTML = `
+      <li>Программа: Rolls-Royce Cullinan · 36 месяцев</li>
+      <li>Условия: AED 60 000/мес · выкуп AED 2 000 000</li>
+      <li>Документы: 2/3 подтверждены AI</li>
+    `;
+
+    updateSteps();
+    applyIcons();
+  </script>
+</body>
+</html>

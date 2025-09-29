@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Клиенты</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1 flex flex-col">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="flex-1 bg-slate-50">
+        <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto px-6 py-6 space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Справочник клиентов</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Управление клиентами</h1>
+              </div>
+              <div class="flex flex-wrap items-center gap-3 text-sm">
+                <button class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
+                  <i data-lucide="filter" class="h-4 w-4"></i>
+                  Фильтры
+                </button>
+                <button class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
+                  <i data-lucide="download" class="h-4 w-4"></i>
+                  Экспорт
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div id="clients-table"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../assets/shared.js"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge } = shared;
+    const { opsNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/clients/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Клиенты',
+      breadcrumbs: ['Операции', 'Клиенты'],
+      basePath,
+    });
+
+    const clients = [
+      { id: 'CL-0104', name: 'Максим Кузьмин', email: 'max.kuzmin@fastlease.io', phone: '+7 999 123-45-67', status: 'Активен', scoring: '92/100', overdue: 0, limit: 'AED 440 000' },
+      { id: 'CL-0105', name: 'Анна Смирнова', email: 'anna.smirnova@fastlease.io', phone: '+7 999 234-56-78', status: 'Активен', scoring: '88/100', overdue: 1, limit: 'AED 350 000' },
+      { id: 'CL-0106', name: 'Иван Петров', email: 'ivan.petrov@fastlease.io', phone: '+7 999 345-67-89', status: 'Активен', scoring: '95/100', overdue: 0, limit: 'AED 500 000' },
+      { id: 'CL-0107', name: 'Ольга Иванова', email: 'olga.ivanova@fastlease.io', phone: '+7 999 456-78-90', status: 'Активен', scoring: '90/100', overdue: 0, limit: 'AED 400 000' },
+      { id: 'CL-0108', name: 'Дмитрий Сидоров', email: 'dmitry.sidorov@fastlease.io', phone: '+7 999 567-89-01', status: 'Активен', scoring: '85/100', overdue: 2, limit: 'AED 300 000' },
+    ];
+
+    const columns = [
+      { key: 'id', label: 'ID', render: (row) => `<a href="client-104/index.html" class="text-slate-900 hover:underline">${row.id}</a>` },
+      { key: 'name', label: 'Имя' },
+      { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Телефон' },
+      { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
+      { key: 'scoring', label: 'Скоринг' },
+      { key: 'overdue', label: 'Просрочки' },
+      { key: 'limit', label: 'Лимит' },
+    ];
+
+    renderTable({ containerId: 'clients-table', columns, data: clients });
+
+    applyIcons();
+  </script>
+</body>
+</html>

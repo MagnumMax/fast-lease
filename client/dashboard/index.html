@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Fast Lease — Client Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: {
+              500: '#2563eb',
+              600: '#1d4ed8',
+            },
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-8 lg:ml-0 lg:mr-auto">
+          <section class="grid gap-6 md:grid-cols-3">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Статус заявки</p>
+              <h2 class="mt-2 text-xl font-semibold text-slate-900">Препродажная проверка</h2>
+              <p class="mt-3 text-sm text-slate-500">We check the vehicle through RTA databases and prepare the contract. If action is required — we will notify you in advance.</p>
+              <div class="mt-6" id="application-timeline"></div>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Предстоящий платеж</p>
+                <span class="badge badge-warning">7 дней</span>
+              </div>
+              <h2 class="mt-2 text-3xl font-semibold text-slate-900" id="payment-amount">—</h2>
+              <p class="text-sm text-slate-500" id="payment-date">—</p>
+              <div class="mt-6 space-y-3 text-sm text-slate-600">
+                <div class="flex items-center justify-between">
+                  <span>Автомобиль</span>
+                  <span id="payment-car" class="font-medium text-slate-900">—</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>Статус сделки</span>
+                  <span id="payment-status" class="font-medium text-slate-900">—</span>
+                </div>
+              </div>
+              <div class="mt-6 flex flex-col gap-3">
+                <a href="../../client/invoices/index.html" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                  <i data-lucide="wallet" class="h-4 w-4"></i>
+                  Оплатить сейчас
+                </a>
+                <button id="schedule-call" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-900">
+                  <i data-lucide="calendar" class="h-4 w-4"></i>
+                  Запланировать консультацию
+                </button>
+              </div>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Уведомления</p>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Проактивные сигналы</h2>
+                </div>
+                <button class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-900">
+                  <i data-lucide="bell-ring" class="h-4 w-4"></i>
+                  Управлять
+                </button>
+              </div>
+              <div class="mt-4 space-y-3" id="notifications"></div>
+            </article>
+          </section>
+
+          <section class="grid gap-6 md:grid-cols-2">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <header class="flex items-start justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Документы</p>
+                  <h2 class="mt-2 text-lg font-semibold text-slate-900">Что нужно загрузить</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-success">3 из 4</span>
+                  <a href="../deals/deal-001/" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900 hover:bg-slate-50">
+                    <i data-lucide="upload" class="h-4 w-4"></i>
+                    Загрузить
+                  </a>
+                </div>
+              </header>
+              <ul class="mt-6 space-y-4" id="documents"></ul>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <header class="flex items-start justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Рекомендации</p>
+                  <h2 class="mt-2 text-lg font-semibold text-slate-900">Что улучшить прямо сейчас</h2>
+                </div>
+              </header>
+              <div class="mt-6 space-y-4" id="suggestions"></div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../../assets/shared.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, mountTimeline, renderNotifications, formatCurrency, formatDate, applyIcons, clientNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({
+      containerId: 'sidebar',
+      role: 'Клиент',
+      items: clientNav,
+      activePath: '/client/dashboard/index.html',
+      basePath,
+    });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Дашборд клиента',
+      breadcrumbs: ['Клиент', 'Обзор'],
+      basePath,
+    });
+
+    const timelineSteps = [
+      {
+        title: 'Анкета заполнена',
+        description: 'Проверка KYC завершена. Подтверждены контактные данные.',
+        state: 'is-done',
+      },
+      {
+        title: 'AI-анализ документов',
+        description: 'Emirates ID and salary certificate files successfully recognized.',
+        state: 'is-done',
+      },
+      {
+        title: 'Препродажная проверка',
+        description: 'Менеджер связывается со станцией ТО для подтверждения отчета.',
+        state: 'is-active',
+        meta: '<span class="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-600"><i data-lucide="alert-octagon" class="h-3.5 w-3.5"></i>Registration Card photo required</span>'
+      },
+      {
+        title: 'Подпись договора',
+        description: 'Договор сформирован и ожидает ЭЦП.',
+      },
+    ];
+
+    mountTimeline({ containerId: 'application-timeline', steps: timelineSteps });
+
+    const paymentInfo = {
+      amount: 3260,
+      dueDate: '2025-11-15',
+      car: 'Rolls-Royce Cullinan',
+      status: 'Активен',
+    };
+
+    document.getElementById('payment-amount').textContent = formatCurrency(paymentInfo.amount, 'AED');
+    document.getElementById('payment-date').textContent = `Оплатить до ${formatDate(paymentInfo.dueDate)}`;
+    document.getElementById('payment-car').textContent = paymentInfo.car;
+    document.getElementById('payment-status').textContent = paymentInfo.status;
+
+    const notifications = [
+      {
+        title: 'Финализация отчета ТО',
+        description: 'Сервис Aurora подтвердил готовность опубликовать результаты диагностики.',
+        icon: 'wrench',
+        time: '15 мин назад',
+      },
+      {
+        title: 'Подпись договора',
+        description: 'Договор лизинга сформирован. Мы пришлем уведомление, как только он будет готов к подписи.',
+        icon: 'file-text',
+        time: '1 час назад',
+      },
+      {
+        title: 'Потенциальная просрочка',
+        description: 'Предстоящий платеж попадает на выходной. Мы предложили автоматическое списание в пятницу.',
+        icon: 'calendar-clock',
+        time: 'Вчера',
+      },
+    ];
+
+    renderNotifications({ containerId: 'notifications', items: notifications });
+
+    const documents = [
+      { title: 'Registration Card Photo', status: 'Awaiting upload', action: 'Upload', accent: 'badge-warning' },
+      { title: 'Salary Certificate', status: 'Accepted', action: 'View', accent: 'badge-success' },
+      { title: 'Tenancy Contract', status: 'Accepted', action: 'View', accent: 'badge-success' },
+      { title: 'Bank Statement', status: 'Under review', action: 'Status', accent: 'badge-info' },
+    ];
+
+    const documentsList = document.getElementById('documents');
+    documentsList.innerHTML = documents
+      .map(
+        (doc) => `
+        <li class="flex items-start justify-between gap-4 rounded-xl border border-slate-200 px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-slate-900">${doc.title}</p>
+            <p class="text-xs text-slate-500">${doc.status}</p>
+          </div>
+          <button onclick="handleDocumentAction('${doc.title}')" class="badge ${doc.accent} text-xs cursor-pointer">${doc.action}</button>
+        </li>
+      `
+      )
+      .join('');
+
+    // Обработчик действий с документами
+    window.handleDocumentAction = function(docTitle) {
+      if (docTitle === 'Registration Card Photo') {
+        // Перенаправление на страницу сделки для загрузки
+        window.location.href = '../deals/deal-001/';
+      } else {
+        alert('Функционал просмотра для этого документа будет добавлен позже');
+      }
+    };
+
+    const suggestions = [
+      {
+        title: 'Включите автоплатеж',
+        description: 'Это снизит вероятность просрочки и улучшит кредитный рейтинг внутри программы buyout.',
+        icon: 'repeat',
+      },
+      {
+        title: 'Upload Registration Card photo',
+        description: 'AI will suggest which fields need to be added to speed up vehicle release.',
+        icon: 'upload',
+        action: 'upload_to_deal',
+      },
+    ];
+
+    const suggestionsContainer = document.getElementById('suggestions');
+    suggestionsContainer.innerHTML = suggestions
+      .map(
+        (item) => `
+        <div class="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3 ${item.action ? 'cursor-pointer hover:bg-slate-50' : ''}" onclick="${item.action ? `handleSuggestionAction('${item.action}')` : ''}">
+          <div class="mt-1 h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center">
+            <i data-lucide="${item.icon}" class="h-4 w-4 text-slate-600"></i>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-slate-900">${item.title}</p>
+            <p class="text-sm text-slate-500">${item.description}</p>
+          </div>
+        </div>
+      `
+      )
+      .join('');
+
+    // Обработчик действий с рекомендациями
+    window.handleSuggestionAction = function(action) {
+      if (action === 'upload_to_deal') {
+        window.location.href = '../deals/deal-001/';
+      }
+    };
+
+    document.getElementById('schedule-call').addEventListener('click', () => {
+      const button = document.getElementById('schedule-call');
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Подбираем менеджера</span>';
+      setTimeout(() => {
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Запланировано</span>';
+        applyIcons();
+      }, 1200);
+    });
+
+    applyIcons();
+  </script>
+</body>
+</html>

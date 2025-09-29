@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Операционный дашборд</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto px-6 py-8 space-y-6">
+          <section class="grid gap-6 sm:grid-cols-4">
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Активные сделки</p>
+              <h2 id="metric-active" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
+              <p class="text-sm text-slate-500">+4 за последние 24 часа</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Время цикла</p>
+              <h2 id="metric-cycle" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
+              <p class="text-sm text-emerald-600">-12% к прошлой неделе</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Документы AI</p>
+              <h2 id="metric-ai" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
+              <p class="text-sm text-slate-500">98% без ручных правок</p>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Просрочки</p>
+              <h2 class="mt-2 text-3xl font-semibold text-emerald-600">0</h2>
+              <p class="text-sm text-slate-500">Контроль SLA на 100%</p>
+            </article>
+          </section>
+
+          <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Воронка сделок</p>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">От заявки до выдачи</h2>
+                </div>
+                <select class="rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900">
+                  <option>Последние 30 дней</option>
+                  <option>Последние 7 дней</option>
+                </select>
+              </div>
+              <canvas id="pipeline-chart" height="260" class="mt-6"></canvas>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Риски и сигналы</h2>
+              <ul id="risk-list" class="mt-4 space-y-3 text-sm"></ul>
+            </article>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Текущие задачи</p>
+                <h2 class="mt-2 text-xl font-semibold text-slate-900">Команда обработки</h2>
+              </div>
+              <a href="../../ops/tasks/index.html" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-700 hover:border-slate-900">
+                Все задачи
+                <i data-lucide="arrow-up-right" class="h-4 w-4"></i>
+              </a>
+            </div>
+            <ul id="task-list" class="mt-4 space-y-3"></ul>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../assets/shared.js"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons } = shared;
+    const { opsNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/dashboard/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Операционный дашборд',
+      breadcrumbs: ['Операции', 'Обзор'],
+      basePath,
+    });
+
+    document.getElementById('metric-active').textContent = '42';
+    document.getElementById('metric-cycle').textContent = '36 часов';
+    document.getElementById('metric-ai').textContent = '312 документов';
+
+    new Chart(document.getElementById('pipeline-chart'), {
+      type: 'bar',
+      data: {
+        labels: ['Заявки', 'Скоринг', 'Документы', 'Выдача', 'Активные'],
+        datasets: [
+          {
+            label: 'Количество сделок',
+            data: [68, 54, 47, 32, 28],
+            backgroundColor: '#0f172a',
+            borderRadius: 10,
+          },
+        ],
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } },
+      },
+    });
+
+    const risks = [
+      { title: 'Documents for Lamborghini Huracan', description: 'AI noted low quality of Registration Card scan', tone: 'badge-warning' },
+      { title: 'Платеж клиента FL-2025-1042', description: 'Автосписание перенесено из-за выходных', tone: 'badge-info' },
+    ];
+
+    document.getElementById('risk-list').innerHTML = risks
+      .map(
+        (risk) => `
+        <li class="flex flex-col gap-1 rounded-xl border border-slate-200 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-medium text-slate-900">${risk.title}</p>
+            <span class="badge ${risk.tone}">Контроль</span>
+          </div>
+          <p class="text-xs text-slate-500">${risk.description}</p>
+        </li>
+      `
+      )
+      .join('');
+
+    const tasks = [
+      { owner: 'Мария', task: 'Позвонить клиенту по обновлённому договору', due: 'Сегодня · 15:00' },
+      { owner: 'Роман', task: 'Проверить VIN для Rolls-Royce Cullinan', due: 'Сегодня · 18:00' },
+      { owner: 'Анна', task: 'Согласовать акт передачи с сервисом', due: 'Завтра · 11:00' },
+    ];
+
+    document.getElementById('task-list').innerHTML = tasks
+      .map(
+        (task) => `
+        <li class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-slate-900">${task.task}</p>
+            <p class="text-xs text-slate-500">${task.due}</p>
+          </div>
+          <span class="badge badge-info">${task.owner}</span>
+        </li>
+      `
+      )
+      .join('');
+
+    applyIcons();
+  </script>
+</body>
+</html>

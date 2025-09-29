@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Управление процессами</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto px-6 py-8 space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">BPMN процессы</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Управление оркестрацией</h1>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <i data-lucide="plus" class="h-4 w-4"></i>
+                Новый процесс
+              </button>
+            </div>
+            <div class="mt-6" id="process-table"></div>
+          </section>
+
+          <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Редактор диаграммы</h2>
+              <div class="mt-4 h-72 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 flex items-center justify-center text-sm text-slate-500">
+                Холст BPMN (drag-and-drop)
+              </div>
+            </article>
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Версии</h2>
+              <ul id="versions" class="mt-4 space-y-3 text-sm"></ul>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../assets/shared.js"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate } = shared;
+    const { adminNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Администратор', items: adminNav, activePath: '/admin/bpm/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Управление процессами',
+      breadcrumbs: ['Администрирование', 'BPMN'],
+      basePath,
+    });
+
+    const processes = [
+      { id: 'BPM-01', name: 'Lease-to-own · Клиент', status: 'Активен', version: 'v2.4', updatedAt: '2025-01-12' },
+      { id: 'BPM-02', name: 'Онбординг инвестора', status: 'Черновик', version: 'v1.1', updatedAt: '2025-01-10' },
+      { id: 'BPM-03', name: 'Обработка интеграций', status: 'Активен', version: 'v3.0', updatedAt: '2025-01-08' },
+    ];
+
+    renderTable({
+      containerId: 'process-table',
+      columns: [
+        { key: 'id', label: 'ID' },
+        { key: 'name', label: 'Название' },
+        { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
+        { key: 'version', label: 'Версия' },
+        { key: 'updatedAt', label: 'Обновлено', render: (row) => formatDate(row.updatedAt) },
+      ],
+      data: processes,
+    });
+
+    const versions = [
+      { name: 'v2.4', note: 'Добавлен шаг AI-скоринга документов', date: '2025-01-12' },
+      { name: 'v2.3', note: 'Сокращено время на подписание договора', date: '2024-12-04' },
+      { name: 'v2.2', note: 'Интеграция с телематикой', date: '2024-10-22' },
+    ];
+
+    document.getElementById('versions').innerHTML = versions
+      .map(
+        (version) => `
+        <li class="rounded-xl border border-slate-200 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-medium text-slate-900">${version.name}</p>
+            <span class="text-xs text-slate-500">${formatDate(version.date)}</span>
+          </div>
+          <p class="text-xs text-slate-500">${version.note}</p>
+        </li>
+      `
+      )
+      .join('');
+
+    applyIcons();
+  </script>
+</body>
+</html>

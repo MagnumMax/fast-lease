@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Fast Lease — Автомобиль Rolls-Royce Cullinan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto px-6 py-8 space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Автомобиль</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Rolls-Royce Cullinan · VIN AAX-341</h1>
+                <p class="text-sm text-slate-500">Год выпуска — 2024 · Люксовый SUV · Стоимость AED 2 000 000</p>
+              </div>
+              <a href="#" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
+                <i data-lucide="external-link" class="h-4 w-4"></i>
+                Открыть в Odoo
+              </a>
+            </div>
+          </section>
+
+          <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Характеристики</h2>
+              <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
+                <div><dt>Тип двигателя</dt><dd class="font-medium text-slate-900">Dual Motor</dd></div>
+                <div><dt>Запас хода</dt><dd class="font-medium text-slate-900">520 км</dd></div>
+                <div><dt>Пробег</dt><dd class="font-medium text-slate-900">12 800 км</dd></div>
+                <div><dt>Состояние батареи</dt><dd class="font-medium text-emerald-600">97%</dd></div>
+              </dl>
+              <canvas id="maintenance-chart" height="220" class="mt-6"></canvas>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Документы</h2>
+              <ul id="car-documents" class="mt-4 space-y-3 text-sm"></ul>
+            </article>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-sm font-semibold text-slate-800">История обслуживания</h2>
+            <ul id="service-log" class="mt-4 space-y-3 text-sm"></ul>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="../../../assets/shared.js"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../../assets');
+    const { mountSidebar, mountHeader, applyIcons } = shared;
+    const { opsNav } = shared;
+
+    const basePath = '../../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/deals/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Автомобиль Aurora Atlas X',
+      breadcrumbs: ['Операции', 'Автомобили', 'Rolls-Royce Cullinan'],
+      basePath,
+    });
+
+    new Chart(document.getElementById('maintenance-chart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Плановое ТО', 'Ремонт', 'Телематика'],
+        datasets: [
+          {
+            data: [65, 18, 17],
+            backgroundColor: ['#1d4ed8', '#93c5fd', '#dbeafe'],
+            borderWidth: 0,
+          },
+        ],
+      },
+      options: { plugins: { legend: { position: 'bottom' } } },
+    });
+
+    const docs = [
+      { title: 'Registration Card', status: 'Scan confirmed', icon: 'id-card' },
+      { title: 'Insurance', status: 'Valid until 14.09.2025', icon: 'shield-check' },
+      { title: 'Отчет телематики', status: 'Обновлен 12.01.2025', icon: 'radar' },
+    ];
+
+    document.getElementById('car-documents').innerHTML = docs
+      .map(
+        (doc) => `
+        <li class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+          <div class="flex items-center gap-3">
+            <div class="h-9 w-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+              <i data-lucide="${doc.icon}" class="h-4 w-4"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-900">${doc.title}</p>
+              <p class="text-xs text-slate-500">${doc.status}</p>
+            </div>
+          </div>
+          <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
+            <i data-lucide="download" class="h-4 w-4"></i>
+            Скачать
+          </button>
+        </li>
+      `
+      )
+      .join('');
+
+    const log = [
+      { date: '2025-01-12', desc: 'Плановое ТО Aurora Service Center', note: 'Замена тормозных колодок' },
+      { date: '2024-12-01', desc: 'Телематический алерт', note: 'Проверено, критичности нет' },
+      { date: '2024-11-18', desc: 'Программное обновление', note: 'Версия прошивки 1.4.6' },
+    ];
+
+    document.getElementById('service-log').innerHTML = log
+      .map(
+        (item) => `
+        <li class="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3">
+          <div class="mt-1 h-8 w-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+            <i data-lucide="calendar-days" class="h-4 w-4"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-900">${item.desc}</p>
+            <p class="text-xs text-slate-500">${item.date}</p>
+            <p class="text-xs text-slate-500">${item.note}</p>
+          </div>
+        </li>
+      `
+      )
+      .join('');
+
+    applyIcons();
+  </script>
+</body>
+</html>
