@@ -315,7 +315,45 @@ body:has(#sidebar):has(#page-header) {
   
   /* Add bottom padding to main content to prevent overlap */
   body:has(.mobile-bottom-nav) main {
-    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+  
+  /* Also add padding to body to ensure all content is visible */
+  body:has(.mobile-bottom-nav) {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Profile dropdown mobile styles */
+@media (max-width: 1023px) {
+  /* Hide notifications button on mobile */
+  .notifications-btn {
+    display: none !important;
+  }
+  
+  /* Show notification badge on profile button on mobile */
+  .mobile-notification-badge {
+    display: flex !important;
+  }
+  
+  #profile-dropdown-menu {
+    position: fixed !important;
+    right: 1rem !important;
+    top: 4rem !important;
+    left: auto !important;
+    width: calc(100vw - 2rem) !important;
+    max-width: 280px !important;
+    z-index: 1000 !important;
+  }
+  
+  /* Ensure profile button is visible on mobile */
+  #profile-dropdown-btn {
+    padding: 0.5rem !important;
+  }
+  
+  #profile-dropdown-btn .h-6 {
+    height: 1.75rem !important;
+    width: 1.75rem !important;
   }
 }
 

@@ -151,7 +151,9 @@
       button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Готовим отчёт</span>';
       setTimeout(() => {
         button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Отчёт отправлен</span>';
-        applyIcons();
+        setTimeout(() => {
+      applyIcons();
+    }, 100);
       }, 1200);
     });
 

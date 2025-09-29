@@ -273,7 +273,9 @@
         });
       });
 
-      applyIcons();
+      setTimeout(() => {
+        applyIcons();
+      }, 100);
     }
 
     bindModal({ openSelector: '#create-task', modalId: 'modal' });

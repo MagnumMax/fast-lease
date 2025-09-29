@@ -280,7 +280,9 @@
         .join('');
 
       catalogCount.textContent = items.length;
+      setTimeout(() => {
       applyIcons();
+    }, 100);
     }
 
     function getSelectedBrands() {

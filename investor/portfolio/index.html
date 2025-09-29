@@ -98,7 +98,9 @@
         return matchesSearch && matchesStatus;
       });
       renderTable({ containerId: 'portfolio-table', columns, data: filtered });
+      setTimeout(() => {
       applyIcons();
+    }, 100);
     }
 
     document.getElementById('portfolio-search').addEventListener('input', (event) => {

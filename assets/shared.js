@@ -97,7 +97,7 @@ export function mountSidebar({ containerId, role, items, activePath, basePath = 
   `;
 }
 
-export function mountHeader({ containerId, title, breadcrumbs = [] }) {
+export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "" }) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -111,14 +111,62 @@ export function mountHeader({ containerId, title, breadcrumbs = [] }) {
           <h1 class="text-2xl font-semibold text-slate-900">${title}</h1>
         </div>
         <div class="flex items-center gap-3">
-          <button class="relative inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900">
+          <button class="notifications-btn relative inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900">
             <i data-lucide="bell" class="h-4 w-4"></i>
             <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white">3</span>
           </button>
+          <!-- Profile dropdown -->
+          <div class="relative">
+            <button id="profile-dropdown-btn" class="relative inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
+              <div class="h-6 w-6 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-semibold">
+                МК
+              </div>
+              <i data-lucide="chevron-down" class="h-3 w-3"></i>
+              <span class="mobile-notification-badge absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white hidden">3</span>
+            </button>
+            <!-- Dropdown menu -->
+            <div id="profile-dropdown-menu" class="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50 hidden">
+              <div class="py-1">
+                <a href="${basePath}/profile/index.html" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <i data-lucide="user" class="h-4 w-4"></i>
+                  Профиль
+                </a>
+                <a href="${basePath}/login/index.html" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                  <i data-lucide="log-out" class="h-4 w-4"></i>
+                  Выйти
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   `;
+
+  // Add dropdown functionality
+  const dropdownBtn = container.querySelector('#profile-dropdown-btn');
+  const dropdownMenu = container.querySelector('#profile-dropdown-menu');
+  
+  if (dropdownBtn && dropdownMenu) {
+    dropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdownMenu.classList.toggle('hidden');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+        dropdownMenu.classList.add('hidden');
+      }
+    });
+
+    // Close dropdown on escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        dropdownMenu.classList.add('hidden');
+      }
+    });
+  }
 }
 
 export function renderTable({ containerId, columns, data }) {
@@ -259,7 +307,6 @@ export function bindModal({ openSelector, modalId, closeSelector = "[data-close-
 // Навигационные конфигурации для разных ролей
 export const clientNav = [
  { label: 'Дашборд', href: '/client/dashboard/index.html', icon: 'layout-dashboard' },
- { label: 'Каталог', href: '/index.html', icon: 'car' },
  { label: 'Мои сделки', href: '/client/deals/index.html', icon: 'files' },
  { label: 'Инвойсы', href: '/client/invoices/index.html', icon: 'credit-card' },
  { label: 'Поддержка', href: '/client/support/index.html', icon: 'life-buoy' },

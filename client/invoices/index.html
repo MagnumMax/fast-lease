@@ -111,7 +111,9 @@
     document.getElementById('summary-paid').textContent = formatCurrency(3260 * 8, 'AED');
     document.getElementById('summary-overdue').textContent = '0 AED';
 
-    applyIcons();
+    setTimeout(() => {
+      applyIcons();
+    }, 100);
   </script>
 
   <!-- Mobile Bottom Navigation -->
