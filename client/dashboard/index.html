@@ -116,7 +116,10 @@
       </main>
     </div>
   </div>
-  <script src="../../assets/shared.js"></script>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -128,7 +131,7 @@
     }
 
     const shared = await getShared('../../assets');
-    const { mountSidebar, mountHeader, mountTimeline, renderNotifications, formatCurrency, formatDate, applyIcons, clientNav } = shared;
+    const { mountSidebar, mountHeader, mountMobileBottomNav, mountTimeline, renderNotifications, formatCurrency, formatDate, applyIcons, clientNav } = shared;
 
     const basePath = '../..';
     mountSidebar({
@@ -143,6 +146,14 @@
       containerId: 'page-header',
       title: 'Дашборд клиента',
       breadcrumbs: ['Клиент', 'Обзор'],
+      basePath,
+    });
+
+    // Mount mobile bottom navigation
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: clientNav,
+      activePath: '/client/dashboard/index.html',
       basePath,
     });
 

@@ -56,7 +56,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="../../assets/shared.js"></script>
   <script type="module">
     async function getShared(basePath) {
       
@@ -65,7 +64,7 @@
     }
 
     const shared = await getShared('../../assets');
-    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, initSortable } = shared;
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, initSortable, mountMobileBottomNav } = shared;
     const { opsNav } = shared;
 
     const basePath = '../..';
@@ -75,6 +74,13 @@
       containerId: 'page-header',
       title: 'Сделки',
       breadcrumbs: ['Операции', 'Сделки'],
+      basePath,
+    });
+
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: opsNav,
+      activePath: '/ops/deals/index.html',
       basePath,
     });
 
@@ -182,5 +188,6 @@
 
     applyIcons();
   </script>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>
 </html>

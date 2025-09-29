@@ -280,7 +280,70 @@ export const opsNav = [
 ];
 
 export const adminNav = [
- { label: 'BPMN процессы', href: '/admin/bpm/index.html', icon: 'workflow' },
- { label: 'Пользователи', href: '/admin/users/index.html', icon: 'users' },
- { label: 'Интеграции', href: '/admin/integrations/index.html', icon: 'plug' },
+  { label: 'BPMN процессы', href: '/admin/bpm/index.html', icon: 'workflow' },
+  { label: 'Пользователи', href: '/admin/users/index.html', icon: 'users' },
+  { label: 'Интеграции', href: '/admin/integrations/index.html', icon: 'plug' },
 ];
+
+export const mainNav = [
+  { label: 'Home', href: '/index.html', icon: 'home' },
+  { label: 'About', href: '/about/index.html', icon: 'info' },
+  { label: 'Services', href: '/services/index.html', icon: 'settings' },
+  { label: 'Contact', href: '/contact/index.html', icon: 'mail' },
+];
+
+export function mountMobileBottomNav({ containerId, items, activePath, basePath = "" }) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="mobile-bottom-nav-container">
+      ${items
+        .slice(0, 5) // Limit to 5 items for mobile
+        .map((item) => {
+          const isActive = activePath === item.href;
+          const activeClass = isActive ? 'active' : '';
+          return `
+            <a href="${basePath}${item.href}" class="mobile-nav-item ${activeClass}" data-nav-item="${item.href}">
+              <i data-lucide="${item.icon}" class="mobile-nav-icon"></i>
+              <span class="mobile-nav-label">${item.label}</span>
+            </a>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+
+  // Add click handlers for smooth navigation
+  const navItems = container.querySelectorAll('.mobile-nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      // Remove active class from all items
+      navItems.forEach(navItem => navItem.classList.remove('active'));
+      // Add active class to clicked item
+      item.classList.add('active');
+      
+      // Optional: Add haptic feedback on supported devices
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    });
+  });
+
+  // Update active state based on current page
+  updateMobileNavActiveState(container, activePath);
+}
+
+export function updateMobileNavActiveState(container, currentPath) {
+  if (!container) return;
+  
+  const navItems = container.querySelectorAll('.mobile-nav-item');
+  navItems.forEach(item => {
+    const itemPath = item.getAttribute('data-nav-item');
+    if (itemPath === currentPath) {
+      item.classList.add('active');
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}

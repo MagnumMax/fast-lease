@@ -52,7 +52,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="../../assets/shared.js"></script>
   <script type="module">
     async function getShared(basePath) {
       
@@ -61,7 +60,7 @@
     }
 
     const shared = await getShared('../../assets');
-    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate } = shared;
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, mountMobileBottomNav } = shared;
     const { adminNav } = shared;
 
     const basePath = '../..';
@@ -71,6 +70,13 @@
       containerId: 'page-header',
       title: 'Управление процессами',
       breadcrumbs: ['Администрирование', 'BPMN'],
+      basePath,
+    });
+
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: adminNav,
+      activePath: '/admin/bpm/index.html',
       basePath,
     });
 
@@ -114,5 +120,6 @@
 
     applyIcons();
   </script>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>
 </html>

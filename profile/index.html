@@ -87,7 +87,6 @@
     </div>
   </div>
 
-  <script src="../assets/shared.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -99,7 +98,7 @@
     }
 
     const shared = await getShared('../assets');
-    const { mountSidebar, mountHeader, applyIcons, formatDate, clientNav } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatDate, mountMobileBottomNav, clientNav } = shared;
 
     const basePath = '../';
     mountSidebar({
@@ -114,6 +113,13 @@
       containerId: 'page-header',
       title: 'Профиль пользователя',
       breadcrumbs: ['Клиент', 'Профиль'],
+      basePath,
+    });
+
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: clientNav,
+      activePath: '/profile/index.html',
       basePath,
     });
 
@@ -155,5 +161,6 @@
 
     applyIcons();
   </script>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>
 </html>
