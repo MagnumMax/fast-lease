@@ -346,11 +346,11 @@ export const investorNav = [
 ];
 
 export const opsNav = [
- { label: 'Дашборд', href: '/ops/dashboard/index.html', icon: 'activity' },
- { label: 'Клиенты', href: '/ops/clients/index.html', icon: 'users' },
- { label: 'Автомобили', href: '/ops/cars/index.html', icon: 'car' },
- { label: 'Сделки', href: '/ops/deals/index.html', icon: 'kanban' },
- { label: 'Задачи', href: '/ops/tasks/index.html', icon: 'list-checks' },
+  { label: 'Дашборд', href: '/ops/dashboard/index.html', icon: 'activity' },
+  { label: 'Задачи', href: '/ops/tasks/index.html', icon: 'list-checks' },
+  { label: 'Сделки', href: '/ops/deals/index.html', icon: 'kanban' },
+  { label: 'Клиенты', href: '/ops/clients/index.html', icon: 'users' },
+  { label: 'Автомобили', href: '/ops/cars/index.html', icon: 'car' },
 ];
 
 export const adminNav = [

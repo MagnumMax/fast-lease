@@ -28,27 +28,87 @@
   <link rel="stylesheet" href="./assets/style.css" />
 </head>
 <body class="bg-slate-50 font-sans text-slate-900">
-  <div class="min-h-screen lg:flex">
-    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
-    <div class="flex-1">
-      <header id="page-header" class="border-b border-slate-200 bg-white/95 px-6 py-5 backdrop-blur-sm shadow-sm">
-        <div class="flex items-center justify-between h-full">
-          <button id="mobile-menu-toggle" class="lg:hidden inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900">
-            <i data-lucide="menu" class="h-4 w-4"></i>
-            <span>Меню</span>
-          </button>
-          <div class="lg:hidden">
-            <h1 class="text-lg font-semibold text-slate-900">Каталог автомобилей</h1>
+  <div class="min-h-screen">
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur">
+      <div class="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+        <a href="./index.html" class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white font-semibold">FL</div>
+          <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Fast Lease</p>
+            <p class="text-base font-semibold text-slate-900">Каталог автомобилей</p>
           </div>
-          <div class="hidden lg:block">
-            <!-- Desktop header content will be inserted here by mountHeader function -->
-          </div>
+        </a>
+        <div class="flex items-center gap-3 text-sm">
+          <a href="./client/dashboard/index.html" class="hidden text-slate-500 hover:text-slate-900 md:block">Кабинет клиента</a>
+          <a href="./login/index.html" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-slate-600 hover:border-slate-900">
+            <i data-lucide="user" class="h-4 w-4"></i>
+            Войти
+          </a>
         </div>
-      </header>
+      </div>
+    </header>
       <main class="bg-slate-50">
         <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-2 py-2 lg:ml-0 lg:mr-auto">
           <div class="flex flex-col gap-8 lg:flex-row">
-            <aside class="lg:w-72">
+            <section class="flex-1">
+              <header class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Lease-to-own</p>
+                  <h1 class="mt-2 text-2xl font-semibold text-slate-900">Каталог автомобилей</h1>
+                  <p class="mt-1 text-sm text-slate-500">Проверенные автомобили с прозрачными условиями владения</p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <button id="filters-toggle" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
+                    <i data-lucide="filter" class="h-4 w-4"></i>
+                    <span>Фильтры (найдено <span id="filters-count" class="font-semibold text-slate-900">6</span>)</span>
+                  </button>
+                  <a href="./login/index.html" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                    <i data-lucide="sparkles" class="h-4 w-4"></i>
+                    Подобрать с экспертом
+                  </a>
+                </div>
+              </header>
+
+              <!-- Mobile filters panel (shown after header on mobile) -->
+              <aside id="filters-panel-mobile" class="hidden lg:hidden">
+                <div class="mt-4 space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div>
+                    <h2 class="text-sm font-semibold text-slate-800">Фильтры</h2>
+                    <p class="mt-1 text-sm text-slate-500">Подберите автомобиль под ваши цели</p>
+                  </div>
+                  <div class="space-y-3">
+                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Марка и модель</label>
+                    <select id="m-filter-brand" multiple class="h-28 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+                      <option value="Rolls-Royce">Rolls-Royce</option>
+                      <option value="Lamborghini">Lamborghini</option>
+                      <option value="Ferrari">Ferrari</option>
+                      <option value="Bentley">Bentley</option>
+                      <option value="Volvo">Volvo</option>
+                      <option value="Rivian">Rivian</option>
+                    </select>
+                  </div>
+                  <div class="space-y-3">
+                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Ежемесячный платеж</label>
+                    <input type="range" id="m-filter-payment" min="250" max="1200" step="50" value="1200" class="w-full" />
+                    <p class="text-sm text-slate-500">До <span id="m-filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
+                  </div>
+                  <div class="space-y-3">
+                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Тип кузова</label>
+                    <div class="flex flex-wrap gap-2" id="m-filter-body">
+                      <button data-body="SUV" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">SUV</button>
+                      <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Седан</button>
+                      <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Хэтчбек</button>
+                      <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Пикап</button>
+                    </div>
+                  </div>
+                  <button id="m-reset-filters" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Сбросить фильтры</button>
+                </div>
+              </aside>
+
+              <div id="catalog-grid" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"></div>
+            </section>
+
+            <aside id="filters-panel" class="hidden lg:block lg:w-72">
               <div class="sticky top-24 space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div>
                   <h2 class="text-sm font-semibold text-slate-800">Фильтры</h2>
@@ -57,11 +117,12 @@
                 <div class="space-y-3">
                   <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Марка и модель</label>
                   <select id="filter-brand" multiple class="h-28 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
-                    <option value="Aurora">Aurora</option>
-                    <option value="Tesla">Tesla</option>
-                    <option value="BMW">BMW</option>
+                    <option value="Rolls-Royce">Rolls-Royce</option>
+                    <option value="Lamborghini">Lamborghini</option>
+                    <option value="Ferrari">Ferrari</option>
+                    <option value="Bentley">Bentley</option>
                     <option value="Volvo">Volvo</option>
-                    <option value="Hyundai">Hyundai</option>
+                    <option value="Rivian">Rivian</option>
                   </select>
                 </div>
                 <div class="space-y-3">
@@ -81,35 +142,10 @@
                 <button id="reset-filters" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Сбросить фильтры</button>
               </div>
             </aside>
-
-            <section class="flex-1">
-              <header class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Lease-to-own</p>
-                  <h1 class="mt-2 text-2xl font-semibold text-slate-900">Каталог автомобилей</h1>
-                  <p class="mt-1 text-sm text-slate-500">Проверенные автомобили с прозрачными условиями владения</p>
-                </div>
-                <div class="flex items-center gap-3">
-                  <div class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600">
-                    <span id="catalog-count" class="font-semibold text-slate-900">6</span> автомобилей найдено
-                  </div>
-                  <a href="./login/index.html" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                    <i data-lucide="sparkles" class="h-4 w-4"></i>
-                    Подобрать с экспертом
-                  </a>
-                </div>
-              </header>
-
-              <div id="catalog-grid" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"></div>
-            </section>
           </div>
         </div>
       </main>
-    </div>
   </div>
-
-  <!-- Mobile Bottom Navigation -->
-  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -122,35 +158,11 @@
     }
 
     const shared = await getShared('./assets');
-    const { mountSidebar, mountHeader, mountMobileBottomNav, applyIcons, formatCurrency, clientNav } = shared;
-
-    const basePath = './';
-    mountSidebar({
-      containerId: 'sidebar',
-      role: 'Клиент',
-      items: clientNav,
-      activePath: '/index.html',
-      basePath,
-    });
-
-    mountHeader({
-      containerId: 'page-header',
-      title: 'Каталог автомобилей',
-      breadcrumbs: ['Клиент', 'Каталог'],
-      basePath,
-    });
-
-    // Mount mobile bottom navigation
-    mountMobileBottomNav({
-      containerId: 'mobile-bottom-nav',
-      items: clientNav,
-      activePath: '/index.html',
-      basePath,
-    });
+    const { applyIcons, formatCurrency } = shared;
 
     const cars = [
       {
-        id: 'aurora-suv',
+        id: 'rolls-royce-cullinan',
         name: 'Rolls-Royce Cullinan',
         brand: 'Rolls-Royce',
         body: 'SUV',
@@ -158,11 +170,11 @@
         price: 42000,
         range: 520,
         acceleration: '5.8 сек',
-        image: 'https://picsum.photos/seed/aurora-suv/600/400',
+  image: './assets/images/rolls-royce-cullinan-exterior.jpg',
         badges: ['Электро', 'Страховка включена'],
       },
       {
-        id: 'tesla-model3',
+        id: 'lamborghini-huracan',
         name: 'Lamborghini Huracan',
         brand: 'Lamborghini',
         body: 'Sedan',
@@ -170,23 +182,23 @@
         price: 56000,
         range: 580,
         acceleration: '3.1 сек',
-        image: 'https://picsum.photos/seed/tesla-model3/600/400',
+        image: './assets/images/lamborghini-huracan.jpg',
         badges: ['Свободная зарядка', 'Autopilot'],
       },
       {
-        id: 'volvo-xc40',
-        name: 'Rolls-Royce Ghost',
-        brand: 'Rolls-Royce',
+        id: 'volvo-xc40-recharge',
+        name: 'Volvo XC40 Recharge',
+        brand: 'Volvo',
         body: 'SUV',
         payment: 760,
         price: 38900,
         range: 420,
         acceleration: '6.7 сек',
-        image: 'https://picsum.photos/seed/volvo-xc40/600/400',
+        image: './assets/images/volvo-xc40-recharge.jpg',
         badges: ['ADAS', 'Умная климатизация'],
       },
       {
-        id: 'bmw-i4',
+        id: 'ferrari-488-spider',
         name: 'Ferrari 488 Spider',
         brand: 'Ferrari',
         body: 'Sedan',
@@ -194,11 +206,11 @@
         price: 48900,
         range: 510,
         acceleration: '5.1 сек',
-        image: 'https://picsum.photos/seed/bmw-i4/600/400',
+  image: './assets/images/ferrari-458-italia.jpg',
         badges: ['M-package', 'HUD'],
       },
       {
-        id: 'hyundai-ioniq',
+        id: 'bentley-bentayga',
         name: 'Bentley Bentayga',
         brand: 'Bentley',
         body: 'Hatchback',
@@ -206,29 +218,33 @@
         price: 35600,
         range: 470,
         acceleration: '7.4 сек',
-        image: 'https://picsum.photos/seed/ioniq5/600/400',
+  image: './assets/images/bentley-bw.jpg',
         badges: ['V2L', 'Быстрая зарядка'],
       },
       {
-        id: 'rivian-r1t',
-        name: 'Bentley Continental GT',
-        brand: 'Bentley',
+        id: 'rivian-r1t-adventure',
+        name: 'Rivian R1T Adventure',
+        brand: 'Rivian',
         body: 'Pickup',
         payment: 1150,
         price: 68000,
         range: 500,
         acceleration: '3.5 сек',
-        image: 'https://picsum.photos/seed/rivian/600/400',
+        image: './assets/images/rivian-r1t-adventure.jpg',
         badges: ['Quad Motor', 'Пневмоподвеска'],
       },
     ];
 
     const catalogGrid = document.getElementById('catalog-grid');
-    const catalogCount = document.getElementById('catalog-count');
-    const brandFilter = document.getElementById('filter-brand');
-    const paymentRange = document.getElementById('filter-payment');
-    const paymentLabel = document.getElementById('filter-payment-value');
-    const bodyFilter = document.getElementById('filter-body');
+    const filtersCount = document.getElementById('filters-count');
+    const filtersToggle = document.getElementById('filters-toggle');
+    const isMobile = window.innerWidth < 1024;
+    const filtersPanel = document.getElementById(isMobile ? 'filters-panel-mobile' : 'filters-panel');
+    const brandFilter = document.getElementById(isMobile ? 'm-filter-brand' : 'filter-brand');
+    const paymentRange = document.getElementById(isMobile ? 'm-filter-payment' : 'filter-payment');
+    const paymentLabel = document.getElementById(isMobile ? 'm-filter-payment-value' : 'filter-payment-value');
+    const bodyFilter = document.getElementById(isMobile ? 'm-filter-body' : 'filter-body');
+    const resetButton = document.getElementById(isMobile ? 'm-reset-filters' : 'reset-filters');
     const selectedBodies = new Set();
 
     function renderCatalog(items) {
@@ -237,7 +253,7 @@
           (car) => `
           <article class="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
             <a href="./cars/${car.id}/index.html" class="relative block aspect-[4/3] overflow-hidden">
-              <img src="${car.image}" alt="${car.name}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              <img src="${car.image}" alt="${car.name}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" onerror="this.src='https://placehold.co/600x400?text=Image+Unavailable'" />
               <div class="absolute left-4 top-4 flex gap-2">
                 ${car.badges
                   .map((badge) => `<span class="rounded-full bg-white/80 px-2 py-1 text-xs font-medium text-slate-700">${badge}</span>`)
@@ -279,7 +295,7 @@
         )
         .join('');
 
-      catalogCount.textContent = items.length;
+      filtersCount.textContent = items.length;
       setTimeout(() => {
       applyIcons();
     }, 100);
@@ -321,7 +337,7 @@
       });
     });
 
-    document.getElementById('reset-filters').addEventListener('click', () => {
+    resetButton.addEventListener('click', () => {
       brandFilter.selectedIndex = -1;
       paymentRange.value = 1200;
       paymentLabel.textContent = '4 400 AED';
@@ -330,22 +346,22 @@
       renderCatalog(cars);
     });
 
-    // Mobile menu toggle
-    const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
-    const sidebar = document.getElementById('sidebar');
-
-    if (mobileMenuToggle && sidebar) {
-      mobileMenuToggle.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-      });
-
-      // Close sidebar when clicking outside on mobile
-      document.addEventListener('click', (event) => {
-        if (window.innerWidth < 1024 && !sidebar.contains(event.target) && !mobileMenuToggle.contains(event.target)) {
-          sidebar.classList.remove('open');
+    // Toggle filters panel visibility
+    if (filtersToggle) {
+      filtersToggle.addEventListener('click', () => {
+        const mobilePanel = document.getElementById('filters-panel-mobile');
+        const desktopPanel = document.getElementById('filters-panel');
+        if (window.innerWidth < 1024) {
+          // Mobile: панель скрыта по умолчанию, показываем/скрываем через класс hidden
+          mobilePanel && mobilePanel.classList.toggle('hidden');
+        } else {
+          // Desktop: панель открыта по умолчанию (lg:block), скрываем/показываем через класс lg:hidden
+          desktopPanel && desktopPanel.classList.toggle('lg:hidden');
         }
       });
     }
+
+    // Убрано меню навигации и профиль — публичная шапка с кнопкой входа
 
     renderCatalog(cars);
     applyIcons();
