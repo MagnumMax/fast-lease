@@ -134,7 +134,7 @@
     }
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, renderTable, bindTabs, mountMobileBottomNav } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, renderTable, bindTabs, mountMobileBottomNav, loadPricing } = shared;
     const { clientNav } = shared;
 
     const basePath = '../../..';
@@ -164,10 +164,14 @@
     bindTabs({ triggersSelector: '.deal-tab', panelsSelector: '.tab-panel' });
     document.querySelector('[data-tab="summary"]').classList.add('bg-slate-900', 'text-white');
 
+    const pricing = await loadPricing('../../../assets');
+    const carId = 'rolls-royce-cullinan';
+    const monthly = pricing[carId]?.monthly ?? 3260;
+    const buyout = pricing[carId]?.buyout ?? 106000;
     const deal = {
-      payment: 3260,
+      payment: monthly,
       nextPayment: '2025-11-15',
-      remainingBuyout: 106000,
+      remainingBuyout: buyout,
     };
 
     document.getElementById('deal-payment').textContent = formatCurrency(deal.payment, 'AED');
@@ -181,7 +185,7 @@
         datasets: [
           {
             label: 'Платежи',
-            data: [3260, 3260, 3260, 3260, 3260, 3260],
+            data: [monthly, monthly, monthly, monthly, monthly, monthly],
             borderColor: '#2563eb',
             tension: 0.4,
           },
@@ -220,11 +224,11 @@
     ];
 
     const paymentPlan = [
-      { number: 13, dueDate: '2025-11-15', amount: 3260, status: 'План' },
-      { number: 12, dueDate: '2025-01-15', amount: 3260, status: 'Оплачен' },
-      { number: 11, dueDate: '2024-12-15', amount: 3260, status: 'Оплачен' },
-      { number: 10, dueDate: '2024-11-15', amount: 3260, status: 'Оплачен' },
-      { number: 9, dueDate: '2024-10-15', amount: 3260, status: 'Оплачен' },
+      { number: 13, dueDate: '2025-11-15', amount: monthly, status: 'План' },
+      { number: 12, dueDate: '2025-01-15', amount: monthly, status: 'Оплачен' },
+      { number: 11, dueDate: '2024-12-15', amount: monthly, status: 'Оплачен' },
+      { number: 10, dueDate: '2024-11-15', amount: monthly, status: 'Оплачен' },
+      { number: 9, dueDate: '2024-10-15', amount: monthly, status: 'Оплачен' },
     ];
 
     renderTable({ containerId: 'payment-plan', columns: planColumns, data: paymentPlan });

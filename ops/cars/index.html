@@ -63,7 +63,8 @@
     }
 
     const shared = await getShared('../../assets');
-    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, mountMobileBottomNav } = shared;
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, mountMobileBottomNav, formatCurrency, loadPricing } = shared;
+    const pricing = await loadPricing('../../assets');
     const { opsNav } = shared;
 
     const basePath = '../..';
@@ -91,12 +92,27 @@
       { vin: 'TS3-345', name: 'Tesla Model 3', year: 2024, type: 'Электрокар', price: 'AED 800 000', mileage: '15 000 км', battery: '95%' },
     ];
 
+    function nameToId(name) {
+      const map = {
+        'Rolls-Royce Cullinan': 'rolls-royce-cullinan',
+        'Lamborghini Huracan': 'lamborghini-huracan',
+        'Tesla Model 3': 'tesla-model-3',
+        'Bentley Bentayga': 'bentley-bentayga',
+        'Bentley Continental GT': 'bentley-continental-gt',
+      };
+      return map[name] || '';
+    }
+
     const columns = [
       { key: 'vin', label: 'VIN', render: (row) => `<a href="rolls-royce-cullinan/index.html" class="text-slate-900 hover:underline">${row.vin}</a>` },
       { key: 'name', label: 'Название' },
       { key: 'year', label: 'Год' },
       { key: 'type', label: 'Тип' },
-      { key: 'price', label: 'Стоимость' },
+      { key: 'price', label: 'Стоимость', render: (row) => {
+        const id = nameToId(row.name);
+        const cost = pricing[id]?.vehicleCost;
+        return typeof cost === 'number' ? formatCurrency(cost, 'AED') : row.price;
+      } },
       { key: 'mileage', label: 'Пробег' },
       { key: 'battery', label: 'Батарея' },
     ];
@@ -152,7 +168,7 @@
             </div>
             <p class="truncate text-sm text-slate-600">${row.type} · ${row.year}</p>
             <div class="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-600">
-              <span class="inline-flex items-center gap-2"><i data-lucide="badge-dollar-sign" class="h-3.5 w-3.5"></i>Стоимость: ${row.price}</span>
+              <span class="inline-flex items-center gap-2"><i data-lucide="badge-dollar-sign" class="h-3.5 w-3.5"></i>Стоимость: ${(() => { const id = nameToId(row.name); const cost = pricing[id]?.vehicleCost; return typeof cost === 'number' ? formatCurrency(cost, 'AED') : row.price; })()}</span>
               <span class="inline-flex items-center gap-2"><i data-lucide="gauge" class="h-3.5 w-3.5"></i>Пробег: ${row.mileage}</span>
               <span class="inline-flex items-center gap-2"><i data-lucide="battery" class="h-3.5 w-3.5"></i>Батарея: ${row.battery}</span>
             </div>

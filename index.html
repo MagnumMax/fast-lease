@@ -105,43 +105,44 @@
                 </div>
               </aside>
 
-              <div id="catalog-grid" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"></div>
-            </section>
-
-            <aside id="filters-panel" class="hidden lg:block lg:w-72">
-              <div class="sticky top-24 space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div>
-                  <h2 class="text-sm font-semibold text-slate-800">Фильтры</h2>
-                  <p class="mt-1 text-sm text-slate-500">Подберите автомобиль под ваши цели</p>
-                </div>
-                <div class="space-y-3">
-                  <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Марка и модель</label>
-                  <select id="filter-brand" multiple class="h-28 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
-                    <option value="Rolls-Royce">Rolls-Royce</option>
-                    <option value="Lamborghini">Lamborghini</option>
-                    <option value="Ferrari">Ferrari</option>
-                    <option value="Bentley">Bentley</option>
-                    <option value="Volvo">Volvo</option>
-                    <option value="Rivian">Rivian</option>
-                  </select>
-                </div>
-                <div class="space-y-3">
-                  <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Ежемесячный платеж</label>
-                  <input type="range" id="filter-payment" min="250" max="1200" step="50" value="1200" class="w-full" />
-                  <p class="text-sm text-slate-500">До <span id="filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
-                </div>
-                <div class="space-y-3">
-                  <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Тип кузова</label>
-                  <div class="flex flex-wrap gap-2" id="filter-body">
-                    <button data-body="SUV" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">SUV</button>
-                    <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Седан</button>
-                    <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Хэтчбек</button>
-                    <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Пикап</button>
+              <!-- Desktop horizontal filters panel (open by default on desktop) -->
+              <aside id="filters-panel" class="hidden lg:block">
+                <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div class="flex flex-wrap items-end gap-6">
+                    <div class="min-w-[16rem]">
+                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Марка и модель</label>
+                      <select id="filter-brand" multiple class="h-28 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
+                        <option value="Rolls-Royce">Rolls-Royce</option>
+                        <option value="Lamborghini">Lamborghini</option>
+                        <option value="Ferrari">Ferrari</option>
+                        <option value="Bentley">Bentley</option>
+                        <option value="Volvo">Volvo</option>
+                        <option value="Rivian">Rivian</option>
+                      </select>
+                    </div>
+                    <div class="min-w-[16rem]">
+                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Ежемесячный платеж</label>
+                      <input type="range" id="filter-payment" min="250" max="1200" step="50" value="1200" class="w-full" />
+                      <p class="text-sm text-slate-500">До <span id="filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
+                    </div>
+                    <div class="flex-1">
+                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Тип кузова</label>
+                      <div class="flex flex-wrap gap-2" id="filter-body">
+                        <button data-body="SUV" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">SUV</button>
+                        <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Седан</button>
+                        <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Хэтчбек</button>
+                        <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-600 hover:border-slate-900">Пикап</button>
+                      </div>
+                    </div>
+                    <div class="w-full lg:w-auto">
+                      <button id="reset-filters" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Сбросить фильтры</button>
+                    </div>
                   </div>
                 </div>
-                <button id="reset-filters" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Сбросить фильтры</button>
-              </div>
-            </aside>
+              </aside>
+
+              <div id="catalog-grid" class="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
+            </section>
           </div>
         </div>
       </main>
@@ -158,7 +159,8 @@
     }
 
     const shared = await getShared('./assets');
-    const { applyIcons, formatCurrency } = shared;
+    const { applyIcons, formatCurrency, loadPricing } = shared;
+    const pricing = await loadPricing('./assets');
 
     const cars = [
       {
@@ -267,24 +269,22 @@
               </div>
               <dl class="grid grid-cols-2 gap-4 text-sm text-slate-500">
                 <div>
-                  <dt class="text-xs uppercase tracking-wide text-slate-400">Пробег на заряде</dt>
-                  <dd class="text-sm font-medium text-slate-900">${car.range} км</dd>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Ежемесячно</dt>
+                  <dd class="text-sm font-semibold text-slate-900">${formatCurrency((pricing[car.id]?.monthly ?? car.payment), 'AED')}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs uppercase tracking-wide text-slate-400">Разгон 0–100</dt>
-                  <dd class="text-sm font-medium text-slate-900">${car.acceleration}</dd>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Выкуп</dt>
+                  <dd class="text-sm font-semibold text-slate-900">${formatCurrency((pricing[car.id]?.buyout ?? car.price), 'AED')}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Срок</dt>
+                  <dd class="text-sm font-medium text-slate-900">${pricing[car.id]?.termMonths ?? 36} месяцев</dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Первоначальный взнос</dt>
+                  <dd class="text-sm font-medium text-slate-900">${(() => { const p = pricing[car.id]; const dp = p?.downPayment ?? Math.round(((p?.buyout ?? car.price) || 0) * 0.2); return formatCurrency(dp, 'AED'); })()}</dd>
                 </div>
               </dl>
-              <div class="mt-auto flex items-center justify-between">
-                <div>
-                  <p class="text-xs uppercase tracking-wider text-slate-400">Ежемесячно</p>
-                  <p class="text-lg font-semibold text-slate-900">${formatCurrency(car.payment, 'AED')}</p>
-                </div>
-                <div class="text-right">
-                  <p class="text-xs uppercase tracking-wider text-slate-400">Выкуп</p>
-                  <p class="text-sm font-medium text-slate-700">${formatCurrency(car.price, 'AED')}</p>
-                </div>
-              </div>
               <a href="./cars/${car.id}/index.html" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900">
                 Детали и расчёт
                 <i data-lucide="arrow-up-right" class="h-4 w-4"></i>
@@ -310,7 +310,8 @@
       const maxPayment = Number(paymentRange.value);
       const filtered = cars.filter((car) => {
         const matchesBrand = brands.length ? brands.includes(car.brand) : true;
-        const matchesPayment = car.payment <= maxPayment;
+        const monthly = pricing[car.id]?.monthly ?? car.payment ?? 0;
+        const matchesPayment = monthly <= maxPayment;
         const matchesBody = selectedBodies.size ? selectedBodies.has(car.body) : true;
         return matchesBrand && matchesPayment && matchesBody;
       });
@@ -355,8 +356,11 @@
           // Mobile: панель скрыта по умолчанию, показываем/скрываем через класс hidden
           mobilePanel && mobilePanel.classList.toggle('hidden');
         } else {
-          // Desktop: панель открыта по умолчанию (lg:block), скрываем/показываем через класс lg:hidden
-          desktopPanel && desktopPanel.classList.toggle('lg:hidden');
+          // Desktop: переключаем между lg:block и lg:hidden
+          if (desktopPanel) {
+            desktopPanel.classList.toggle('lg:hidden');
+            desktopPanel.classList.toggle('lg:block');
+          }
         }
       });
     }

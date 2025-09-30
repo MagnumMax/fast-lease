@@ -61,9 +61,9 @@
           <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Условия лизинга</p>
           <h2 class="mt-2 text-xl font-semibold text-slate-900">Программа buy-out</h2>
           <dl class="mt-4 space-y-3 text-sm text-slate-600">
-            <div class="flex justify-between"><dt>Ежемесячный платеж</dt><dd class="font-semibold text-slate-900">AED 60 000</dd></div>
+            <div class="flex justify между"><dt>Ежемесячный платеж</dt><dd id="leasing-monthly" class="font-semibold text-slate-900">AED 60 000</dd></div>
             <div class="flex justify-between"><dt>Срок</dt><dd class="font-semibold text-slate-900">36 месяцев</dd></div>
-            <div class="flex justify-between"><dt>Выкуп</dt><dd class="font-semibold text-slate-900">AED 2 000 000</dd></div>
+            <div class="flex justify-between"><dt>Выкуп</dt><dd id="leasing-buyout" class="font-semibold text-slate-900">AED 2 000 000</dd></div>
           </dl>
           <button class="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" id="cta">
             <i data-lucide="pen-square" class="h-4 w-4"></i>
@@ -94,7 +94,13 @@
     }
 
     const shared = await getShared('../../assets');
-    const { applyIcons } = shared;
+    const { applyIcons, formatCurrency, loadPricing } = shared;
+    const pricing = await loadPricing('../../assets');
+    const modelId = 'rolls-royce-cullinan';
+    const monthly = pricing[modelId]?.monthly;
+    const buyout = pricing[modelId]?.buyout;
+    if (typeof monthly === 'number') document.getElementById('leasing-monthly').textContent = formatCurrency(monthly, 'AED');
+    if (typeof buyout === 'number') document.getElementById('leasing-buyout').textContent = formatCurrency(buyout, 'AED');
 
 const benefits = [
       'Персонализированная отделка в ателье Rolls-Royce.',

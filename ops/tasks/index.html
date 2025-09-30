@@ -18,44 +18,9 @@
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="flex-1 bg-slate-50">
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
-          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Командные задачи</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Управление задачами</h1>
-              </div>
-              <div class="flex flex-wrap items-center gap-3 text-sm">
-                <button id="create-task" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800">
-                  <i data-lucide="plus" class="h-4 w-4"></i>
-                  Добавить задачу
-                </button>
-              </div>
-            </div>
-          </section>
+          
 
-          <!-- Filters & Saved Views Toolbar -->
-          <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div class="flex flex-wrap items-center gap-3">
-                <div class="relative">
-                  <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
-                  <input id="tasks-search" type="text" class="w-64 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Поиск задач" />
-                </div>
-                <select id="tasks-status" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:ring-slate-900">
-                  <option value="">Все статусы</option>
-                  <option value="new">Новые</option>
-                  <option value="in-progress">В работе</option>
-                  <option value="done">Выполнено</option>
-                  <option value="cancelled">Отменено</option>
-                </select>
-                <button id="tasks-clear-filters" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:border-slate-900">
-                  <i data-lucide="x" class="h-4 w-4"></i>
-                  Сбросить
-                </button>
-              </div>
-              
-            </div>
-          </section>
+          
 
           <!-- Kanban Board Section -->
           <section id="kanban" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -73,6 +38,10 @@
         <label class="space-y-1">
           Заголовок
           <input required class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+        </label>
+        <label class="space-y-1">
+          Описание
+          <textarea name="description" rows="3" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900"></textarea>
         </label>
         <label class="space-y-1">
           Исполнитель
@@ -156,6 +125,9 @@
     };
 
     const kanban = document.getElementById('kanban');
+    
+    // Default status for new task when using column + buttons
+    window.defaultStatusForNewTask = null;
 
     // Function to render tasks in Kanban board (for updates)
     function renderKanbanBoard() {
@@ -175,22 +147,29 @@
           <article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <header class="flex items-center justify-between">
               <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
-              <span class="badge badge-info">${column.tasks.length}</span>
+              <div class="flex items-center gap-2">
+                ${['new','in-progress'].includes(column.key) ? `
+                <button class="create-task inline-flex items-center justify-center rounded-full bg-slate-900 text-white hover:bg-slate-800 h-7 w-7" data-add-task data-status="${column.key}" title="Добавить задачу">
+                  <i data-lucide=\"plus\" class="h-4 w-4"></i>
+                </button>
+                ` : ''}
+                <span class="badge badge-info">${column.tasks.length}</span>
+              </div>
             </header>
             <div class="mt-4 flex-1 space-y-3" data-column="${column.key}">
               ${column.tasks
                 .map(
                   (task) => `
                   <div class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900 cursor-move" data-id="${task.id}">
-                    <div class="flex items-center justify-between">
-                      <span class="font-semibold text-slate-900">${task.title}</span>
-                      <span class="text-xs text-slate-400">${task.due}</span>
+                    <div>
+                      <span class="font-semibold text-slate-900 block">${task.title}</span>
                     </div>
                     <p class="truncate text-sm text-slate-600">${task.owner}</p>
                     <div class="mt-2 flex items-center justify-between">
                       <span class="badge ${task.priority === 'high' ? 'badge-danger' : 'badge-info'}">${task.priority === 'high' ? 'Высокий' : 'Нормальный'}</span>
                       <span class="text-xs text-slate-500">${task.source}</span>
                     </div>
+                    <div class="mt-2 text-xs text-slate-400">${task.due}</div>
                   </div>
                 `)
                 .join('')}
@@ -222,6 +201,13 @@
 
       setTimeout(() => {
         applyIcons();
+        // Bind + buttons in columns to set default status before opening modal
+        const addButtons = document.querySelectorAll('[data-add-task]');
+        addButtons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            window.defaultStatusForNewTask = btn.dataset.status || 'new';
+          });
+        });
       }, 100);
     }
 
@@ -240,7 +226,7 @@
 
     
 
-    bindModal({ openSelector: '#create-task', modalId: 'modal' });
+    bindModal({ openSelector: '.create-task', modalId: 'modal' });
 
     document.getElementById('modal-form').addEventListener('submit', (event) => {
       event.preventDefault();
@@ -254,10 +240,11 @@
           id: tasks.length + 1,
           title: event.target.querySelector('input').value,
           owner: event.target.querySelector('select').value,
+          description: event.target.querySelector('[name="description"]')?.value || '',
           due: 'Сегодня · 15:30', // Simplified for demo
           priority: 'normal', // Default priority
           source: 'Ручная',
-          status: 'new',
+          status: window.defaultStatusForNewTask || 'new',
           creator: 'user'
         };
         
@@ -274,6 +261,7 @@
           event.target.reset();
           button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Сохранить</span>';
           applyIcons();
+          window.defaultStatusForNewTask = null;
         }, 1000);
       }, 900);
     });

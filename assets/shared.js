@@ -6,6 +6,17 @@ export function formatCurrency(value, currency = "AED") {
   }).format(value);
 }
 
+export async function loadPricing(basePath = "") {
+  try {
+    const res = await fetch(`${basePath}/pricing.json`);
+    if (!res.ok) throw new Error(`Failed to load pricing: ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    console.warn('Pricing load failed, falling back:', e);
+    return {};
+  }
+}
+
 export function formatDate(value) {
   const options = { day: "2-digit", month: "short", year: "numeric" };
   return new Intl.DateTimeFormat("en-GB", options).format(new Date(value));

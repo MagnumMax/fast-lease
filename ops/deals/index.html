@@ -20,19 +20,7 @@
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Управление сделками</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Канбан и список</h1>
-              </div>
               <div class="flex flex-wrap items-center gap-3 text-sm">
-                <button id="view-kanban" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 font-semibold text-white">
-                  <i data-lucide="kanban" class="h-4 w-4"></i>
-                  Канбан
-                </button>
-                <button id="view-table" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
-                  <i data-lucide="list" class="h-4 w-4"></i>
-                  Список
-                </button>
                 <div class="flex flex-wrap items-center gap-2">
                   <div class="relative">
                     <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
@@ -166,7 +154,7 @@
               ${column.deals
                 .map(
                   (deal) => `
-                  <a href="../../ops/deals/deal-7801/index.html" class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
+                  <div class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
                     <div class="flex items-center justify-between">
                       <span class="font-semibold text-slate-900">${deal.id}</span>
                       <span class="text-xs text-slate-400">${formatDate(deal.updatedAt)}</span>
@@ -176,21 +164,21 @@
                       <i data-lucide="workflow" class="h-3.5 w-3.5"></i>
                       ${deal.stage}
                     </span>
-                    <div class="mt-2 flex items-center gap-3 text-xs">
-                      <a href="${getClientLink(deal.client)}" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
-                        <i data-lucide="user" class="h-3.5 w-3.5"></i>
-                        Клиент
+                    <div class="mt-2 flex items-center gap-2">
+                      <a href="../../ops/deals/deal-7801/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Сделка" aria-label="Сделка">
+                        <i data-lucide="file-text" class="h-4 w-4"></i>
                       </a>
-                      <a href="../../ops/cars/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
-                        <i data-lucide="car" class="h-3.5 w-3.5"></i>
-                        Авто
+                      <a href="${getClientLink(deal.client)}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Клиент" aria-label="Клиент">
+                        <i data-lucide="user" class="h-4 w-4"></i>
                       </a>
-                      <a href="../../client/invoices/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900">
-                        <i data-lucide="credit-card" class="h-3.5 w-3.5"></i>
-                        Инвойсы
+                      <a href="../../ops/cars/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Авто" aria-label="Авто">
+                        <i data-lucide="car" class="h-4 w-4"></i>
+                      </a>
+                      <a href="../../client/invoices/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Инвойсы" aria-label="Инвойсы">
+                        <i data-lucide="credit-card" class="h-4 w-4"></i>
                       </a>
                     </div>
-                  </a>
+                  </div>
                 `)
                 .join('')}
             </div>
@@ -260,12 +248,12 @@
     const kanbanView = document.getElementById('kanban');
     const tableView = document.getElementById('deal-table');
 
-    document.getElementById('view-table').addEventListener('click', () => {
+    document.getElementById('view-table')?.addEventListener('click', () => {
       kanbanView.classList.add('hidden');
       tableView.classList.remove('hidden');
     });
 
-    document.getElementById('view-kanban').addEventListener('click', () => {
+    document.getElementById('view-kanban')?.addEventListener('click', () => {
       tableView.classList.add('hidden');
       kanbanView.classList.remove('hidden');
     });
