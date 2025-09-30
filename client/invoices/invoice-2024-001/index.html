@@ -30,7 +30,7 @@
               <span class="badge badge-warning">Ожидает оплаты</span>
             </div>
 
-            <div class="mt-6 grid gap-4 sm:grid-cols-2">
+            <div class="mt-6 grid grid-cols-2 gap-4">
               <article class="rounded-xl bg-slate-50/80 p-4">
                 <p class="text-xs uppercase tracking-wide text-slate-400">Сумма к оплате</p>
                 <p class="mt-2 text-lg font-semibold text-slate-900" id="invoice-amount">—</p>
@@ -51,12 +51,9 @@
                 <div class="flex justify-between"><dt>Телематика</dt><dd id="invoice-iot">—</dd></div>
                 <div class="flex justify-between"><dt>НДС</dt><dd id="invoice-vat">—</dd></div>
               </dl>
-              <div class="mt-6 rounded-xl bg-slate-900/5 px-4 py-3 text-sm text-slate-600">
-                <p>Автосписание включено. Изменить способ оплаты можно до 12 ноября.</p>
-              </div>
             </article>
 
-            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <article id="payment-methods" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 class="text-sm font-semibold text-slate-800">Способы оплаты</h2>
               <div class="mt-4 grid gap-3">
                 <button class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:border-slate-900">
@@ -82,7 +79,7 @@
               </div>
               <button id="confirm-payment" class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 <i data-lucide="check-circle" class="h-4 w-4"></i>
-                Подтвердить оплату
+                Оплатить
               </button>
             </article>
           </section>
@@ -96,6 +93,9 @@
     </div>
   </div>
 
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -107,7 +107,7 @@
     }
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, mountMobileBottomNav } = shared;
     const { clientNav } = shared;
 
     const basePath = '../../..';
@@ -117,6 +117,14 @@
       containerId: 'page-header',
       title: 'Инвойс INV-2025-013',
       breadcrumbs: ['Клиент', 'Инвойсы', 'INV-2025-013'],
+      basePath,
+    });
+
+    // Mount mobile bottom navigation
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: clientNav,
+      activePath: '/client/invoices/index.html',
       basePath,
     });
 

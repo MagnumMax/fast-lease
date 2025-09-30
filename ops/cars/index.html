@@ -24,16 +24,6 @@
                 <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Справочник автомобилей</p>
                 <h1 class="mt-2 text-2xl font-semibold text-slate-900">Управление автопарком</h1>
               </div>
-              <div class="flex flex-wrap items-center gap-3 text-sm">
-                <button class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
-                  <i data-lucide="filter" class="h-4 w-4"></i>
-                  Фильтры
-                </button>
-                <button class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
-                  <i data-lucide="download" class="h-4 w-4"></i>
-                  Экспорт
-                </button>
-              </div>
             </div>
           </section>
 
@@ -50,10 +40,6 @@
                   <option>Люксовый седан</option>
                   <option>Спорткар</option>
                   <option>Электрокар</option>
-                </select>
-                <select id="car-filter-year" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                  <option value="">Все годы</option>
-                  <option>2024</option>
                 </select>
                 
               </div>
@@ -106,7 +92,7 @@
     ];
 
     const columns = [
-      { key: 'vin', label: 'VIN', render: (row) => `<a href="car-aurora/index.html" class="text-slate-900 hover:underline">${row.vin}</a>` },
+      { key: 'vin', label: 'VIN', render: (row) => `<a href="rolls-royce-cullinan/index.html" class="text-slate-900 hover:underline">${row.vin}</a>` },
       { key: 'name', label: 'Название' },
       { key: 'year', label: 'Год' },
       { key: 'type', label: 'Тип' },
@@ -159,7 +145,7 @@
       container.innerHTML = data
         .map(
           (row) => `
-          <a href="car-aurora/index.html" class="block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
+          <a href="rolls-royce-cullinan/index.html" class="block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
             <div class="flex items-center justify-between">
               <span class="font-semibold text-slate-900">${row.name}</span>
               <span class="text-xs text-slate-400">VIN: ${row.vin}</span>
