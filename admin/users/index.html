@@ -102,6 +102,8 @@
       containerId: 'page-header',
       title: 'Управление пользователями',
       breadcrumbs: ['Администрирование', 'Пользователи'],
+      items: adminNav,
+      activePath: '/admin/users/index.html',
       basePath,
     });
 
@@ -113,10 +115,10 @@
     });
 
     const users = [
-      { name: 'Мария Трофимова', email: 'm.trofimova@fastlease.io', role: 'Операционный менеджер', status: 'Активен', lastLogin: '2025-01-14 09:12' },
-      { name: 'Роман Белый', email: 'r.belyy@fastlease.io', role: 'Операционный менеджер', status: 'Активен', lastLogin: '2025-01-14 08:47' },
-      { name: 'Анна Полякова', email: 'a.polyakova@fastlease.io', role: 'Финансы', status: 'Приглашение отправлено', lastLogin: '—' },
-      { name: 'Игорь Сергеев', email: 'igor@fastlease.io', role: 'Администратор', status: 'Активен', lastLogin: '2025-01-14 07:05' },
+      { name: 'Maria Novak', email: 'm.novak@fastlease.io', role: 'Операционный менеджер', status: 'Активен', lastLogin: '2025-01-14 09:12' },
+      { name: 'Nicolas Blanc', email: 'n.blanc@fastlease.io', role: 'Операционный менеджер', status: 'Активен', lastLogin: '2025-01-14 08:47' },
+      { name: 'Anna Müller', email: 'a.mueller@fastlease.io', role: 'Финансы', status: 'Приглашение отправлено', lastLogin: '—' },
+      { name: 'Lukas Schmidt', email: 'l.schmidt@fastlease.io', role: 'Администратор', status: 'Активен', lastLogin: '2025-01-14 07:05' },
     ];
 
     renderTable({
@@ -132,9 +134,9 @@
     });
 
     const audit = [
-      { date: '2025-01-13 18:04', action: 'Изменена роль пользователя a.polyakova@fastlease.io → Финансы' },
-      { date: '2025-01-13 11:20', action: 'Создан пользователь r.belyy@fastlease.io' },
-      { date: '2025-01-12 09:55', action: 'Отключён доступ k.logvin@fastlease.io' },
+      { date: '2025-01-13 18:04', action: 'Изменена роль пользователя a.mueller@fastlease.io → Финансы' },
+      { date: '2025-01-13 11:20', action: 'Создан пользователь n.blanc@fastlease.io' },
+      { date: '2025-01-12 09:55', action: 'Отключён доступ k.lehmann@fastlease.io' },
     ];
 
     document.getElementById('audit-log').innerHTML = audit

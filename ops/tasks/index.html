@@ -10,14 +10,16 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
   <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
   <link rel="stylesheet" href="../../assets/style.css" />
+  <link rel="stylesheet" href="../../assets/linear.css" />
 </head>
-<body class="bg-slate-50 font-sans text-slate-900">
+<body class="linear light font-sans">
   <div class="min-h-screen lg:flex">
     <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
     <div class="flex-1 flex flex-col">
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="flex-1 bg-slate-50">
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
+          
           
 
           
@@ -37,15 +39,15 @@
       <form id="modal-form" class="mt-4 space-y-4 text-sm text-slate-600">
         <label class="space-y-1">
           Заголовок
-          <input required class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+          <input required class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900" />
         </label>
         <label class="space-y-1">
           Описание
-          <textarea name="description" rows="3" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900"></textarea>
+          <textarea name="description" rows="3" class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900"></textarea>
         </label>
         <label class="space-y-1">
           Исполнитель
-          <select class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900">
+          <select class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900">
             <option>Мария</option>
             <option>Роман</option>
             <option>Анна</option>
@@ -53,11 +55,11 @@
         </label>
         <label class="space-y-1">
           Дедлайн
-          <input type="datetime-local" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+          <input type="datetime-local" class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900" />
         </label>
         <div class="flex justify-end gap-3">
-          <button type="button" data-close-modal class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">Отменить</button>
-          <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+          <button type="button" data-close-modal class="rounded-xl border px-4 py-2 text-sm">Отменить</button>
+          <button type="submit" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold">
             <i data-lucide="check" class="h-4 w-4"></i>
             Сохранить
           </button>

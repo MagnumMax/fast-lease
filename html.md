@@ -194,9 +194,9 @@
             { id: 'C005', name: 'Omar bin Zayed', email: 'omar.z@email.com', phone: '+971 50 777 8899', status: 'Активный клиент' },
         ],
         users: [
-            { id: 1, name: 'Ivan Ivanov', email: 'ivanov@portal.erp', role: 'Операционный менеджер' },
-            { id: 2, name: 'Elena Petrova', email: 'petrova@portal.erp', role: 'Администратор' },
-            { id: 3, name: 'Sergey Smirnov', email: 'smirnov@portal.erp', role: 'Руководство' },
+{ id: 1, name: 'Jan Kowalski', email: 'kowalski@portal.erp', role: 'Операционный менеджер' },
+{ id: 2, name: 'Elena Rossi', email: 'rossi@portal.erp', role: 'Администратор' },
+{ id: 3, name: 'Lukas Schmidt', email: 'schmidt@portal.erp', role: 'Руководство' },
         ],
         invoices: [
             { id: 'INV-001', dealId: 'DXB-001', amount: 3500, date: '2024-04-01', status: 'Оплачен', dueDate: '2024-04-01' },
@@ -678,7 +678,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium mb-2">Гражданство</label>
-                            <input id="cp-nationality" type="text" class="w-full p-3 border rounded-md" placeholder="UAE / Russia / ...">
+<input id="cp-nationality" type="text" class="w-full p-3 border rounded-md" placeholder="UAE / EU / ...">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium mb-2">Адрес</label>
@@ -724,7 +724,7 @@
                             <label class="block text-sm font-medium mb-2">Часовой пояс</label>
                             <select id="cp-timezone" class="w-full p-2 border rounded-md">
                                 <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
-                                <option value="Europe/Moscow">Europe/Moscow (UTC+3)</option>
+                                <option value="Asia/Dubai">Asia/Abu Dhabi (UTC+4)</option>
                                 <option value="UTC">UTC</option>
                             </select>
                         </div>
@@ -1188,7 +1188,7 @@
                         <div id="register-form" class="hidden p-6 space-y-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Полное имя</label>
-                                <input type="text" id="register-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Иванов Иван Иванович">
+<input type="text" id="register-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Jan Kowalski">
                                 <div id="register-name-error" class="text-red-500 text-xs mt-1 hidden">Введите ваше полное имя</div>
                             </div>
                             <div>
@@ -1975,7 +1975,7 @@
                         <div class="flex items-center gap-3 mb-3">
                             <img src="https://i.pravatar.cc/40" class="w-8 h-8 rounded-full border" alt="Manager">
                             <div>
-                                <div class="font-medium text-xs" id="sidebar-manager-name">Anna Petrova</div>
+<div class="font-medium text-xs" id="sidebar-manager-name">Anna Müller</div>
                             </div>
                         </div>
                         <div class="flex gap-2">

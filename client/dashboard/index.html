@@ -32,7 +32,34 @@
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="bg-slate-50">
       <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:ml-0 lg:mr-auto">
-          <section class="grid gap-6 md:grid-cols-3">
+          <!-- Deal summary block copied from client/deals/deal-001 -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Сделка</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">FL-2025-1042 · Rolls-Royce Cullinan</h1>
+                <p class="text-sm text-slate-500">Программа lease-to-own на 36 месяцев. Дата создания — 12 декабря 2024.</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="badge badge-success">Активна</span>
+              </div>
+            </div>
+            <div class="mt-6 grid gap-3 grid-cols-3">
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Ежемесячный платеж</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-payment">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Следующий платеж</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-next-payment">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Остаток выкупа</p>
+                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-remaining">—</p>
+              </div>
+            </div>
+          </section>
+          <section class="grid gap-6 md:grid-cols-2">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Статус заявки</p>
               <h2 class="mt-2 text-xl font-semibold text-slate-900">Препродажная проверка</h2>
@@ -59,7 +86,9 @@
                 </a>
               </div>
             </article>
-
+          </section>
+          <section class="grid gap-6 md:grid-cols-2">
+            
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div class="flex items-center justify-between">
                 <div>
@@ -69,9 +98,7 @@
               </div>
               <div class="mt-4 space-y-3" id="notifications"></div>
             </article>
-          </section>
 
-          <section class="grid gap-6 md:grid-cols-2">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <header class="flex items-start justify-between">
                 <div>
@@ -88,7 +115,6 @@
               </header>
               <ul class="mt-6 space-y-4" id="documents"></ul>
             </article>
-
           </section>
         </div>
       </main>
@@ -170,6 +196,13 @@
     document.getElementById('payment-amount').textContent = formatCurrency(paymentInfo.amount, 'AED');
     document.getElementById('payment-date').textContent = `Оплатить до ${formatDate(paymentInfo.dueDate)}`;
     document.getElementById('payment-car').textContent = paymentInfo.car;
+    // Populate copied deal summary KPIs
+    const dealPaymentEl = document.getElementById('deal-payment');
+    if (dealPaymentEl) dealPaymentEl.textContent = formatCurrency(paymentInfo.amount, 'AED');
+    const dealNextPaymentEl = document.getElementById('deal-next-payment');
+    if (dealNextPaymentEl) dealNextPaymentEl.textContent = formatDate(paymentInfo.dueDate);
+    const dealRemainingEl = document.getElementById('deal-remaining');
+    if (dealRemainingEl) dealRemainingEl.textContent = '—';
     // Статус сделки скрыт по требованию — элемент удален из DOM
 
     const notifications = [

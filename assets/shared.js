@@ -101,24 +101,73 @@ export function mountSidebar({ containerId, role, items, activePath, basePath = 
           })
           .join("")}
       </nav>
-      <div class="px-6 py-5 border-t border-slate-200/70">
-        ${renderProfileSection({ basePath, ...(profile || {}) })}
-      </div>
     </div>
   `;
 }
 
-export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "" }) {
+export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "", icon, items, activePath }) {
+  const pathnameRaw = typeof window !== "undefined" && window.location ? window.location.pathname : "";
+  const normalizedPath = (activePath || pathnameRaw || "").replace(/\/{2,}/g, "/");
+  if (!items) {
+    // Определяем меню по абсолютному пути, игнорируя basePath
+    if (normalizedPath.startsWith("/ops/")) {
+      items = typeof opsNav !== "undefined" ? opsNav : items;
+    } else if (normalizedPath.startsWith("/admin/")) {
+      items = typeof adminNav !== "undefined" ? adminNav : items;
+    } else if (normalizedPath.startsWith("/investor/")) {
+      items = typeof investorNav !== "undefined" ? investorNav : items;
+    } else if (normalizedPath.startsWith("/client/")) {
+      items = typeof clientNav !== "undefined" ? clientNav : items;
+    } else if (typeof mainNav !== "undefined") {
+      items = mainNav;
+    }
+  }
+  // Активный путь всегда нормализован
+  activePath = normalizedPath;
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  // Resolve icon: explicit prop -> exact match -> prefix match -> mapped root
+  let resolvedIcon = icon;
+  if (!resolvedIcon && Array.isArray(items)) {
+    const exact = items.find((i) => i.href === activePath)?.icon;
+    if (exact) {
+      resolvedIcon = exact;
+    } else {
+      // Try prefix match against menu hrefs (to cover detail pages)
+      const prefixMatch = items.find((i) => activePath.startsWith(i.href))?.icon;
+      if (prefixMatch) {
+        resolvedIcon = prefixMatch;
+      } else {
+        // Map common section prefixes to root menu items
+        const iconBySection = (() => {
+          const path = activePath || normalizedPath;
+          const maps = [
+            { startsWith: "/ops/clients/", root: "/ops/clients/index.html" },
+            { startsWith: "/ops/deals/", root: "/ops/deals/index.html" },
+            { startsWith: "/ops/cars/", root: "/ops/cars/index.html" },
+            { startsWith: "/client/deals/", root: "/client/deals/index.html" },
+            { startsWith: "/client/invoices/", root: "/client/invoices/index.html" },
+            { startsWith: "/investor/assets/", root: "/investor/portfolio/index.html" },
+          ];
+          const map = maps.find(m => path.startsWith(m.startsWith));
+          if (map) {
+            return items.find(i => i.href === map.root)?.icon;
+          }
+          return undefined;
+        })();
+        if (iconBySection) {
+          resolvedIcon = iconBySection;
+        }
+      }
+    }
+  }
 
   container.innerHTML = `
     <div class="flex flex-col gap-4">
       <div class="flex items-center justify-between gap-4">
-        <div>
-          <div class="flex items-center text-xs text-slate-400 uppercase tracking-wide">${
-            breadcrumbs.join(" · ") || ""
-          }</div>
+        <div class="flex items-center gap-2">
+          ${resolvedIcon ? `<i data-lucide="${resolvedIcon}" class="h-5 w-5 text-slate-500"></i>` : ''}
           <h1 class="text-2xl font-semibold text-slate-900">${title}</h1>
         </div>
         <div class="flex items-center gap-3">
@@ -126,10 +175,6 @@ export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "
             <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
             <input id="global-search-input" type="text" class="w-56 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Глобальный поиск" />
           </div>
-          <button class="notifications-btn relative inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900">
-            <i data-lucide="bell" class="h-4 w-4"></i>
-            <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white">3</span>
-          </button>
           <!-- Profile dropdown -->
           <div class="relative">
             <button id="profile-dropdown-btn" class="relative inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
@@ -137,16 +182,20 @@ export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "
                 МК
               </div>
               <i data-lucide="chevron-down" class="h-3 w-3"></i>
-              <span class="mobile-notification-badge absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white hidden">3</span>
+              <span class="notification-badge absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white">3</span>
             </button>
             <!-- Dropdown menu -->
-            <div id="profile-dropdown-menu" class="absolute right-0 mt-2 w-48 rounded-lg border border-slate-200 bg-white shadow-lg z-50 hidden">
+            <div id="profile-dropdown-menu" class="absolute right-0 mt-2 min-w-[16rem] w-max rounded-lg border border-slate-200 bg-white shadow-lg z-50 hidden">
               <div class="py-1">
-                <a href="${basePath}/profile/index.html" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                <a href="${basePath}/profile/index.html" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
                   <i data-lucide="user" class="h-4 w-4"></i>
                   Профиль
                 </a>
-                <a href="${basePath}/login/index.html" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
+                  <i data-lucide="bell" class="h-4 w-4"></i>
+                  Уведомления
+                </a>
+                <a href="${basePath}/login/index.html" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 whitespace-nowrap">
                   <i data-lucide="log-out" class="h-4 w-4"></i>
                   Выйти
                 </a>
@@ -157,6 +206,9 @@ export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "
       </div>
     </div>
   `;
+
+  // Ensure icons render in header
+  try { applyIcons(); } catch {}
 
   // Add dropdown functionality
   const dropdownBtn = container.querySelector('#profile-dropdown-btn');
@@ -347,6 +399,7 @@ export const clientNav = [
  { label: 'Дашборд', href: '/client/dashboard/index.html', icon: 'layout-dashboard' },
  { label: 'Мои сделки', href: '/client/deals/index.html', icon: 'files' },
  { label: 'Инвойсы', href: '/client/invoices/index.html', icon: 'credit-card' },
+ { label: 'Новая заявка', href: '/application/new/index.html', icon: 'file-plus' },
  { label: 'Поддержка', href: '/client/support/index.html', icon: 'life-buoy' },
 ];
 

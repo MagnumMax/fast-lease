@@ -10,8 +10,9 @@
   <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
   <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
   <link rel="stylesheet" href="../../assets/style.css" />
+  <link rel="stylesheet" href="../../assets/linear.css" />
 </head>
-<body class="bg-slate-50 font-sans text-slate-900">
+<body class="linear light font-sans">
   <div class="min-h-screen lg:flex">
     <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
     <div class="flex-1 flex flex-col">
@@ -23,17 +24,22 @@
               <div class="flex flex-wrap items-center gap-3 text-sm">
                 <div class="flex flex-wrap items-center gap-2">
                   <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
-                    <input id="deal-search" type="text" class="w-56 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Поиск: клиент, авто, ID" />
+                    <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4"></i>
+                    <input id="deal-search" type="text" class="w-56 rounded-xl border pl-9 pr-3 py-2 text-sm shadow-sm" placeholder="Поиск: клиент, авто, ID" />
                   </div>
-                  <select id="deal-status" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900">
+                  <select id="deal-status" class="rounded-xl border px-3 py-2 text-sm shadow-sm">
                     <option value="all">Все статусы</option>
                     <option value="applications">Заявки</option>
                     <option value="documents">Документы</option>
                     <option value="handover">Выдача</option>
                     <option value="active">Активные</option>
                   </select>
-                  
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="segmented">
+                  <button id="view-kanban" class="segmented-btn active">Канбан</button>
+                  <button id="view-table" class="segmented-btn">Таблица</button>
                 </div>
               </div>
             </div>
@@ -72,6 +78,8 @@
       containerId: 'page-header',
       title: 'Сделки',
       breadcrumbs: ['Операции', 'Сделки'],
+      items: opsNav,
+      activePath: '/ops/deals/index.html',
       basePath,
     });
 
@@ -89,32 +97,32 @@
         title: 'Заявки',
         key: 'applications',
         deals: [
-          { id: 'APP-2218', client: 'Антон Громов', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-21', stage: 'Проверка документов' },
-          { id: 'APP-2234', client: 'Евгения Морозова', car: 'Bentley Bentayga', updatedAt: '2025-01-20', stage: 'AI скоринг' },
+          { id: 'APP-2218', client: 'Anton Schneider', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-21', stage: 'Проверка документов' },
+          { id: 'APP-2234', client: 'Eugenia Rossi', car: 'Bentley Bentayga', updatedAt: '2025-01-20', stage: 'AI скоринг' },
         ],
       },
       {
         title: 'Документы',
         key: 'documents',
         deals: [
-          { id: 'APP-2199', client: 'Nikolai Bely', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-19', stage: 'Awaiting Emirates ID' },
-          { id: 'APP-2201', client: 'Мария Власова', car: 'Ferrari 488 Spider', updatedAt: '2025-01-19', stage: 'Проверка юриста' },
+          { id: 'APP-2199', client: 'Nicolas Blanc', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-19', stage: 'Awaiting Emirates ID' },
+          { id: 'APP-2201', client: 'Maria Novak', car: 'Ferrari 488 Spider', updatedAt: '2025-01-19', stage: 'Проверка юриста' },
         ],
       },
       {
         title: 'Выдача',
         key: 'handover',
         deals: [
-          { id: 'FL-2042', client: 'Максим Кузьмин', car: 'Bentley Continental GT', updatedAt: '2025-01-18', stage: 'Подписание акта' },
-          { id: 'FL-2043', client: 'Софья Лебедева', car: 'Lamborghini Huracan', updatedAt: '2025-01-18', stage: 'Подготовка авто' },
+          { id: 'FL-2042', client: 'Maxime Dupont', car: 'Bentley Continental GT', updatedAt: '2025-01-18', stage: 'Подписание акта' },
+          { id: 'FL-2043', client: 'Sofia Rossi', car: 'Lamborghini Huracan', updatedAt: '2025-01-18', stage: 'Подготовка авто' },
         ],
       },
       {
         title: 'Активные',
         key: 'active',
         deals: [
-          { id: 'FL-1042', client: 'Иван Петров', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-17', stage: 'Активна' },
-          { id: 'FL-1043', client: 'Анна Соколова', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-16', stage: 'Активна' },
+          { id: 'FL-1042', client: 'Jan Kowalski', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-17', stage: 'Активна' },
+          { id: 'FL-1043', client: 'Anna Müller', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-16', stage: 'Активна' },
         ],
       },
     ];
@@ -134,7 +142,7 @@
     }
 
     function getClientLink(client) {
-      return client === 'Максим Кузьмин'
+      return client === 'Maxime Dupont'
         ? '../../ops/clients/client-104/index.html'
         : '../../ops/clients/index.html';
     }
