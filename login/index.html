@@ -65,7 +65,7 @@
             </button>
           </div>
 
-          <div class="space-y-10 p-8">
+          <div class="p-8">
             <form data-tab="sign-in" class="tab-panel space-y-6">
               <div class="space-y-1">
                 <label for="role-select" class="text-sm font-medium text-slate-700">Быстрый вход</label>
@@ -148,6 +148,18 @@
     bindTabs({ triggersSelector: '.tab-trigger', panelsSelector: '[data-tab]' });
 
     tabTriggers[0]?.classList.add('bg-slate-900', 'text-white');
+
+    // Открывать вкладку регистрации по умолчанию при переходе из application
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rawTab = (params.get('tab') || '').toLowerCase();
+      const requestedTab = rawTab === 'register' ? 'sign-up' : rawTab;
+      const fromApplication = document.referrer && document.referrer.includes('/application/');
+      if (requestedTab === 'sign-up' || fromApplication) {
+        const signUpTrigger = document.querySelector('.tab-trigger[data-tab="sign-up"]');
+        signUpTrigger && signUpTrigger.click();
+      }
+    } catch {}
 
     const rolePresets = {
       client: {

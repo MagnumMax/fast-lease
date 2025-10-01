@@ -58,11 +58,9 @@
               <div class="flex flex-wrap items-center gap-2">
                 <button data-tab="summary" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Сводка</button>
                 <button data-tab="plan" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">График платежей</button>
-                <button data-tab="docs" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Документы</button>
+                <button data-tab="docs" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Документы сделки</button>
+                <button data-tab="car-docs" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Документы авто</button>
                 <button data-tab="history" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">История</button>
-              </div>
-              <div class="flex items-center gap-3 text-sm">
-                <span class="flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-600"><i data-lucide="shield-check" class="h-4 w-4"></i> Все SLA соблюдаются</span>
               </div>
             </div>
 
@@ -103,6 +101,48 @@
                   </div>
                   <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" class="sr-only" id="client-docs-upload" />
                   <div id="uploaded-docs" class="mt-3 space-y-3"></div>
+                </div>
+              </div>
+
+              <div data-tab="car-docs" class="tab-panel hidden space-y-6">
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-900">Документы авто</h3>
+                  <ul id="car-documents" class="mt-4 space-y-3"></ul>
+                  <div class="mt-4 flex items-center justify-between">
+                    <button id="car-add-doc" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                      <i data-lucide="upload" class="h-4 w-4"></i>
+                      Загрузить документы
+                    </button>
+                    <span class="text-xs text-slate-500">PDF, JPG, PNG до 10MB</span>
+                  </div>
+                  <input type="file" multiple accept=".pdf,.jpg,.jpeg,.png" class="sr-only" id="car-docs-upload" />
+                  <div id="car-uploaded-docs" class="mt-3 space-y-3"></div>
+                </div>
+
+                <div class="pt-2">
+                  <h3 class="text-lg font-semibold text-slate-900">Фото при выдаче</h3>
+                  <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3" id="car-delivery-photos"></div>
+                  <div class="mt-4 flex items-center justify-between">
+                    <button id="car-add-photo" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                      <i data-lucide="upload" class="h-4 w-4"></i>
+                      Загрузить фото
+                    </button>
+                    <span class="text-xs text-slate-500">JPG, PNG до 10MB</span>
+                  </div>
+                  <input type="file" multiple accept=".jpg,.jpeg,.png" class="sr-only" id="car-photos-upload" />
+                </div>
+
+                <div class="pt-2">
+                  <h3 class="text-lg font-semibold text-slate-900">Периодические осмотры</h3>
+                  <div id="car-inspections" class="mt-4 space-y-4"></div>
+                  <div class="mt-4 flex items-center justify-between">
+                    <button id="car-add-inspection-photos" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                      <i data-lucide="upload" class="h-4 w-4"></i>
+                      Добавить фото осмотра
+                    </button>
+                    <span class="text-xs text-slate-500">Выберите дату осмотра, JPG/PNG до 10MB</span>
+                  </div>
+                  <input type="file" multiple accept=".jpg,.jpeg,.png" class="sr-only" id="car-inspection-photos-upload" />
                 </div>
               </div>
 
@@ -322,6 +362,199 @@
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
+
+    // Документы авто
+    const carDocuments = [
+      {
+        title: 'Свидетельство о регистрации (Mulkiya)',
+        status: 'Действительно до 12.12.2025',
+        action: 'Скачать PDF',
+      },
+      {
+        title: 'Страховой полис',
+        status: 'Версия 2025',
+        action: 'Открыть',
+      },
+      {
+        title: 'Протокол техосмотра',
+        status: 'Пройден 01.2025',
+        action: 'Скачать',
+      },
+      {
+        title: 'Правила пользования автомобилем',
+        status: 'Актуально',
+        action: 'Открыть',
+      },
+    ];
+
+    const carDocumentsContainer = document.getElementById('car-documents');
+    carDocumentsContainer.innerHTML = carDocuments
+      .map(
+        (doc) => `
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-slate-900">${doc.title}</p>
+            <p class="text-xs text-slate-500">${doc.status}</p>
+          </div>
+          <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900">
+            <i data-lucide="download" class="h-4 w-4"></i>${doc.action}
+          </button>
+        </div>
+      `
+      )
+      .join('');
+
+    // Упрощенная загрузка документов для авто
+    const carUploadedDocsContainer = document.getElementById('car-uploaded-docs');
+    const carFileInput = document.getElementById('car-docs-upload');
+    const carAddDocBtn = document.getElementById('car-add-doc');
+    let carUploadedFiles = [];
+
+    carAddDocBtn?.addEventListener('click', () => carFileInput.click());
+    carFileInput?.addEventListener('change', (e) => {
+      const files = [...e.target.files];
+      files.forEach(file => {
+        carUploadedFiles.push({
+          file,
+          id: Date.now() + Math.random(),
+          uploadDate: new Date().toISOString(),
+        });
+      });
+      updateCarUploadedDocsDisplay();
+      e.target.value = '';
+    });
+
+    function updateCarUploadedDocsDisplay() {
+      carUploadedDocsContainer.innerHTML = carUploadedFiles
+        .map(
+          (item) => `
+          <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3" id="car-doc-${item.id}">
+            <div class="flex items-center gap-3">
+              <div class="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                <i data-lucide="check-circle" class="h-4 w-4 text-emerald-600"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-slate-900">${item.file.name}</p>
+                <p class="text-xs text-slate-500">${formatFileSize(item.file.size)} • Загружено ${formatDate(item.uploadDate)}</p>
+              </div>
+            </div>
+            <button onclick="removeCarUploadedFile(${item.id})" class="text-slate-400 hover:text-slate-600">
+              <i data-lucide="trash-2" class="h-4 w-4"></i>
+            </button>
+          </div>
+        `
+        )
+        .join('');
+      applyIcons();
+    }
+
+    window.removeCarUploadedFile = function(id) {
+      carUploadedFiles = carUploadedFiles.filter(item => item.id !== id);
+      const docElement = document.getElementById(`car-doc-${id}`);
+      if (docElement) {
+        docElement.remove();
+      }
+    };
+
+    // Фото при выдаче
+    const deliveryPhotosContainer = document.getElementById('car-delivery-photos');
+    const carPhotosFileInput = document.getElementById('car-photos-upload');
+    const carAddPhotoBtn = document.getElementById('car-add-photo');
+    let deliveryPhotos = [
+      { src: '../../../assets/images/rolls-royce-cullinan-exterior.jpg', caption: '12.12.2024 • Выдача' },
+      { src: '../../../assets/images/rolls-royce-cullinan-exterior.jpg', caption: '12.12.2024 • Выдача' },
+      { src: '../../../assets/images/rolls-royce-cullinan-exterior.jpg', caption: '12.12.2024 • Выдача' },
+    ];
+
+    function renderDeliveryPhotos() {
+      deliveryPhotosContainer.innerHTML = deliveryPhotos
+        .map(
+          (p) => `
+          <figure class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <img src="${p.src}" alt="Фото авто" class="h-28 w-full object-cover" />
+            <figcaption class="px-3 py-2 text-xs text-slate-600">${p.caption}</figcaption>
+          </figure>
+        `
+        )
+        .join('');
+    }
+    renderDeliveryPhotos();
+
+    carAddPhotoBtn?.addEventListener('click', () => carPhotosFileInput.click());
+    carPhotosFileInput?.addEventListener('change', (e) => {
+      const files = [...e.target.files];
+      files.forEach(file => {
+        const url = URL.createObjectURL(file);
+        deliveryPhotos.push({ src: url, caption: `${formatDate(new Date().toISOString())} • Загрузка` });
+      });
+      renderDeliveryPhotos();
+      e.target.value = '';
+    });
+
+    // Периодические осмотры (группировка по датам)
+    const inspectionsContainer = document.getElementById('car-inspections');
+    const inspectionPhotosFileInput = document.getElementById('car-inspection-photos-upload');
+    const addInspectionPhotosBtn = document.getElementById('car-add-inspection-photos');
+
+    let inspections = [
+      {
+        date: '2025-02-20',
+        photos: ['../../../assets/images/rolls-royce-cullinan-exterior.jpg'],
+        note: 'Плановый осмотр 20.02.2025',
+      },
+      {
+        date: '2025-01-02',
+        photos: ['../../../assets/images/rolls-royce-cullinan-exterior.jpg'],
+        note: 'Первичный осмотр после выдачи',
+      },
+    ];
+
+    function renderInspections() {
+      const sorted = [...inspections].sort((a, b) => new Date(b.date) - new Date(a.date));
+      inspectionsContainer.innerHTML = sorted
+        .map(
+          (ins) => `
+          <section class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-semibold text-slate-800">${formatDate(ins.date)}</h4>
+              ${ins.note ? `<span class="text-xs text-slate-500">${ins.note}</span>` : ''}
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              ${ins.photos
+                .map(
+                  (src) => `
+                  <figure class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <img src="${src}" alt="Фото осмотра" class="h-28 w-full object-cover" />
+                    <figcaption class="px-3 py-2 text-[11px] text-slate-500">Осмотр</figcaption>
+                  </figure>
+                `
+                )
+                .join('')}
+            </div>
+          </section>
+        `
+        )
+        .join('');
+    }
+    renderInspections();
+
+    addInspectionPhotosBtn?.addEventListener('click', () => inspectionPhotosFileInput.click());
+    inspectionPhotosFileInput?.addEventListener('change', (e) => {
+      const dateInput = prompt('Введите дату осмотра (YYYY-MM-DD)');
+      const files = [...e.target.files];
+      if (!dateInput) { e.target.value = ''; return; }
+      const date = new Date(dateInput);
+      if (isNaN(date.getTime())) { alert('Некорректная дата'); e.target.value = ''; return; }
+      const existing = inspections.find(i => i.date === dateInput);
+      const urls = files.map(f => URL.createObjectURL(f));
+      if (existing) {
+        existing.photos.push(...urls);
+      } else {
+        inspections.push({ date: dateInput, photos: urls, note: '' });
+      }
+      renderInspections();
+      e.target.value = '';
+    });
 
     const history = [
       { date: '2025-01-15', note: 'Автосписание прошло успешно', type: 'success' },

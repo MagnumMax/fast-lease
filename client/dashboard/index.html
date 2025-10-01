@@ -46,63 +46,30 @@
             </div>
             <div class="mt-6 grid gap-3 grid-cols-3">
               <div class="rounded-xl bg-slate-50/80 p-3">
-                <p class="text-[11px] uppercase tracking-wide text-slate-400">Ежемесячный платеж</p>
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Предстоящий платеж</p>
                 <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-payment">—</p>
               </div>
               <div class="rounded-xl bg-slate-50/80 p-3">
-                <p class="text-[11px] uppercase tracking-wide text-slate-400">Следующий платеж</p>
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Оплатить до</p>
                 <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-next-payment">—</p>
               </div>
-              <div class="rounded-xl bg-slate-50/80 p-3">
-                <p class="text-[11px] uppercase tracking-wide text-slate-400">Остаток выкупа</p>
-                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-remaining">—</p>
+              <div class="rounded-xl bg-slate-50/80 p-3 flex items-center">
+                <a href="../../client/invoices/invoice-2024-001/index.html#payment-methods" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                  <i data-lucide="wallet" class="h-4 w-4"></i>
+                  Оплатить сейчас
+                </a>
               </div>
             </div>
           </section>
           <section class="grid gap-6 md:grid-cols-2">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Статус заявки</p>
-              <h2 class="mt-2 text-xl font-semibold text-slate-900">Препродажная проверка</h2>
+              <h2 class="mt-2 text-xl font-semibold text-slate-900">Статус заявки</h2>
               <div class="mt-6" id="application-timeline"></div>
-            </article>
-
-            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div class="flex items-center justify-between">
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Предстоящий платеж</p>
-                <span class="badge badge-warning">7 дней</span>
-              </div>
-              <h2 class="mt-2 text-3xl font-semibold text-slate-900" id="payment-amount">—</h2>
-              <p class="text-sm text-slate-500" id="payment-date">—</p>
-              <div class="mt-6 space-y-3 text-sm text-slate-600">
-                <div class="flex items-center justify-between">
-                  <span>Автомобиль</span>
-                  <span id="payment-car" class="font-medium text-slate-900">—</span>
-                </div>
-              </div>
-              <div class="mt-6 flex flex-col gap-3">
-                <a href="../../client/invoices/invoice-2024-001/index.html#payment-methods" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                  <i data-lucide="wallet" class="h-4 w-4"></i>
-                  Оплатить сейчас
-                </a>
-              </div>
-            </article>
-          </section>
-          <section class="grid gap-6 md:grid-cols-2">
-            
-            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Уведомления</p>
-                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Проактивные сигналы</h2>
-                </div>
-              </div>
-              <div class="mt-4 space-y-3" id="notifications"></div>
             </article>
 
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <header class="flex items-start justify-between">
                 <div>
-                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Документы</p>
                   <h2 class="mt-2 text-lg font-semibold text-slate-900">Что нужно загрузить</h2>
                 </div>
                 <div class="flex items-center gap-2">
@@ -115,6 +82,19 @@
               </header>
               <ul class="mt-6 space-y-4" id="documents"></ul>
             </article>
+          </section>
+          <section class="grid gap-6 md:grid-cols-2">
+            
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:col-span-2">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Уведомления</h2>
+                </div>
+              </div>
+              <div class="mt-4 space-y-3" id="notifications"></div>
+            </article>
+
+            
           </section>
         </div>
       </main>
@@ -193,9 +173,7 @@
       status: 'Активен',
     };
 
-    document.getElementById('payment-amount').textContent = formatCurrency(paymentInfo.amount, 'AED');
-    document.getElementById('payment-date').textContent = `Оплатить до ${formatDate(paymentInfo.dueDate)}`;
-    document.getElementById('payment-car').textContent = paymentInfo.car;
+    
     // Populate copied deal summary KPIs
     const dealPaymentEl = document.getElementById('deal-payment');
     if (dealPaymentEl) dealPaymentEl.textContent = formatCurrency(paymentInfo.amount, 'AED');

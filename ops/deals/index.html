@@ -34,6 +34,10 @@
                     <option value="handover">Выдача</option>
                     <option value="active">Активные</option>
                   </select>
+                  <button id="open-create-deal" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900 hover:text-slate-900">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    Создать сделку
+                  </button>
                 </div>
               </div>
               <div class="flex items-center gap-2">
@@ -68,7 +72,7 @@
     }
 
     const shared = await getShared('../../assets');
-    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, initSortable, mountMobileBottomNav, enableGlobalSearch } = shared;
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, initSortable, mountMobileBottomNav, enableGlobalSearch, bindModal } = shared;
     const { opsNav } = shared;
 
     const basePath = '../..';
@@ -270,8 +274,85 @@
       applyIcons();
     }, 100);
 
-    
+    // --- Create Deal Modal wiring ---
+    bindModal({ openSelector: '#open-create-deal', modalId: 'deal-create-modal' });
+
+    const createForm = document.getElementById('deal-create-form');
+    createForm?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const button = event.target.querySelector('button[type="submit"]');
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Создаём</span>';
+
+      const id = event.target.querySelector('#create-deal-id').value || 'NEW-0001';
+      const client = event.target.querySelector('#create-deal-client').value || 'Новый клиент';
+      const car = event.target.querySelector('#create-deal-car').value || 'Автомобиль';
+      const stage = event.target.querySelector('#create-deal-stage').value || 'Новая заявка';
+      const statusKey = event.target.querySelector('#create-deal-status').value || 'applications';
+
+      setTimeout(() => {
+        const column = pipelineOriginal.find(c => c.key === statusKey) || pipelineOriginal[0];
+        column.deals.push({ id, client, car, updatedAt: new Date().toISOString().slice(0,10), stage });
+        renderKanban();
+        renderTableView();
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Готово</span>';
+        applyIcons();
+        setTimeout(() => {
+          document.querySelector('#deal-create-modal [data-close-modal]')?.click();
+          createForm.reset();
+          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Создать</span>';
+          applyIcons();
+        }, 800);
+      }, 800);
+    });
+  
+  
   </script>
+  
+  <!-- Create Deal Modal -->
+  <div id="deal-create-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
+    <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+      <div class="flex items-start justify-between">
+        <h2 class="text-lg font-semibold text-slate-900">Создание сделки</h2>
+        <button type="button" data-close-modal class="rounded-xl border px-3 py-1 text-sm">Закрыть</button>
+      </div>
+      <form id="deal-create-form" class="mt-4 space-y-4 text-sm">
+        <label class="space-y-1 block">
+          Deal ID
+          <input id="create-deal-id" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Напр. APP-2301" />
+        </label>
+        <div class="grid grid-cols-2 gap-4">
+          <label class="space-y-1 block">
+            Статус
+            <select id="create-deal-status" class="w-full rounded-xl border px-3 py-2 text-sm">
+              <option value="applications">Заявки</option>
+              <option value="documents">Документы</option>
+              <option value="handover">Выдача</option>
+              <option value="active">Активные</option>
+            </select>
+          </label>
+          <label class="space-y-1 block">
+            Этап
+            <input id="create-deal-stage" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Напр. Проверка документов" />
+          </label>
+        </div>
+        <label class="space-y-1 block">
+          Клиент
+          <input id="create-deal-client" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Имя клиента" />
+        </label>
+        <label class="space-y-1 block">
+          Автомобиль
+          <input id="create-deal-car" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Модель авто" />
+        </label>
+        <div class="mt-2 flex justify-end gap-2">
+          <button type="button" data-close-modal class="rounded-xl border px-4 py-2 text-sm">Отмена</button>
+          <button type="submit" class="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm">
+            <i data-lucide="check" class="h-4 w-4"></i>
+            Создать
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
 </body>
 </html>

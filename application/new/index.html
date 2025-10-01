@@ -47,8 +47,12 @@
           <div data-step="profile" class="step-panel space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="space-y-1 text-sm text-slate-600">
-                Паспорт серия и номер
-                <input type="text" required placeholder="1234 567890" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+                Имя
+                <input type="text" required placeholder="Иван" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+              </label>
+              <label class="space-y-1 text-sm text-slate-600">
+                Фамилия
+                <input type="text" required placeholder="Иванов" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
               </label>
               <label class="space-y-1 text-sm text-slate-600">
                 Дата рождения
@@ -56,18 +60,44 @@
               </label>
               <label class="space-y-1 text-sm text-slate-600">
                 Город проживания
-                <input type="text" required placeholder="Дубай" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+                <select required class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900">
+                  <option value="" disabled selected>Выберите город</option>
+                  <option>Дубай</option>
+                  <option>Абу-Даби</option>
+                  <option>Шарджа</option>
+                  <option>Аджман</option>
+                  <option>Рас-эль-Хайма</option>
+                  <option>Фуджейра</option>
+                </select>
               </label>
               <label class="space-y-1 text-sm text-slate-600">
-                Месячный доход (AED)
-                <input type="number" required placeholder="190 000" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+                Email
+                <input type="email" required autocomplete="email" inputmode="email" placeholder="ivan@example.com" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
               </label>
+              <label class="space-y-1 text-sm text-slate-600">
+                Номер телефона
+                <input type="tel" required autocomplete="tel" inputmode="tel" pattern="^\+?[0-9][0-9\s\-]{7,}$" placeholder="+971 50 123 4567" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+              </label>
+              <fieldset class="space-y-2 sm:col-span-2">
+                <legend class="text-sm font-medium text-slate-700">Статус проживания</legend>
+                <div class="flex items-center gap-6 text-sm text-slate-700">
+                  <label class="inline-flex items-center gap-2">
+                    <input type="radio" name="residency-status" value="resident" class="rounded border-slate-300 text-slate-900 focus:ring-slate-900" checked />
+                    Резидент ОАЭ
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="radio" name="residency-status" value="nonresident" class="rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+                    Нерезидент
+                  </label>
+                </div>
+                <p class="text-xs text-slate-500">Мы подберем перечень документов в зависимости от статуса.</p>
+              </fieldset>
             </div>
           </div>
 
           <div data-step="documents" class="step-panel hidden space-y-4">
-            <p class="text-sm text-slate-600">Загрузите документы. Мы проверим их качество автоматически.</p>
-            <div class="space-y-4" id="documents-list"></div>
+            <p class="text-sm text-slate-600">Загрузите обязательные документы. Дополнительные можно предоставить по запросу.</p>
+            <div class="space-y-6" id="documents-list"></div>
           </div>
 
           <div data-step="summary" class="step-panel hidden space-y-4">
@@ -107,8 +137,8 @@
     const { applyIcons, formatCurrency, loadPricing } = shared;
 
     const steps = [
-      { id: 'profile', title: 'Personal Data', description: 'Emirates ID, contacts, residence address' },
-      { id: 'documents', title: 'Documents', description: 'Upload Emirates ID and salary certificate' },
+      { id: 'profile', title: 'Личные данные', description: 'Паспорт, контакты, адрес проживания, статус' },
+      { id: 'documents', title: 'Документы', description: 'Перечень и загрузка необходимых документов' },
       { id: 'summary', title: 'Подтверждение', description: 'Проверьте данные перед отправкой' },
     ];
 
@@ -158,6 +188,22 @@
         }, 800);
         return;
       }
+      // Проверка обязательных полей на первом шаге перед переходом
+      if (currentStepIndex === 0) {
+        const profilePanel = document.querySelector('[data-step="profile"]');
+        const requiredFields = profilePanel.querySelectorAll('input[required], select[required]');
+
+        for (const field of requiredFields) {
+          const isTextEmpty = field.tagName === 'INPUT' && field.type === 'text' && field.value.trim() === '';
+          if (!field.checkValidity() || isTextEmpty) {
+            field.setCustomValidity('Заполните это поле');
+            field.reportValidity();
+            setTimeout(() => field.setCustomValidity(''), 0);
+            return;
+          }
+        }
+      }
+
       currentStepIndex += 1;
       updateSteps();
     });
@@ -168,29 +214,119 @@
       updateSteps();
     });
 
-    const documents = [
-      { id: 'passport', name: 'Паспорт ЕС', status: 'Ожидает загрузки' },
-      { id: 'income', name: 'Справка о доходах', status: 'Загружено (AI подтвердил)' },
-      { id: 'bank', name: 'Выписка по счету', status: 'Требует обновления за декабрь' },
-    ];
-
+    const residencyRadios = document.querySelectorAll('input[name="residency-status"]');
     const documentsList = document.getElementById('documents-list');
-    documentsList.innerHTML = documents
-      .map(
-        (doc) => `
-        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-          <div>
-            <p class="text-sm font-medium text-slate-900">${doc.name}</p>
-            <p class="text-xs text-slate-500">${doc.status}</p>
+
+    // Делегирование: при клике на кнопку "Загрузить" открыть диалог выбора файла
+    documentsList.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-file-id]');
+      if (!btn) return;
+      const fileId = btn.getAttribute('data-file-id');
+      const input = documentsList.querySelector(`#${fileId}`);
+      if (input) {
+        input.click();
+      }
+    });
+
+    // Показывать имя выбранного файла рядом с кнопкой
+    documentsList.addEventListener('change', (e) => {
+      const input = e.target;
+      if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
+      const docId = input.id.startsWith('file-') ? input.id.substring(5) : input.id;
+      const nameSpan = documentsList.querySelector(`[data-file-name-for="${docId}"]`);
+      const btn = documentsList.querySelector(`button[data-file-id="${input.id}"]`);
+      const file = input.files && input.files[0];
+      if (nameSpan) {
+        nameSpan.textContent = file ? file.name : '';
+      }
+      if (btn && file) {
+        btn.classList.add('border-slate-900');
+      }
+    });
+
+    function getRequiredDocuments(status) {
+      const common = [
+        { id: 'passport', name: 'Паспорт (первая страница и виза/штамп о въезде)', note: '' },
+        { id: 'proof-of-address', name: 'Доказательство проживания (utility bill / tenancy contract)', note: '' },
+        { id: 'bank-statement', name: 'Выписка из банка за 3–6 месяцев', note: '' },
+        { id: 'income-letter', name: 'Справка о доходах или письмо от работодателя', note: '' },
+      ];
+
+      const residentOnly = [
+        { id: 'emirates-id', name: 'Emirates ID (для резидентов)', note: '' },
+        { id: 'aecb', name: 'Кредитный отчёт (Al Etihad Credit Bureau, при необходимости)', note: 'Иногда требуется для резидентов' },
+        { id: 'driver-license', name: 'Водительское удостоверение (ОАЭ или международное)', note: '' },
+      ];
+
+      const nonResidentOnly = [
+        { id: 'foreign-license', name: 'Заграничные водительские права', note: 'Может потребоваться перевод/подтверждение' },
+      ];
+
+      if (status === 'resident') {
+        return [...residentOnly, ...common];
+      }
+      return [...nonResidentOnly, ...common];
+    }
+
+    function renderDocuments(status) {
+      const docs = getRequiredDocuments(status);
+      const requiredIds = status === 'resident'
+        ? new Set(['passport', 'emirates-id', 'driver-license'])
+        : new Set(['passport', 'foreign-license']);
+
+      const requiredDocs = docs.filter(d => requiredIds.has(d.id));
+      const optionalDocs = docs.filter(d => !requiredIds.has(d.id));
+
+      function renderDocItem(doc) {
+        return `
+          <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+            <div>
+              <p class="text-sm font-medium text-slate-900">${doc.name}</p>
+              ${doc.note ? `<p class="text-xs text-slate-500">${doc.note}</p>` : ''}
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="file" id="file-${doc.id}" class="sr-only" accept="image/*,.pdf" />
+              <span class="text-xs text-slate-500" data-file-name-for="${doc.id}"></span>
+              <button type="button" data-file-id="file-${doc.id}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
+                <i data-lucide="upload" class="h-4 w-4"></i>
+                Загрузить
+              </button>
+            </div>
           </div>
-          <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
-            <i data-lucide="upload" class="h-4 w-4"></i>
-            Загрузить
-          </button>
-        </div>
-      `
-      )
-      .join('');
+        `;
+      }
+
+      const requiredSection = `
+        <article>
+          <h3 class="text-sm font-semibold text-slate-800">Обязательные документы</h3>
+          <div class="mt-3 space-y-3">
+            ${requiredDocs.map(doc => renderDocItem(doc)).join('')}
+          </div>
+        </article>
+      `;
+
+      const optionalSection = `
+        <article>
+          <h3 class="text-sm font-semibold text-slate-800">Дополнительные (не обязательные)</h3>
+          <div class="mt-3 space-y-3">
+            ${optionalDocs.map(doc => renderDocItem(doc)).join('')}
+          </div>
+        </article>
+      `;
+
+      documentsList.innerHTML = requiredSection + optionalSection;
+      applyIcons();
+    }
+
+    // Initial render based on default radio selection
+    const defaultStatus = document.querySelector('input[name="residency-status"]:checked')?.value || 'resident';
+    renderDocuments(defaultStatus);
+
+    residencyRadios.forEach((radio) => {
+      radio.addEventListener('change', (e) => {
+        renderDocuments(e.target.value);
+      });
+    });
 
     const params = new URLSearchParams(window.location.search);
     const carId = params.get('car');
