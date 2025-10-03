@@ -147,7 +147,7 @@ export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "
             { startsWith: "/ops/clients/", root: "/ops/clients/index.html" },
             { startsWith: "/ops/deals/", root: "/ops/deals/index.html" },
             { startsWith: "/ops/cars/", root: "/ops/cars/index.html" },
-            { startsWith: "/client/deals/", root: "/client/deals/deal-001/index.html" },
+            { startsWith: "/client/deals/", root: "/client/deals/index.html" },
             { startsWith: "/client/invoices/", root: "/client/invoices/index.html" },
             { startsWith: "/investor/assets/", root: "/investor/portfolio/index.html" },
           ];
@@ -523,8 +523,9 @@ export function bindModal({ openSelector, modalId, closeSelector = "[data-close-
 // Navigation configurations for different roles
 export const clientNav = [
   { label: 'Dashboard', href: '/client/dashboard/index.html', icon: 'layout-dashboard' },
-  { label: 'My Deal', href: '/client/deals/deal-001/index.html', icon: 'files' },
-  { label: 'Invoices', href: '/client/invoices/index.html', icon: 'credit-card' },
+  { label: 'My Vehicle', href: '/client/my-vehicle/index.html', icon: 'car' },
+  { label: 'Payments', href: '/client/invoices/index.html', icon: 'credit-card' },
+  { label: 'Referrals', href: '/client/referrals/index.html', icon: 'users' },
   // { label: 'New Application', href: '/application/new/index.html', icon: 'file-plus' },
   { label: 'Support', href: '/client/support/index.html', icon: 'life-buoy' },
 ];

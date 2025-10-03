@@ -36,81 +36,13 @@
             <h2 class="mt-2 text-xl font-semibold text-slate-900">Application Status</h2>
             <div class="mt-6" id="application-timeline" aria-label="Application steps" role="region"></div>
           </section>
-          <!-- Deal hero block (single active deal) -->
-          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="grid gap-6 md:grid-cols-[1fr_320px] md:grid-rows-[auto_1fr] items-stretch">
-              <!-- Left: title/subtitle -->
-              <div>
-                <div class="flex items-center gap-2">
-                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Deal</p>
-                  <span class="badge badge-success">Active</span>
-                </div>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">FL-2025-1042 · Rolls-Royce Cullinan</h1>
-                <p class="text-sm text-slate-600">Lease-to-own program for 36 months. Created on December 12, 2024.</p>
-              </div>
-
-              <!-- Mobile image -->
-              <div class="md:hidden">
-                <figure class="h-40 overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-                  <img
-                    src="../../assets/images/rolls-royce-cullinan-exterior.jpg"
-                    alt="Rolls-Royce Cullinan"
-                    class="h-full w-full object-cover"
-                    loading="lazy"
-                    onerror="this.src='https://placehold.co/560x320?text=No+Image'"
-                  />
-                </figure>
-              </div>
-
-              <!-- Right: image spans full block height on desktop -->
-              <div class="hidden md:block row-span-2">
-                <figure class="h-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-                  <img
-                    src="../../assets/images/rolls-royce-cullinan-exterior.jpg"
-                    alt="Rolls-Royce Cullinan"
-                    class="h-full w-full object-cover"
-                    loading="lazy"
-                    onerror="this.src='https://placehold.co/560x320?text=No+Image'"
-                  />
-                </figure>
-              </div>
-
-              <!-- Bottom-left: KPI cards -->
-              <div class="grid gap-3 grid-cols-3">
-                <div class="rounded-xl bg-slate-50/80 p-3">
-                  <p class="text-[11px] uppercase tracking-wide text-slate-400">Monthly payment</p>
-                  <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-payment">—</p>
-                </div>
-                <div class="rounded-xl bg-slate-50/80 p-3">
-                  <p class="text-[11px] uppercase tracking-wide text-slate-400">Next payment</p>
-                  <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-next-payment">—</p>
-                </div>
-                <div class="rounded-xl bg-slate-50/80 p-3">
-                  <p class="text-[11px] uppercase tracking-wide text-slate-400">Due amount</p>
-                  <p class="mt-1 text-sm font-semibold text-red-600" id="deal-remaining">—</p>
-                </div>
-              </div>
-            </div>
-          </section>
+          <!-- Deal Component -->
+          <div id="deal-component"></div>
 
           <!-- Key info + Combined documents -->
           <section class="grid gap-6 md:grid-cols-2">
-            <article class="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
-              <h2 class="text-sm font-semibold text-slate-800">Key information</h2>
-              <dl class="mt-4 space-y-3 text-sm text-slate-600">
-                <div class="flex justify-between"><dt>VIN</dt><dd>5YJSA1E26LF123456</dd></div>
-                <div class="flex justify-between"><dt>Program Term</dt><dd>36 months</dd></div>
-                <div class="flex justify-between"><dt>Issue Date</dt><dd>12.12.2024</dd></div>
-                <div class="flex justify-between"><dt>Mileage</dt><dd>18 400 km</dd></div>
-              </dl>
-            </article>
-
-            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-slate-900">Documents</h2>
-              </div>
-              <ul id="combined-documents" class="mt-4 space-y-3"></ul>
-            </article>
+            <div id="key-information-component"></div>
+            <div id="documents-component"></div>
           </section>
           <!-- What to upload block removed by requirement -->
           <section class="grid gap-6 md:grid-cols-2">
@@ -143,6 +75,11 @@
       const sharedMod = await import(`${basePath}/shared.js`);
       return { ...sharedMod };
     }
+
+    // Import components
+    const { mountDealComponent, updateDealKPIs } = await import('../../components/deal-component.js');
+    const { mountKeyInformationComponent } = await import('../../components/key-information-component.js');
+    const { mountDocumentsComponent } = await import('../../components/documents-component.js');
 
     const shared = await getShared('../../assets');
     const { mountSidebar, mountHeader, mountMobileBottomNav, mountTimeline, renderNotifications, formatCurrency, formatDate, applyIcons, clientNav, loadPricing } = shared;
@@ -196,15 +133,24 @@
 
     mountTimeline({ containerId: 'application-timeline', steps: timelineSteps });
 
+    // Mount Deal Component
+    mountDealComponent('deal-component');
+
     // KPI from pricing (single active deal)
     const pricing = await loadPricing('../../assets');
     const carId = 'rolls-royce-cullinan';
     const monthly = pricing[carId]?.monthly ?? 3260;
     const buyout = 45000; // Fixed due amount value
     const nextPayment = '2025-11-15';
-    const dpEl = document.getElementById('deal-payment'); if (dpEl) dpEl.textContent = formatCurrency(monthly, 'AED');
-    const npEl = document.getElementById('deal-next-payment'); if (npEl) npEl.textContent = formatDate(nextPayment);
-    const drEl = document.getElementById('deal-remaining'); if (drEl) drEl.textContent = formatCurrency(buyout, 'AED');
+    
+    // Update Deal KPIs
+    updateDealKPIs(formatCurrency(monthly, 'AED'), formatDate(nextPayment), formatCurrency(buyout, 'AED'));
+
+    // Mount Key Information Component
+    mountKeyInformationComponent('key-information-component');
+
+    // Mount Documents Component
+    mountDocumentsComponent('documents-component');
 
     const notifications = [
       {
@@ -228,32 +174,6 @@
     ];
 
     renderNotifications({ containerId: 'notifications', items: notifications });
-
-    // Combined deal + vehicle documents (download only)
-    const combinedDocs = [
-      { title: 'Lease agreement', status: 'Signed on 12/12/2024' },
-      { title: 'Payment schedule (update)', status: 'Version 02/2025' },
-      { title: 'Delivery acceptance form', status: 'Signature pending' },
-      { title: 'Registration Certificate (Mulkiya)', status: 'Valid until 12.12.2025' },
-      { title: 'Insurance Policy', status: 'Version 2025' },
-      { title: 'Inspection Protocol', status: 'Passed 01.2025' },
-      { title: 'Vehicle Usage Rules', status: 'Current' },
-    ];
-
-    const combinedList = document.getElementById('combined-documents');
-    if (combinedList) {
-      combinedList.innerHTML = combinedDocs.map((doc) => `
-        <li class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-          <div>
-            <p class="text-sm font-medium text-slate-900">${doc.title}</p>
-            <p class="text-xs text-slate-500">${doc.status}</p>
-          </div>
-          <button aria-label="Download ${doc.title}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2">
-            <i data-lucide="download" class="h-4 w-4" aria-hidden="true"></i>Download
-          </button>
-        </li>
-      `).join('');
-    }
 
     // Recommendations block removed by requirement
 
