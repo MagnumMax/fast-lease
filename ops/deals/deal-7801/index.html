@@ -17,136 +17,36 @@
     <div class="flex-1">
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="bg-slate-50">
-      <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
-          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Deal</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">FL-2042 · Bentley Continental GT</h1>
-                <p class="text-sm text-slate-500">Client — Maxime Dupont. Created — January 14, 2025.</p>
+        <div class="mx-auto w-full max-w-6xl space-y-6 lg:ml-0 lg:mr-auto">
+          <div id="deal-component"></div>
+
+
+
+          <section class="grid gap-6 lg:grid-cols-2">
+            <article class="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 class="text-sm font-semibold text-slate-800">Client Profile</h2>
+              <dl class="mt-3 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+                <div><dt>Name</dt><dd class="font-medium text-slate-900">Maxime Dupont</dd></div>
+                <div><dt>Phone</dt><dd class="font-medium text-slate-900">+7 999 123-45-67</dd></div>
+                <div><dt>Email</dt><dd class="font-medium text-slate-900">maxime.dupont@fastlease.io</dd></div>
+                <div><dt>Scoring Score</dt><dd class="font-medium text-emerald-600">92/100</dd></div>
+              </dl>
+              <div class="mt-4 rounded-xl bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
+                <p>The client has a completed deal from 2023. No delinquencies recorded.</p>
               </div>
-              <div class="flex items-center gap-3">
-                <span class="badge badge-warning">Act Signing</span>
-                <button class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
-                  <i data-lucide="bell-ring" class="h-4 w-4"></i>
-                  Watch
-                </button>
-              </div>
-            </div>
-            <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Stage</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">Vehicle Handover</p>
-              </div>
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Responsible</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">Maria Trofimova</p>
-              </div>
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">SLA</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">12 hours</p>
-              </div>
-              <div class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Auto-debit</p>
-                <p class="mt-2 text-lg font-semibold text-slate-900">Ready</p>
-              </div>
-            </div>
+            </article>
+            <div id="key-information-component"></div>
           </section>
 
-          <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-4 md:flex-row md:items-center md:justify-between">
-              <div class="flex flex-wrap items-center gap-2">
-                <button data-tab="summary" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Summary</button>
-                <button data-tab="client" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Client</button>
-                <button data-tab="car" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Vehicle</button>
-                <button data-tab="docs" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">Documents</button>
-                <button data-tab="history" class="deal-tab rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100">History</button>
-              </div>
-              <div class="flex items-center gap-3 text-xs text-slate-500">
-                <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-600"><i data-lucide="sparkles" class="h-3.5 w-3.5"></i>AI check passed</span>
-                <a href="../../../client/invoices/index.html" class="ml-auto inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                  <i data-lucide="chevrons-right" class="h-4 w-4"></i>
-                  Next step: invoice payment
-                </a>
-              </div>
+          <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <div id="documents-component"></div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-slate-900">History</h2>
             </div>
-
-            <div class="space-y-6 p-6">
-              <div data-tab="summary" class="tab-panel space-y-6">
-                <div class="grid gap-6 lg:grid-cols-2">
-                  <article class="rounded-2xl border border-slate-200 bg-white p-5">
-                    <h2 class="text-sm font-semibold text-slate-800">Key Metrics</h2>
-                    <dl class="mt-4 space-y-3 text-sm text-slate-600">
-                      <div class="flex justify-between"><dt>Application sent</dt><dd>14.01.2025 · 10:14</dd></div>
-                      <div class="flex justify-between"><dt>AI scoring</dt><dd>14.01.2025 · 10:19 (4 min)</dd></div>
-                      <div class="flex justify-between"><dt>Documents</dt><dd>14.01.2025 · 11:05</dd></div>
-                      <div class="flex justify-between"><dt>Handover</dt><dd>Scheduled 15.01.2025 · 18:00</dd></div>
-                    </dl>
-                  </article>
-                  <article class="rounded-2xl border border-slate-200 bg-white p-5">
-                    <h2 class="text-sm font-semibold text-slate-800">Next Actions</h2>
-                    <ul class="mt-3 space-y-3 text-sm text-slate-600" id="next-actions"></ul>
-                  </article>
-                </div>
-              </div>
-
-              <div data-tab="client" class="tab-panel hidden space-y-6">
-                <article class="rounded-2xl border border-slate-200 bg-white p-5">
-                  <h2 class="text-sm font-semibold text-slate-800">Client Profile</h2>
-                  <dl class="mt-3 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
-                    <div><dt>Name</dt><dd class="font-medium text-slate-900">Maxime Dupont</dd></div>
-                    <div><dt>Phone</dt><dd class="font-medium text-slate-900">+7 999 123-45-67</dd></div>
-                    <div><dt>Email</dt><dd class="font-medium text-slate-900">maxime.dupont@fastlease.io</dd></div>
-                    <div><dt>Scoring Score</dt><dd class="font-medium text-emerald-600">92/100</dd></div>
-                  </dl>
-                  <div class="mt-4 rounded-xl bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
-                    <p>The client has a completed deal from 2023. No delinquencies recorded.</p>
-                  </div>
-                </article>
-              </div>
-
-              <div data-tab="car" class="tab-panel hidden space-y-6">
-                <article class="rounded-2xl border border-slate-200 bg-white p-5">
-                  <h2 class="text-sm font-semibold text-slate-800">Vehicle Data</h2>
-                  <dl class="mt-3 space-y-3 text-sm text-slate-600">
-                    <div class="flex justify-between"><dt>VIN</dt><dd>R1T-2204</dd></div>
-                    <div class="flex justify-between"><dt>Mileage</dt><dd>18 400 km</dd></div>
-                    <div class="flex justify-between"><dt>Last Service</dt><dd>12.01.2025</dd></div>
-                    <div class="flex justify-between"><dt>Odoo Link</dt><dd><a href="#" class="text-slate-900 hover:underline">Open Card</a></dd></div>
-                  </dl>
-                </article>
-              </div>
-
-              <div data-tab="docs" class="tab-panel hidden space-y-4">
-                <div id="documents"></div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                  <h3 class="text-sm font-semibold text-slate-800">Document Upload</h3>
-                  <p class="mt-1 text-xs text-slate-500">Allowed types: PDF, JPG, PNG, DOC, DOCX. Maximum size: 5MB.</p>
-                  <div class="mt-3 flex items-center gap-4">
-                    <select id="doc-type" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600">
-                      <option value="">Select document type</option>
-                      <option value="Passport">Passport</option>
-                      <option value="Leasing Agreement">Leasing Agreement</option>
-                      <option value="Income Statement">Income Statement</option>
-                      <option value="Vehicle Photo">Vehicle Photo</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    <input type="file" id="file-upload" class="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,application/pdf,image/*">
-                    <button id="trigger-upload" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
-                      <i data-lucide="upload" class="h-4 w-4"></i>
-                      Upload Document
-                    </button>
-                    <span id="file-name" class="text-sm text-slate-500"></span>
-                  </div>
-                  <p id="upload-error" class="mt-2 text-xs text-red-600 hidden"></p>
-                  <p id="upload-success" class="mt-2 text-xs text-green-700 hidden"></p>
-                </div>
-              </div>
-
-              <div data-tab="history" class="tab-panel hidden space-y-3">
-                <ul id="timeline" class="space-y-3"></ul>
-              </div>
-            </div>
+            <ul id="timeline" class="mt-4 space-y-3"></ul>
           </section>
         </div>
       </main>
@@ -163,8 +63,12 @@
       return { ...sharedMod };
     }
 
+    const { mountDealComponent } = await import('../../../components/deal-component.js');
+    const { mountKeyInformationComponent } = await import('../../../components/key-information-component.js');
+    const { mountDocumentsComponent } = await import('../../../components/documents-component.js');
+
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, bindTabs, formatDate } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate } = shared;
     const { opsNav } = shared;
 
     const basePath = '../../..';
@@ -179,97 +83,49 @@
       basePath,
     });
 
-    bindTabs({ triggersSelector: '.deal-tab', panelsSelector: '[data-tab]' });
-    document.querySelector('[data-tab="summary"]').classList.add('bg-slate-900', 'text-white');
+    const nextPayment = formatDate('2025-02-15');
 
-    const actions = [
-      'Confirm handover act (client signature)',
-      'Check telematics after handover',
-      'Schedule first payment for 15.02',
-    ];
+    mountDealComponent('deal-component', {
+      dealId: 'FL-2042',
+      vehicleName: 'Bentley Continental GT',
+      status: 'Act Signing',
+      description: 'Client — Maxime Dupont. Created — January 14, 2025.',
+      imageUrl: '../../../assets/images/bentley-bw.jpg',
+      imageAlt: 'Bentley Continental GT exterior',
+      monthlyPayment: formatCurrency(4200),
+      nextPayment,
+      dueAmount: formatCurrency(18000),
+    });
 
-    document.getElementById('next-actions').innerHTML = actions
-      .map(
-        (action) => `
-        <li class="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
-          <i data-lucide="check-square" class="h-4 w-4 text-slate-400"></i>
-          <span>${action}</span>
-        </li>
-      `
-      )
-      .join('');
+    mountKeyInformationComponent('key-information-component', {
+      title: 'Key information',
+      items: [
+        { label: 'VIN', value: 'R1T-2204' },
+        { label: 'Program Term', value: '36 months' },
+        { label: 'Issue Date', value: '14.01.2025' },
+        { label: 'Mileage', value: '18 400 km' },
+        { label: 'Last Service', value: '12.01.2025' },
+        { label: 'Odoo Card', value: '<a href="#" class="text-slate-900 hover:underline">Open Card</a>' },
+      ],
+    });
 
     const docs = [
-      { name: 'Leasing Agreement', status: 'Signed', updatedAt: '2025-01-14 11:22' },
-      { name: 'EU Passport', status: 'AI check passed', updatedAt: '2025-01-14 10:19' },
-      { name: 'Income Statement', status: 'Requires update', updatedAt: '2025-01-13 09:55' },
-    ];
+       { title: 'Leasing Agreement', status: 'Signed · updated 14 Jan 2025 11:22' },
+       { title: 'EU Passport', status: 'AI check passed · updated 14 Jan 2025 10:19' },
+       { title: 'Income Statement', status: 'Requires update · updated 13 Jan 2025 09:55' },
+       { title: 'Payment schedule (update)', status: 'Version 02/2025' },
+       { title: 'Delivery acceptance form', status: 'Signature pending' },
+       { title: 'Registration Certificate (Mulkiya)', status: 'Valid until 12.12.2025' },
+       { title: 'Insurance Policy', status: 'Version 2025' },
+       { title: 'Inspection Protocol', status: 'Passed 01.2025' },
+       { title: 'Vehicle Usage Rules', status: 'Current' }
+     ];
 
-    document.getElementById('documents').innerHTML = docs
-      .map(
-        (doc) => `
-        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-          <div>
-            <p class="text-sm font-medium text-slate-900">${doc.name}</p>
-            <p class="text-xs text-slate-500">${doc.status}</p>
-          </div>
-          <div class="text-xs text-slate-400">${doc.updatedAt}</div>
-        </div>
-      `
-      )
-      .join('');
+    mountDocumentsComponent('documents-component', {
+      title: 'Documents',
+      documents: docs,
+    });
 
-    // Upload interactions & validation
-    const uploadTrigger = document.getElementById('trigger-upload');
-    const uploadInput = document.getElementById('file-upload');
-    const uploadError = document.getElementById('upload-error');
-    const uploadSuccess = document.getElementById('upload-success');
-    const docTypeSelect = document.getElementById('doc-type');
-
-    if (uploadTrigger && uploadInput) {
-      uploadTrigger.addEventListener('click', () => uploadInput.click());
-
-      uploadInput.addEventListener('change', (e) => {
-        const file = e.target.files && e.target.files[0];
-        const type = docTypeSelect ? docTypeSelect.value : '';
-        const fileNameEl = document.getElementById('file-name');
-        if (!file) return;
-
-        // Reset messages
-        uploadError.classList.add('hidden');
-        uploadSuccess.classList.add('hidden');
-        if (fileNameEl) fileNameEl.textContent = `Selected file: ${type ? type + ': ' : ''}${file.name}`;
-
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedExt = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
-        const ext = (file.name.split('.').pop() || '').toLowerCase();
-        const isAllowed = allowedExt.includes(ext);
-
-        if (!isAllowed) {
-          uploadError.textContent = 'Invalid file format. Allowed: PDF, JPG, PNG, DOC, DOCX.';
-          uploadError.classList.remove('hidden');
-          uploadInput.value = '';
-          return;
-        }
-        if (file.size > maxSize) {
-          uploadError.textContent = 'File too large. Maximum size — 5MB.';
-          uploadError.classList.remove('hidden');
-          uploadInput.value = '';
-          return;
-        }
-
-        // Simulate persisting uploaded doc
-        try {
-          const key = 'deal-7801-uploads';
-          const prev = JSON.parse(localStorage.getItem(key) || '[]');
-          prev.push({ name: file.name, type: type || 'Document', size: file.size, ts: Date.now() });
-          localStorage.setItem(key, JSON.stringify(prev));
-        } catch {}
-
-        uploadSuccess.textContent = 'Document uploaded and sent for verification.';
-        uploadSuccess.classList.remove('hidden');
-      });
-    }
 
     const events = [
       { date: '2025-01-14 12:05', text: 'Vehicle handover scheduled for 15.01 18:00', icon: 'calendar-check' },

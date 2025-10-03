@@ -19,19 +19,7 @@
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="bg-slate-50">
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
-          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Vehicle</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Rolls-Royce Cullinan · VIN AAX-341</h1>
-                <p class="text-sm text-slate-500">Year of manufacture — 2024 · Luxury SUV · Cost AED 2 000 000</p>
-              </div>
-              <a href="#" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
-                <i data-lucide="external-link" class="h-4 w-4"></i>
-                Open in Odoo
-              </a>
-            </div>
-          </section>
+          <div id="vehicle-component-container"></div>
 
           <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -69,6 +57,9 @@
       return { ...sharedMod };
     }
 
+    // Import components
+    const vehicleComponent = await import('../../../components/vehicle-component.js');
+
     const shared = await getShared('../../../assets');
     const { mountSidebar, mountHeader, applyIcons, mountMobileBottomNav } = shared;
     const { opsNav } = shared;
@@ -89,6 +80,32 @@
       activePath: '/ops/cars/index.html',
       basePath,
     });
+
+    // Mount vehicle component
+    vehicleComponent.mountVehicleComponent('vehicle-component-container', {
+      title: 'Vehicle',
+      subtitle: 'Year of manufacture — 2024 · Luxury SUV · Cost AED 2 000 000',
+      image: '../../../assets/images/rolls-royce-cullinan-exterior.jpg',
+      specs: [
+        { label: 'Engine Type', value: 'Dual Motor' },
+        { label: 'Range', value: '520 km' },
+        { label: 'Mileage', value: '12 800 km' },
+        { label: 'Battery Condition', value: '97%' },
+      ],
+    });
+
+    // Update vehicle data
+    vehicleComponent.updateVehicleData(
+      'Rolls-Royce Cullinan · VIN AAX-341',
+      'Year of manufacture — 2024 · Luxury SUV · Cost AED 2 000 000',
+      '../../../assets/images/rolls-royce-cullinan-exterior.jpg',
+      [
+        { label: 'Engine Type', value: 'Dual Motor' },
+        { label: 'Range', value: '520 km' },
+        { label: 'Mileage', value: '12 800 km' },
+        { label: 'Battery Condition', value: '97%' },
+      ]
+    );
 
     const docs = [
       { title: 'Registration Card', status: 'Scan confirmed', icon: 'id-card' },
