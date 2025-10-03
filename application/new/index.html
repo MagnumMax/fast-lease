@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Новая заявка</title>
+  <title>Fast Lease — New Application</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -18,7 +18,7 @@
         <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white font-semibold">FL</div>
         <div>
           <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Fast Lease</p>
-          <p class="text-base font-semibold text-slate-900">Новая заявка</p>
+          <p class="text-base font-semibold text-slate-900">New Application</p>
         </div>
       </a>
       
@@ -29,16 +29,16 @@
     <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Пошаговый процесс</p>
-          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Заполните и загрузите данные</h1>
-          <p class="text-sm text-slate-500">Мы подскажем, если какой-то документ не пройдет проверку качества.</p>
+          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Step-by-step process</p>
+          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Complete details and upload documents</h1>
+          <p class="text-sm text-slate-500">We'll notify you if any document fails quality check.</p>
         </div>
         <div class="text-sm text-slate-600">
-          Прогресс: <span id="step-progress" class="font-semibold text-slate-900">1/3</span>
+          Progress: <span id="step-progress" class="font-semibold text-slate-900">1/3</span>
         </div>
       </div>
 
-      <!-- Выбранная модель: бейдж -->
+      <!-- Selected Model: badge -->
       <div id="selected-car-badge" class="mt-4"></div>
 
       <div class="mt-6 grid gap-6 lg:grid-cols-[240px_auto]">
@@ -47,27 +47,27 @@
           <div data-step="profile" class="step-panel space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
               <label class="space-y-1 text-sm text-slate-600">
-                Имя
-                <input type="text" required placeholder="Иван" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+                First Name
+                <input type="text" required placeholder="John" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
               </label>
               <label class="space-y-1 text-sm text-slate-600">
-                Фамилия
-                <input type="text" required placeholder="Иванов" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+                Last Name
+                <input type="text" required placeholder="Doe" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
               </label>
               <label class="space-y-1 text-sm text-slate-600">
-                Дата рождения
+                Date of Birth
                 <input type="date" required class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
               </label>
               <label class="space-y-1 text-sm text-slate-600">
-                Город проживания
+                City of Residence
                 <select required class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900">
-                  <option value="" disabled selected>Выберите город</option>
-                  <option>Дубай</option>
-                  <option>Абу-Даби</option>
-                  <option>Шарджа</option>
-                  <option>Аджман</option>
-                  <option>Рас-эль-Хайма</option>
-                  <option>Фуджейра</option>
+                  <option value="" disabled selected>Select City</option>
+                  <option>Dubai</option>
+                  <option>Abu Dhabi</option>
+                  <option>Sharjah</option>
+                  <option>Ajman</option>
+                  <option>Ras Al Khaimah</option>
+                  <option>Fujairah</option>
                 </select>
               </label>
               <label class="space-y-1 text-sm text-slate-600">
@@ -75,46 +75,46 @@
                 <input type="email" required autocomplete="email" inputmode="email" placeholder="ivan@example.com" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
               </label>
               <label class="space-y-1 text-sm text-slate-600">
-                Номер телефона
+                Phone Number
                 <input type="tel" required autocomplete="tel" inputmode="tel" pattern="^\+?[0-9][0-9\s\-]{7,}$" placeholder="+971 50 123 4567" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
               </label>
               <fieldset class="space-y-2 sm:col-span-2">
-                <legend class="text-sm font-medium text-slate-700">Статус проживания</legend>
+                <legend class="text-sm font-medium text-slate-700">Residency Status</legend>
                 <div class="flex items-center gap-6 text-sm text-slate-700">
                   <label class="inline-flex items-center gap-2">
                     <input type="radio" name="residency-status" value="resident" class="rounded border-slate-300 text-slate-900 focus:ring-slate-900" checked />
-                    Резидент ОАЭ
+                    UAE Resident
                   </label>
                   <label class="inline-flex items-center gap-2">
                     <input type="radio" name="residency-status" value="nonresident" class="rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
-                    Нерезидент
+                    Non-Resident
                   </label>
                 </div>
-                <p class="text-xs text-slate-500">Мы подберем перечень документов в зависимости от статуса.</p>
+                <p class="text-xs text-slate-500">We'll select the list of documents based on your status.</p>
               </fieldset>
             </div>
           </div>
 
           <div data-step="documents" class="step-panel hidden space-y-4">
-            <p class="text-sm text-slate-600">Загрузите обязательные документы. Дополнительные можно предоставить по запросу.</p>
+            <p class="text-sm text-slate-600">Upload required documents. Additional ones can be provided upon request.</p>
             <div class="space-y-6" id="documents-list"></div>
           </div>
 
           <div data-step="summary" class="step-panel hidden space-y-4">
             <article class="rounded-xl bg-slate-50/80 p-5">
-              <h2 class="text-sm font-semibold text-slate-800">Сводка</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Summary</h2>
               <ul class="mt-3 space-y-2 text-sm text-slate-600" id="summary-list"></ul>
             </article>
-            <p class="text-sm text-slate-500">После отправки заявки менеджер проверит данные и подготовит договор. Вы сможете подписать его онлайн.</p>
+            <p class="text-sm text-slate-500">After submission, a manager will verify the data and prepare the contract. You can sign it online.</p>
           </div>
 
           <div class="flex items-center justify-between">
             <button type="button" id="step-back" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-900">
               <i data-lucide="arrow-left" class="h-4 w-4"></i>
-              Назад
+              Back
             </button>
             <button type="button" id="step-next" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-              Далее
+              Next
               <i data-lucide="arrow-right" class="h-4 w-4"></i>
             </button>
           </div>
@@ -137,9 +137,9 @@
     const { applyIcons, formatCurrency, loadPricing } = shared;
 
     const steps = [
-      { id: 'profile', title: 'Личные данные', description: 'Паспорт, контакты, адрес проживания, статус' },
-      { id: 'documents', title: 'Документы', description: 'Перечень и загрузка необходимых документов' },
-      { id: 'summary', title: 'Подтверждение', description: 'Проверьте данные перед отправкой' },
+      { id: 'profile', title: 'Personal Information', description: 'Passport, contacts, residence address, status' },
+      { id: 'documents', title: 'Documents', description: 'List and upload of required documents' },
+      { id: 'summary', title: 'Confirmation', description: 'Review data before submission' },
     ];
 
     let currentStepIndex = 0;
@@ -175,20 +175,20 @@
       });
       document.getElementById('step-back').disabled = currentStepIndex === 0;
       document.getElementById('step-back').classList.toggle('opacity-50', currentStepIndex === 0);
-      document.getElementById('step-next').textContent = currentStepIndex === steps.length - 1 ? 'Отправить заявку' : 'Далее';
+      document.getElementById('step-next').textContent = currentStepIndex === steps.length - 1 ? 'Submit Application' : 'Next';
       renderStepper();
     }
 
     document.getElementById('step-next').addEventListener('click', () => {
       if (currentStepIndex === steps.length - 1) {
         const button = document.getElementById('step-next');
-        button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Отправляем заявку</span>';
+        button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Submitting Application</span>';
         setTimeout(() => {
           window.location.href = '../submitted/index.html';
         }, 800);
         return;
       }
-      // Проверка обязательных полей на первом шаге перед переходом
+      // Validation of required fields on first step before proceeding
       if (currentStepIndex === 0) {
         const profilePanel = document.querySelector('[data-step="profile"]');
         const requiredFields = profilePanel.querySelectorAll('input[required], select[required]');
@@ -196,7 +196,7 @@
         for (const field of requiredFields) {
           const isTextEmpty = field.tagName === 'INPUT' && field.type === 'text' && field.value.trim() === '';
           if (!field.checkValidity() || isTextEmpty) {
-            field.setCustomValidity('Заполните это поле');
+            field.setCustomValidity('Please fill in this field');
             field.reportValidity();
             setTimeout(() => field.setCustomValidity(''), 0);
             return;
@@ -217,7 +217,7 @@
     const residencyRadios = document.querySelectorAll('input[name="residency-status"]');
     const documentsList = document.getElementById('documents-list');
 
-    // Делегирование: при клике на кнопку "Загрузить" открыть диалог выбора файла
+    // Delegation: on click of "Upload" button, open file selection dialog
     documentsList.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-file-id]');
       if (!btn) return;
@@ -228,7 +228,7 @@
       }
     });
 
-    // Показывать имя выбранного файла рядом с кнопкой
+    // Show selected file name next to the button
     documentsList.addEventListener('change', (e) => {
       const input = e.target;
       if (!(input instanceof HTMLInputElement) || input.type !== 'file') return;
@@ -246,20 +246,20 @@
 
     function getRequiredDocuments(status) {
       const common = [
-        { id: 'passport', name: 'Паспорт (первая страница и виза/штамп о въезде)', note: '' },
-        { id: 'proof-of-address', name: 'Доказательство проживания (utility bill / tenancy contract)', note: '' },
-        { id: 'bank-statement', name: 'Выписка из банка за 3–6 месяцев', note: '' },
-        { id: 'income-letter', name: 'Справка о доходах или письмо от работодателя', note: '' },
+        { id: 'passport', name: 'Passport (first page and visa/stamp of entry)', note: '' },
+        { id: 'proof-of-address', name: 'Proof of Residence (utility bill / tenancy contract)', note: '' },
+        { id: 'bank-statement', name: 'Bank statement for 3–6 months', note: '' },
+        { id: 'income-letter', name: 'Income certificate or letter from employer', note: '' },
       ];
 
       const residentOnly = [
-        { id: 'emirates-id', name: 'Emirates ID (для резидентов)', note: '' },
-        { id: 'aecb', name: 'Кредитный отчёт (Al Etihad Credit Bureau, при необходимости)', note: 'Иногда требуется для резидентов' },
-        { id: 'driver-license', name: 'Водительское удостоверение (ОАЭ или международное)', note: '' },
+        { id: 'emirates-id', name: 'Emirates ID (for residents)', note: '' },
+        { id: 'aecb', name: 'Credit report (Al Etihad Credit Bureau, if required)', note: 'Sometimes required for residents' },
+        { id: 'driver-license', name: 'Driver license (UAE or international)', note: '' },
       ];
 
       const nonResidentOnly = [
-        { id: 'foreign-license', name: 'Заграничные водительские права', note: 'Может потребоваться перевод/подтверждение' },
+        { id: 'foreign-license', name: 'International driver license', note: 'May require translation/verification' },
       ];
 
       if (status === 'resident') {
@@ -289,7 +289,7 @@
               <span class="text-xs text-slate-500" data-file-name-for="${doc.id}"></span>
               <button type="button" data-file-id="file-${doc.id}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
                 <i data-lucide="upload" class="h-4 w-4"></i>
-                Загрузить
+                Upload
               </button>
             </div>
           </div>
@@ -298,7 +298,7 @@
 
       const requiredSection = `
         <article>
-          <h3 class="text-sm font-semibold text-slate-800">Обязательные документы</h3>
+          <h3 class="text-sm font-semibold text-slate-800">Required Documents</h3>
           <div class="mt-3 space-y-3">
             ${requiredDocs.map(doc => renderDocItem(doc)).join('')}
           </div>
@@ -307,7 +307,7 @@
 
       const optionalSection = `
         <article>
-          <h3 class="text-sm font-semibold text-slate-800">Дополнительные (не обязательные)</h3>
+          <h3 class="text-sm font-semibold text-slate-800">Additional (not required)</h3>
           <div class="mt-3 space-y-3">
             ${optionalDocs.map(doc => renderDocItem(doc)).join('')}
           </div>
@@ -343,9 +343,9 @@
     const buyout = carId && pricing[carId]?.buyout;
     const monthlyText = typeof monthly === 'number' ? formatCurrency(monthly, 'AED') : '—';
     const buyoutText = typeof buyout === 'number' ? formatCurrency(buyout, 'AED') : '—';
-    const programText = carId ? `${carNames[carId] || carId} · 36 месяцев` : 'Без выбранной модели · 36 месяцев';
+    const programText = carId ? `${carNames[carId] || carId} · 36 months` : 'No model selected · 36 months';
 
-    // Рендер бейджа выбранной модели, если параметр присутствует
+    // Render badge of selected model if parameter is present
     const badgeContainer = document.getElementById('selected-car-badge');
     if (badgeContainer && carId) {
       badgeContainer.innerHTML = `
@@ -353,10 +353,9 @@
           <div class="flex items-center gap-3">
             <span class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
               <i data-lucide="car" class="h-3 w-3"></i>
-              Выбранная модель
+              ${carNames[carId] || carId}
             </span>
-            <span class="text-sm font-semibold text-slate-900">${carNames[carId] || carId}</span>
-            <span class="text-xs text-slate-500">· ${monthlyText}/мес · выкуп ${buyoutText}</span>
+            <span class="text-xs text-slate-500">· ${monthlyText}/month · buyout ${buyoutText}</span>
           </div>
           
         </div>
@@ -365,9 +364,9 @@
     }
 
     summaryList.innerHTML = `
-      <li>Программа: ${programText}</li>
-      <li>Условия: ${monthlyText}/мес · выкуп ${buyoutText}</li>
-      <li>Документы: 2/3 подтверждены AI</li>
+      <li>Program: ${programText}</li>
+      <li>Terms: ${monthlyText}/month · buyout ${buyoutText}</li>
+      <li>Documents: 2/3 confirmed by AI</li>
     `;
 
     updateSteps();

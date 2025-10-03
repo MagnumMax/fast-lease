@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Мой портфель</title>
+  <title>Fast Lease — My Portfolio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -21,16 +21,16 @@
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Мой портфель</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Активы и метрики</h1>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">My Portfolio</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Assets and Metrics</h1>
               </div>
               <div class="flex items-center gap-3">
-                <input type="search" id="portfolio-search" placeholder="Поиск по VIN или модели" class="w-60 rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
+                <input type="search" id="portfolio-search" placeholder="Search by VIN or model" class="w-60 rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" />
                 <select id="portfolio-filter" class="rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900">
-                  <option value="all">Все статусы</option>
-                  <option value="active">В эксплуатации</option>
-                  <option value="pending">На выдаче</option>
-                  <option value="attention">Требует внимания</option>
+                  <option value="all">All statuses</option>
+                  <option value="active">In operation</option>
+                  <option value="pending">Delivery</option>
+                  <option value="attention">Requires attention</option>
                 </select>
               </div>
             </div>
@@ -56,12 +56,12 @@
     const { investorNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Инвестор', items: investorNav, activePath: '/investor/portfolio/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Investor', items: investorNav, activePath: '/investor/portfolio/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Мой портфель',
-      breadcrumbs: ['Инвестор', 'Портфель'],
+      title: 'My Portfolio',
+      breadcrumbs: ['Investor', 'Portfolio'],
       basePath,
     });
 
@@ -73,19 +73,19 @@
     });
 
     const assets = [
-      { vin: 'R1T-2204', car: 'Bentley Continental GT', status: 'В эксплуатации', irr: '10.4%', payout: 'AED 4 400', link: '../../investor/assets/asset-001/index.html', type: 'active' },
-      { vin: 'AAX-341', car: 'Rolls-Royce Cullinan', status: 'На выдаче', irr: '8.9%', payout: 'AED 3 080', link: '../../investor/assets/asset-001/index.html', type: 'pending' },
-      { vin: 'BMW-I4-88', car: 'Ferrari 488 Spider', status: 'В эксплуатации', irr: '9.6%', payout: 'AED 2 680', link: '../../investor/assets/asset-001/index.html', type: 'active' },
-      { vin: 'TES-3P-04', car: 'Lamborghini Huracan', status: 'Требует внимания', irr: '7.8%', payout: 'AED 2 530', link: '../../investor/assets/asset-001/index.html', type: 'attention' },
-      { vin: 'VOL-XC40-12', car: 'Bentley Bentayga', status: 'В эксплуатации', irr: '9.1%', payout: 'AED 2 170', link: '../../investor/assets/asset-001/index.html', type: 'active' },
+      { vin: 'R1T-2204', car: 'Bentley Continental GT', status: 'In operation', irr: '10.4%', payout: 'AED 4 400', link: '../../investor/assets/asset-001/index.html', type: 'active' },
+      { vin: 'AAX-341', car: 'Rolls-Royce Cullinan', status: 'Delivery', irr: '8.9%', payout: 'AED 3 080', link: '../../investor/assets/asset-001/index.html', type: 'pending' },
+      { vin: 'BMW-I4-88', car: 'Ferrari 488 Spider', status: 'In operation', irr: '9.6%', payout: 'AED 2 680', link: '../../investor/assets/asset-001/index.html', type: 'active' },
+      { vin: 'TES-3P-04', car: 'Lamborghini Huracan', status: 'Requires attention', irr: '7.8%', payout: 'AED 2 530', link: '../../investor/assets/asset-001/index.html', type: 'attention' },
+      { vin: 'VOL-XC40-12', car: 'Bentley Bentayga', status: 'In operation', irr: '9.1%', payout: 'AED 2 170', link: '../../investor/assets/asset-001/index.html', type: 'active' },
     ];
 
     const columns = [
       { key: 'vin', label: 'VIN', render: (row) => `<a href="${row.link}" class="text-slate-900 hover:underline">${row.vin}</a>` },
-      { key: 'car', label: 'Модель' },
-      { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
+      { key: 'car', label: 'Model' },
+      { key: 'status', label: 'Status', render: (row) => statusBadge(row.status) },
       { key: 'irr', label: 'IRR' },
-      { key: 'payout', label: 'Последний платёж' },
+      { key: 'payout', label: 'Last payout' },
     ];
 
     let searchValue = '';

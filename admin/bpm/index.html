@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Управление процессами</title>
+  <title>Fast Lease — Process Management</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -21,12 +21,12 @@
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">BPMN процессы</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Управление оркестрацией</h1>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">BPMN Processes</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Orchestration Management</h1>
               </div>
               <button class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 <i data-lucide="plus" class="h-4 w-4"></i>
-                Новый процесс
+                New Process
               </button>
             </div>
             <div class="mt-6" id="process-table"></div>
@@ -34,13 +34,13 @@
 
           <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Редактор диаграммы</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Diagram Editor</h2>
               <div class="mt-4 h-72 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 flex items-center justify-center text-sm text-slate-500">
-                Холст BPMN (drag-and-drop)
+                BPMN Canvas (drag-and-drop)
               </div>
             </article>
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Версии</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Versions</h2>
               <ul id="versions" class="mt-4 space-y-3 text-sm"></ul>
             </article>
           </section>
@@ -64,12 +64,12 @@
     const { adminNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Администратор', items: adminNav, activePath: '/admin/bpm/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Administrator', items: adminNav, activePath: '/admin/bpm/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Управление процессами',
-      breadcrumbs: ['Администрирование', 'BPMN'],
+      title: 'Process Management',
+      breadcrumbs: ['Administration', 'BPMN'],
       items: adminNav,
       activePath: '/admin/bpm/index.html',
       basePath,
@@ -83,27 +83,27 @@
     });
 
     const processes = [
-      { id: 'BPM-01', name: 'Lease-to-own · Клиент', status: 'Активен', version: 'v2.4', updatedAt: '2025-01-12' },
-      { id: 'BPM-02', name: 'Онбординг инвестора', status: 'Черновик', version: 'v1.1', updatedAt: '2025-01-10' },
-      { id: 'BPM-03', name: 'Обработка интеграций', status: 'Активен', version: 'v3.0', updatedAt: '2025-01-08' },
+      { id: 'BPM-01', name: 'Lease Application', status: 'Active', version: 'v2.4', updatedAt: '2025-01-12' },
+      { id: 'BPM-02', name: 'Document Verification', status: 'Draft', version: 'v1.1', updatedAt: '2025-01-10' },
+      { id: 'BPM-03', name: 'Contract Signing', status: 'Active', version: 'v3.0', updatedAt: '2025-01-08' },
     ];
 
     renderTable({
       containerId: 'process-table',
       columns: [
         { key: 'id', label: 'ID' },
-        { key: 'name', label: 'Название' },
-        { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
-        { key: 'version', label: 'Версия' },
-        { key: 'updatedAt', label: 'Обновлено', render: (row) => formatDate(row.updatedAt) },
+        { key: 'name', label: 'Name' },
+        { key: 'status', label: 'Status', render: (row) => statusBadge(row.status) },
+        { key: 'version', label: 'Version' },
+        { key: 'updatedAt', label: 'Updated', render: (row) => formatDate(row.updatedAt) },
       ],
       data: processes,
     });
 
     const versions = [
-      { name: 'v2.4', note: 'Добавлен шаг AI-скоринга документов', date: '2025-01-12' },
-      { name: 'v2.3', note: 'Сокращено время на подписание договора', date: '2024-12-04' },
-      { name: 'v2.2', note: 'Интеграция с телематикой', date: '2024-10-22' },
+      { name: 'v2.4', note: 'Added AI document scoring step', date: '2025-01-12' },
+      { name: 'v2.3', note: 'Reduced contract signing time', date: '2024-12-04' },
+      { name: 'v2.2', note: 'Telematics integration', date: '2024-10-22' },
     ];
 
     document.getElementById('versions').innerHTML = versions

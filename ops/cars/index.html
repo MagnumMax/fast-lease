@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Автомобили</title>
+  <title>Fast Lease — Cars</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -25,18 +25,18 @@
               <div class="flex flex-wrap items-center gap-3 text-sm">
                 <div class="relative">
                   <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
-                  <input id="car-filter-search" type="text" class="w-64 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Поиск автомобиля (VIN/название)" />
+                  <input id="car-filter-search" type="text" class="w-64 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Search car (VIN/name)" />
                 </div>
                 <select id="car-filter-type" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                  <option value="">Все типы</option>
-                  <option>Люксовый SUV</option>
-                  <option>Люксовый седан</option>
-                  <option>Спорткар</option>
-                  <option>Электрокар</option>
+                  <option value="">All types</option>
+                  <option>Luxury SUV</option>
+                  <option>Luxury sedan</option>
+                  <option>Sports car</option>
+                  <option>Electric car</option>
                 </select>
                 <button id="add-car-btn" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
                   <i data-lucide="car" class="h-4 w-4"></i>
-                  Добавить авто
+                  Add car
                 </button>
                 
               </div>
@@ -49,14 +49,14 @@
           <div id="add-car-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
             <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
               <div class="flex items-center justify-between">
-                <h3 class="text-base font-semibold text-slate-900">Добавить автомобиль</h3>
+                <h3 class="text-base font-semibold text-slate-900">Add car</h3>
                 <button id="add-car-close" data-close-modal class="rounded-lg border border-slate-200 p-1 text-slate-600 hover:border-slate-900">
                   <i data-lucide="x" class="h-4 w-4"></i>
                 </button>
               </div>
               <div class="mt-4 space-y-3 text-sm">
                 <label class="block">
-                  <span class="text-slate-700">Название</span>
+                  <span class="text-slate-700">Name</span>
                   <input id="add-car-name" type="text" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Rolls-Royce Cullinan" />
                 </label>
                 <label class="block">
@@ -64,24 +64,24 @@
                   <input id="add-car-vin" type="text" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="ABC-123" />
                 </label>
                 <label class="block">
-                  <span class="text-slate-700">Год</span>
+                  <span class="text-slate-700">Year</span>
                   <input id="add-car-year" type="number" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="2025" />
                 </label>
                 <label class="block">
-                  <span class="text-slate-700">Тип</span>
+                  <span class="text-slate-700">Type</span>
                   <select id="add-car-type" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
-                    <option>Люксовый SUV</option>
-                    <option>Люксовый седан</option>
-                    <option>Спорткар</option>
-                    <option>Электрокар</option>
+                    <option>Luxury SUV</option>
+                    <option>Luxury sedan</option>
+                    <option>Sports car</option>
+                    <option>Electric car</option>
                   </select>
                 </label>
               </div>
               <div class="mt-6 flex items-center justify-end gap-3">
-                <button id="add-car-cancel" data-close-modal class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:border-slate-900">Отмена</button>
+                <button id="add-car-cancel" data-close-modal class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:border-slate-900">Cancel</button>
                 <button id="add-car-save" class="inline-flex items-center gap-2 rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800">
                   <i data-lucide="check" class="h-4 w-4"></i>
-                  Сохранить
+                  Save
                 </button>
               </div>
             </div>
@@ -107,12 +107,12 @@
     const { opsNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/cars/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Operations Manager', items: opsNav, activePath: '/ops/cars/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Автомобили',
-      breadcrumbs: ['Операции', 'Автомобили'],
+      title: 'Cars',
+      breadcrumbs: ['Operations', 'Cars'],
       basePath,
     });
 
@@ -124,11 +124,11 @@
     });
 
     const cars = [
-      { vin: 'AAX-341', name: 'Rolls-Royce Cullinan', year: 2024, type: 'Люксовый SUV', price: 'AED 2 000 000', mileage: '12 800 км', battery: '97%' },
-      { vin: 'BBY-342', name: 'Bentley Continental GT', year: 2024, type: 'Люксовый седан', price: 'AED 1 800 000', mileage: '8 500 км', battery: '98%' },
-      { vin: 'LLY-343', name: 'Lamborghini Huracan', year: 2024, type: 'Спорткар', price: 'AED 1 500 000', mileage: '5 200 км', battery: '96%' },
-      { vin: 'BTY-344', name: 'Bentley Bentayga', year: 2024, type: 'Люксовый SUV', price: 'AED 1 900 000', mileage: '10 200 км', battery: '97%' },
-      { vin: 'TS3-345', name: 'Tesla Model 3', year: 2024, type: 'Электрокар', price: 'AED 800 000', mileage: '15 000 км', battery: '95%' },
+      { vin: 'AAX-341', name: 'Rolls-Royce Cullinan', year: 2024, type: 'Luxury SUV', price: 'AED 2,000,000', mileage: '12,800 km', battery: '97%' },
+      { vin: 'BBY-342', name: 'Bentley Continental GT', year: 2024, type: 'Luxury sedan', price: 'AED 1,800,000', mileage: '8,500 km', battery: '98%' },
+      { vin: 'LLY-343', name: 'Lamborghini Huracan', year: 2024, type: 'Sports car', price: 'AED 1,500,000', mileage: '5,200 km', battery: '96%' },
+      { vin: 'BTY-344', name: 'Bentley Bentayga', year: 2024, type: 'Luxury SUV', price: 'AED 1,900,000', mileage: '10,200 km', battery: '97%' },
+      { vin: 'TS3-345', name: 'Tesla Model 3', year: 2024, type: 'Electric car', price: 'AED 800,000', mileage: '15,000 km', battery: '95%' },
     ];
 
     function nameToId(name) {
@@ -144,15 +144,15 @@
 
     const columns = [
       { key: 'vin', label: 'VIN', render: (row) => `<a href="rolls-royce-cullinan/index.html" class="text-slate-900 hover:underline">${row.vin}</a>` },
-      { key: 'name', label: 'Название' },
-      { key: 'year', label: 'Год' },
-      { key: 'type', label: 'Тип' },
-      { key: 'price', label: 'Стоимость', render: (row) => {
+      { key: 'name', label: 'Name' },
+      { key: 'year', label: 'Year' },
+      { key: 'type', label: 'Type' },
+      { key: 'price', label: 'Cost', render: (row) => {
         const id = nameToId(row.name);
         const cost = pricing[id]?.vehicleCost;
         return typeof cost === 'number' ? formatCurrency(cost, 'AED') : row.price;
       } },
-      { key: 'mileage', label: 'Пробег' },
+      { key: 'mileage', label: 'Mileage' },
     ];
 
     const filters = { query: '', type: '', year: '' };
@@ -193,7 +193,7 @@
       yearSelect.addEventListener('change', () => { filters.year = yearSelect.value; applyFilters(); });
     }
 
-    // Add Car modal interactions (unified via bindModal как на странице задач)
+    // Add Car modal interactions (unified via bindModal as on the tasks page)
     const carModal = document.getElementById('add-car-modal');
     const addCarSave = document.getElementById('add-car-save');
     const addCarName = document.getElementById('add-car-name');
@@ -216,7 +216,7 @@
           year,
           type,
           price: '—',
-          mileage: '0 км',
+          mileage: '0 km',
           battery: '100%'
         };
         cars.push(newCar);
@@ -225,7 +225,7 @@
         if (addCarName) addCarName.value = '';
         if (addCarVin) addCarVin.value = '';
         if (addCarYear) addCarYear.value = '';
-        if (addCarType) addCarType.value = 'Люксовый SUV';
+        if (addCarType) addCarType.value = 'Luxury SUV';
       });
     }
 
@@ -242,12 +242,12 @@
             </div>
             <p class="truncate text-sm text-slate-600">${row.type} · ${row.year}</p>
             <div class="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-600">
-              <span class="inline-flex items-center gap-2"><i data-lucide="badge-dollar-sign" class="h-3.5 w-3.5"></i>Стоимость: ${(() => { const id = nameToId(row.name); const cost = pricing[id]?.vehicleCost; return typeof cost === 'number' ? formatCurrency(cost, 'AED') : row.price; })()}</span>
-              <span class="inline-flex items-center gap-2"><i data-lucide="gauge" class="h-3.5 w-3.5"></i>Пробег: ${row.mileage}</span>
-              <span class="inline-flex items-center gap-2"><i data-lucide="battery" class="h-3.5 w-3.5"></i>Батарея: ${row.battery}</span>
-            </div>
-          </a>
-        `
+              <span class="inline-flex items-center gap-2"><i data-lucide="badge-dollar-sign" class="h-3.5 w-3.5"></i>Cost: ${(() => { const id = nameToId(row.name); const cost = pricing[id]?.vehicleCost; return typeof cost === 'number' ? formatCurrency(cost, 'AED') : row.price; })()}</span>
+              <span class="inline-flex items-center gap-2"><i data-lucide="gauge" class="h-3.5 w-3.5"></i>Mileage: ${row.mileage}</span>
+              <span class="inline-flex items-center gap-2"><i data-lucide="battery" class="h-3.5 w-3.5"></i>Battery: ${row.battery}</span>
+          </div>
+        </a>
+      `
         )
         .join('');
     }

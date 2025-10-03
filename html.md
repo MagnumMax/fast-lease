@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal ERP - Интерактивный прототип</title>
+    <title>Portal ERP - Interactive Prototype</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -83,8 +83,8 @@
                         <svg id="logo-icon" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                         <span id="logo-text">Portal ERP</span>
                     </a>
-                    <!-- Кнопка закрытия мобильного меню -->
-                    <button id="mobile-menu-close" class="lg:hidden rounded-md border w-8 h-8 flex items-center justify-center hover:bg-gray-100" aria-label="Закрыть меню">
+                    <!-- Mobile menu close button -->
+                    <button id="mobile-menu-close" class="lg:hidden rounded-md border w-8 h-8 flex items-center justify-center hover:bg-gray-100" aria-label="Close menu">
                         <i data-lucide="x" class="h-4 w-4"></i>
                     </button>
                 </div>
@@ -100,7 +100,7 @@
         <!-- MAIN CONTENT -->
         <div class="flex flex-col">
             <header class="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-gray-100/40 px-6">
-                <button id="mobile-menu-btn" class="lg:hidden rounded-md border w-8 h-8 flex items-center justify-center" aria-label="Открыть меню">
+                <button id="mobile-menu-btn" class="lg:hidden rounded-md border w-8 h-8 flex items-center justify-center" aria-label="Open menu">
                     <i data-lucide="menu" class="h-4 w-4"></i>
                 </button>
                 <span class="lg:hidden text-lg font-semibold" id="mobile-header-title">Dashboard</span>
@@ -111,26 +111,26 @@
                     <!-- Role Dropdown -->
                     <div class="relative">
                         <button id="role-dropdown-btn" class="flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <span id="current-role-text">Клиент</span>
+                            <span id="current-role-text">Client</span>
                             <i data-lucide="chevron-down" class="h-4 w-4"></i>
                         </button>
                         <div id="role-dropdown-menu" class="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50 hidden">
                             <div class="py-1">
                                 <button data-role="client" class="role-dropdown-item w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
                                     <i data-lucide="user" class="h-4 w-4"></i>
-                                    Клиент
+                                    Client
                                 </button>
                                 <button data-role="investor" class="role-dropdown-item w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
                                     <i data-lucide="trending-up" class="h-4 w-4"></i>
-                                    Инвестор
+                                    Investor
                                 </button>
                                 <button data-role="manager" class="role-dropdown-item w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
                                     <i data-lucide="briefcase" class="h-4 w-4"></i>
-                                    Менеджер
+                                    Manager
                                 </button>
                                 <button data-role="admin" class="role-dropdown-item w-full text-left px-4 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
                                     <i data-lucide="shield" class="h-4 w-4"></i>
-                                    Администратор
+                                    Administrator
                                 </button>
                             </div>
                         </div>
@@ -159,16 +159,16 @@
             { id: 6, name: 'Range Rover Vogue', year: 2023, mileage: 12000, price: '6,200 AED/mo', image: 'https://images.unsplash.com/photo-1628102603399-768f50c371f4?q=80&w=640&auto=format&fit=crop' },
         ],
         deals: [
-            { id: 'DXB-001', car: 'Mercedes-Benz S-Class', status: 'Активна', date: '2023-11-01', statusColor: 'bg-green-100 text-green-800' },
-            { id: 'DXB-002', car: 'Audi Q8', status: 'На рассмотрении', date: '2024-03-15', statusColor: 'bg-yellow-100 text-yellow-800' },
-            { id: 'DXB-003', car: 'BMW X7', status: 'Архив', date: '2021-05-20', statusColor: 'bg-gray-100 text-gray-800' },
+            { id: 'DXB-001', car: 'Mercedes-Benz S-Class', status: 'Active', date: '2023-11-01', statusColor: 'bg-green-100 text-green-800' },
+            { id: 'DXB-002', car: 'Audi Q8', status: 'Under Review', date: '2024-03-15', statusColor: 'bg-yellow-100 text-yellow-800' },
+            { id: 'DXB-003', car: 'BMW X7', status: 'Archive', date: '2021-05-20', statusColor: 'bg-gray-100 text-gray-800' },
         ],
         investorPortfolio: [
-            { id: 'VIN123', car: 'Mercedes-Benz S-Class', status: 'В лизинге', cost: 350000, income: 42000 },
-            { id: 'VIN456', car: 'BMW X7', status: 'Свободен', cost: 420000, income: 0 },
-            { id: 'VIN789', car: 'Audi Q8', status: 'В лизинге', cost: 380000, income: 22800 },
-            { id: 'VIN101', car: 'Toyota Land Cruiser', status: 'На обслуживании', cost: 290000, income: 78000 },
-            { id: 'VIN112', car: 'Porsche Cayenne', status: 'В лизинге', cost: 550000, income: 132000 },
+            { id: 'VIN123', car: 'Mercedes-Benz S-Class', status: 'In Lease', cost: 350000, income: 42000 },
+            { id: 'VIN456', car: 'BMW X7', status: 'Available', cost: 420000, income: 0 },
+            { id: 'VIN789', car: 'Audi Q8', status: 'In Lease', cost: 380000, income: 22800 },
+            { id: 'VIN101', car: 'Toyota Land Cruiser', status: 'Under Maintenance', cost: 290000, income: 78000 },
+            { id: 'VIN112', car: 'Porsche Cayenne', status: 'In Lease', cost: 550000, income: 132000 },
         ],
         kanbanTasks: {
             new: [
@@ -187,68 +187,68 @@
             ]
         },
         registryClients: [
-            { id: 'C001', name: 'Ahmed Al Maktoum', email: 'ahmed.m@email.com', phone: '+971 50 123 4567', status: 'Активный клиент' },
-            { id: 'C002', name: 'John Smith', email: 'j.smith@email.com', phone: '+971 55 987 6543', status: 'Скоринг' },
-            { id: 'C003', name: 'Fatima Al Fahim', email: 'fatima.f@email.com', phone: '+971 52 111 2233', status: 'Новый лид' },
-            { id: 'C004', name: 'Anastasia Volkova', email: 'a.volkova@email.com', phone: '+971 56 444 5566', status: 'Одобрение' },
-            { id: 'C005', name: 'Omar bin Zayed', email: 'omar.z@email.com', phone: '+971 50 777 8899', status: 'Активный клиент' },
+            { id: 'C001', name: 'Ahmed Al Maktoum', email: 'ahmed.m@email.com', phone: '+971 50 123 4567', status: 'Active Client' },
+            { id: 'C002', name: 'John Smith', email: 'j.smith@email.com', phone: '+971 55 987 6543', status: 'Scoring' },
+            { id: 'C003', name: 'Fatima Al Fahim', email: 'fatima.f@email.com', phone: '+971 52 111 2233', status: 'New Lead' },
+            { id: 'C004', name: 'Anastasia Volkova', email: 'a.volkova@email.com', phone: '+971 56 444 5566', status: 'Approval' },
+            { id: 'C005', name: 'Omar bin Zayed', email: 'omar.z@email.com', phone: '+971 50 777 8899', status: 'Active Client' },
         ],
         users: [
-{ id: 1, name: 'Jan Kowalski', email: 'kowalski@portal.erp', role: 'Операционный менеджер' },
-{ id: 2, name: 'Elena Rossi', email: 'rossi@portal.erp', role: 'Администратор' },
-{ id: 3, name: 'Lukas Schmidt', email: 'schmidt@portal.erp', role: 'Руководство' },
+{ id: 1, name: 'Jan Kowalski', email: 'kowalski@portal.erp', role: 'Operations Manager' },
+{ id: 2, name: 'Elena Rossi', email: 'rossi@portal.erp', role: 'Administrator' },
+{ id: 3, name: 'Lukas Schmidt', email: 'schmidt@portal.erp', role: 'Management' },
         ],
         invoices: [
-            { id: 'INV-001', dealId: 'DXB-001', amount: 3500, date: '2024-04-01', status: 'Оплачен', dueDate: '2024-04-01' },
-            { id: 'INV-002', dealId: 'DXB-001', amount: 3500, date: '2024-03-01', status: 'Оплачен', dueDate: '2024-03-01' },
-            { id: 'INV-003', dealId: 'DXB-002', amount: 3800, date: '2024-04-15', status: 'Ожидает', dueDate: '2024-04-15' },
+            { id: 'INV-001', dealId: 'DXB-001', amount: 3500, date: '2024-04-01', status: 'Paid', dueDate: '2024-04-01' },
+            { id: 'INV-002', dealId: 'DXB-001', amount: 3500, date: '2024-03-01', status: 'Paid', dueDate: '2024-03-01' },
+            { id: 'INV-003', dealId: 'DXB-002', amount: 3800, date: '2024-04-15', status: 'Pending', dueDate: '2024-04-15' },
         ],
         supportTickets: [
-            { id: 'T-001', subject: 'Вопрос по документам', status: 'Открыт', date: '2024-03-20', priority: 'Средний' },
-            { id: 'T-002', subject: 'Статус заявки', status: 'Закрыт', date: '2024-03-18', priority: 'Высокий' },
+            { id: 'T-001', subject: 'Document Question', status: 'Open', date: '2024-03-20', priority: 'Medium' },
+            { id: 'T-002', subject: 'Application Status', status: 'Closed', date: '2024-03-18', priority: 'High' },
         ],
         tasks: [
-            { id: 1, title: 'Проверить документы клиента', client: 'Ahmed Al Maktoum', priority: 'Высокий', status: 'В процессе', dueDate: '2024-03-28' },
-            { id: 2, title: 'Одобрить заявку', client: 'Fatima Al Fahim', priority: 'Средний', status: 'Новая', dueDate: '2024-03-29' },
-            { id: 3, title: 'Подготовить договор', client: 'John Smith', priority: 'Высокий', status: 'Новая', dueDate: '2024-03-27' },
+            { id: 1, title: 'Verify client documents', client: 'Ahmed Al Maktoum', priority: 'High', status: 'In Progress', dueDate: '2024-03-28' },
+            { id: 2, title: 'Approve application', client: 'Fatima Al Fahim', priority: 'Medium', status: 'New', dueDate: '2024-03-29' },
+            { id: 3, title: 'Prepare contract', client: 'John Smith', priority: 'High', status: 'New', dueDate: '2024-03-27' },
         ],
         applications: [
-            { id: 'APP-001', client: 'Ahmed Al Maktoum', car: 'Range Rover Vogue', status: 'Черновик', createdAt: '2024-03-25' },
-            { id: 'APP-002', client: 'Fatima Al Fahim', car: 'Porsche Cayenne', status: 'Отправлена', createdAt: '2024-03-24' },
+            { id: 'APP-001', client: 'Ahmed Al Maktoum', car: 'Range Rover Vogue', status: 'Draft', createdAt: '2024-03-25' },
+            { id: 'APP-002', client: 'Fatima Al Fahim', car: 'Porsche Cayenne', status: 'Submitted', createdAt: '2024-03-24' },
         ]
     };
 
     // --- NAVIGATION STRUCTURE ---
     const navConfig = {
         client: [
-            { id: 'client-dashboard', icon: 'home', text: 'Главная' },
-            { id: 'catalog', icon: 'car', text: 'Каталог автомобилей' },
-            { id: 'new-application', icon: 'file-plus', text: 'Заявка' },
-            { id: 'deal-details', icon: 'file-text', text: 'Детали сделки' },
-            { id: 'my-invoices', icon: 'credit-card', text: 'Инвойсы' },
-            { id: 'client-support', icon: 'life-buoy', text: 'Поддержка' },
-            { id: 'client-profile', icon: 'user', text: 'Профиль' },
+            { id: 'client-dashboard', icon: 'home', text: 'Home' },
+            { id: 'catalog', icon: 'car', text: 'Car Catalog' },
+            { id: 'new-application', icon: 'file-plus', text: 'Application' },
+            { id: 'deal-details', icon: 'file-text', text: 'Deal Details' },
+            { id: 'my-invoices', icon: 'credit-card', text: 'Invoices' },
+            { id: 'client-support', icon: 'life-buoy', text: 'Support' },
+            { id: 'client-profile', icon: 'user', text: 'Profile' },
         ],
         investor: [
-            { id: 'investor-dashboard', icon: 'bar-chart-2', text: 'Дашборд' },
-            { id: 'investor-portfolio', icon: 'briefcase', text: 'Мой портфель' },
-            { id: 'investor-reports', icon: 'download', text: 'Финансовые отчеты' },
-            { id: 'investor-profile', icon: 'user', text: 'Профиль' },
+            { id: 'investor-dashboard', icon: 'bar-chart-2', text: 'Dashboard' },
+            { id: 'investor-portfolio', icon: 'briefcase', text: 'My Portfolio' },
+            { id: 'investor-reports', icon: 'download', text: 'Financial Reports' },
+            { id: 'investor-profile', icon: 'user', text: 'Profile' },
         ],
         manager: [
-            { id: 'ops-dashboard', icon: 'layout-dashboard', text: 'Дашборд' },
-            { id: 'ops-kanban', icon: 'trello', text: 'Сделки (Канбан)' },
-            { id: 'ops-tasks', icon: 'check-square', text: 'Таск-менеджер' },
-            { text: 'Справочники', isHeading: true },
-            { id: 'ops-registry-clients', icon: 'users', text: 'Клиенты' },
-            { id: 'ops-registry-fleet', icon: 'car', text: 'Автопарк' },
-            { id: 'ops-registry-investors', icon: 'briefcase', text: 'Инвесторы' },
+            { id: 'ops-dashboard', icon: 'layout-dashboard', text: 'Dashboard' },
+            { id: 'ops-kanban', icon: 'trello', text: 'Deals (Kanban)' },
+            { id: 'ops-tasks', icon: 'check-square', text: 'Task Manager' },
+            { text: 'Directories', isHeading: true },
+            { id: 'ops-registry-clients', icon: 'users', text: 'Clients' },
+            { id: 'ops-registry-fleet', icon: 'car', text: 'Fleet' },
+            { id: 'ops-registry-investors', icon: 'briefcase', text: 'Investors' },
         ],
         admin: [
-            { id: 'admin-bpm', icon: 'git-merge', text: 'Управление процессами' },
-            { id: 'admin-users', icon: 'users', text: 'Управление пользователями' },
-            { id: 'admin-integrations', icon: 'plug', text: 'Интеграции' },
-            { id: 'admin-settings', icon: 'settings', text: 'Настройки' },
+            { id: 'admin-bpm', icon: 'git-merge', text: 'Process Management' },
+            { id: 'admin-users', icon: 'users', text: 'User Management' },
+            { id: 'admin-integrations', icon: 'plug', text: 'Integrations' },
+            { id: 'admin-settings', icon: 'settings', text: 'Settings' },
         ]
     };
 
@@ -256,20 +256,20 @@
     const pageTemplates = {
         // --- Client Pages ---
         'client-dashboard': `
-            <h1 class="text-2xl font-bold mb-6">Добро пожаловать, Клиент!</h1>
+            <h1 class="text-2xl font-bold mb-6">Welcome, Client!</h1>
             <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <div class="lg:col-span-2 rounded-xl border bg-white text-gray-900 shadow p-6">
-                    <h3 class="font-semibold mb-4">Статус текущей заявки</h3>
+                    <h3 class="font-semibold mb-4">Current Application Status</h3>
 
-                    <!-- Быстрый возврат к заявке -->
+                    <!-- Quick return to application -->
                     <div class="mb-4 p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
-                        <button data-page="new-application" class="text-sm text-yellow-800 hover:underline">Продолжить оформление →</button>
+                        <button data-page="new-application" class="text-sm text-yellow-800 hover:underline">Continue Application →</button>
                     </div>
 
                     <div class="relative pl-6">
                         <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
-                        <!-- Этап 1: Заявка подана -->
+                        <!-- Stage 1: Application Submitted -->
                         <div class="relative mb-8">
                             <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-green-600 ring-4 ring-white flex items-center justify-center">
                                 <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -277,49 +277,49 @@
                                 </svg>
                             </div>
                             <div>
-                                <p class="font-semibold text-green-600">✓ Заявка подана</p>
-                                <p class="text-sm text-gray-500">15 Марта, 2024</p>
+                                <p class="font-semibold text-green-600">✓ Application Submitted</p>
+                                <p class="text-sm text-gray-500">March 15, 2024</p>
                             </div>
                         </div>
 
-                        <!-- Этап 2: На рассмотрении -->
+                        <!-- Stage 2: Under Review -->
                         <div class="relative mb-8">
                             <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-blue-600 ring-4 ring-white flex items-center justify-center">
                                 <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                             </div>
                             <div>
-                                <button data-page="client-profile" class="font-semibold text-blue-600 hover:underline">🔄 На рассмотрении</button>
-                                <p class="text-sm text-gray-500">Документы проверяются</p>
+                                <button data-page="client-profile" class="font-semibold text-blue-600 hover:underline">🔄 Under Review</button>
+                                <p class="text-sm text-gray-500">Documents Under Review</p>
                                 <div class="mt-2 p-2 bg-blue-50 rounded-md border-l-4 border-blue-400">
-                                    <p class="text-xs text-blue-700">⏱️ Ожидаемое время обработки: 1-2 рабочих дня</p>
+                                    <p class="text-xs text-blue-700">⏱️ Expected processing time: 1-2 business days</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Этап 3: Одобрение -->
+                        <!-- Stage 3: Approval -->
                         <div class="relative mb-8">
                             <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-300 ring-4 ring-white"></div>
                             <div>
-                                <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">⏳ Одобрение</button>
-                                <p class="text-sm text-gray-400">Ожидает решения</p>
+                                <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">⏳ Approval</button>
+                                <p class="text-sm text-gray-400">Pending decision</p>
                             </div>
                         </div>
 
-                        <!-- Этап 4: Подписание договора -->
+                        <!-- Этап 4: Contract Signing -->
                         <div class="relative">
                             <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-200 ring-4 ring-white"></div>
                             <div>
-                                <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">📄 Подписание договора</button>
-                                <p class="text-sm text-gray-400">Ожидает одобрения</p>
+                                <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">📄 Contract Signing</button>
+                                <p class="text-sm text-gray-400">Pending approval</p>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Прогресс-бар -->
+                    <!-- Progress bar -->
                     <div class="mt-6 pt-6 border-t">
                         <div class="flex justify-between text-sm text-gray-500 mb-2">
-                            <span>Прогресс</span>
-                            <span>2 из 4 этапов</span>
+                            <span>Progress</span>
+                            <span>2 of 4 stages</span>
                         </div>
                         <div class="w-full bg-gray-200 rounded-full h-2">
                             <div class="bg-blue-600 h-2 rounded-full" style="width: 50%"></div>
@@ -328,48 +328,48 @@
                 </div>
 
                 <div class="rounded-xl border bg-white text-gray-900 shadow p-6">
-                     <h3 class="font-semibold mb-4">Предстоящий платеж</h3>
+                     <h3 class="font-semibold mb-4">Upcoming Payment</h3>
                      <p class="text-3xl font-bold text-green-600">3,500 AED</p>
-                     <p class="text-sm text-gray-500 mb-1">по сделке DXB-001 до 01 Апреля, 2024</p>
-                     <p class="text-xs text-gray-400 mb-4">Visa/Mastercard • Без комиссии</p>
-                     <button id="client-pay-now" class="w-full bg-gray-800 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">💳 Оплатить</button>
+                     <p class="text-sm text-gray-500 mb-1">for deal DXB-001 due April 01, 2024</p>
+                     <p class="text-xs text-gray-400 mb-4">Visa/Mastercard • No fees</p>
+                     <button id="client-pay-now" class="w-full bg-gray-800 text-white py-2 rounded-md hover:bg-gray-700 transition-colors">💳 Pay Now</button>
 
                      <div class="mt-6 pt-6 border-t">
-                         <h3 class="font-semibold mb-4">🔔 Уведомления</h3>
+                         <h3 class="font-semibold mb-4">🔔 Notifications</h3>
                          <ul class="space-y-3 text-sm">
                             <li class="p-3 rounded-md bg-green-50 border-l-4 border-green-400">
-                                <p class="text-green-700">✓ Ваша заявка на Audi Q8 принята в обработку</p>
-                                <p class="text-xs text-green-600 mt-1">2 часа назад</p>
+                                <p class="text-green-700">✓ Your Audi Q8 application has been received and is being processed</p>
+                                <p class="text-xs text-green-600 mt-1">2 hours ago</p>
                             </li>
                             <li class="p-3 rounded-md bg-blue-50 border-l-4 border-blue-400">
-                                <p class="text-blue-700">📋 Документы проходят автоматическую проверку</p>
-                                <p class="text-xs text-blue-600 mt-1">15 мин назад</p>
+                                <p class="text-blue-700">📋 Documents are undergoing automatic verification</p>
+                                <p class="text-xs text-blue-600 mt-1">15 min ago</p>
                             </li>
                             <li class="p-3 rounded-md bg-gray-50">
-                                <p class="text-gray-600">💳 Платеж по сделке DXB-001 успешно получен</p>
-                                <p class="text-xs text-gray-500 mt-1">2 дня назад</p>
+                                <p class="text-gray-600">💳 Payment for deal DXB-001 has been successfully received</p>
+                                <p class="text-xs text-gray-500 mt-1">2 days ago</p>
                             </li>
                          </ul>
                      </div>
                 </div>
             </div>
 
-            <!-- Рекомендованные авто -->
+            <!-- Recommended cars -->
             <div class="mt-8">
-                <h3 class="font-semibold mb-4">Рекомендовано для вас</h3>
+                <h3 class="font-semibold mb-4">Recommended for You</h3>
                 <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     ${mockData.cars.slice(0,3).map(car => `
                         <a href="#" data-page="car-details" data-car-id="${car.id}" class="block rounded-xl border bg-white text-gray-900 shadow hover:shadow-lg transition hover:scale-105">
                             <img src="${car.image}" alt="${car.name}" class="rounded-t-xl aspect-[4/3] object-cover w-full">
                             <div class="p-4">
                                 <h4 class="font-medium">${car.name}</h4>
-                                <p class="text-sm text-gray-500">${car.year} • ${car.mileage.toLocaleString()} км</p>
+                                <p class="text-sm text-gray-500">${car.year} • ${car.mileage.toLocaleString()} km</p>
                                 <p class="font-bold text-green-600 mt-2">${car.price}</p>
                                 <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
-                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700">Взнос от 20%</div>
-                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 text-purple-700">Срок до 36 мес</div>
-                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">APR от 5.9%</div>
-                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700">Страховка включена</div>
+                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700">Down payment from 20%</div>
+                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-50 text-purple-700">Term up to 36 months</div>
+                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">APR from 5.9%</div>
+                                    <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 text-amber-700">Insurance included</div>
                                 </div>
                             </div>
                         </a>
@@ -378,15 +378,15 @@
             </div>
         `,
         'catalog': `
-            <h1 class="text-2xl font-bold mb-6">Каталог автомобилей</h1>
+            <h1 class="text-2xl font-bold mb-6">Car Catalog</h1>
 
-            <!-- Фильтры -->
+            <!-- Filters -->
             <div class="rounded-xl border bg-white p-6 shadow mb-6">
                 <div class="grid gap-4 md:grid-cols-3">
                     <div>
-                        <label class="block text-sm font-medium mb-2">Марка автомобиля</label>
+                        <label class="block text-sm font-medium mb-2">Car Brand</label>
                         <select id="brand-filter" class="w-full p-2 border rounded-md">
-                            <option value="">Все марки</option>
+                            <option value="">All Brands</option>
                             <option value="mercedes">Mercedes-Benz</option>
                             <option value="bmw">BMW</option>
                             <option value="audi">Audi</option>
@@ -396,17 +396,17 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Ценовой диапазон</label>
+                        <label class="block text-sm font-medium mb-2">Price Range</label>
                         <div class="flex items-center space-x-2">
-                            <input type="number" id="price-min" placeholder="от 2,000" class="w-full p-2 border rounded-md">
+                            <input type="number" id="price-min" placeholder="from 2,000" class="w-full p-2 border rounded-md">
                             <span>-</span>
-                            <input type="number" id="price-max" placeholder="до 8,000" class="w-full p-2 border rounded-md">
+                            <input type="number" id="price-max" placeholder="to 8,000" class="w-full p-2 border rounded-md">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium mb-2">Год выпуска</label>
+                        <label class="block text-sm font-medium mb-2">Year of Manufacture</label>
                         <select id="year-filter" class="w-full p-2 border rounded-md">
-                            <option value="">Любой год</option>
+                            <option value="">Any Year</option>
                             <option value="2024">2024</option>
                             <option value="2023">2023</option>
                             <option value="2022">2022</option>
@@ -414,26 +414,26 @@
                     </div>
                 </div>
                 <div class="flex justify-between items-center mt-4">
-                    <button id="apply-filters" class="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">Применить фильтры</button>
-                    <button id="reset-filters" class="text-gray-600 hover:text-gray-800 text-sm underline">Сбросить</button>
+                    <button id="apply-filters" class="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors">Apply Filters</button>
+                    <button id="reset-filters" class="text-gray-600 hover:text-gray-800 text-sm underline">Reset</button>
                 </div>
             </div>
 
-            <!-- Результаты поиска -->
+            <!-- Search Results -->
             <div class="flex justify-between items-center mb-4">
-                <p id="results-count" class="text-gray-600">Найдено автомобилей: ${mockData.cars.length}</p>
+                <p id="results-count" class="text-gray-600">Cars found: ${mockData.cars.length}</p>
                 <div class="flex items-center space-x-2">
-                    <label class="text-sm">Сортировка:</label>
+                    <label class="text-sm">Sort by:</label>
                     <select id="sort-select" class="p-2 border rounded-md text-sm">
-                        <option value="price-asc">Цена: по возрастанию</option>
-                        <option value="price-desc">Цена: по убыванию</option>
-                        <option value="year-desc">Сначала новые</option>
-                        <option value="year-asc">Сначала старые</option>
+                        <option value="price-asc">Price: Low to High</option>
+                        <option value="price-desc">Price: High to Low</option>
+                        <option value="year-desc">Newest First</option>
+                        <option value="year-asc">Oldest First</option>
                     </select>
                 </div>
             </div>
 
-            <!-- Сетка автомобилей -->
+            <!-- Car Grid -->
             <div id="cars-grid" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 ${mockData.cars.map(car => `
                     <a href="#" data-page="car-details" data-car-id="${car.id}" class="car-card block rounded-xl border bg-white text-gray-900 shadow hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-105">
@@ -443,8 +443,8 @@
                             <p class="text-sm text-gray-500">${car.year} - ${car.mileage.toLocaleString()} км</p>
                             <p class="font-bold my-2 text-green-600">${car.price}</p>
                             <div class="flex items-center text-xs text-gray-500">
-                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full mr-2">Лизинг</span>
-                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">Доступен</span>
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full mr-2">Leasing</span>
+                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
                             </div>
                         </div>
                     </a>
@@ -452,11 +452,11 @@
             </div>
         `,
         'my-deals': `
-             <h1 class="text-2xl font-bold mb-6">Мои Сделки</h1>
+             <h1 class="text-2xl font-bold mb-6">My Deals</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Автомобиль</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Дата</th><th class="px-6 py-3">Действия</th></tr>
+                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Vehicle</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Date</th><th class="px-6 py-3">Actions</th></tr>
                     </thead>
                     <tbody>
                         ${mockData.deals.map(deal => `
@@ -466,7 +466,7 @@
                                 <td class="px-6 py-4"><span class="px-2 py-1 text-xs font-medium rounded-full ${deal.statusColor}">${deal.status}</span></td>
                                 <td class="px-6 py-4">${deal.date}</td>
                                 <td class="px-6 py-4">
-                                    <button data-page="deal-details" data-deal-id="${deal.id}" class="text-blue-600 hover:underline text-sm">Детали</button>
+                                    <button data-page="deal-details" data-deal-id="${deal.id}" class="text-blue-600 hover:underline text-sm">Details</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -476,29 +476,29 @@
         `,
         // --- Investor Pages ---
         'investor-dashboard': `
-            <h1 class="text-2xl font-bold mb-6">Дашборд Инвестора</h1>
+            <h1 class="text-2xl font-bold mb-6">Investor's Dashboard</h1>
             <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Общий ROI</h3><p class="text-3xl font-bold">14.2%</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Сумма инвестиций</h3><p class="text-3xl font-bold">1,990,000 AED</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Утилизация активов</h3><p class="text-3xl font-bold">80%</p></div>
+                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Total ROI</h3><p class="text-3xl font-bold">14.2%</p></div>
+                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Investment Amount</h3><p class="text-3xl font-bold">1,990,000 AED</p></div>
+                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Asset Utilization</h3><p class="text-3xl font-bold">80%</p></div>
             </div>
             <div class="grid gap-6 mt-6 md:grid-cols-5">
-                <div class="md:col-span-3 rounded-xl border bg-white p-6 shadow"><h3 class="font-semibold mb-4">Динамика доходности</h3><canvas id="investorChart"></canvas></div>
-                <div class="md:col-span-2 rounded-xl border bg-white p-6 shadow"><h3 class="font-semibold mb-4">Статус портфеля</h3>
+                <div class="md:col-span-3 rounded-xl border bg-white p-6 shadow"><h3 class="font-semibold mb-4">Profitability Trends</h3><canvas id="investorChart"></canvas></div>
+                <div class="md:col-span-2 rounded-xl border bg-white p-6 shadow"><h3 class="font-semibold mb-4">Portfolio Status</h3>
                     <ul class="space-y-3">
-                        <li class="flex justify-between"><span>В лизинге</span><span class="font-medium">4 авто</span></li>
-                        <li class="flex justify-between"><span>Свободно</span><span class="font-medium">1 авто</span></li>
-                        <li class="flex justify-between"><span>На обслуживании</span><span class="font-medium">0 авто</span></li>
+                        <li class="flex justify-between"><span>In Lease</span><span class="font-medium">4 vehicles</span></li>
+                        <li class="flex justify-between"><span>Available</span><span class="font-medium">1 vehicle</span></li>
+                        <li class="flex justify-between"><span>Under Maintenance</span><span class="font-medium">0 авто</span></li>
                     </ul>
                 </div>
             </div>
         `,
         'investor-portfolio': `
-             <h1 class="text-2xl font-bold mb-6">Мой портфель</h1>
+             <h1 class="text-2xl font-bold mb-6">My Portfolio</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">VIN</th><th class="px-6 py-3">Автомобиль</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Закуп. стоимость</th><th class="px-6 py-3">Накопленный доход</th></tr>
+                        <tr><th class="px-6 py-3">VIN</th><th class="px-6 py-3">Vehicle</th><th class="px-6 py-3">Status</th><th class="px-6 py-3">Purchase Cost</th><th class="px-6 py-3">Accumulated Income</th></tr>
                     </thead>
                     <tbody>
                         ${mockData.investorPortfolio.map(asset => `
@@ -509,43 +509,43 @@
              </div>
         `,
         'investor-reports': `
-             <h1 class="text-2xl font-bold mb-6">Финансовые отчеты</h1>
+             <h1 class="text-2xl font-bold mb-6">Financial Reports</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow p-6 max-w-md mx-auto">
-                 <h3 class="font-semibold mb-4">Сформировать отчет</h3>
+                 <h3 class="font-semibold mb-4">Generate Report</h3>
                  <div class="space-y-4">
-                    <div><label class="text-sm font-medium">Начало периода</label><input type="date" class="w-full mt-1 p-2 border rounded-md"></div>
-                    <div><label class="text-sm font-medium">Конец периода</label><input type="date" class="w-full mt-1 p-2 border rounded-md"></div>
-                    <button class="w-full bg-gray-800 text-white py-2 rounded-md hover:bg-gray-700">Сформировать и скачать (PDF)</button>
+                    <div><label class="text-sm font-medium">Start Date</label><input type="date" class="w-full mt-1 p-2 border rounded-md"></div>
+                    <div><label class="text-sm font-medium">End Date</label><input type="date" class="w-full mt-1 p-2 border rounded-md"></div>
+                    <button class="w-full bg-gray-800 text-white py-2 rounded-md hover:bg-gray-700">Generate and Download (PDF)</button>
                  </div>
             </div>
         `,
         'investor-profile': `
-             <h1 class="text-2xl font-bold mb-6">Профиль Инвестора</h1>
+             <h1 class="text-2xl font-bold mb-6">Investor's Profile</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow p-6 max-w-2xl mx-auto">
-                 <h3 class="font-semibold mb-4">Контактные данные</h3>
+                 <h3 class="font-semibold mb-4">Contact Information</h3>
                  <p><strong>Имя:</strong> Investor Name</p>
                  <p><strong>Email:</strong> investor@example.com</p>
              </div>
         `,
         // --- Manager Pages ---
         'ops-dashboard': `
-            <h1 class="text-2xl font-bold mb-6">Дашборд Менеджера</h1>
+            <h1 class="text-2xl font-bold mb-6">Manager's Dashboard</h1>
             <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Новые заявки сегодня</h3><p class="text-3xl font-bold">2</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Сделок в работе</h3><p class="text-3xl font-bold">3</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Просрочено задач</h3><p class="text-3xl font-bold text-red-600">0</p></div>
-                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Среднее время сделки</h3><p class="text-3xl font-bold">2.5 дня</p></div>
+                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">New Applications Today</h3><p class="text-3xl font-bold">2</p></div>
+                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Active Deals</h3><p class="text-3xl font-bold">3</p></div>
+                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Overdue Tasks</h3><p class="text-3xl font-bold text-red-600">0</p></div>
+                <div class="rounded-xl border bg-white p-6 shadow"><h3 class="text-sm font-medium text-gray-500">Average Deal Time</h3><p class="text-3xl font-bold">2.5 days</p></div>
             </div>
             <div class="rounded-xl border bg-white p-6 shadow mt-6">
-                <h3 class="font-semibold mb-4">Воронка сделок</h3>
+                <h3 class="font-semibold mb-4">Deal Pipeline</h3>
                 <canvas id="managerChart"></canvas>
             </div>
         `,
         'ops-kanban': `
-            <h1 class="text-2xl font-bold mb-6">Сделки (Канбан)</h1>
+            <h1 class="text-2xl font-bold mb-6">Deals (Kanban)</h1>
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                ${['Новые', 'Скоринг', 'Одобрение', 'Подписание', 'Активна'].map(stage => {
-                    const key = stage === 'Новые' ? 'new' : stage.toLowerCase();
+                ${['New', 'Scoring', 'Approval', 'Signing', 'Active'].map(stage => {
+                    const key = stage === 'New' ? 'new' : stage.toLowerCase();
                     return `
                     <div class="bg-gray-100 rounded-lg p-4">
                         <h3 class="font-semibold mb-4 text-center">${stage} (${mockData.kanbanTasks[key]?.length || 0})</h3>
@@ -562,11 +562,11 @@
             </div>
         `,
         'ops-registry-clients': `
-            <h1 class="text-2xl font-bold mb-6">Справочник: Клиенты</h1>
+            <h1 class="text-2xl font-bold mb-6">Directory: Clients</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Имя</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Телефон</th><th class="px-6 py-3">Статус</th></tr>
+                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Name</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Phone</th><th class="px-6 py-3">Status</th></tr>
                     </thead>
                     <tbody>
                         ${mockData.registryClients.map(client => `
@@ -577,22 +577,22 @@
              </div>
         `,
         'ops-registry-fleet': `
-            <h1 class="text-2xl font-bold mb-6">Справочник: Автопарк</h1>
+            <h1 class="text-2xl font-bold mb-6">Directory: Fleet</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Автомобиль</th><th class="px-6 py-3">Год</th><th class="px-6 py-3">Пробег</th><th class="px-6 py-3">Статус</th></tr>
+                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Vehicle</th><th class="px-6 py-3">Year</th><th class="px-6 py-3">Mileage</th><th class="px-6 py-3">Status</th></tr>
                     </thead>
                     <tbody>
                         ${mockData.cars.map(car => `
-                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">VIN${car.id}</td><td class="px-6 py-4">${car.name}</td><td class="px-6 py-4">${car.year}</td><td class="px-6 py-4">${car.mileage.toLocaleString()} км</td><td class="px-6 py-4">${car.id % 2 === 0 ? 'В лизинге' : 'Свободен'}</td></tr>
+                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">VIN${car.id}</td><td class="px-6 py-4">${car.name}</td><td class="px-6 py-4">${car.year}</td><td class="px-6 py-4">${car.mileage.toLocaleString()} км</td><td class="px-6 py-4">${car.id % 2 === 0 ? 'In Lease' : 'Available'}</td></tr>
                         `).join('')}
                     </tbody>
                 </table>
              </div>
         `,
         'ops-registry-investors': `
-            <h1 class="text-2xl font-bold mb-6">Справочник: Инвесторы</h1>
+            <h1 class="text-2xl font-bold mb-6">Справочник: Investorы</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                      <thead class="text-xs text-gray-700 uppercase bg-gray-50">
@@ -607,34 +607,34 @@
         `,
         // --- Admin Pages ---
         'admin-bpm': `
-            <h1 class="text-2xl font-bold mb-6">Управление процессами (BPMN)</h1>
+            <h1 class="text-2xl font-bold mb-6">Process Management (BPMN)</h1>
             <div class="rounded-xl border bg-white text-gray-900 shadow p-6">
-                <h3 class="font-semibold mb-4">Бизнес-процесс "Лизинговая сделка"</h3>
+                <h3 class="font-semibold mb-4">Бизнес-процесс "Leasingовая сделка"</h3>
                 <div class="bg-gray-50 p-4 rounded-lg">
                     <p class="font-mono text-sm">
-                        StartEvent -> Task (Получение лида из Kommo) -> Task (Скоринг клиента) -> ExclusiveGateway (Одобрено?) -> Task (Подписание договора) -> Task (Выдача авто) -> EndEvent
+                        StartEvent -> Task (Получение лида из Kommo) -> Task (Scoring клиента) -> ExclusiveGateway (Одобрено?) -> Task (Contract Signing) -> Task (Выдача авто) -> EndEvent
                     </p>
                 </div>
-                 <button class="mt-4 bg-gray-800 text-white py-2 px-4 rounded-md hover:bg-gray-700">Редактировать в Camunda</button>
+                 <button class="mt-4 bg-gray-800 text-white py-2 px-4 rounded-md hover:bg-gray-700">Edit in Camunda</button>
             </div>
         `,
          'admin-users': `
-            <h1 class="text-2xl font-bold mb-6">Управление пользователями</h1>
+            <h1 class="text-2xl font-bold mb-6">User Management</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Имя</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Роль</th><th class="px-6 py-3">Действия</th></tr>
+                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Имя</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Роль</th><th class="px-6 py-3">Actions</th></tr>
                     </thead>
                     <tbody>
                         ${mockData.users.map(user => `
-                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${user.id}</td><td class="px-6 py-4">${user.name}</td><td class="px-6 py-4">${user.email}</td><td class="px-6 py-4">${user.role}</td><td class="px-6 py-4"><button class="text-blue-600 hover:underline">Редактировать</button></td></tr>
+                            <tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${user.id}</td><td class="px-6 py-4">${user.name}</td><td class="px-6 py-4">${user.email}</td><td class="px-6 py-4">${user.role}</td><td class="px-6 py-4"><button class="text-blue-600 hover:underline">Edit</button></td></tr>
                         `).join('')}
                     </tbody>
                 </table>
              </div>
         `,
         'admin-integrations': `
-            <h1 class="text-2xl font-bold mb-6">Статус интеграций</h1>
+            <h1 class="text-2xl font-bold mb-6">Integration Status</h1>
             <div class="grid gap-6 md:grid-cols-3">
                 <div class="rounded-xl border bg-white p-6 shadow flex items-center justify-between"><h3 class="font-semibold">Odoo ERP</h3><span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Online</span></div>
                 <div class="rounded-xl border bg-white p-6 shadow flex items-center justify-between"><h3 class="font-semibold">Kommo CRM</h3><span class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">Online</span></div>
@@ -642,30 +642,30 @@
             </div>
         `,
         'admin-settings': `
-             <h1 class="text-2xl font-bold mb-6">Настройки системы</h1>
+             <h1 class="text-2xl font-bold mb-6">System Settings</h1>
              <div class="rounded-xl border bg-white text-gray-900 shadow p-6 max-w-2xl">
                  <h3 class="font-semibold text-lg border-b pb-2 mb-4">Общие</h3>
                  <div class="space-y-4">
-                    <div><label class="text-sm font-medium">Название портала</label><input type="text" value="Portal ERP" class="w-full mt-1 p-2 border rounded-md"></div>
-                    <div><label class="text-sm font-medium">Основной email для уведомлений</label><input type="email" value="notify@portal.erp" class="w-full mt-1 p-2 border rounded-md"></div>
+                    <div><label class="text-sm font-medium">Portal Name</label><input type="text" value="Portal ERP" class="w-full mt-1 p-2 border rounded-md"></div>
+                    <div><label class="text-sm font-medium">Main Email for Notifications</label><input type="email" value="notify@portal.erp" class="w-full mt-1 p-2 border rounded-md"></div>
                  </div>
-                 <h3 class="font-semibold text-lg border-b pb-2 mt-8 mb-4">Безопасность</h3>
+                 <h3 class="font-semibold text-lg border-b pb-2 mt-8 mb-4">Security</h3>
                  <div class="flex items-center justify-between">
-                    <label class="text-sm font-medium">Включить двухфакторную аутентификацию (2FA)</label>
+                    <label class="text-sm font-medium">Enable Two-Factor Authentication (2FA)</label>
                     <button class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200"><span class="inline-block h-4 w-4 transform rounded-full bg-white transition"></span></button>
                  </div>
             </div>
         `,
         // --- Dummy pages for placeholders ---
         'client-profile': `
-            <h1 class="text-2xl font-bold mb-6">Профиль клиента</h1>
+            <h1 class="text-2xl font-bold mb-6">Client Profile</h1>
             <div class="grid gap-6 lg:grid-cols-3">
-                <!-- Личные данные -->
+                <!-- Personal Information -->
                 <div class="lg:col-span-2 rounded-xl border bg-white text-gray-900 shadow p-6">
-                    <h3 class="font-semibold mb-4">Личные данные</h3>
+                    <h3 class="font-semibold mb-4">Personal Information</h3>
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label class="block text-sm font-medium mb-2">Полное имя</label>
+                            <label class="block text-sm font-medium mb-2">Full Name</label>
                             <input id="cp-name" type="text" class="w-full p-3 border rounded-md" placeholder="Ваше полное имя">
                         </div>
                         <div>
@@ -677,51 +677,51 @@
                             <input id="cp-phone" type="tel" class="w-full p-3 border rounded-md" placeholder="+971 XX XXX XXXX">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-2">Гражданство</label>
+                            <label class="block text-sm font-medium mb-2">Nationality</label>
 <input id="cp-nationality" type="text" class="w-full p-3 border rounded-md" placeholder="UAE / EU / ...">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium mb-2">Адрес</label>
-                            <input id="cp-address" type="text" class="w-full p-3 border rounded-md" placeholder="Город, улица, дом, квартира">
+                            <input id="cp-address" type="text" class="w-full p-3 border rounded-md" placeholder="City, street, house, apartment">
                         </div>
                     </div>
                     <div class="flex justify-end mt-6">
-                        <button id="cp-save" class="px-6 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">Сохранить</button>
+                        <button id="cp-save" class="px-6 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">Save</button>
                     </div>
                 </div>
 
-                <!-- Безопасность -->
+                <!-- Security -->
                 <div class="rounded-xl border bg-white text-gray-900 shadow p-6">
-                    <h3 class="font-semibold mb-4">Безопасность</h3>
+                    <h3 class="font-semibold mb-4">Security</h3>
                     <div class="flex items-center justify-between py-2">
-                        <span class="text-sm">Двухфакторная аутентификация (2FA)</span>
+                        <span class="text-sm">Two-Factor Authentication (2FA)</span>
                         <button id="cp-2fa" class="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition">
                             <span id="cp-2fa-thumb" class="inline-block h-4 w-4 transform rounded-full bg-white transition translate-x-1"></span>
                         </button>
                     </div>
                     <div class="mt-4 space-y-3">
-                        <label class="text-sm font-medium">Смена пароля</label>
-                        <input id="cp-pass1" type="password" class="w-full p-3 border rounded-md" placeholder="Новый пароль (мин. 8 символов)">
-                        <input id="cp-pass2" type="password" class="w-full p-3 border rounded-md" placeholder="Повторите пароль">
-                        <button id="cp-change-pass" class="w-full bg-gray-100 text-gray-800 py-2 rounded-md hover:bg-gray-200">Обновить пароль</button>
+                        <label class="text-sm font-medium">Change Password</label>
+                        <input id="cp-pass1" type="password" class="w-full p-3 border rounded-md" placeholder="New Password (min. 8 characters)">
+                        <input id="cp-pass2" type="password" class="w-full p-3 border rounded-md" placeholder="Repeat Password">
+                        <button id="cp-change-pass" class="w-full bg-gray-100 text-gray-800 py-2 rounded-md hover:bg-gray-200">Update Password</button>
                         <div id="cp-pass-msg" class="text-xs mt-1 hidden"></div>
                     </div>
                 </div>
 
-                <!-- Настройки -->
+                <!-- Settings -->
                 <div class="lg:col-span-2 rounded-xl border bg-white text-gray-900 shadow p-6">
-                    <h3 class="font-semibold mb-4">Настройки</h3>
+                    <h3 class="font-semibold mb-4">Settings</h3>
                     <div class="grid gap-4 md:grid-cols-3">
                         <div>
-                            <label class="block text-sm font-medium mb-2">Язык интерфейса</label>
+                            <label class="block text-sm font-medium mb-2">Interface Language</label>
                             <select id="cp-language" class="w-full p-2 border rounded-md">
-                                <option value="ru">Русский</option>
+                                <option value="ru">Russian</option>
                                 <option value="en">English</option>
                                 <option value="ar">العربية</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-2">Часовой пояс</label>
+                            <label class="block text-sm font-medium mb-2">Time Zone</label>
                             <select id="cp-timezone" class="w-full p-2 border rounded-md">
                                 <option value="Asia/Dubai">Asia/Dubai (UTC+4)</option>
                                 <option value="Asia/Dubai">Asia/Abu Dhabi (UTC+4)</option>
@@ -730,14 +730,14 @@
                         </div>
                         <div class="flex items-center gap-2 pt-6">
                             <input id="cp-news" type="checkbox" class="rounded border-gray-300 text-blue-600">
-                            <label for="cp-news" class="text-sm">Получать новости и предложения</label>
+                            <label for="cp-news" class="text-sm">Receive News and Offers</label>
                         </div>
                     </div>
                 </div>
 
-                <!-- Аватар -->
+                <!-- Avatar -->
                 <div class="rounded-xl border bg-white text-gray-900 shadow p-6">
-                    <h3 class="font-semibold mb-4">Аватар</h3>
+                    <h3 class="font-semibold mb-4">Avatar</h3>
                     <div class="flex items-center gap-4">
                         <img id="cp-avatar-preview" src="https://i.pravatar.cc/96" class="w-16 h-16 rounded-full object-cover border" alt="Avatar">
                         <div>
@@ -747,13 +747,13 @@
                     </div>
                 </div>
 
-                <!-- Документы -->
+                <!-- Documents -->
                 <div class="lg:col-span-2 rounded-xl border bg-white text-gray-900 shadow p-6">
-                    <h3 class="font-semibold mb-4">Документы</h3>
+                    <h3 class="font-semibold mb-4">Documents</h3>
                     <div class="flex items-center gap-4">
                         <input id="cp-docs-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" class="text-sm">
                         <select id="cp-docs-category" class="text-sm border rounded px-2 py-1">
-                            <option value="emirates_id">Эмиратская ID (Emirates ID)</option>
+                            <option value="emirates_id">Emirates ID</option>
                             <option value="passport">Паспорт</option>
                             <option value="residency_visa">Резидентская виза</option>
                             <option value="drivers_license">Водительское удостоверение</option>
@@ -775,7 +775,7 @@
                 </div>
             </div>
         `,
-        'admin-ai-settings': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Настройки AI</h1>`,
+        'admin-ai-settings': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Settings AI</h1>`,
         'admin-templates': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Шаблоны</h1>`,
         'admin-logs': `<h1 class="text-2xl font-bold mb-6">Страница в разработке: Логирование</h1>`,
         'car-details': `
@@ -791,7 +791,7 @@
                     <div class="rounded-xl border bg-white p-6 shadow">
                         <h3 class="font-semibold mb-4">Характеристики автомобиля</h3>
                         <div class="space-y-3">
-                            <div class="flex justify-between"><span>Год выпуска:</span><span class="font-medium">2023</span></div>
+                            <div class="flex justify-between"><span>Year of Manufacture:</span><span class="font-medium">2023</span></div>
                             <div class="flex justify-between"><span>Пробег:</span><span class="font-medium">15,000 км</span></div>
                             <div class="flex justify-between"><span>Двигатель:</span><span class="font-medium">3.0L V6 Turbo</span></div>
                             <div class="flex justify-between"><span>Трансмиссия:</span><span class="font-medium">Автомат</span></div>
@@ -801,7 +801,7 @@
                 </div>
                 <div class="space-y-6">
                     <div class="rounded-xl border bg-white p-6 shadow">
-                        <h3 class="font-semibold mb-4">Лизинговый калькулятор</h3>
+                        <h3 class="font-semibold mb-4">Leasingовый калькулятор</h3>
                         <div class="space-y-4">
                             <div class="flex justify-between text-lg"><span>Ежемесячный платеж:</span><span class="font-bold text-green-600">3,500 AED</span></div>
                             <div class="flex justify-between"><span>Срок лизинга:</span><span class="font-medium">36 месяцев</span></div>
@@ -811,7 +811,7 @@
                         <button class="w-full mt-6 bg-gray-800 text-white py-3 rounded-md hover:bg-gray-700">Оформить лизинг</button>
                     </div>
                     <div class="rounded-xl border bg-white p-6 shadow">
-                        <h3 class="font-semibold mb-4">Документы автомобиля</h3>
+                        <h3 class="font-semibold mb-4">Documents автомобиля</h3>
                         <div class="space-y-2">
                             <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
                                 <span class="text-sm">Свидетельство о регистрации</span>
@@ -833,12 +833,12 @@
                     <div class="flex items-center mb-6">
                         <div class="flex items-center space-x-4">
                             <div class="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center text-sm font-bold">1</div>
-                            <span class="font-medium">Личные данные</span>
+                            <span class="font-medium">Personal Information</span>
                         </div>
                         <div class="flex-1 mx-4 h-px bg-gray-200"></div>
                         <div class="flex items-center space-x-4 text-gray-400">
                             <div class="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-sm">2</div>
-                            <span>Документы</span>
+                            <span>Documents</span>
                         </div>
                         <div class="flex-1 mx-4 h-px bg-gray-200"></div>
                         <div class="flex items-center space-x-4 text-gray-400">
@@ -849,7 +849,7 @@
 
                     <div class="space-y-6">
                         <div>
-                            <label class="block text-sm font-medium mb-2">Полное имя</label>
+                            <label class="block text-sm font-medium mb-2">Full Name</label>
                             <input type="text" class="w-full p-3 border rounded-md" placeholder="Введите ваше полное имя">
                         </div>
                         <div>
@@ -891,7 +891,7 @@
             </div>
         `,
         'deal-details': `
-            <h1 id="deal-title" class="text-2xl font-bold mb-6">Детали сделки</h1>
+            <h1 id="deal-title" class="text-2xl font-bold mb-6">Details сделки</h1>
             <div class="grid gap-6 lg:grid-cols-3">
                 <div class="lg:col-span-2 space-y-6">
                     <!-- Summary -->
@@ -932,17 +932,17 @@
 
                     <!-- Application Status -->
                     <div class="rounded-xl border bg-white p-6 shadow">
-                        <h3 class="font-semibold mb-4">Статус текущей заявки</h3>
+                        <h3 class="font-semibold mb-4">Current Application Status</h3>
 
-                        <!-- Быстрый возврат к заявке -->
+                        <!-- Quick return to application -->
                         <div class="mb-4 p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
-                            <button data-page="new-application" class="text-sm text-yellow-800 hover:underline">Продолжить оформление →</button>
+                            <button data-page="new-application" class="text-sm text-yellow-800 hover:underline">Continue Application →</button>
                         </div>
 
                         <div class="relative pl-6">
                             <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-gray-200"></div>
 
-                            <!-- Этап 1: Заявка подана -->
+                            <!-- Stage 1: Application Submitted -->
                             <div class="relative mb-8">
                                 <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-green-600 ring-4 ring-white flex items-center justify-center">
                                     <svg class="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -950,40 +950,40 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="font-semibold text-green-600">✓ Заявка подана</p>
-                                    <p class="text-sm text-gray-500">15 Марта, 2024</p>
+                                    <p class="font-semibold text-green-600">✓ Application Submitted</p>
+                                    <p class="text-sm text-gray-500">March 15, 2024</p>
                                 </div>
                             </div>
 
-                            <!-- Этап 2: На рассмотрении -->
+                            <!-- Stage 2: Under Review -->
                             <div class="relative mb-8">
                                 <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-blue-600 ring-4 ring-white flex items-center justify-center">
                                     <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                                 </div>
                                 <div>
-                                    <button data-page="client-profile" class="font-semibold text-blue-600 hover:underline">🔄 На рассмотрении</button>
-                                    <p class="text-sm text-gray-500">Документы проверяются</p>
+                                    <button data-page="client-profile" class="font-semibold text-blue-600 hover:underline">🔄 Under Review</button>
+                                    <p class="text-sm text-gray-500">Documents Under Review</p>
                                     <div class="mt-2 p-2 bg-blue-50 rounded-md border-l-4 border-blue-400">
-                                        <p class="text-xs text-blue-700">⏱️ Ожидаемое время обработки: 1-2 рабочих дня</p>
+                                        <p class="text-xs text-blue-700">⏱️ Expected processing time: 1-2 business days</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Этап 3: Одобрение -->
+                            <!-- Stage 3: Approval -->
                             <div class="relative mb-8">
                                 <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-300 ring-4 ring-white"></div>
                                 <div>
-                                    <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">⏳ Одобрение</button>
-                                    <p class="text-sm text-gray-400">Ожидает решения</p>
+                                    <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">⏳ Approval</button>
+                                    <p class="text-sm text-gray-400">Pending decision</p>
                                 </div>
                             </div>
 
-                            <!-- Этап 4: Подписание договора -->
+                            <!-- Stage 4: Contract Signing -->
                             <div class="relative">
                                 <div class="absolute -left-[34px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-gray-200 ring-4 ring-white"></div>
                                 <div>
-                                    <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">📄 Подписание договора</button>
-                                    <p class="text-sm text-gray-400">Ожидает одобрения</p>
+                                    <button data-page="deal-details" class="font-semibold text-gray-600 hover:underline">📄 Contract Signing</button>
+                                    <p class="text-sm text-gray-400">Pending approval</p>
                                 </div>
                             </div>
                         </div>
@@ -992,7 +992,7 @@
 
                 <div class="space-y-6">
                     <div class="rounded-xl border bg-white p-6 shadow">
-                        <h3 class="font-semibold mb-4">Документы сделки</h3>
+                        <h3 class="font-semibold mb-4">Documents сделки</h3>
                         <div id="deal-documents-list" class="space-y-2"></div>
                     </div>
                 </div>
@@ -1003,7 +1003,7 @@
             <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Сделка</th><th class="px-6 py-3">Сумма</th><th class="px-6 py-3">Дата</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Действия</th></tr>
+                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Сделка</th><th class="px-6 py-3">Сумма</th><th class="px-6 py-3">Дата</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Actions</th></tr>
                     </thead>
                     <tbody>
                         ${mockData.invoices.map(invoice => `
@@ -1013,7 +1013,7 @@
                                 <td class="px-6 py-4">${invoice.amount.toLocaleString()} AED</td>
                                 <td class="px-6 py-4">${invoice.date}</td>
                                 <td class="px-6 py-4">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${invoice.status === 'Оплачен' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${invoice.status}</span>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${invoice.status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${invoice.status}</span>
                                 </td>
                                 <td class="px-6 py-4">
                                     <button class="text-blue-600 hover:underline text-sm">Оплатить</button>
@@ -1048,7 +1048,7 @@
                             <div class="p-3 border rounded-lg">
                                 <div class="flex justify-between items-start mb-2">
                                     <h4 class="font-medium text-sm">${ticket.subject}</h4>
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${ticket.status === 'Открыт' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${ticket.status}</span>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${ticket.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">${ticket.status}</span>
                                 </div>
                                 <p class="text-xs text-gray-500">${ticket.date} • Приоритет: ${ticket.priority}</p>
                             </div>
@@ -1058,7 +1058,7 @@
             </div>
         `,
         'investor-asset-details': `
-            <h1 class="text-2xl font-bold mb-6">Детали актива VIN123</h1>
+            <h1 class="text-2xl font-bold mb-6">Details актива VIN123</h1>
             <div class="grid gap-6 lg:grid-cols-2">
                 <div class="space-y-6">
                     <div class="rounded-xl border bg-white p-6 shadow">
@@ -1074,8 +1074,8 @@
                     <div class="rounded-xl border bg-white p-6 shadow">
                         <h3 class="font-semibold mb-4">Текущая сделка</h3>
                         <div class="space-y-3">
-                            <div class="flex justify-between"><span>Клиент:</span><span class="font-medium">Omar bin Zayed</span></div>
-                            <div class="flex justify-between"><span>Статус:</span><span class="font-medium text-green-600">Активна</span></div>
+                            <div class="flex justify-between"><span>Client:</span><span class="font-medium">Omar bin Zayed</span></div>
+                            <div class="flex justify-between"><span>Статус:</span><span class="font-medium text-green-600">Active</span></div>
                             <div class="flex justify-between"><span>Ежемесячный платеж:</span><span class="font-medium">3,500 AED</span></div>
                         </div>
                     </div>
@@ -1085,7 +1085,7 @@
                         <h3 class="font-semibold mb-4">Финансовая информация</h3>
                         <div class="space-y-3">
                             <div class="flex justify-between"><span>Стоимость приобретения:</span><span class="font-medium">350,000 AED</span></div>
-                            <div class="flex justify-between"><span>Накопленный доход:</span><span class="font-medium">42,000 AED</span></div>
+                            <div class="flex justify-between"><span>Accumulated Income:</span><span class="font-medium">42,000 AED</span></div>
                             <div class="flex justify-between"><span>Текущая доходность:</span><span class="font-medium text-green-600">12%</span></div>
                         </div>
                     </div>
@@ -1105,7 +1105,7 @@
             <div class="rounded-xl border bg-white text-gray-900 shadow">
                 <table class="w-full text-sm text-left">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Задача</th><th class="px-6 py-3">Клиент</th><th class="px-6 py-3">Приоритет</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Срок</th></tr>
+                        <tr><th class="px-6 py-3">ID</th><th class="px-6 py-3">Задача</th><th class="px-6 py-3">Client</th><th class="px-6 py-3">Приоритет</th><th class="px-6 py-3">Статус</th><th class="px-6 py-3">Срок</th></tr>
                     </thead>
                     <tbody>
                         ${mockData.tasks.map(task => `
@@ -1114,10 +1114,10 @@
                                 <td class="px-6 py-4">${task.title}</td>
                                 <td class="px-6 py-4">${task.client}</td>
                                 <td class="px-6 py-4">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${task.priority === 'Высокий' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${task.priority}</span>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${task.priority === 'High' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${task.priority}</span>
                                 </td>
                                 <td class="px-6 py-4">
-                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${task.status === 'В процессе' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">${task.status}</span>
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full ${task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">${task.status}</span>
                                 </td>
                                 <td class="px-6 py-4">${task.dueDate}</td>
                             </tr>
@@ -1187,7 +1187,7 @@
                         <!-- Register Form -->
                         <div id="register-form" class="hidden p-6 space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Полное имя</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
 <input type="text" id="register-name" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Jan Kowalski">
                                 <div id="register-name-error" class="text-red-500 text-xs mt-1 hidden">Введите ваше полное имя</div>
                             </div>
@@ -1203,7 +1203,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Подтверждение пароля</label>
-                                <input type="password" id="register-confirm-password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Повторите пароль">
+                                <input type="password" id="register-confirm-password" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" placeholder="Repeat Password">
                                 <div id="register-confirm-error" class="text-red-500 text-xs mt-1 hidden">Пароли не совпадают</div>
                             </div>
                             <div class="flex items-start">
@@ -1395,7 +1395,7 @@
                     charts.manager = new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: ['Новые', 'Скоринг', 'Одобрение', 'Подписание', 'Активна'],
+                            labels: ['New', 'Scoring', 'Approval', 'Signing', 'Active'],
                             datasets: [{
                                 label: 'Кол-во сделок',
                                 data: [2, 1, 1, 0, 1],
@@ -1476,17 +1476,17 @@
                         <img src="${car.image}" alt="${car.name}" class="rounded-t-xl aspect-[4/3] object-cover w-full">
                         <div class="p-4">
                             <h3 class="font-semibold">${car.name}</h3>
-                            <p class="text-sm text-gray-500">${car.year} - ${car.mileage.toLocaleString()} км</p>
+                            <p class="text-sm text-gray-500">${car.year} - ${car.mileage.toLocaleString()} km</p>
                             <p class="font-bold my-2 text-green-600">${car.price}</p>
                             <div class="flex items-center text-xs text-gray-500">
-                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full mr-2">Лизинг</span>
-                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">Доступен</span>
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full mr-2">Leasing</span>
+                                <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full">Available</span>
                             </div>
                         </div>
                     </a>
                 `).join('');
 
-                resultsCount.textContent = `Найдено автомобилей: ${filteredCars.length}`;
+                resultsCount.textContent = `Cars found: ${filteredCars.length}`;
             }
 
             function resetFilters() {
@@ -1751,7 +1751,7 @@
 
                 // Header/title
                 const dealTitle = document.getElementById('deal-title');
-                if (dealTitle) dealTitle.textContent = `Детали сделки ${deal.id}`;
+                if (dealTitle) dealTitle.textContent = `Details сделки ${deal.id}`;
 
                 const dealIdEl = document.getElementById('deal-id');
                 if (dealIdEl) dealIdEl.textContent = deal.id;
@@ -1786,8 +1786,8 @@
 
                 // Next payment
                 const now = new Date();
-                const next = invoices.find(inv => inv.status !== 'Оплачен' && new Date(inv.dueDate || inv.date) >= new Date(now.toDateString()))
-                            || invoices.find(inv => inv.status !== 'Оплачен');
+                const next = invoices.find(inv => inv.status !== 'Paid' && new Date(inv.dueDate || inv.date) >= new Date(now.toDateString()))
+                            || invoices.find(inv => inv.status !== 'Paid');
                 const amount = next?.amount;
                 const due = next ? new Date(next.dueDate || next.date) : null;
 
@@ -1813,13 +1813,13 @@
                         const d = new Date(inv.dueDate || inv.date);
                         const month = d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
                         let status = inv.status;
-                        if (status !== 'Оплачен') {
-                            status = d < new Date() ? 'Просрочен' : 'Ожидает';
+                        if (status !== 'Paid') {
+                            status = d < new Date() ? 'Просрочен' : 'Pending';
                         }
-                        const badge = status === 'Оплачен'
+                        const badge = status === 'Paid'
                             ? 'bg-green-100 text-green-800'
                             : (status === 'Просрочен' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
-                        const action = status === 'Оплачен' ? '' : `<button data-invoice-id="${inv.id}" class="text-blue-600 hover:underline text-xs">Оплатить</button>`;
+                        const action = status === 'Paid' ? '' : `<button data-invoice-id="${inv.id}" class="text-blue-600 hover:underline text-xs">Оплатить</button>`;
                         return `
                             <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
                                 <span class="capitalize">${month}</span>
@@ -1834,7 +1834,7 @@
                 // Documents (mock)
                 let docs = [
                     { name: 'Договор лизинга', status: 'Подписан', badge: 'bg-green-100 text-green-800', updatedAt: new Date().toISOString() },
-                    { name: 'Акт приема-передачи', status: 'Ожидает', badge: 'bg-yellow-100 text-yellow-800', updatedAt: new Date().toISOString() },
+                    { name: 'Акт приема-передачи', status: 'Pending', badge: 'bg-yellow-100 text-yellow-800', updatedAt: new Date().toISOString() },
                     { name: 'Страховой полис', status: 'Действует', badge: 'bg-blue-100 text-blue-800', updatedAt: new Date().toISOString() },
                 ];
                 function renderDocs() {
@@ -1861,7 +1861,7 @@
                 const timeline = document.getElementById('deal-activity-timeline');
                 if (timeline) {
                     const events = [];
-                    invoices.filter(i => i.status === 'Оплачен').slice(-3).forEach(i => {
+                    invoices.filter(i => i.status === 'Paid').slice(-3).forEach(i => {
                         events.push({ text: `Оплата ${i.id} на ${i.amount.toLocaleString('ru-RU')} AED`, date: i.date });
                     });
                     events.unshift({ text: `Статус сделки: ${deal.status}`, date: deal.date || invoices[0]?.date || new Date().toISOString() });
@@ -1951,12 +1951,12 @@
             
             // Обновляем текст текущей роли в выпадающем списке
             const roleNames = {
-                'client': 'Клиент',
-                'investor': 'Инвестор', 
-                'manager': 'Менеджер',
-                'admin': 'Администратор'
+                'client': 'Client',
+                'investor': 'Investor', 
+                'manager': 'Manager',
+                'admin': 'Administrator'
             };
-            currentRoleText.textContent = roleNames[role] || 'Клиент';
+            currentRoleText.textContent = roleNames[role] || 'Client';
 
             // Update sidebar navigation
             const navItems = navConfig[role];
@@ -1985,7 +1985,7 @@
                             <a href="tel:+971500000001" class="flex items-center justify-center w-8 h-8 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors" title="Позвонить">
                                 <i data-lucide="phone" class="h-4 w-4"></i>
                             </a>
-                            <button data-page="client-support" class="flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors" title="Открыть тикет">
+                            <button data-page="client-support" class="flex items-center justify-center w-8 h-8 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors" title="Openь тикет">
                                 <i data-lucide="message-circle" class="h-4 w-4"></i>
                             </button>
                         </div>
@@ -2218,7 +2218,7 @@ function initClientProfile() {
         saveClientProfile(profile);
     });
 
-    // Смена пароля
+    // Change Password
     passBtn?.addEventListener('click', () => {
         const p1 = pass1El.value;
         const p2 = pass2El.value;
@@ -2278,7 +2278,7 @@ function initClientProfile() {
         }
     }
 
-    // Документы: рендер списка
+    // Documents: рендер списка
     function renderDocs() {
         if (!docsList) return;
         docsList.innerHTML = '';
@@ -2384,7 +2384,7 @@ function initDealDetails_legacy() {
 
         // Header/title
         const dealTitle = document.getElementById('deal-title');
-        if (dealTitle) dealTitle.textContent = `Детали сделки ${deal.id}`;
+        if (dealTitle) dealTitle.textContent = `Details сделки ${deal.id}`;
 
         const dealIdEl = document.getElementById('deal-id');
         if (dealIdEl) dealIdEl.textContent = deal.id;
@@ -2412,8 +2412,8 @@ function initDealDetails_legacy() {
 
         // Next payment
         const now = new Date();
-        const next = invoices.find(inv => inv.status !== 'Оплачен' && new Date(inv.dueDate || inv.date) >= new Date(now.toDateString()))
-                    || invoices.find(inv => inv.status !== 'Оплачен');
+        const next = invoices.find(inv => inv.status !== 'Paid' && new Date(inv.dueDate || inv.date) >= new Date(now.toDateString()))
+                    || invoices.find(inv => inv.status !== 'Paid');
         const amount = next?.amount;
         const due = next ? new Date(next.dueDate || next.date) : null;
 
@@ -2439,13 +2439,13 @@ function initDealDetails_legacy() {
                 const d = new Date(inv.dueDate || inv.date);
                 const month = d.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
                 let status = inv.status;
-                if (status !== 'Оплачен') {
-                    status = d < now ? 'Просрочен' : 'Ожидает';
+                if (status !== 'Paid') {
+                    status = d < now ? 'Просрочен' : 'Pending';
                 }
-                const badge = status === 'Оплачен'
+                const badge = status === 'Paid'
                     ? 'bg-green-100 text-green-800'
                     : (status === 'Просрочен' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800');
-                const action = status === 'Оплачен' ? '' : `<button data-invoice-id="${inv.id}" class="text-blue-600 hover:underline text-xs">Оплатить</button>`;
+                const action = status === 'Paid' ? '' : `<button data-invoice-id="${inv.id}" class="text-blue-600 hover:underline text-xs">Оплатить</button>`;
                 return `
                     <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
                         <span class="capitalize">${month}</span>
@@ -2460,7 +2460,7 @@ function initDealDetails_legacy() {
         // Documents (mock)
         const docs = [
             { name: 'Договор лизинга', status: 'Подписан', badge: 'bg-green-100 text-green-800' },
-            { name: 'Акт приема-передачи', status: 'Ожидает', badge: 'bg-yellow-100 text-yellow-800' },
+            { name: 'Акт приема-передачи', status: 'Pending', badge: 'bg-yellow-100 text-yellow-800' },
             { name: 'Страховой полис', status: 'Действует', badge: 'bg-blue-100 text-blue-800' },
         ];
         const docsEl = document.getElementById('deal-documents-list');
@@ -2483,7 +2483,7 @@ function initDealDetails_legacy() {
         const timeline = document.getElementById('deal-activity-timeline');
         if (timeline) {
             const events = [];
-            invoices.filter(i => i.status === 'Оплачен').slice(-3).forEach(i => {
+            invoices.filter(i => i.status === 'Paid').slice(-3).forEach(i => {
                 events.push({ text: `Оплата ${i.id} на ${i.amount.toLocaleString('ru-RU')} AED`, date: i.date });
             });
             events.unshift({ text: `Статус сделки: ${deal.status}`, date: deal.date || invoices[0]?.date || new Date().toISOString() });

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dubai Fast Lease — Профиль пользователя</title>
+  <title>Dubai Fast Lease — User Profile</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -20,67 +20,91 @@
       <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:ml-0 lg:mr-auto">
     <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Личные данные</p>
+        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Personal Information</p>
         <form id="profile-form" class="mt-4 space-y-4 text-sm text-slate-600">
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="space-y-1">
-              Имя и фамилия
+              Full Name
               <input type="text" name="fullName" value="Maxime Dupont" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
             </label>
             <label class="space-y-1">
-              Электронная почта
+              Email
               <input type="email" name="email" value="maxime.dupont@fastlease.io" readonly class="w-full rounded-xl border-slate-200 bg-slate-50 text-slate-500" />
             </label>
             <label class="space-y-1">
-              Телефон
+              Phone
               <input type="tel" name="phone" value="+7 999 123-45-67" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
             </label>
             <label class="space-y-1">
-              Роль
+              Role
               <select name="role" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900">
-                <option>Клиент</option>
-                <option>Инвестор</option>
-                <option>Операционный менеджер</option>
-                <option>Администратор</option>
+                <option>Client</option>
+                <option>Investor</option>
+                <option>Operations Manager</option>
+                <option>Administrator</option>
               </select>
             </label>
           </div>
           <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
             <i data-lucide="save" class="h-4 w-4"></i>
-            Сохранить изменения
+            Save Changes
           </button>
         </form>
       </article>
 
       <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Безопасность</p>
+        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Security</p>
         <form id="password-form" class="mt-4 space-y-3 text-sm text-slate-600">
           <label class="space-y-1">
-            Текущий пароль
+            Current Password
             <input type="password" name="oldPassword" placeholder="••••••••" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
           </label>
           <label class="space-y-1">
-            Новый пароль
-            <input type="password" name="newPassword" placeholder="Минимум 8 символов" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
+            New Password
+            <input type="password" name="newPassword" placeholder="Minimum 8 characters" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
           </label>
           <label class="space-y-1">
-            Настройки уведомлений
+            Notification Settings
             <select name="notifications" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900">
-              <option>Проактивные (рекомендуемо)</option>
-              <option>Только критические</option>
-              <option>Выключить email</option>
+              <option>Proactive (recommended)</option>
+              <option>Critical only</option>
+              <option>Disable email</option>
             </select>
           </label>
           <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-900">
             <i data-lucide="shield" class="h-4 w-4"></i>
-            Обновить пароль
+            Update Password
           </button>
         </form>
       </article>
     </section>
 
+    <!-- Payment Settings -->
+    <section>
+      <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Payments</p>
+        <div class="mt-4 flex items-start justify-between">
+          <div class="space-y-1">
+            <p class="text-sm font-medium text-slate-900 flex items-center gap-2">
+              <i data-lucide="repeat" class="h-4 w-4"></i>
+              Auto-payments
+            </p>
+            <p class="text-xs text-slate-500">Automatic debits for active contracts. Can be disabled at any time.</p>
+            <p id="autopay-status" class="text-xs mt-2 text-slate-500">Status: disabled</p>
+          </div>
+          <!-- Switcher -->
+          <label class="relative inline-flex h-6 w-11 cursor-pointer select-none items-center">
+            <input id="autopay-toggle" type="checkbox" class="peer sr-only" />
+            <span class="absolute left-0 h-6 w-11 rounded-full bg-slate-200 transition-colors peer-checked:bg-slate-900"></span>
+            <span class="absolute left-0 m-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></span>
+          </label>
+        </div>
+        <div id="autopay-toast" class="mt-4 hidden rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs"></div>
+      </article>
+    </section>
+
     <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <p class="text-xs uppercase tracking-[0.3em] text-slate-400">История действий</p>
+      <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Activity History</p>
       <ul id="activity" class="mt-4 space-y-3 text-sm"></ul>
         </div>
       </main>
@@ -103,7 +127,7 @@
     const basePath = '../';
     mountSidebar({
       containerId: 'sidebar',
-      role: 'Клиент',
+      role: 'Client',
       items: clientNav,
       activePath: '/profile/index.html',
       basePath,
@@ -111,8 +135,8 @@
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Профиль пользователя',
-      breadcrumbs: ['Клиент', 'Профиль'],
+      title: 'User Profile',
+      breadcrumbs: ['Client', 'Profile'],
       basePath,
     });
 
@@ -124,9 +148,9 @@
     });
 
     const activities = [
-      { date: '2025-01-20', text: 'Включены автоплатежи по сделке FL-2025-1042', icon: 'repeat' },
-      { date: '2025-01-12', text: 'Обновлён номер телефона', icon: 'phone' },
-      { date: '2025-01-03', text: 'Подтверждён email', icon: 'mail-check' },
+      { date: '2025-01-20', text: 'Auto-payments enabled for deal FL-2025-1042', icon: 'repeat' },
+      { date: '2025-01-12', text: 'Phone number updated', icon: 'phone' },
+      { date: '2025-01-03', text: 'Email confirmed', icon: 'mail-check' },
     ];
 
     document.getElementById('activity').innerHTML = activities
@@ -145,13 +169,62 @@
       )
       .join('');
 
+    // Auto-payments: state storage and UI
+    const AUTOPAY_KEY = 'autopayEnabled';
+    const autopayToggle = document.getElementById('autopay-toggle');
+    const autopayStatus = document.getElementById('autopay-status');
+    const autopayToast = document.getElementById('autopay-toast');
+
+    function getAutopayEnabled() {
+      return localStorage.getItem(AUTOPAY_KEY) === 'true';
+    }
+
+    function setAutopayEnabled(value) {
+      localStorage.setItem(AUTOPAY_KEY, value ? 'true' : 'false');
+    }
+
+    function showAutopayToast(enabled) {
+      const message = enabled ? 'Auto-payments enabled.' : 'Auto-payments disabled.';
+      autopayToast.innerHTML = `
+        <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-100 text-slate-700">
+          <i data-lucide="${enabled ? 'check' : 'info'}" class="h-4 w-4"></i>
+        </span>
+        <span>${message}</span>
+      `;
+      autopayToast.classList.remove('hidden');
+      setTimeout(() => {
+        autopayToast.classList.add('hidden');
+      }, 1800);
+      setTimeout(() => {
+        applyIcons();
+      }, 100);
+    }
+
+    function updateAutopayUI(enabled) {
+      autopayStatus.textContent = `Status: ${enabled ? 'enabled' : 'disabled'}`;
+    }
+
+    // Initialize state on load
+    const initialAutopay = getAutopayEnabled();
+    if (autopayToggle) {
+      autopayToggle.checked = initialAutopay;
+      updateAutopayUI(initialAutopay);
+      applyIcons();
+      autopayToggle.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        setAutopayEnabled(enabled);
+        updateAutopayUI(enabled);
+        showAutopayToast(enabled);
+      });
+    }
+
     function handleFormSubmit(event) {
       event.preventDefault();
       const button = event.target.querySelector('button[type="submit"]');
       if (!button) return;
-      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Сохраняем</span>';
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Saving</span>';
       setTimeout(() => {
-        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Готово</span>';
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Done</span>';
         setTimeout(() => {
       applyIcons();
     }, 100);

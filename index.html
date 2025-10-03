@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dubai Fast Lease — Каталог автомобилей</title>
+  <title>Dubai Fast Lease — Car Catalog</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -35,13 +35,13 @@
           <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white font-semibold">FL</div>
           <div>
             <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Fast Lease</p>
-            <p class="text-base font-semibold text-slate-900">Каталог автомобилей</p>
+            <p class="text-base font-semibold text-slate-900">Car Catalog</p>
           </div>
         </a>
         <div class="flex items-center gap-3 text-sm">
           <a href="./login/index.html" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-slate-600 hover:border-slate-900">
             <i data-lucide="user" class="h-4 w-4"></i>
-            Войти
+            Sign In
           </a>
         </div>
       </div>
@@ -53,17 +53,17 @@
               <header class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Lease-to-own</p>
-                  <h1 class="mt-2 text-2xl font-semibold text-slate-900">Каталог автомобилей</h1>
-                  <p class="mt-1 text-sm text-slate-500">Проверенные автомобили с прозрачными условиями владения</p>
+                  <h1 class="mt-2 text-2xl font-semibold text-slate-900">Car Catalog</h1>
+                  <p class="mt-1 text-sm text-slate-500">Verified vehicles with transparent ownership terms</p>
                 </div>
                 <div class="flex items-center gap-3">
                   <button id="filters-toggle" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
                     <i data-lucide="filter" class="h-4 w-4"></i>
-                    <span>Фильтры (найдено <span id="filters-count" class="font-semibold text-slate-900">6</span>)</span>
+                    <span>Filters (found <span id="filters-count" class="font-semibold text-slate-900">6</span>)</span>
                   </button>
                   <a href="./login/index.html" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                     <i data-lucide="sparkles" class="h-4 w-4"></i>
-                    Свой авто
+                    Own Car
                   </a>
                 </div>
               </header>
@@ -73,18 +73,18 @@
                 <div class="mt-4 space-y-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div class="flex items-center justify-between">
                     <div>
-                      <h2 class="text-sm font-semibold text-slate-800">Фильтры</h2>
-                      <p class="mt-1 text-sm text-slate-500">Подберите автомобиль под ваши цели</p>
-                      <span id="active-filters-mobile" class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">Активные: 0</span>
+                      <h2 class="text-sm font-semibold text-slate-800">Filters</h2>
+                      <p class="mt-1 text-sm text-slate-500">Choose a vehicle that fits your goals</p>
+                      <span id="active-filters-mobile" class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">Active: 0</span>
                     </div>
                     <div class="flex items-center gap-2">
-                      <button id="m-apply-filters" class="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-500">Применить</button>
-                      <button id="m-reset-filters" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Сбросить</button>
+                      <button id="m-apply-filters" class="rounded-xl bg-brand-600 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-500">Apply</button>
+                      <button id="m-reset-filters" class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Reset</button>
                     </div>
                   </div>
                   <div class="space-y-3">
-                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Марка и модель</label>
-                    <input id="m-brand-search" type="text" placeholder="Поиск марки" class="w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" />
+                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Make and Model</label>
+                    <input id="m-brand-search" type="text" placeholder="Search make" class="w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" />
                     <select id="m-filter-brand" multiple class="h-28 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
                       <option value="Rolls-Royce">Rolls-Royce</option>
                       <option value="Lamborghini">Lamborghini</option>
@@ -95,18 +95,18 @@
                     </select>
                   </div>
                   <div class="space-y-3">
-                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Ежемесячный платеж</label>
+                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Monthly Payment</label>
                     <input type="range" id="m-filter-payment" min="250" max="1200" step="50" value="1200" class="w-full" />
-                    <p class="text-sm text-slate-500">До <span id="m-filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
+                    <p class="text-sm text-slate-500">Up to <span id="m-filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
                     <div class="flex justify-between text-xs text-slate-400"><span>250 AED</span><span>1200 AED</span></div>
                   </div>
                   <div class="space-y-3">
-                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Тип кузова</label>
+                    <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Body Type</label>
                     <div class="flex flex-wrap gap-2" id="m-filter-body">
                       <button data-body="SUV" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">SUV</button>
-                      <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Седан</button>
-                      <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Хэтчбек</button>
-                      <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Пикап</button>
+                      <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Sedan</button>
+                      <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Hatchback</button>
+                      <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Pickup</button>
                     </div>
                   </div>
                 </div>
@@ -117,19 +117,19 @@
                 <div class="mt-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div class="mb-4 flex items-center justify-between">
                     <div>
-                      <h2 class="text-sm font-semibold text-slate-800">Фильтры</h2>
-                      <p class="mt-1 text-sm text-slate-500">Выберите параметры и примените</p>
-                      <span id="active-filters-desktop" class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">Активные: 0</span>
+                      <h2 class="text-sm font-semibold text-slate-800">Filters</h2>
+                      <p class="mt-1 text-sm text-slate-500">Select parameters and apply</p>
+                      <span id="active-filters-desktop" class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">Active: 0</span>
                     </div>
                     <div class="flex items-center gap-2">
-                      <button id="apply-filters" class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500">Применить</button>
-                      <button id="reset-filters" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Сбросить</button>
+                      <button id="apply-filters" class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500">Apply</button>
+                      <button id="reset-filters" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Reset</button>
                     </div>
                   </div>
                   <div class="grid grid-cols-12 items-end gap-6">
                     <div class="col-span-12 md:col-span-5">
-                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Марка и модель</label>
-                      <input id="brand-search" type="text" placeholder="Поиск марки" class="mt-2 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" />
+                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Make and Model</label>
+                      <input id="brand-search" type="text" placeholder="Search make" class="mt-2 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500" />
                       <select id="filter-brand" multiple class="h-28 w-full rounded-xl border-slate-200 text-sm focus:border-brand-500 focus:ring-brand-500">
                         <option value="Rolls-Royce">Rolls-Royce</option>
                         <option value="Lamborghini">Lamborghini</option>
@@ -140,18 +140,18 @@
                       </select>
                     </div>
                     <div class="col-span-12 md:col-span-4">
-                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Ежемесячный платеж</label>
+                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Monthly Payment</label>
                       <input type="range" id="filter-payment" min="250" max="1200" step="50" value="1200" class="w-full" />
-                      <p class="text-sm text-slate-500">До <span id="filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
+                      <p class="text-sm text-slate-500">Up to <span id="filter-payment-value" class="font-medium text-slate-900">4 400 AED</span></p>
                       <div class="flex justify-between text-xs text-slate-400"><span>250 AED</span><span>1200 AED</span></div>
                     </div>
                     <div class="col-span-12 md:col-span-3">
-                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Тип кузова</label>
+                      <label class="text-xs font-medium uppercase tracking-wider text-slate-400">Body Type</label>
                       <div class="flex flex-wrap gap-2" id="filter-body">
                         <button data-body="SUV" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">SUV</button>
-                        <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Седан</button>
-                        <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Хэтчбек</button>
-                        <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Пикап</button>
+                        <button data-body="Sedan" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Sedan</button>
+                        <button data-body="Hatchback" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Hatchback</button>
+                        <button data-body="Pickup" class="filter-chip inline-flex items-center rounded-full border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:border-brand-500 hover:text-brand-700">Pickup</button>
                       </div>
                     </div>
                   </div>
@@ -188,9 +188,9 @@
         payment: 890,
         price: 42000,
         range: 520,
-        acceleration: '5.8 сек',
+        acceleration: '5.8 sec',
   image: './assets/images/rolls-royce-cullinan-exterior.jpg',
-        badges: ['Электро', 'Страховка включена'],
+        badges: ['Electric', 'Insurance Included'],
       },
       {
         id: 'lamborghini-huracan',
@@ -200,9 +200,9 @@
         payment: 1120,
         price: 56000,
         range: 580,
-        acceleration: '3.1 сек',
+        acceleration: '3.1 sec',
         image: './assets/images/lamborghini-huracan.jpg',
-        badges: ['Свободная зарядка', 'Autopilot'],
+        badges: ['Free Charging', 'Autopilot'],
       },
       {
         id: 'volvo-xc40-recharge',
@@ -212,9 +212,9 @@
         payment: 760,
         price: 38900,
         range: 420,
-        acceleration: '6.7 сек',
+        acceleration: '6.7 sec',
         image: './assets/images/volvo-xc40-recharge.jpg',
-        badges: ['ADAS', 'Умная климатизация'],
+        badges: ['ADAS', 'Smart Climate Control'],
       },
       {
         id: 'ferrari-488-spider',
@@ -224,7 +224,7 @@
         payment: 980,
         price: 48900,
         range: 510,
-        acceleration: '5.1 сек',
+        acceleration: '5.1 sec',
   image: './assets/images/ferrari-458-italia.jpg',
         badges: ['M-package', 'HUD'],
       },
@@ -236,9 +236,9 @@
         payment: 650,
         price: 35600,
         range: 470,
-        acceleration: '7.4 сек',
+        acceleration: '7.4 sec',
   image: './assets/images/bentley-bw.jpg',
-        badges: ['V2L', 'Быстрая зарядка'],
+        badges: ['V2L', 'Fast Charging'],
       },
       {
         id: 'rivian-r1t-adventure',
@@ -248,9 +248,9 @@
         payment: 1150,
         price: 68000,
         range: 500,
-        acceleration: '3.5 сек',
+        acceleration: '3.5 sec',
         image: './assets/images/rivian-r1t-adventure.jpg',
-        badges: ['Quad Motor', 'Пневмоподвеска'],
+        badges: ['Quad Motor', 'Air Suspension'],
       },
     ];
 
@@ -288,24 +288,24 @@
               </div>
               <dl class="grid grid-cols-2 gap-4 text-sm text-slate-500">
                 <div>
-                  <dt class="text-xs uppercase tracking-wide text-slate-400">Ежемесячно</dt>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Monthly</dt>
                   <dd class="text-sm font-semibold text-slate-900">${formatCurrency((pricing[car.id]?.monthly ?? car.payment), 'AED')}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs uppercase tracking-wide text-slate-400">Выкуп</dt>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Buyout</dt>
                   <dd class="text-sm font-semibold text-slate-900">${formatCurrency((pricing[car.id]?.buyout ?? car.price), 'AED')}</dd>
                 </div>
                 <div>
-                  <dt class="text-xs uppercase tracking-wide text-slate-400">Срок</dt>
-                  <dd class="text-sm font-medium text-slate-900">${pricing[car.id]?.termMonths ?? 36} месяцев</dd>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Term</dt>
+                  <dd class="text-sm font-medium text-slate-900">${pricing[car.id]?.termMonths ?? 36} months</dd>
                 </div>
                 <div>
-                  <dt class="text-xs uppercase tracking-wide text-slate-400">Первоначальный взнос</dt>
+                  <dt class="text-xs uppercase tracking-wide text-slate-400">Down Payment</dt>
                   <dd class="text-sm font-medium text-slate-900">${(() => { const p = pricing[car.id]; const dp = p?.downPayment ?? Math.round(((p?.buyout ?? car.price) || 0) * 0.2); return formatCurrency(dp, 'AED'); })()}</dd>
                 </div>
               </dl>
               <a href="./cars/${car.id}/index.html" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900">
-                Детали и расчёт
+                Details and Calculation
                 <i data-lucide="arrow-up-right" class="h-4 w-4"></i>
               </a>
             </div>
@@ -398,10 +398,10 @@
         const mobilePanel = document.getElementById('filters-panel-mobile');
         const desktopPanel = document.getElementById('filters-panel');
         if (window.innerWidth < 1024) {
-          // Mobile: панель скрыта по умолчанию, показываем/скрываем через класс hidden
+          // Mobile: panel hidden by default, show/hide via hidden class
           mobilePanel && mobilePanel.classList.toggle('hidden');
         } else {
-          // Desktop: переключаем между lg:block и lg:hidden
+          // Desktop: toggle between lg:block and lg:hidden
           if (desktopPanel) {
             desktopPanel.classList.toggle('lg:hidden');
             desktopPanel.classList.toggle('lg:block');
@@ -410,7 +410,7 @@
       });
     }
 
-    // Убрано меню навигации и профиль — публичная шапка с кнопкой входа
+    // Navigation menu and profile removed — public header with sign-in button
 
     renderCatalog(cars);
     applyIcons();

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dubai Fast Lease — Автомобиль Rolls-Royce Cullinan</title>
+  <title>Dubai Fast Lease — Vehicle Rolls-Royce Cullinan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -22,36 +22,36 @@
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Автомобиль</p>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Vehicle</p>
                 <h1 class="mt-2 text-2xl font-semibold text-slate-900">Rolls-Royce Cullinan · VIN AAX-341</h1>
-                <p class="text-sm text-slate-500">Год выпуска — 2024 · Люксовый SUV · Стоимость AED 2 000 000</p>
+                <p class="text-sm text-slate-500">Year of manufacture — 2024 · Luxury SUV · Cost AED 2 000 000</p>
               </div>
               <a href="#" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">
                 <i data-lucide="external-link" class="h-4 w-4"></i>
-                Открыть в Odoo
+                Open in Odoo
               </a>
             </div>
           </section>
 
           <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Характеристики</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Specifications</h2>
               <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
-                <div><dt>Тип двигателя</dt><dd class="font-medium text-slate-900">Dual Motor</dd></div>
-                <div><dt>Запас хода</dt><dd class="font-medium text-slate-900">520 км</dd></div>
-                <div><dt>Пробег</dt><dd class="font-medium text-slate-900">12 800 км</dd></div>
-                <div><dt>Состояние батареи</dt><dd class="font-medium text-emerald-600">97%</dd></div>
+                <div><dt>Engine Type</dt><dd class="font-medium text-slate-900">Dual Motor</dd></div>
+                <div><dt>Range</dt><dd class="font-medium text-slate-900">520 km</dd></div>
+                <div><dt>Mileage</dt><dd class="font-medium text-slate-900">12 800 km</dd></div>
+                <div><dt>Battery Condition</dt><dd class="font-medium text-emerald-600">97%</dd></div>
               </dl>
             </article>
 
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Документы</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Documents</h2>
               <ul id="car-documents" class="mt-4 space-y-3 text-sm"></ul>
             </article>
           </section>
 
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 class="text-sm font-semibold text-slate-800">История обслуживания</h2>
+            <h2 class="text-sm font-semibold text-slate-800">Service History</h2>
             <ul id="service-log" class="mt-4 space-y-3 text-sm"></ul>
           </section>
         </div>
@@ -74,12 +74,12 @@
     const { opsNav } = shared;
 
     const basePath = '../../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/cars/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Operations Manager', items: opsNav, activePath: '/ops/cars/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Автомобиль Rolls-Royce Cullinan',
-      breadcrumbs: ['Операции', 'Автомобили', 'Rolls-Royce Cullinan'],
+      title: 'Vehicle Rolls-Royce Cullinan',
+      breadcrumbs: ['Operations', 'Vehicles', 'Rolls-Royce Cullinan'],
       basePath,
     });
 
@@ -93,7 +93,7 @@
     const docs = [
       { title: 'Registration Card', status: 'Scan confirmed', icon: 'id-card' },
       { title: 'Insurance', status: 'Valid until 14.09.2025', icon: 'shield-check' },
-      { title: 'Отчет телематики', status: 'Обновлен 12.01.2025', icon: 'radar' },
+      { title: 'Telematics Report', status: 'Updated 12.01.2025', icon: 'radar' },
     ];
 
     document.getElementById('car-documents').innerHTML = docs
@@ -111,7 +111,7 @@
           </div>
           <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
             <i data-lucide="download" class="h-4 w-4"></i>
-            Скачать
+            Download
           </button>
         </li>
       `
@@ -119,9 +119,9 @@
       .join('');
 
     const log = [
-      { date: '2025-01-12', desc: 'Плановое ТО Aurora Service Center', note: 'Замена тормозных колодок' },
-      { date: '2024-12-01', desc: 'Телематический алерт', note: 'Проверено, критичности нет' },
-      { date: '2024-11-18', desc: 'Программное обновление', note: 'Версия прошивки 1.4.6' },
+      { date: '2025-01-12', desc: 'Scheduled Maintenance Aurora Service Center', note: 'Brake pads replacement' },
+      { date: '2024-12-01', desc: 'Telematics Alert', note: 'Checked, no criticality' },
+      { date: '2024-11-18', desc: 'Software Update', note: 'Firmware version 1.4.6' },
     ];
 
     document.getElementById('service-log').innerHTML = log

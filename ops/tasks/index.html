@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Таск-менеджер</title>
+  <title>Fast Lease — Task Manager</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -35,33 +35,33 @@
 
   <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
     <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-      <h2 class="text-lg font-semibold text-slate-900">Создать задачу</h2>
+      <h2 class="text-lg font-semibold text-slate-900">Create Task</h2>
       <form id="modal-form" class="mt-4 space-y-4 text-sm text-slate-600">
         <label class="space-y-1">
-          Заголовок
+          Title
           <input required class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900" />
         </label>
         <label class="space-y-1">
-          Описание
+          Description
           <textarea name="description" rows="3" class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900"></textarea>
         </label>
         <label class="space-y-1">
-          Исполнитель
+          Assignee
           <select class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900">
-            <option>Мария</option>
-            <option>Роман</option>
-            <option>Анна</option>
+            <option>Maria</option>
+            <option>Roman</option>
+            <option>Anna</option>
           </select>
         </label>
         <label class="space-y-1">
-          Дедлайн
+          Deadline
           <input type="datetime-local" class="w-full rounded-xl border focus:border-slate-900 focus:ring-slate-900" />
         </label>
         <div class="flex justify-end gap-3">
-          <button type="button" data-close-modal class="rounded-xl border px-4 py-2 text-sm">Отменить</button>
+          <button type="button" data-close-modal class="rounded-xl border px-4 py-2 text-sm">Cancel</button>
           <button type="submit" class="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold">
             <i data-lucide="check" class="h-4 w-4"></i>
-            Сохранить
+            Save
           </button>
         </div>
       </form>
@@ -83,12 +83,12 @@
     const { opsNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/tasks/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Operations Manager', items: opsNav, activePath: '/ops/tasks/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Таск-менеджер',
-      breadcrumbs: ['Операции', 'Задачи'],
+      title: 'Task Manager',
+      breadcrumbs: ['Operations', 'Tasks'],
       basePath,
     });
 
@@ -101,12 +101,12 @@
 
     // Updated tasks with status and creator information
     const tasks = [
-      { id: 1, title: 'Перезвонить клиенту APP-2218', owner: 'Мария', due: 'Сегодня · 15:30', priority: 'high', source: 'Ручная', status: 'new', creator: 'user' },
-      { id: 2, title: 'Проверить VIN в Odoo (Rolls-Royce Cullinan)', owner: 'Роман', due: 'Сегодня · 17:00', priority: 'normal', source: 'AI', status: 'in-progress', creator: 'ai' },
-      { id: 3, title: 'Загрузить акт приема от сервиса', owner: 'Анна', due: 'Завтра · 11:00', priority: 'normal', source: 'Авто', status: 'in-progress', creator: 'system' },
-      { id: 4, title: 'Подтвердить оплату INV-2025-012', owner: 'Мария', due: 'Завтра · 14:00', priority: 'high', source: 'Finance', status: 'done', creator: 'system' },
-      { id: 5, title: 'Отправить документы в банк', owner: 'Роман', due: 'Пятница · 10:00', priority: 'normal', source: 'Ручная', status: 'new', creator: 'user' },
-      { id: 6, title: 'Обновить информацию о страховке', owner: 'Анна', due: 'След. понедельник · 12:00', priority: 'normal', source: 'Авто', status: 'cancelled', creator: 'system' }
+      { id: 1, title: 'Call back client APP-2218', owner: 'Maria', due: 'Today · 15:30', priority: 'high', source: 'Manual', status: 'new', creator: 'user' },
+      { id: 2, title: 'Check VIN in Odoo (Rolls-Royce Cullinan)', owner: 'Roman', due: 'Today · 17:00', priority: 'normal', source: 'AI', status: 'in-progress', creator: 'ai' },
+      { id: 3, title: 'Upload acceptance certificate from service', owner: 'Anna', due: 'Tomorrow · 11:00', priority: 'normal', source: 'Auto', status: 'in-progress', creator: 'system' },
+      { id: 4, title: 'Confirm payment INV-2025-012', owner: 'Maria', due: 'Tomorrow · 14:00', priority: 'high', source: 'Finance', status: 'done', creator: 'system' },
+      { id: 5, title: 'Send documents to bank', owner: 'Roman', due: 'Friday · 10:00', priority: 'normal', source: 'Manual', status: 'new', creator: 'user' },
+      { id: 6, title: 'Update insurance information', owner: 'Anna', due: 'Next Monday · 12:00', priority: 'normal', source: 'Auto', status: 'cancelled', creator: 'system' }
     ];
 
     // Filters helpers
@@ -136,10 +136,10 @@
       // Build statuses from filtered tasks
       const filtered = filterTasks(tasks);
       const updatedStatuses = [
-        { title: 'Новые', key: 'new', tasks: filtered.filter(task => task.status === 'new') },
-        { title: 'В работе', key: 'in-progress', tasks: filtered.filter(task => task.status === 'in-progress') },
-        { title: 'Выполнено', key: 'done', tasks: filtered.filter(task => task.status === 'done') },
-        { title: 'Отменено', key: 'cancelled', tasks: filtered.filter(task => task.status === 'cancelled') }
+        { title: 'New', key: 'new', tasks: filtered.filter(task => task.status === 'new') },
+        { title: 'In Progress', key: 'in-progress', tasks: filtered.filter(task => task.status === 'in-progress') },
+        { title: 'Done', key: 'done', tasks: filtered.filter(task => task.status === 'done') },
+        { title: 'Cancelled', key: 'cancelled', tasks: filtered.filter(task => task.status === 'cancelled') }
       ];
 
       // Re-render the Kanban board
@@ -151,7 +151,7 @@
               <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
               <div class="flex items-center gap-2">
                 ${['new','in-progress'].includes(column.key) ? `
-                <button class="create-task inline-flex items-center justify-center rounded-full bg-slate-900 text-white hover:bg-slate-800 h-7 w-7" data-add-task data-status="${column.key}" title="Добавить задачу">
+                <button class="create-task inline-flex items-center justify-center rounded-full bg-slate-900 text-white hover:bg-slate-800 h-7 w-7" data-add-task data-status="${column.key}" title="Add Task">
                   <i data-lucide=\"plus\" class="h-4 w-4"></i>
                 </button>
                 ` : ''}
@@ -168,7 +168,7 @@
                     </div>
                     <p class="truncate text-sm text-slate-600">${task.owner}</p>
                     <div class="mt-2 flex items-center justify-between">
-                      <span class="badge ${task.priority === 'high' ? 'badge-danger' : 'badge-info'}">${task.priority === 'high' ? 'Высокий' : 'Нормальный'}</span>
+                      <span class="badge ${task.priority === 'high' ? 'badge-danger' : 'badge-info'}">${task.priority === 'high' ? 'High' : 'Normal'}</span>
                       <span class="text-xs text-slate-500">${task.source}</span>
                     </div>
                     <div class="mt-2 text-xs text-slate-400">${task.due}</div>
@@ -253,7 +253,7 @@
       if (ownerSelect) ownerSelect.value = task.owner;
       document.getElementById('task-detail-due').textContent = task.due;
       const prEl = document.getElementById('task-detail-priority');
-      prEl.textContent = task.priority === 'high' ? 'Высокий' : 'Нормальный';
+      prEl.textContent = task.priority === 'high' ? 'High' : 'Normal';
       prEl.className = `badge ${task.priority === 'high' ? 'badge-danger' : 'badge-info'}`;
       document.getElementById('task-detail-source').textContent = task.source;
       taskDetailModal.open();
@@ -310,7 +310,7 @@
     document.getElementById('modal-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const button = event.target.querySelector('button[type="submit"]');
-      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Создаём</span>';
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Creating</span>';
       
       // Simulate task creation
       setTimeout(() => {
@@ -320,9 +320,9 @@
           title: event.target.querySelector('input').value,
           owner: event.target.querySelector('select').value,
           description: event.target.querySelector('[name="description"]')?.value || '',
-          due: 'Сегодня · 15:30', // Simplified for demo
+          due: 'Today · 15:30', // Simplified for demo
           priority: 'normal', // Default priority
-          source: 'Ручная',
+          source: 'Manual',
           status: window.defaultStatusForNewTask || 'new',
           creator: 'user'
         };
@@ -330,7 +330,7 @@
         tasks.push(newTask);
         renderKanbanBoard();
         
-        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Добавлено</span>';
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Added</span>';
         applyIcons();
         
         // Close modal after a short delay
@@ -338,7 +338,7 @@
           document.querySelector('[data-close-modal]').click();
           // Reset form
           event.target.reset();
-          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Сохранить</span>';
+          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Save</span>';
           applyIcons();
           window.defaultStatusForNewTask = null;
         }, 1000);
@@ -352,37 +352,37 @@
   <div id="task-detail-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
     <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
       <div class="flex items-start justify-between">
-        <h2 class="text-lg font-semibold text-slate-900">Детали задачи</h2>
-        <button type="button" data-close-modal class="rounded-xl border px-3 py-1 text-sm">Закрыть</button>
+        <h2 class="text-lg font-semibold text-slate-900">Task Details</h2>
+        <button type="button" data-close-modal class="rounded-xl border px-3 py-1 text-sm">Close</button>
       </div>
       <div class="mt-4 space-y-4 text-sm">
         <label class="space-y-1 block">
-          Название задачи
+          Task Title
           <input id="task-detail-title-input" type="text" disabled class="w-full rounded-xl border px-3 py-2 text-sm text-slate-700 bg-slate-50" />
         </label>
         <label class="space-y-1 block">
-          Исполнитель
+          Assignee
           <select id="task-detail-owner" disabled class="w-full rounded-xl border px-3 py-2 text-sm text-slate-700 bg-slate-50">
-            <option>Мария</option>
-            <option>Роман</option>
-            <option>Анна</option>
+            <option>Maria</option>
+            <option>Roman</option>
+            <option>Anna</option>
           </select>
         </label>
         <label class="space-y-1 block">
-          Описание
+          Description
           <textarea id="task-detail-description-input" disabled class="w-full rounded-xl border px-3 py-2 text-sm text-slate-700 bg-slate-50" rows="4"></textarea>
         </label>
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-1">
-            Приоритет
-            <span id="task-detail-priority" class="badge badge-info">Нормальный</span>
+            Priority
+            <span id="task-detail-priority" class="badge badge-info">Normal</span>
           </div>
           <div class="space-y-1">
-            Источник
+            Source
             <span id="task-detail-source" class="text-slate-700">—</span>
           </div>
           <div class="space-y-1 col-span-2">
-            Дедлайн
+            Deadline
             <span id="task-detail-due" class="text-slate-700">—</span>
           </div>
         </div>
@@ -390,15 +390,15 @@
       <div class="mt-6 flex flex-wrap gap-3">
         <button id="task-action-done" class="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm">
           <i data-lucide="check" class="h-4 w-4"></i>
-          Завершить
+          Complete
         </button>
         <button id="task-action-cancel" class="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm">
           <i data-lucide="ban" class="h-4 w-4"></i>
-          Отменить
+          Cancel
         </button>
         <button id="task-action-delete" class="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm text-red-600">
           <i data-lucide="trash-2" class="h-4 w-4"></i>
-          Удалить
+          Delete
         </button>
       </div>
     </div>

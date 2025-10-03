@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -31,67 +31,97 @@
     <div class="flex-1">
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="bg-slate-50">
-      <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:ml-0 lg:mr-auto">
-          <!-- Deal summary block copied from client/deals/deal-001 -->
+        <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:ml-0 lg:mr-auto">
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <h2 class="mt-2 text-xl font-semibold text-slate-900">Application Status</h2>
+            <div class="mt-6" id="application-timeline" aria-label="Application steps" role="region"></div>
+          </section>
+          <!-- Deal hero block (single active deal) -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="grid gap-6 md:grid-cols-[1fr_320px] md:grid-rows-[auto_1fr] items-stretch">
+              <!-- Left: title/subtitle -->
               <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Сделка</p>
+                <div class="flex items-center gap-2">
+                  <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Deal</p>
+                  <span class="badge badge-success">Active</span>
+                </div>
                 <h1 class="mt-2 text-2xl font-semibold text-slate-900">FL-2025-1042 · Rolls-Royce Cullinan</h1>
-                <p class="text-sm text-slate-500">Программа lease-to-own на 36 месяцев. Дата создания — 12 декабря 2024.</p>
+                <p class="text-sm text-slate-600">Lease-to-own program for 36 months. Created on December 12, 2024.</p>
               </div>
-              <div class="flex items-center gap-3">
-                <span class="badge badge-success">Активна</span>
+
+              <!-- Mobile image -->
+              <div class="md:hidden">
+                <figure class="h-40 overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+                  <img
+                    src="../../assets/images/rolls-royce-cullinan-exterior.jpg"
+                    alt="Rolls-Royce Cullinan"
+                    class="h-full w-full object-cover"
+                    loading="lazy"
+                    onerror="this.src='https://placehold.co/560x320?text=No+Image'"
+                  />
+                </figure>
               </div>
-            </div>
-            <div class="mt-6 grid gap-3 grid-cols-3">
-              <div class="rounded-xl bg-slate-50/80 p-3">
-                <p class="text-[11px] uppercase tracking-wide text-slate-400">Предстоящий платеж</p>
-                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-payment">—</p>
+
+              <!-- Right: image spans full block height on desktop -->
+              <div class="hidden md:block row-span-2">
+                <figure class="h-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+                  <img
+                    src="../../assets/images/rolls-royce-cullinan-exterior.jpg"
+                    alt="Rolls-Royce Cullinan"
+                    class="h-full w-full object-cover"
+                    loading="lazy"
+                    onerror="this.src='https://placehold.co/560x320?text=No+Image'"
+                  />
+                </figure>
               </div>
-              <div class="rounded-xl bg-slate-50/80 p-3">
-                <p class="text-[11px] uppercase tracking-wide text-slate-400">Оплатить до</p>
-                <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-next-payment">—</p>
-              </div>
-              <div class="rounded-xl bg-slate-50/80 p-3 flex items-center">
-                <a href="../../client/invoices/invoice-2024-001/index.html#payment-methods" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
-                  <i data-lucide="wallet" class="h-4 w-4"></i>
-                  Оплатить сейчас
-                </a>
+
+              <!-- Bottom-left: KPI cards -->
+              <div class="grid gap-3 grid-cols-3">
+                <div class="rounded-xl bg-slate-50/80 p-3">
+                  <p class="text-[11px] uppercase tracking-wide text-slate-400">Monthly payment</p>
+                  <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-payment">—</p>
+                </div>
+                <div class="rounded-xl bg-slate-50/80 p-3">
+                  <p class="text-[11px] uppercase tracking-wide text-slate-400">Next payment</p>
+                  <p class="mt-1 text-sm font-semibold text-slate-900" id="deal-next-payment">—</p>
+                </div>
+                <div class="rounded-xl bg-slate-50/80 p-3">
+                  <p class="text-[11px] uppercase tracking-wide text-slate-400">Due amount</p>
+                  <p class="mt-1 text-sm font-semibold text-red-600" id="deal-remaining">—</p>
+                </div>
               </div>
             </div>
           </section>
+
+          <!-- Key info + Combined documents -->
           <section class="grid gap-6 md:grid-cols-2">
-            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="mt-2 text-xl font-semibold text-slate-900">Статус заявки</h2>
-              <div class="mt-6" id="application-timeline"></div>
+            <article class="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+              <h2 class="text-sm font-semibold text-slate-800">Key information</h2>
+              <dl class="mt-4 space-y-3 text-sm text-slate-600">
+                <div class="flex justify-between"><dt>VIN</dt><dd>5YJSA1E26LF123456</dd></div>
+                <div class="flex justify-between"><dt>Program Term</dt><dd>36 months</dd></div>
+                <div class="flex justify-between"><dt>Issue Date</dt><dd>12.12.2024</dd></div>
+                <div class="flex justify-between"><dt>Mileage</dt><dd>18 400 km</dd></div>
+              </dl>
             </article>
 
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <header class="flex items-start justify-between">
-                <div>
-                  <h2 class="mt-2 text-lg font-semibold text-slate-900">Что нужно загрузить</h2>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="badge badge-success">3 из 4</span>
-                  <a href="../deals/deal-001/" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900 hover:bg-slate-50">
-                    <i data-lucide="upload" class="h-4 w-4"></i>
-                    Загрузить
-                  </a>
-                </div>
-              </header>
-              <ul class="mt-6 space-y-4" id="documents"></ul>
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-slate-900">Documents</h2>
+              </div>
+              <ul id="combined-documents" class="mt-4 space-y-3"></ul>
             </article>
           </section>
+          <!-- What to upload block removed by requirement -->
           <section class="grid gap-6 md:grid-cols-2">
             
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm md:col-span-2">
               <div class="flex items-center justify-between">
                 <div>
-                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Уведомления</h2>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Notifications</h2>
                 </div>
               </div>
-              <div class="mt-4 space-y-3" id="notifications"></div>
+              <div class="mt-4 space-y-3" id="notifications" aria-live="polite" aria-atomic="false"></div>
             </article>
 
             
@@ -115,12 +145,12 @@
     }
 
     const shared = await getShared('../../assets');
-    const { mountSidebar, mountHeader, mountMobileBottomNav, mountTimeline, renderNotifications, formatCurrency, formatDate, applyIcons, clientNav } = shared;
+    const { mountSidebar, mountHeader, mountMobileBottomNav, mountTimeline, renderNotifications, formatCurrency, formatDate, applyIcons, clientNav, loadPricing } = shared;
 
     const basePath = '../..';
     mountSidebar({
       containerId: 'sidebar',
-      role: 'Клиент',
+      role: 'Client',
       items: clientNav,
       activePath: '/client/dashboard/index.html',
       basePath,
@@ -128,8 +158,8 @@
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Дашборд клиента',
-      breadcrumbs: ['Клиент', 'Обзор'],
+      title: 'Client Dashboard',
+      breadcrumbs: ['Client', 'Overview'],
       basePath,
     });
 
@@ -143,108 +173,105 @@
 
     const timelineSteps = [
       {
-        title: 'Анкета заполнена',
-        description: 'Проверка KYC завершена. Подтверждены контактные данные.',
+        title: 'Application submitted',
+        description: 'KYC verification completed. Contact details confirmed.',
         state: 'is-done',
       },
       {
-        title: 'AI-анализ документов',
+        title: 'AI document analysis',
         description: 'Emirates ID and salary certificate files successfully recognized.',
         state: 'is-done',
       },
       {
-        title: 'Препродажная проверка',
-        description: 'Менеджер связывается со станцией ТО для подтверждения отчета.',
+        title: 'Pre-delivery inspection',
+        description: 'Manager coordinates with the service station to confirm the report.',
         state: 'is-active',
         meta: '<span class="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-600"><i data-lucide="alert-octagon" class="h-3.5 w-3.5"></i>Registration Card photo required</span>'
       },
       {
-        title: 'Подпись договора',
-        description: 'Договор сформирован и ожидает ЭЦП.',
+        title: 'Contract signing',
+        description: 'Lease agreement generated. We’ll notify you when it’s ready for signature.',
       },
     ];
 
     mountTimeline({ containerId: 'application-timeline', steps: timelineSteps });
 
-    const paymentInfo = {
-      amount: 3260,
-      dueDate: '2025-11-15',
-      car: 'Rolls-Royce Cullinan',
-      status: 'Активен',
-    };
-
-    
-    // Populate copied deal summary KPIs
-    const dealPaymentEl = document.getElementById('deal-payment');
-    if (dealPaymentEl) dealPaymentEl.textContent = formatCurrency(paymentInfo.amount, 'AED');
-    const dealNextPaymentEl = document.getElementById('deal-next-payment');
-    if (dealNextPaymentEl) dealNextPaymentEl.textContent = formatDate(paymentInfo.dueDate);
-    const dealRemainingEl = document.getElementById('deal-remaining');
-    if (dealRemainingEl) dealRemainingEl.textContent = '—';
-    // Статус сделки скрыт по требованию — элемент удален из DOM
+    // KPI from pricing (single active deal)
+    const pricing = await loadPricing('../../assets');
+    const carId = 'rolls-royce-cullinan';
+    const monthly = pricing[carId]?.monthly ?? 3260;
+    const buyout = 45000; // Fixed due amount value
+    const nextPayment = '2025-11-15';
+    const dpEl = document.getElementById('deal-payment'); if (dpEl) dpEl.textContent = formatCurrency(monthly, 'AED');
+    const npEl = document.getElementById('deal-next-payment'); if (npEl) npEl.textContent = formatDate(nextPayment);
+    const drEl = document.getElementById('deal-remaining'); if (drEl) drEl.textContent = formatCurrency(buyout, 'AED');
 
     const notifications = [
       {
-        title: 'Финализация отчета ТО',
-        description: 'Сервис Aurora подтвердил готовность опубликовать результаты диагностики.',
+        title: 'Service report finalization',
+        description: 'Aurora service is ready to publish diagnostic results.',
         icon: 'wrench',
-        time: '15 мин назад',
+        time: '15 min ago',
       },
       {
-        title: 'Подпись договора',
-        description: 'Договор лизинга сформирован. Мы пришлем уведомление, как только он будет готов к подписи.',
+        title: 'Contract signing',
+        description: 'Lease agreement generated. We will notify you when it is ready for signature.',
         icon: 'file-text',
-        time: '1 час назад',
+        time: '1 hour ago',
       },
       {
-        title: 'Потенциальная просрочка',
-        description: 'Предстоящий платеж попадает на выходной. Мы предложили автоматическое списание в пятницу.',
+        title: 'Potential overdue',
+        description: 'Upcoming payment falls on a weekend. We proposed automatic debit on Friday.',
         icon: 'calendar-clock',
-        time: 'Вчера',
+        time: 'Yesterday',
       },
     ];
 
     renderNotifications({ containerId: 'notifications', items: notifications });
 
-    const documents = [
-      { title: 'Registration Card Photo', status: 'Awaiting upload', action: 'Upload', accent: 'badge-warning' },
-      { title: 'Salary Certificate', status: 'Accepted', action: 'View', accent: 'badge-success' },
-      { title: 'Tenancy Contract', status: 'Accepted', action: 'View', accent: 'badge-success' },
-      { title: 'Bank Statement', status: 'Under review', action: 'Status', accent: 'badge-info' },
+    // Combined deal + vehicle documents (download only)
+    const combinedDocs = [
+      { title: 'Lease agreement', status: 'Signed on 12/12/2024' },
+      { title: 'Payment schedule (update)', status: 'Version 02/2025' },
+      { title: 'Delivery acceptance form', status: 'Signature pending' },
+      { title: 'Registration Certificate (Mulkiya)', status: 'Valid until 12.12.2025' },
+      { title: 'Insurance Policy', status: 'Version 2025' },
+      { title: 'Inspection Protocol', status: 'Passed 01.2025' },
+      { title: 'Vehicle Usage Rules', status: 'Current' },
     ];
 
-    const documentsList = document.getElementById('documents');
-    documentsList.innerHTML = documents
-      .map(
-        (doc) => `
-        <li class="flex items-start justify-between gap-4 rounded-xl border border-slate-200 px-4 py-3">
+    const combinedList = document.getElementById('combined-documents');
+    if (combinedList) {
+      combinedList.innerHTML = combinedDocs.map((doc) => `
+        <li class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
           <div>
             <p class="text-sm font-medium text-slate-900">${doc.title}</p>
             <p class="text-xs text-slate-500">${doc.status}</p>
           </div>
-          <button onclick="handleDocumentAction('${doc.title}')" class="badge ${doc.accent} text-xs cursor-pointer">${doc.action}</button>
+          <button aria-label="Download ${doc.title}" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2">
+            <i data-lucide="download" class="h-4 w-4" aria-hidden="true"></i>Download
+          </button>
         </li>
-      `
-      )
-      .join('');
+      `).join('');
+    }
 
-    // Обработчик действий с документами
-    window.handleDocumentAction = function(docTitle) {
-      if (docTitle === 'Registration Card Photo') {
-        // Перенаправление на страницу сделки для загрузки
-        window.location.href = '../deals/deal-001/';
-      } else {
-        alert('Функционал просмотра для этого документа будет добавлен позже');
-      }
+    // Recommendations block removed by requirement
+
+    // Schedule consultation button removed by requirement
+
+    // Apply global focus-visible styles for interactive elements
+    const applyFocusStyles = () => {
+      const selectors = ['a', 'button', '[role="button"]', 'input', 'select', 'textarea'];
+      const elements = document.querySelectorAll(selectors.join(','));
+      elements.forEach((el) => {
+        el.classList.add('focus:outline-none', 'focus:ring-2', 'focus:ring-slate-400', 'focus:ring-offset-2');
+      });
     };
 
-    // Блок «Рекомендации» удален по требованию
-
-    // Кнопка «Запланировать консультацию» удалена по требованию
-
-    // Инициализация иконок после загрузки всех элементов
+    // Initialize icons after all elements load
     setTimeout(() => {
       applyIcons();
+      applyFocusStyles();
     }, 100);
   </script>
 </body>

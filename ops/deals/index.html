@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Сделки</title>
+  <title>Fast Lease — Deals</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -25,25 +25,25 @@
                 <div class="flex flex-wrap items-center gap-2">
                   <div class="relative">
                     <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4"></i>
-                    <input id="deal-search" type="text" class="w-56 rounded-xl border pl-9 pr-3 py-2 text-sm shadow-sm" placeholder="Поиск: клиент, авто, ID" />
+                    <input id="deal-search" type="text" class="w-56 rounded-xl border pl-9 pr-3 py-2 text-sm shadow-sm" placeholder="Search: client, vehicle, ID" />
                   </div>
                   <select id="deal-status" class="rounded-xl border px-3 py-2 text-sm shadow-sm">
-                    <option value="all">Все статусы</option>
-                    <option value="applications">Заявки</option>
-                    <option value="documents">Документы</option>
-                    <option value="handover">Выдача</option>
-                    <option value="active">Активные</option>
+                    <option value="all">All statuses</option>
+                    <option value="applications">Applications</option>
+                    <option value="documents">Underwriting</option>
+                    <option value="handover">Vehicle Delivery</option>
+                    <option value="active">Active</option>
                   </select>
                   <button id="open-create-deal" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900 hover:text-slate-900">
                     <i data-lucide="plus" class="h-4 w-4"></i>
-                    Создать сделку
+                    Create deal
                   </button>
                 </div>
               </div>
               <div class="flex items-center gap-2">
                 <div class="segmented">
-                  <button id="view-kanban" class="segmented-btn active">Канбан</button>
-                  <button id="view-table" class="segmented-btn">Таблица</button>
+                  <button id="view-kanban" class="segmented-btn active">Kanban</button>
+                  <button id="view-table" class="segmented-btn">Table</button>
                 </div>
               </div>
             </div>
@@ -76,12 +76,12 @@
     const { opsNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Операционный менеджер', items: opsNav, activePath: '/ops/deals/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Operations Manager', items: opsNav, activePath: '/ops/deals/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Сделки',
-      breadcrumbs: ['Операции', 'Сделки'],
+      title: 'Deals',
+      breadcrumbs: ['Operations', 'Deals'],
       items: opsNav,
       activePath: '/ops/deals/index.html',
       basePath,
@@ -98,35 +98,35 @@
 
     const pipelineOriginal = [
       {
-        title: 'Заявки',
+        title: 'Applications',
         key: 'applications',
         deals: [
-          { id: 'APP-2218', client: 'Anton Schneider', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-21', stage: 'Проверка документов' },
-          { id: 'APP-2234', client: 'Eugenia Rossi', car: 'Bentley Bentayga', updatedAt: '2025-01-20', stage: 'AI скоринг' },
+          { id: 'APP-2218', client: 'Anton Schneider', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-21', stage: 'Document verification' },
+          { id: 'APP-2234', client: 'Eugenia Rossi', car: 'Bentley Bentayga', updatedAt: '2025-01-20', stage: 'AI credit scoring' },
         ],
       },
       {
-        title: 'Документы',
+        title: 'Underwriting',
         key: 'documents',
         deals: [
           { id: 'APP-2199', client: 'Nicolas Blanc', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-19', stage: 'Awaiting Emirates ID' },
-          { id: 'APP-2201', client: 'Maria Novak', car: 'Ferrari 488 Spider', updatedAt: '2025-01-19', stage: 'Проверка юриста' },
+          { id: 'APP-2201', client: 'Maria Novak', car: 'Ferrari 488 Spider', updatedAt: '2025-01-19', stage: 'Legal review' },
         ],
       },
       {
-        title: 'Выдача',
+        title: 'Vehicle Delivery',
         key: 'handover',
         deals: [
-          { id: 'FL-2042', client: 'Maxime Dupont', car: 'Bentley Continental GT', updatedAt: '2025-01-18', stage: 'Подписание акта' },
-          { id: 'FL-2043', client: 'Sofia Rossi', car: 'Lamborghini Huracan', updatedAt: '2025-01-18', stage: 'Подготовка авто' },
+          { id: 'FL-2042', client: 'Maxime Dupont', car: 'Bentley Continental GT', updatedAt: '2025-01-18', stage: 'Delivery acceptance signing' },
+          { id: 'FL-2043', client: 'Sofia Rossi', car: 'Lamborghini Huracan', updatedAt: '2025-01-18', stage: 'Vehicle preparation' },
         ],
       },
       {
-        title: 'Активные',
+        title: 'Active',
         key: 'active',
         deals: [
-          { id: 'FL-1042', client: 'Jan Kowalski', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-17', stage: 'Активна' },
-          { id: 'FL-1043', client: 'Anna Müller', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-16', stage: 'Активна' },
+          { id: 'FL-1042', client: 'Jan Kowalski', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-17', stage: 'Active' },
+          { id: 'FL-1043', client: 'Anna Müller', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-16', stage: 'Active' },
         ],
       },
     ];
@@ -177,16 +177,16 @@
                       ${deal.stage}
                     </span>
                     <div class="mt-2 flex items-center gap-2">
-                      <a href="../../ops/deals/deal-7801/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Сделка" aria-label="Сделка">
+                      <a href="../../ops/deals/deal-7801/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Deal" aria-label="Deal">
                         <i data-lucide="file-text" class="h-4 w-4"></i>
                       </a>
-                      <a href="${getClientLink(deal.client)}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Клиент" aria-label="Клиент">
+                      <a href="${getClientLink(deal.client)}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Client" aria-label="Client">
                         <i data-lucide="user" class="h-4 w-4"></i>
                       </a>
-                      <a href="../../ops/cars/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Авто" aria-label="Авто">
+                      <a href="../../ops/cars/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Vehicle" aria-label="Vehicle">
                         <i data-lucide="car" class="h-4 w-4"></i>
                       </a>
-                      <a href="../../client/invoices/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Инвойсы" aria-label="Инвойсы">
+                      <a href="../../client/invoices/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Invoices" aria-label="Invoices">
                         <i data-lucide="credit-card" class="h-4 w-4"></i>
                       </a>
                     </div>
@@ -217,15 +217,15 @@
 
       const columnsTable = [
         { key: 'id', label: 'Deal ID', render: (row) => `<a href="../../ops/deals/deal-7801/index.html" class="text-slate-900 hover:underline">${row.id}</a>` },
-        { key: 'client', label: 'Клиент', render: (row) => `<a href="${getClientLink(row.client)}" class="text-slate-900 hover:underline">${row.client}</a>` },
-        { key: 'car', label: 'Автомобиль', render: (row) => `<a href="../../ops/cars/index.html" class="text-slate-900 hover:underline">${row.car}</a>` },
-        { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
-        { key: 'updatedAt', label: 'Обновлено', render: (row) => formatDate(row.updatedAt) },
-        { key: 'links', label: 'Навигация', render: (row) => `
+        { key: 'client', label: 'Client', render: (row) => `<a href="${getClientLink(row.client)}" class="text-slate-900 hover:underline">${row.client}</a>` },
+        { key: 'car', label: 'Vehicle', render: (row) => `<a href="../../ops/cars/index.html" class="text-slate-900 hover:underline">${row.car}</a>` },
+        { key: 'status', label: 'Status', render: (row) => statusBadge(row.status) },
+        { key: 'updatedAt', label: 'Updated', render: (row) => formatDate(row.updatedAt) },
+        { key: 'links', label: 'Navigation', render: (row) => `
           <div class="flex items-center gap-3">
-            <a href="${getClientLink(row.client)}" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="user" class="h-3.5 w-3.5"></i>Клиент</a>
-            <a href="../../ops/cars/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="car" class="h-3.5 w-3.5"></i>Авто</a>
-            <a href="../../client/invoices/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="credit-card" class="h-3.5 w-3.5"></i>Инвойсы</a>
+            <a href="${getClientLink(row.client)}" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="user" class="h-3.5 w-3.5"></i>Client</a>
+            <a href="../../ops/cars/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="car" class="h-3.5 w-3.5"></i>Vehicle</a>
+            <a href="../../client/invoices/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="credit-card" class="h-3.5 w-3.5"></i>Invoices</a>
           </div>
         ` },
       ];
@@ -281,12 +281,12 @@
     createForm?.addEventListener('submit', (event) => {
       event.preventDefault();
       const button = event.target.querySelector('button[type="submit"]');
-      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Создаём</span>';
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Creating</span>';
 
       const id = event.target.querySelector('#create-deal-id').value || 'NEW-0001';
-      const client = event.target.querySelector('#create-deal-client').value || 'Новый клиент';
-      const car = event.target.querySelector('#create-deal-car').value || 'Автомобиль';
-      const stage = event.target.querySelector('#create-deal-stage').value || 'Новая заявка';
+      const client = event.target.querySelector('#create-deal-client').value || 'New client';
+      const car = event.target.querySelector('#create-deal-car').value || 'Vehicle';
+      const stage = event.target.querySelector('#create-deal-stage').value || 'New application';
       const statusKey = event.target.querySelector('#create-deal-status').value || 'applications';
 
       setTimeout(() => {
@@ -294,12 +294,12 @@
         column.deals.push({ id, client, car, updatedAt: new Date().toISOString().slice(0,10), stage });
         renderKanban();
         renderTableView();
-        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Готово</span>';
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Done</span>';
         applyIcons();
         setTimeout(() => {
           document.querySelector('#deal-create-modal [data-close-modal]')?.click();
           createForm.reset();
-          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Создать</span>';
+          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Create</span>';
           applyIcons();
         }, 800);
       }, 800);
@@ -312,42 +312,42 @@
   <div id="deal-create-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
     <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
       <div class="flex items-start justify-between">
-        <h2 class="text-lg font-semibold text-slate-900">Создание сделки</h2>
-        <button type="button" data-close-modal class="rounded-xl border px-3 py-1 text-sm">Закрыть</button>
+        <h2 class="text-lg font-semibold text-slate-900">Create Deal</h2>
+        <button type="button" data-close-modal class="rounded-xl border px-3 py-1 text-sm">Close</button>
       </div>
       <form id="deal-create-form" class="mt-4 space-y-4 text-sm">
         <label class="space-y-1 block">
           Deal ID
-          <input id="create-deal-id" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Напр. APP-2301" />
+          <input id="create-deal-id" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="E.g. APP-2301" />
         </label>
         <div class="grid grid-cols-2 gap-4">
           <label class="space-y-1 block">
-            Статус
+            Status
             <select id="create-deal-status" class="w-full rounded-xl border px-3 py-2 text-sm">
-              <option value="applications">Заявки</option>
-              <option value="documents">Документы</option>
-              <option value="handover">Выдача</option>
-              <option value="active">Активные</option>
+              <option value="applications">Applications</option>
+              <option value="documents">Documents</option>
+              <option value="handover">Handover</option>
+              <option value="active">Active</option>
             </select>
           </label>
           <label class="space-y-1 block">
-            Этап
-            <input id="create-deal-stage" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Напр. Проверка документов" />
+            Stage
+            <input id="create-deal-stage" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="E.g. Document Verification" />
           </label>
         </div>
         <label class="space-y-1 block">
-          Клиент
-          <input id="create-deal-client" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Имя клиента" />
+          Client
+          <input id="create-deal-client" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Client Name" />
         </label>
         <label class="space-y-1 block">
-          Автомобиль
-          <input id="create-deal-car" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Модель авто" />
+          Vehicle
+          <input id="create-deal-car" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Vehicle Model" />
         </label>
         <div class="mt-2 flex justify-end gap-2">
-          <button type="button" data-close-modal class="rounded-xl border px-4 py-2 text-sm">Отмена</button>
+          <button type="button" data-close-modal class="rounded-xl border px-4 py-2 text-sm">Cancel</button>
           <button type="submit" class="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm">
             <i data-lucide="check" class="h-4 w-4"></i>
-            Создать
+            Create
           </button>
         </div>
       </form>

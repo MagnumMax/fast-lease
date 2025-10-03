@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Поддержка</title>
+  <title>Fast Lease — Support</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -20,39 +20,39 @@
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
           <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Создать обращение</p>
-              <h1 class="mt-2 text-2xl font-semibold text-slate-900">Мы решим ваш вопрос проактивно</h1>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Create a ticket</p>
+              <h1 class="mt-2 text-2xl font-semibold text-slate-900">We’ll resolve your issue proactively</h1>
               <form id="support-form" class="mt-6 space-y-4">
                 <div class="grid gap-4 sm:grid-cols-2">
                   <label class="space-y-1 text-sm text-slate-600">
-                    Тема
+                    Topic
                     <select name="topic" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900">
-                      <option>Вопрос по платежу</option>
-                      <option>Загрузка документов</option>
-                      <option>Состояние автомобиля</option>
-                      <option>Другое</option>
+                      <option>Payment question</option>
+                      <option>Document upload</option>
+                      <option>Vehicle condition</option>
+                      <option>Other</option>
                     </select>
                   </label>
                   <label class="space-y-1 text-sm text-slate-600">
-                    Срочность
+                    Priority
                     <select name="priority" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900">
-                      <option>Нормальная</option>
-                      <option>Высокая</option>
-                      <option>Критическая</option>
+                      <option>Normal</option>
+                      <option>High</option>
+                      <option>Critical</option>
                     </select>
                   </label>
                 </div>
                 <label class="space-y-1 text-sm text-slate-600">
-                  Опишите ситуацию
-                  <textarea name="message" rows="5" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Расскажите, что произошло"></textarea>
+                  Describe the situation
+                  <textarea name="message" rows="5" class="w-full rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Describe what happened"></textarea>
                 </label>
                 <label class="flex w-full flex-col gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-5 text-center text-sm text-slate-500">
-                  <span class="flex justify-center gap-2 text-slate-600"><i data-lucide="upload-cloud" class="h-5 w-5"></i>Перетащите файлы или нажмите для выбора</span>
+                  <span class="flex justify-center gap-2 text-slate-600"><i data-lucide="upload-cloud" class="h-5 w-5"></i>Drag files here or click to select</span>
                   <input type="file" multiple class="sr-only" />
                 </label>
                 <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                   <i data-lucide="send" class="h-4 w-4"></i>
-                  Отправить обращение
+                  Submit Ticket
                 </button>
               </form>
             </article>
@@ -61,13 +61,13 @@
               <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 class="text-sm font-semibold text-slate-800">SLA</h2>
                 <ul class="mt-3 space-y-3 text-sm text-slate-600">
-                  <li><span class="font-medium text-slate-900">Финансовые вопросы</span> — ответ в течение 2 часов.</li>
-                  <li><span class="font-medium text-slate-900">Технический статус</span> — обновление каждые 30 минут.</li>
-                  <li><span class="font-medium text-slate-900">Документы</span> — проверка до 4 часов.</li>
+                  <li><span class="font-medium text-slate-900">Financial inquiries</span> — response within 2 hours.</li>
+                  <li><span class="font-medium text-slate-900">Technical status</span> — updates every 30 minutes.</li>
+                  <li><span class="font-medium text-slate-900">Documents</span> — review within 4 hours.</li>
                 </ul>
               </article>
               <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="text-sm font-semibold text-slate-800">Активные обращения</h2>
+                <h2 class="text-sm font-semibold text-slate-800">Active tickets</h2>
                 <ul id="support-list" class="mt-3 space-y-3 text-sm"></ul>
               </article>
             </aside>
@@ -92,12 +92,12 @@
     const { clientNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Клиент', items: clientNav, activePath: '/client/support/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Client', items: clientNav, activePath: '/client/support/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Поддержка',
-      breadcrumbs: ['Клиент', 'Поддержка'],
+      title: 'Support',
+      breadcrumbs: ['Client', 'Support'],
       basePath,
     });
 
@@ -110,8 +110,8 @@
     });
 
     const tickets = [
-      { id: 'SUP-3051', topic: 'Оплата', updatedAt: '2025-01-15', status: 'В работе' },
-      { id: 'SUP-2971', topic: 'Документы', updatedAt: '2025-01-04', status: 'Решено' },
+      { id: 'SUP-3051', topic: 'Payment', updatedAt: '2025-01-15', status: 'In progress' },
+      { id: 'SUP-2971', topic: 'Documents', updatedAt: '2025-01-04', status: 'Resolved' },
     ];
 
     document.getElementById('support-list').innerHTML = tickets
@@ -120,9 +120,9 @@
         <li class="flex items-start justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3">
           <div>
             <p class="text-sm font-medium text-slate-900">${ticket.topic}</p>
-            <p class="text-xs text-slate-500">${ticket.id} · обновлено ${formatDate(ticket.updatedAt)}</p>
+            <p class="text-xs text-slate-500">${ticket.id} · updated ${formatDate(ticket.updatedAt)}</p>
           </div>
-          <span class="badge ${ticket.status === 'Решено' ? 'badge-success' : 'badge-warning'}">${ticket.status}</span>
+          <span class="badge ${ticket.status === 'Resolved' ? 'badge-success' : 'badge-warning'}">${ticket.status}</span>
         </li>
       `
       )
@@ -131,9 +131,9 @@
     document.getElementById('support-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const button = event.target.querySelector('button[type="submit"]');
-      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Создаем тикет</span>';
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Creating ticket</span>';
       setTimeout(() => {
-        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Отправлено</span>';
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Sent</span>';
         setTimeout(() => {
       applyIcons();
     }, 100);

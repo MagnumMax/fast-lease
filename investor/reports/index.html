@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Финансовые отчеты</title>
+  <title>Fast Lease — Financial Reports</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -21,35 +21,35 @@
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Финансовые отчеты</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Сформируйте выгрузку</h1>
-                <p class="text-sm text-slate-500">Выберите период, формат и тип отчета. Система проставит цифровую подпись автоматически.</p>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Financial Reports</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Generate Export</h1>
+                <p class="text-sm text-slate-500">Select period, format and report type. The system will automatically apply digital signature.</p>
               </div>
-              <span class="badge badge-info">Последний отчет — 07 янв 2025</span>
+              <span class="badge badge-info">Last report — Jan 07, 2025</span>
             </div>
 
             <form id="report-form" class="mt-6 space-y-4 text-sm text-slate-600">
               <div class="grid gap-4 sm:grid-cols-3">
                 <label class="space-y-1">
-                  Тип отчета
+                  Report Type
                   <select class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900">
-                    <option>Платежный календарь</option>
-                    <option>Доходность портфеля</option>
-                    <option>Движение денежных средств</option>
+                    <option>Payment Schedule</option>
+                    <option>Portfolio Yield</option>
+                    <option>Cash Flow</option>
                   </select>
                 </label>
                 <label class="space-y-1">
-                  Период с
+                  From Period
                   <input type="date" value="2024-12-01" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
                 </label>
                 <label class="space-y-1">
-                  Период по
+                  To Period
                   <input type="date" value="2025-02-01" class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
                 </label>
               </div>
 
               <label class="space-y-1">
-                Формат отчета
+                Report Format
                 <div class="flex gap-3">
                   <label class="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
                     <input type="radio" name="format" value="pdf" checked />
@@ -68,18 +68,18 @@
 
               <label class="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3">
                 <input type="checkbox" checked />
-                Отправить копию в бухгалтерию по email
+                Send copy to accounting by email
               </label>
 
               <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 <i data-lucide="file-down" class="h-4 w-4"></i>
-                Сформировать отчет
+                Generate Report
               </button>
             </form>
           </section>
 
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 class="text-sm font-semibold text-slate-800">Последние выгрузки</h2>
+            <h2 class="text-sm font-semibold text-slate-800">Recent Exports</h2>
             <ul id="reports-list" class="mt-4 space-y-3 text-sm"></ul>
           </section>
         </div>
@@ -102,12 +102,12 @@
     const { investorNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Инвестор', items: investorNav, activePath: '/investor/reports/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Investor', items: investorNav, activePath: '/investor/reports/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Финансовые отчёты',
-      breadcrumbs: ['Инвестор', 'Отчёты'],
+      title: 'Financial Reports',
+      breadcrumbs: ['Investor', 'Reports'],
       basePath,
     });
 
@@ -119,9 +119,9 @@
     });
 
     const reports = [
-      { id: 'REP-2025-004', type: 'Доходность портфеля', date: '2025-01-07', format: 'PDF', status: 'Готов' },
-      { id: 'REP-2024-099', type: 'Платежный календарь', date: '2024-12-02', format: 'XLSX', status: 'Готов' },
-      { id: 'REP-2024-083', type: 'Движение денежных средств', date: '2024-11-01', format: 'CSV', status: 'Готов' },
+      { id: 'REP-2025-004', type: 'Portfolio yield', date: '2025-01-07', format: 'PDF', status: 'Ready' },
+      { id: 'REP-2024-099', type: 'Payment Schedule', date: '2024-12-02', format: 'XLSX', status: 'Ready' },
+      { id: 'REP-2024-083', type: 'Cash Flow', date: '2024-11-01', format: 'CSV', status: 'Ready' },
     ];
 
     document.getElementById('reports-list').innerHTML = reports
@@ -137,7 +137,7 @@
             <span class="badge badge-success">${report.status}</span>
             <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 hover:border-slate-900">
               <i data-lucide="download" class="h-4 w-4"></i>
-              Скачать
+              Download
             </button>
           </div>
         </li>
@@ -148,9 +148,9 @@
     document.getElementById('report-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const button = event.target.querySelector('button[type="submit"]');
-      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Готовим отчёт</span>';
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Preparing report</span>';
       setTimeout(() => {
-        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Отчёт отправлен</span>';
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Report sent</span>';
         setTimeout(() => {
       applyIcons();
     }, 100);

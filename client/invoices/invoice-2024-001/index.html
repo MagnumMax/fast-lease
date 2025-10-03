@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Инвойс INV-2025-013</title>
+  <title>Fast Lease — Invoice INV-2025-013</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -23,20 +23,20 @@
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Инвойс</p>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Invoice</p>
                 <h1 class="mt-2 text-2xl font-semibold text-slate-900">INV-2025-013 · Rolls-Royce Cullinan</h1>
-                <p class="text-sm text-slate-500">Срок оплаты — 15 ноября 2025. Автосписание запланировано на 13 ноября.</p>
+                <p class="text-sm text-slate-500">Due by 15 Nov 2025. Auto-debit scheduled for 13 Nov.</p>
               </div>
-              <span class="badge badge-warning">Ожидает оплаты</span>
+              <span class="badge badge-warning">Awaiting Payment</span>
             </div>
 
             <div class="mt-6 grid grid-cols-2 gap-4">
               <article class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Сумма к оплате</p>
+                <p class="text-xs uppercase tracking-wide text-slate-400">Amount Due</p>
                 <p class="mt-2 text-lg font-semibold text-slate-900" id="invoice-amount">—</p>
               </article>
               <article class="rounded-xl bg-slate-50/80 p-4">
-                <p class="text-xs uppercase tracking-wide text-slate-400">Штрафы</p>
+                <p class="text-xs uppercase tracking-wide text-slate-400">Penalties</p>
                 <p class="mt-2 text-lg font-semibold text-emerald-600">0 AED</p>
               </article>
             </div>
@@ -44,31 +44,32 @@
 
           <section class="grid gap-6 lg:grid-cols-2">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Детализация</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Breakdown</h2>
               <dl class="mt-4 space-y-3 text-sm text-slate-600">
-                <div class="flex justify-between"><dt>Основной платёж</dt><dd id="invoice-base">—</dd></div>
-                <div class="flex justify-between"><dt>Страхование</dt><dd id="invoice-insurance">—</dd></div>
-                <div class="flex justify-between"><dt>Телематика</dt><dd id="invoice-iot">—</dd></div>
-                <div class="flex justify-between"><dt>НДС</dt><dd id="invoice-vat">—</dd></div>
+                <div class="flex justify-between"><dt>Payment Purpose</dt><dd id="invoice-purpose">—</dd></div>
+                <div class="flex justify-between"><dt>Base Payment</dt><dd id="invoice-base">—</dd></div>
+                <div class="flex justify-between"><dt>Insurance</dt><dd id="invoice-insurance">—</dd></div>
+                <div class="flex justify-between"><dt>Telematics</dt><dd id="invoice-iot">—</dd></div>
+                <div class="flex justify-between"><dt>VAT</dt><dd id="invoice-vat">—</dd></div>
               </dl>
             </article>
 
             <article id="payment-methods" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Способы оплаты</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Payment Methods</h2>
               <div class="mt-4 grid gap-3">
                 <button class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:border-slate-900">
                   <span class="flex items-center gap-3">
                     <i data-lucide="wallet" class="h-4 w-4"></i>
-                    Дебетовая карта · •••• 4832
+                    Debit Card · •••• 4832
                   </span>
-                  <span class="text-xs text-emerald-600">Авто</span>
+                  <span class="text-xs text-emerald-600">Auto</span>
                 </button>
                 <button class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:border-slate-900">
                   <span class="flex items-center gap-3">
                     <i data-lucide="banknote" class="h-4 w-4"></i>
-                    Оплата по реквизитам
+                    Bank Transfer
                   </span>
-                  <span class="text-xs text-slate-400">1 рабочий день</span>
+                  <span class="text-xs text-slate-400">1 business day</span>
                 </button>
                 <button class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:border-slate-900">
                   <span class="flex items-center gap-3">
@@ -77,15 +78,15 @@
                   </span>
                 </button>
               </div>
-              <button id="confirm-payment" class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <button id="confirm-payment" class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
                 <i data-lucide="check-circle" class="h-4 w-4"></i>
-                Оплатить
+                Pay
               </button>
             </article>
           </section>
 
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 class="text-sm font-semibold text-slate-800">Комментарии и SLA</h2>
+            <h2 class="text-sm font-semibold text-slate-800">Notes &amp; SLA</h2>
             <ul id="invoice-notes" class="mt-4 space-y-3"></ul>
           </section>
         </div>
@@ -111,12 +112,12 @@
     const { clientNav } = shared;
 
     const basePath = '../../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Клиент', items: clientNav, activePath: '/client/invoices/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Client', items: clientNav, activePath: '/client/invoices/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Инвойс INV-2025-013',
-      breadcrumbs: ['Клиент', 'Инвойсы', 'INV-2025-013'],
+      title: 'Invoice INV-2025-013',
+      breadcrumbs: ['Client', 'Invoices', 'INV-2025-013'],
       basePath,
     });
 
@@ -130,6 +131,7 @@
 
     const invoice = {
       amount: 890,
+      purpose: 'Monthly lease payment',
       components: {
         base: 760,
         insurance: 80,
@@ -138,12 +140,13 @@
       },
       due: '2025-11-15',
       notes: [
-        { date: '2025-02-01', text: 'Автосписание запланировано на 13 нояб. 2025', type: 'info' },
-        { date: '2025-01-16', text: 'Платеж за январь зачислен, штрафов нет', type: 'success' },
+        { date: '2025-02-01', text: 'Auto-debit scheduled for 13 Nov 2025', type: 'info' },
+        { date: '2025-01-16', text: 'January payment received, no penalties', type: 'success' },
       ],
     };
 
     document.getElementById('invoice-amount').textContent = formatCurrency(invoice.amount, 'AED');
+    document.getElementById('invoice-purpose').textContent = invoice.purpose;
     document.getElementById('invoice-base').textContent = formatCurrency(invoice.components.base, 'AED');
     document.getElementById('invoice-insurance').textContent = formatCurrency(invoice.components.insurance, 'AED');
     document.getElementById('invoice-iot').textContent = formatCurrency(invoice.components.iot, 'AED');
@@ -168,9 +171,9 @@
 
     document.getElementById('confirm-payment').addEventListener('click', () => {
       const btn = document.getElementById('confirm-payment');
-      btn.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Отправляем подтверждение</span>';
+      btn.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Sending confirmation</span>';
       setTimeout(() => {
-        btn.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Подтверждение отправлено</span>';
+        btn.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Confirmation sent</span>';
         applyIcons();
       }, 1200);
     });

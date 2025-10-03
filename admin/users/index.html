@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Lease — Управление пользователями</title>
+  <title>Fast Lease — User Management</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
@@ -21,19 +21,19 @@
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Пользователи</p>
-                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Роли и доступы</h1>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Users</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Roles and Access</h1>
               </div>
               <button class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800" id="open-create">
                 <i data-lucide="user-plus" class="h-4 w-4"></i>
-                Добавить пользователя
+                Add User
               </button>
             </div>
             <div class="mt-6" id="user-table"></div>
           </section>
 
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 class="text-sm font-semibold text-slate-800">Последние действия</h2>
+            <h2 class="text-sm font-semibold text-slate-800">Recent Activity</h2>
             <ul id="audit-log" class="mt-4 space-y-3 text-sm"></ul>
           </section>
         </div>
@@ -44,14 +44,14 @@
   <div id="user-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
     <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
       <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold text-slate-900">Создать пользователя</h2>
+        <h2 class="text-lg font-semibold text-slate-900">Create User</h2>
         <button data-close-modal class="text-slate-400 hover:text-slate-600">
           <i data-lucide="x" class="h-5 w-5"></i>
         </button>
       </div>
       <form id="user-form" class="mt-4 grid gap-4 text-sm text-slate-600">
         <label class="space-y-1">
-          Имя и фамилия
+          Full Name
           <input required class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
         </label>
         <label class="space-y-1">
@@ -59,22 +59,22 @@
           <input type="email" required class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900" />
         </label>
         <label class="space-y-1">
-          Роль
+          Role
           <select class="w-full rounded-xl border-slate-200 focus:border-slate-900 focus:ring-slate-900">
-            <option>Операционный менеджер</option>
-            <option>Инвестор</option>
-            <option>Администратор</option>
+            <option>Operations Manager</option>
+            <option>Investor</option>
+            <option>Administrator</option>
           </select>
         </label>
         <label class="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-3">
           <input type="checkbox" checked />
-          Отправить письмо-приглашение
+          Send invitation email
         </label>
         <div class="flex justify-end gap-3">
-          <button type="button" data-close-modal class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">Отменить</button>
+          <button type="button" data-close-modal class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900">Cancel</button>
           <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
             <i data-lucide="check" class="h-4 w-4"></i>
-            Сохранить
+            Save
           </button>
         </div>
       </form>
@@ -96,12 +96,12 @@
     const { adminNav } = shared;
 
     const basePath = '../..';
-    mountSidebar({ containerId: 'sidebar', role: 'Администратор', items: adminNav, activePath: '/admin/users/index.html', basePath });
+    mountSidebar({ containerId: 'sidebar', role: 'Administrator', items: adminNav, activePath: '/admin/users/index.html', basePath });
 
     mountHeader({
       containerId: 'page-header',
-      title: 'Управление пользователями',
-      breadcrumbs: ['Администрирование', 'Пользователи'],
+      title: 'User Management',
+      breadcrumbs: ['Administration', 'Users'],
       items: adminNav,
       activePath: '/admin/users/index.html',
       basePath,
@@ -115,28 +115,28 @@
     });
 
     const users = [
-      { name: 'Maria Novak', email: 'm.novak@fastlease.io', role: 'Операционный менеджер', status: 'Активен', lastLogin: '2025-01-14 09:12' },
-      { name: 'Nicolas Blanc', email: 'n.blanc@fastlease.io', role: 'Операционный менеджер', status: 'Активен', lastLogin: '2025-01-14 08:47' },
-      { name: 'Anna Müller', email: 'a.mueller@fastlease.io', role: 'Финансы', status: 'Приглашение отправлено', lastLogin: '—' },
-      { name: 'Lukas Schmidt', email: 'l.schmidt@fastlease.io', role: 'Администратор', status: 'Активен', lastLogin: '2025-01-14 07:05' },
+      { name: 'Maria Novak', email: 'm.novak@fastlease.io', role: 'Operations Manager', status: 'Active', lastLogin: '2025-01-14 09:12' },
+      { name: 'Nicolas Blanc', email: 'n.blanc@fastlease.io', role: 'Operations Manager', status: 'Active', lastLogin: '2025-01-14 08:47' },
+      { name: 'Anna Müller', email: 'a.mueller@fastlease.io', role: 'Finance', status: 'Invitation sent', lastLogin: '—' },
+      { name: 'Lukas Schmidt', email: 'l.schmidt@fastlease.io', role: 'Administrator', status: 'Active', lastLogin: '2025-01-14 07:05' },
     ];
 
     renderTable({
       containerId: 'user-table',
       columns: [
-        { key: 'name', label: 'Сотрудник' },
+        { key: 'name', label: 'Employee' },
         { key: 'email', label: 'Email' },
-        { key: 'role', label: 'Роль' },
-        { key: 'status', label: 'Статус', render: (row) => statusBadge(row.status) },
-        { key: 'lastLogin', label: 'Последний вход' },
+        { key: 'role', label: 'Role' },
+        { key: 'status', label: 'Status', render: (row) => statusBadge(row.status) },
+        { key: 'lastLogin', label: 'Last Login' },
       ],
       data: users,
     });
 
     const audit = [
-      { date: '2025-01-13 18:04', action: 'Изменена роль пользователя a.mueller@fastlease.io → Финансы' },
-      { date: '2025-01-13 11:20', action: 'Создан пользователь n.blanc@fastlease.io' },
-      { date: '2025-01-12 09:55', action: 'Отключён доступ k.lehmann@fastlease.io' },
+      { date: '2025-01-13 18:04', action: 'Changed user role a.mueller@fastlease.io → Finance' },
+      { date: '2025-01-13 11:20', action: 'Created user n.blanc@fastlease.io' },
+      { date: '2025-01-12 09:55', action: 'Disabled access k.lehmann@fastlease.io' },
     ];
 
     document.getElementById('audit-log').innerHTML = audit
@@ -155,9 +155,9 @@
     document.getElementById('user-form').addEventListener('submit', (event) => {
       event.preventDefault();
       const button = event.target.querySelector('button[type="submit"]');
-      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Создаем</span>';
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Creating</span>';
       setTimeout(() => {
-        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Готово</span>';
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Done</span>';
         setTimeout(() => {
       applyIcons();
     }, 100);

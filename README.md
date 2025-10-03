@@ -1,102 +1,102 @@
-# Fast Lease - Автоматизированная платформа лизинга
+# Fast Lease - Automated Leasing Platform
 
-## 🚀 Быстрый запуск
+## 🚀 Quick Start
 
-### Локальный сервер (рекомендуется)
+### Local Server (Recommended)
 
-Для корректной работы ES6 модулей используйте локальный HTTP сервер:
+For correct operation of ES6 modules, use a local HTTP server:
 
 ```bash
 # Python 3
 python3 server.py
 
-# Альтернативно, если Python 3 не установлен:
+# Alternatively, if Python 3 is not installed:
 python -m http.server 8000
 
-# Или Node.js (если установлен)
+# Or Node.js (if installed)
 npx http-server -p 8000 -c-1
 ```
 
-Затем откройте http://localhost:8000 в браузере.
+Then open http://localhost:8000 in the browser.
 
-### Доступные разделы
+### Available Sections
 
-- **Главная страница**: http://localhost:8000/index.html
-- **Операционный дашборд**: http://localhost:8000/ops/dashboard/index.html
-- **Клиентский дашборд**: http://localhost:8000/client/dashboard/index.html
-- **Инвесторский дашборд**: http://localhost:8000/investor/dashboard/index.html
-- **Админ панель**: http://localhost:8000/admin/bpm/index.html
+- **Main Page**: http://localhost:8000/index.html
+- **Operations Dashboard**: http://localhost:8000/ops/dashboard/index.html
+- **Client Dashboard**: http://localhost:8000/client/dashboard/index.html
+- **Investor Dashboard**: http://localhost:8000/investor/dashboard/index.html
+- **Admin Panel**: http://localhost:8000/admin/bpm/index.html
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
 ```
 assets/
-├── shared.js      # Единый ES6 модуль с утилитами и навигацией
-└── style.css      # Глобальные стили
+├── shared.js      # Unified ES6 module with utilities and navigation
+└── style.css      # Global styles
 
-admin/             # Административные страницы
-client/            # Клиентские страницы
-investor/          # Инвесторские страницы
-ops/              # Операционные страницы
-cars/             # Каталог автомобилей
+admin/             # Administrative pages
+client/            # Client pages
+investor/          # Investor pages
+ops/              # Operational pages
+cars/             # Car catalog
 ```
 
-## 🔧 Архитектура
+## 🔧 Architecture
 
-### Упрощенная модульная система
+### Simplified Modular System
 
-Проект использует современный ES6 модульный подход:
+The project uses a modern ES6 modular approach:
 
 ```javascript
-// Импорт утилит
+// Import utilities
 import { formatCurrency, mountSidebar, clientNav } from '../assets/shared.js';
 
-// Использование
+// Usage
 const shared = await import('../assets/shared.js');
 const { mountHeader, applyIcons } = shared;
 ```
 
-### Преимущества новой архитектуры
+### Advantages of the New Architecture
 
-- ✅ Упрощенная структура (1 файл вместо 3)
-- ✅ Уменьшенный размер бандла
-- ✅ Легче сопровождать
-- ✅ Современный ES6 подход
-- ✅ Убрана избыточность fallback кода
+- ✅ Simplified structure (1 file instead of 3)
+- ✅ Reduced bundle size
+- ✅ Easier to maintain
+- ✅ Modern ES6 approach
+- ✅ Removed redundancy of fallback code
 
-## 🛠 Разработка
+## 🛠 Development
 
-### Добавление новых утилит
+### Adding New Utilities
 
-Добавляйте функции в `assets/shared.js`:
+Add functions to `assets/shared.js`:
 
 ```javascript
 export function newUtility() {
-  // Ваша функция
+  // Your function
 }
 ```
 
-### Добавление навигации
+### Adding Navigation
 
-Навигационные конфигурации определены в `assets/shared.js`:
+Navigation configurations are defined in `assets/shared.js`:
 
 ```javascript
 export const newRoleNav = [
-  { label: 'Новая страница', href: '/new/index.html', icon: 'icon-name' }
+  { label: 'New Page', href: '/new/index.html', icon: 'icon-name' }
 ];
 ```
 
-## 📦 Production сборка
+## 📦 Production Build
 
-Для production рекомендуется настроить bundler (webpack/rollup) для:
+For production, it is recommended to configure a bundler (webpack/rollup) for:
 
-- Минификации кода
-- Tree shaking (удаление неиспользуемых функций)
+- Code minification
+- Tree shaking (removing unused functions)
 - Code splitting
 - Source maps
 
-## 🔒 Безопасность
+## 🔒 Security
 
-- CORS настроен для локальной разработки
-- В production рекомендуется HTTPS
-- Проверяйте зависимости на уязвимости
+- CORS configured for local development
+- HTTPS recommended in production
+- Check dependencies for vulnerabilities
