@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Fast Lease — My Vehicle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };
+  </script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:ml-0 lg:mr-auto">
+          <!-- Vehicle overview -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="grid gap-6 md:grid-cols-2 items-start">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">My Vehicle</p>
+                <h1 id="vehicle-title" class="mt-2 text-2xl font-semibold text-slate-900">—</h1>
+                <p id="vehicle-subtitle" class="text-sm text-slate-600">Lease-to-own program for 36 months</p>
+              </div>
+
+              <div>
+                <figure class="h-48 md:h-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+                  <img id="vehicle-image" src="" alt="Vehicle" class="h-full w-full object-cover" loading="lazy" />
+                </figure>
+                <dl id="vehicle-specs" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-4 text-sm"></dl>
+              </div>
+            </div>
+          </section>
+
+          <!-- Services section (transferred) -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-slate-900">Service schedule and confirmations</h3>
+            </div>
+            <div id="services-list" class="mt-3 space-y-3"></div>
+            <p class="mt-2 text-[11px] text-slate-500">To confirm service, upload 6 photos: front, rear, left and right sides, dashboard, service sticker. JPG/PNG up to 10MB.</p>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+
+  <!-- Service Photos Modal -->
+  <div id="service-photo-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/50" data-close-modal></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+      <div class="w-full max-w-2xl rounded-2xl bg-white shadow-xl border border-slate-200">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+          <h3 class="text-sm font-semibold text-slate-900" id="service-modal-title">Upload service photos</h3>
+          <button class="text-slate-400 hover:text-slate-600" data-close-modal><i data-lucide="x" class="h-5 w-5"></i></button>
+        </div>
+        <div class="p-5">
+          <p class="text-xs text-slate-500">Upload one photo for each angle</p>
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4" id="service-modal-slots">
+            <!-- Front -->
+            <div class="rounded-xl border border-slate-200 p-3">
+              <p class="text-xs font-medium text-slate-700">Front</p>
+              <div class="mt-2 flex items-center gap-3">
+                <div class="h-16 w-24 overflow-hidden rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                  <img data-slot-preview="front" class="h-full w-full object-cover hidden" />
+                  <i data-lucide="image" class="h-5 w-5 text-slate-400" data-slot-empty="front"></i>
+                </div>
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900" data-pick-slot="front">
+                  <i data-lucide="upload" class="h-4 w-4"></i>Choose photo
+                </button>
+              </div>
+            </div>
+            <!-- Rear -->
+            <div class="rounded-xl border border-slate-200 p-3">
+              <p class="text-xs font-medium text-slate-700">Rear</p>
+              <div class="mt-2 flex items-center gap-3">
+                <div class="h-16 w-24 overflow-hidden rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                  <img data-slot-preview="rear" class="h-full w-full object-cover hidden" />
+                  <i data-lucide="image" class="h-5 w-5 text-slate-400" data-slot-empty="rear"></i>
+                </div>
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900" data-pick-slot="rear">
+                  <i data-lucide="upload" class="h-4 w-4"></i>Choose photo
+                </button>
+              </div>
+            </div>
+            <!-- Left side -->
+            <div class="rounded-xl border border-slate-200 p-3">
+              <p class="text-xs font-medium text-slate-700">Left side</p>
+              <div class="mt-2 flex items-center gap-3">
+                <div class="h-16 w-24 overflow-hidden rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                  <img data-slot-preview="left" class="h-full w-full object-cover hidden" />
+                  <i data-lucide="image" class="h-5 w-5 text-slate-400" data-slot-empty="left"></i>
+                </div>
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900" data-pick-slot="left">
+                  <i data-lucide="upload" class="h-4 w-4"></i>Choose photo
+                </button>
+              </div>
+            </div>
+            <!-- Right side -->
+            <div class="rounded-xl border border-slate-200 p-3">
+              <p class="text-xs font-medium text-slate-700">Right side</p>
+              <div class="mt-2 flex items-center gap-3">
+                <div class="h-16 w-24 overflow-hidden rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                  <img data-slot-preview="right" class="h-full w-full object-cover hidden" />
+                  <i data-lucide="image" class="h-5 w-5 text-slate-400" data-slot-empty="right"></i>
+                </div>
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900" data-pick-slot="right">
+                  <i data-lucide="upload" class="h-4 w-4"></i>Choose photo
+                </button>
+              </div>
+            </div>
+            <!-- Dashboard -->
+            <div class="rounded-xl border border-slate-200 p-3">
+              <p class="text-xs font-medium text-slate-700">Dashboard</p>
+              <div class="mt-2 flex items-center gap-3">
+                <div class="h-16 w-24 overflow-hidden rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                  <img data-slot-preview="dashboard" class="h-full w-full object-cover hidden" />
+                  <i data-lucide="image" class="h-5 w-5 text-slate-400" data-slot-empty="dashboard"></i>
+                </div>
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900" data-pick-slot="dashboard">
+                  <i data-lucide="upload" class="h-4 w-4"></i>Choose photo
+                </button>
+              </div>
+            </div>
+            <!-- Service sticker -->
+            <div class="rounded-xl border border-slate-200 p-3">
+              <p class="text-xs font-medium text-slate-700">Service sticker</p>
+              <div class="mt-2 flex items-center gap-3">
+                <div class="h-16 w-24 overflow-hidden rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                  <img data-slot-preview="sticker" class="h-full w-full object-cover hidden" />
+                  <i data-lucide="image" class="h-5 w-5 text-slate-400" data-slot-empty="sticker"></i>
+                </div>
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900" data-pick-slot="sticker">
+                  <i data-lucide="upload" class="h-4 w-4"></i>Choose photo
+                </button>
+              </div>
+            </div>
+          </div>
+          <input type="file" accept=".jpg,.jpeg,.png" class="sr-only" id="service-modal-file" />
+        </div>
+        <div class="flex items-center justify-between gap-3 px-5 py-4 border-t border-slate-200">
+          <span class="text-xs text-slate-500">JPG/PNG up to 10MB. All 6 photos are required.</span>
+          <div class="flex gap-2">
+            <button class="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 hover:border-slate-900" data-close-modal>Cancel</button>
+            <button id="service-modal-save" class="rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-semibold hover:bg-slate-800">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons, formatDate, statusBadge, mountMobileBottomNav } = shared;
+    const { clientNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Client', items: clientNav, activePath: '/client/my-vehicle/index.html', basePath });
+
+    mountHeader({ containerId: 'page-header', title: 'My Vehicle', breadcrumbs: ['Client', 'Vehicle'], basePath });
+
+    // Mobile bottom navigation
+    mountMobileBottomNav({ containerId: 'mobile-bottom-nav', items: clientNav, activePath: '/client/my-vehicle/index.html', basePath });
+
+    // Vehicle data (static example)
+    const vehicle = {
+      name: 'Rolls-Royce Cullinan',
+      subtitle: 'Lease-to-own program for 36 months. Created on December 12, 2024.',
+      image: '../../assets/images/rolls-royce-cullinan-exterior.jpg',
+      specs: [
+        { label: 'Year', value: '2024' },
+        { label: 'Engine', value: '6.75L V12' },
+        { label: 'Color', value: 'Arctic White' },
+        { label: 'VIN', value: 'SAMPLEVIN123456789' },
+        { label: 'Mileage', value: '18,420 km' },
+        { label: 'Insurance', value: 'Valid until 12.12.2025' },
+      ],
+    };
+
+    // Populate vehicle section
+    const titleEl = document.getElementById('vehicle-title');
+    const subtitleEl = document.getElementById('vehicle-subtitle');
+    const imgEl = document.getElementById('vehicle-image');
+    const specsEl = document.getElementById('vehicle-specs');
+    if (titleEl) titleEl.textContent = vehicle.name;
+    if (subtitleEl) subtitleEl.textContent = vehicle.subtitle;
+    if (imgEl) imgEl.src = vehicle.image;
+    if (specsEl) {
+      specsEl.innerHTML = vehicle.specs
+        .map((s) => `
+          <div class="grid grid-cols-[auto_1fr] items-start gap-3 border-b border-slate-200 pb-2">
+            <dt class="text-xs text-slate-500 text-right pr-2">${s.label}</dt>
+            <dd class="text-sm font-medium text-slate-900 text-right">${s.value}</dd>
+          </div>
+        `)
+        .join('');
+    }
+
+    // Services data and UI (transferred)
+    const services = [
+      {
+        id: 'insp-2025-01-02',
+        name: 'Initial inspection',
+        type: 'Inspection',
+        dueDate: '2025-01-02',
+        mileageDue: null,
+        completedAt: '2025-01-02',
+        attachments: [{ url: '../../assets/images/rolls-royce-cullinan-exterior.jpg' }],
+      },
+      {
+        id: 'to-1-2025-02-20',
+        name: 'Maintenance #1 (oil and filters)',
+        type: 'Maintenance',
+        dueDate: '2025-02-20',
+        mileageDue: 20000,
+        completedAt: null,
+        attachments: [],
+      },
+      {
+        id: 'oil-2025-06-15',
+        name: 'Oil and filter change',
+        type: 'Maintenance',
+        dueDate: '2025-06-15',
+        mileageDue: 30000,
+        completedAt: null,
+        attachments: [],
+      },
+      {
+        id: 'annual-2025-12-12',
+        name: 'Annual inspection',
+        type: 'Inspection',
+        dueDate: '2025-12-12',
+        mileageDue: null,
+        completedAt: null,
+        attachments: [],
+      },
+    ];
+
+    function getServiceStatus(svc) {
+      if (svc.completedAt) return 'Completed';
+      const due = new Date(svc.dueDate);
+      const today = new Date();
+      const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      if (due < todayMid) return 'Overdue';
+      const days = Math.ceil((due - todayMid) / (1000 * 60 * 60 * 24));
+      if (days <= 14) return 'Requires action';
+      return 'Planned';
+    }
+
+    const REQUIRED_SLOTS = [
+      { key: 'front', label: 'Front' },
+      { key: 'rear', label: 'Rear' },
+      { key: 'left', label: 'Left side' },
+      { key: 'right', label: 'Right side' },
+      { key: 'dashboard', label: 'Dashboard' },
+      { key: 'sticker', label: 'Service sticker' },
+    ];
+
+    function countFilledSlots(attachments) {
+      const atts = Array.isArray(attachments) ? attachments : [];
+      return REQUIRED_SLOTS.filter(sl => atts.some(a => a.slot === sl.key)).length;
+    }
+
+    function renderServices() {
+      const container = document.getElementById('services-list');
+      if (!container) return;
+
+      container.innerHTML = services
+        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+        .map((s) => {
+          const st = getServiceStatus(s);
+          const filled = countFilledSlots(s.attachments);
+          const ready = filled === 6;
+          const dueMeta = `Due: ${formatDate(s.dueDate)}${s.mileageDue ? ' • ' + s.mileageDue.toLocaleString('en-US') + ' km' : ''}${s.completedAt ? ` • Completed: ${formatDate(s.completedAt)}` : ''}`;
+          return `
+            <div class="rounded-xl border border-slate-200 px-4 py-3">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-slate-900">${s.name}</p>
+                  <p class="mt-0.5 text-xs text-slate-500">${dueMeta}</p>
+                  <p class="mt-1 text-[11px] text-slate-500">Photos: ${filled}/6</p>
+                </div>
+                ${statusBadge(st)}
+              </div>
+              <div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2">
+                <button class="btn-open-service-modal inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:border-slate-900" data-service-id="${s.id}">
+                  <i data-lucide="upload" class="h-4 w-4"></i>
+                  Upload 6 photos
+                </button>
+                ${s.completedAt ? '' : `
+                <button class="btn-complete-service inline-flex items-center gap-2 rounded-lg ${ready ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-emerald-600/50 text-white cursor-not-allowed'} px-3 py-2 text-xs font-semibold" data-service-id="${s.id}" ${ready ? '' : 'disabled title="Add all 6 photos"'}>
+                  <i data-lucide="check-circle" class="h-4 w-4"></i>
+                  Mark as completed
+                </button>
+                `}
+              </div>
+              ${(Array.isArray(s.attachments) && s.attachments.length) ? `
+                <div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3" id="service-photos-${s.id}">
+                  ${s.attachments.map(a => {
+                    const lbl = (REQUIRED_SLOTS.find(x => x.key === a.slot) || {}).label || 'Photo';
+                    return `
+                      <figure class="overflow-hidden rounded-lg border border-slate-200 bg-white">
+                        <img src="${a.url}" alt="${lbl}" class="h-24 w-full object-cover" />
+                        <figcaption class="px-2 py-1 text-[10px] text-slate-500">${lbl}</figcaption>
+                      </figure>
+                    `;
+                  }).join('')}
+                </div>
+              ` : `<div class="mt-3" id="service-photos-${s.id}"></div>`}
+            </div>
+          `;
+        })
+        .join('');
+
+      const uploadBtns = container.querySelectorAll('.btn-open-service-modal');
+      uploadBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sid = btn.getAttribute('data-service-id');
+          openServicePhotoModal(sid);
+        });
+      });
+
+      const completeBtns = container.querySelectorAll('.btn-complete-service');
+      completeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-service-id');
+          const s = services.find(x => x.id === id);
+          if (!s) return;
+          const filled = countFilledSlots(s.attachments);
+          if (filled < 6) {
+            openServicePhotoModal(id);
+            return;
+          }
+          s.completedAt = new Date().toISOString();
+          renderServices();
+        });
+      });
+
+      applyIcons();
+    }
+
+    // Modal logic
+    const modalEl = document.getElementById('service-photo-modal');
+    const modalFileInput = document.getElementById('service-modal-file');
+    const modalTitleEl = document.getElementById('service-modal-title');
+    let modalCurrentServiceId = null;
+    let modalPicked = {}; // slot -> File or existing attachment
+
+    function openServicePhotoModal(serviceId) {
+      modalCurrentServiceId = serviceId;
+      modalPicked = {};
+      const svc = services.find(s => s.id === serviceId);
+      if (modalTitleEl) modalTitleEl.textContent = `Upload service photos — ${svc?.name || ''}`;
+
+      // Reset previews and fill existing
+      REQUIRED_SLOTS.forEach(sl => {
+        const img = document.querySelector(`[data-slot-preview="${sl.key}"]`);
+        const empty = document.querySelector(`[data-slot-empty="${sl.key}"]`);
+        if (img) { img.src = ''; img.classList.add('hidden'); }
+        if (empty) empty.classList.remove('hidden');
+        const existing = svc?.attachments?.find(a => a.slot === sl.key);
+        if (existing && img && empty) {
+          img.src = existing.url;
+          img.classList.remove('hidden');
+          empty.classList.add('hidden');
+          modalPicked[sl.key] = existing; // keep existing as pre-filled
+        }
+      });
+
+      modalEl?.classList.remove('hidden');
+      applyIcons();
+    }
+
+    function closeServicePhotoModal() {
+      modalEl?.classList.add('hidden');
+      modalCurrentServiceId = null;
+      modalPicked = {};
+    }
+
+    document.querySelectorAll('#service-modal-slots [data-pick-slot]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const slot = btn.getAttribute('data-pick-slot');
+        if (!slot) return;
+        modalFileInput.dataset.slot = slot;
+        modalFileInput.click();
+      });
+    });
+
+    modalFileInput?.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      const slot = modalFileInput.dataset.slot;
+      if (!file || !slot) return;
+      if (file.size > 10 * 1024 * 1024) { alert('File exceeds 10MB'); e.target.value = ''; return; }
+
+      modalPicked[slot] = file;
+      const url = URL.createObjectURL(file);
+      const img = document.querySelector(`[data-slot-preview="${slot}"]`);
+      const empty = document.querySelector(`[data-slot-empty="${slot}"]`);
+      if (img && empty) {
+        img.src = url;
+        img.classList.remove('hidden');
+        empty.classList.add('hidden');
+      }
+      e.target.value = '';
+    });
+
+    document.querySelectorAll('#service-photo-modal [data-close-modal]').forEach(btn => {
+      btn.addEventListener('click', closeServicePhotoModal);
+    });
+
+    document.getElementById('service-modal-save')?.addEventListener('click', () => {
+      const svc = services.find(s => s.id === modalCurrentServiceId);
+      if (!svc) { closeServicePhotoModal(); return; }
+      const haveAll = REQUIRED_SLOTS.every(sl => modalPicked[sl.key] || (svc.attachments || []).some(a => a.slot === sl.key));
+      if (!haveAll) { alert('All 6 photos are required'); return; }
+
+      svc.attachments = Array.isArray(svc.attachments) ? svc.attachments : [];
+      REQUIRED_SLOTS.forEach(sl => {
+        const idx = svc.attachments.findIndex(a => a.slot === sl.key);
+        let record = null;
+        const picked = modalPicked[sl.key];
+        if (picked instanceof File) {
+          record = { url: URL.createObjectURL(picked), slot: sl.key, name: picked.name, size: picked.size, uploadedAt: new Date().toISOString() };
+        } else if (picked && picked.url) {
+          record = picked; // keep existing
+        } else if (idx >= 0) {
+          record = svc.attachments[idx];
+        }
+        if (record) {
+          if (idx >= 0) svc.attachments[idx] = record;
+          else svc.attachments.push(record);
+        }
+      });
+
+      closeServicePhotoModal();
+      renderServices();
+    });
+
+    // Initialize services UI
+    renderServices();
+
+    setTimeout(() => { applyIcons(); }, 100);
+  </script>
+</body>
+</html>
