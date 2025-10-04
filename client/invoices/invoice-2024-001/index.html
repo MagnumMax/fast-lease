@@ -20,6 +20,7 @@
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="bg-slate-50">
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
+          <div id="back-to-list-container"></div>
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
@@ -108,7 +109,7 @@
     }
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, mountMobileBottomNav } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, mountMobileBottomNav, mountBackToListButton } = shared;
     const { clientNav } = shared;
 
     const basePath = '../../..';
@@ -119,6 +120,13 @@
       title: 'Invoice INV-2025-013',
       breadcrumbs: ['Client', 'Invoices', 'INV-2025-013'],
       basePath,
+    });
+
+    // Добавить кнопку "Назад к списку"
+    mountBackToListButton({
+      containerId: 'back-to-list-container',
+      listHref: '../../invoices/index.html',
+      label: 'Все счета'
     });
 
     // Mount mobile bottom navigation

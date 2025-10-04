@@ -18,6 +18,7 @@
       <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
       <main class="bg-slate-50">
         <div class="mx-auto w-full max-w-6xl space-y-6 lg:ml-0 lg:mr-auto">
+          <div id="back-to-list-container"></div>
           <div id="deal-component"></div>
 
 
@@ -68,7 +69,7 @@
     const { mountDocumentsComponent } = await import('../../../components/documents-component.js');
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, mountBackToListButton } = shared;
     const { opsNav } = shared;
 
     const basePath = '../../..';
@@ -84,6 +85,13 @@
     });
 
     const nextPayment = formatDate('2025-02-15');
+
+    // Добавить кнопку "Назад к списку"
+    mountBackToListButton({
+      containerId: 'back-to-list-container',
+      listHref: '../../deals/index.html',
+      label: 'Все сделки'
+    });
 
     mountDealComponent('deal-component', {
       dealId: 'FL-2042',

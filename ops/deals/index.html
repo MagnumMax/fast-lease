@@ -42,8 +42,12 @@
               </div>
               <div class="flex items-center gap-2">
                 <div class="segmented">
-                  <button id="view-kanban" class="segmented-btn active">Kanban</button>
-                  <button id="view-table" class="segmented-btn">Table</button>
+                  <button id="view-kanban" class="segmented-btn active" title="Kanban">
+                    <i data-lucide="layout-grid" class="h-4 w-4"></i>
+                  </button>
+                  <button id="view-table" class="segmented-btn" title="Table">
+                    <i data-lucide="table" class="h-4 w-4"></i>
+                  </button>
                 </div>
               </div>
             </div>
@@ -166,7 +170,7 @@
               ${column.deals
                 .map(
                   (deal) => `
-                  <div class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
+                  <a href="../../ops/deals/deal-7801/index.html" class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
                     <div class="flex items-center justify-between">
                       <span class="font-semibold text-slate-900">${deal.id}</span>
                       <span class="text-xs text-slate-400">${formatDate(deal.updatedAt)}</span>
@@ -176,21 +180,7 @@
                       <i data-lucide="workflow" class="h-3.5 w-3.5"></i>
                       ${deal.stage}
                     </span>
-                    <div class="mt-2 flex items-center gap-2">
-                      <a href="../../ops/deals/deal-7801/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Deal" aria-label="Deal">
-                        <i data-lucide="file-text" class="h-4 w-4"></i>
-                      </a>
-                      <a href="${getClientLink(deal.client)}" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Client" aria-label="Client">
-                        <i data-lucide="user" class="h-4 w-4"></i>
-                      </a>
-                      <a href="../../ops/cars/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Vehicle" aria-label="Vehicle">
-                        <i data-lucide="car" class="h-4 w-4"></i>
-                      </a>
-                      <a href="../../client/invoices/index.html" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-600 hover:border-slate-900 hover:text-slate-900" title="Invoices" aria-label="Invoices">
-                        <i data-lucide="credit-card" class="h-4 w-4"></i>
-                      </a>
-                    </div>
-                  </div>
+                  </a>
                 `)
                 .join('')}
             </div>

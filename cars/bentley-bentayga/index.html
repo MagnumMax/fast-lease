@@ -31,6 +31,7 @@
   </header>
 
   <main class="mx-auto w-full max-w-6xl px-6 py-10 space-y-8">
+    <div id="back-to-list-container"></div>
     <section class="grid gap-8 lg:grid-cols-[3fr_2fr]">
       <div class="space-y-6">
         <div class="relative aspect-[4/3] overflow-hidden rounded-3xl">
@@ -93,7 +94,7 @@
     }
 
     const shared = await getShared('../../assets');
-    const { applyIcons } = shared;
+    const { applyIcons, mountBackToListButton } = shared;
 
 const benefits = [
       'Personalized finish at Bentley atelier.',
@@ -124,6 +125,13 @@ const benefits = [
     
 
     applyIcons();
+
+    // Добавить кнопку "Назад к списку"
+    mountBackToListButton({
+      containerId: 'back-to-list-container',
+      listHref: '../../index.html',
+      label: 'Все автомобили'
+    });
   </script>
 </body>
 </html>

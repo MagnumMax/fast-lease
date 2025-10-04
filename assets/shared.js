@@ -611,6 +611,23 @@ export function updateMobileNavActiveState(container, currentPath) {
   });
 }
 
+// Функция для добавления кнопки "Назад к списку" на детальные страницы
+export function mountBackToListButton({ containerId, listHref, label = "Назад к списку" }) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const buttonHtml = `
+    <div class="mb-6">
+      <a href="${listHref}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm hover:border-slate-900 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+        <i data-lucide="arrow-left" class="h-4 w-4"></i>
+        ${label}
+      </a>
+    </div>
+  `;
+
+  container.insertAdjacentHTML('afterbegin', buttonHtml);
+}
+
 export function applyGlobalAccessibilityAndUI() {
   try {
     // Focus styles for interactive elements
