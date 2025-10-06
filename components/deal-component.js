@@ -43,8 +43,8 @@ export function createDealComponent(data = {}) {
         </div>
 
         <!-- Right: image with limited height on desktop -->
-        <div class="hidden md:block">
-          <figure class="h-32 overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+        <div class="hidden md:flex md:row-span-2 md:h-full">
+          <figure class="h-full w-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
             <img
               src="${imageUrl}"
               alt="${imageAlt}"

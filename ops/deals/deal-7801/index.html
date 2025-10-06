@@ -39,8 +39,45 @@
             <div id="key-information-component"></div>
           </section>
 
-          <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-slate-900">Details</h2>
+            <dl class="mt-4 grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
+              <div>
+                <dt class="text-slate-500">Source</dt>
+                <dd class="mt-1 font-medium text-slate-900">Renty website</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Created at</dt>
+                <dd class="mt-1 font-medium text-slate-900">14 Jan 2025 · 10:00</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Created by</dt>
+                <dd class="mt-1 font-medium text-slate-900">Operator Maria T.</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Last status update</dt>
+                <dd class="mt-1 font-medium text-slate-900">14 Jan 2025 · 12:05</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Listing reference</dt>
+                <dd class="mt-1 font-medium text-slate-900">DL-7801-FL2042</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Lead priority</dt>
+                <dd class="mt-1 font-medium text-slate-900">High</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="grid gap-6">
             <div id="documents-component"></div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-slate-900">Invoices</h2>
+            </div>
+            <div id="invoices-component"></div>
           </section>
 
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -67,9 +104,10 @@
     const { mountDealComponent } = await import('../../../components/deal-component.js');
     const { mountKeyInformationComponent } = await import('../../../components/key-information-component.js');
     const { mountDocumentsComponent } = await import('../../../components/documents-component.js');
+    const { createInvoicesComponent, defaultInvoicesData } = await import('../../../components/invoices-component.js');
 
     const shared = await getShared('../../../assets');
-    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, mountBackToListButton } = shared;
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, mountBackToListButton, statusBadge, renderTable } = shared;
     const { opsNav } = shared;
 
     const basePath = '../../..';
@@ -134,6 +172,14 @@
       documents: docs,
     });
 
+    createInvoicesComponent({
+      containerId: 'invoices-component',
+      data: defaultInvoicesData,
+      formatCurrency,
+      formatDate,
+      statusBadge,
+      renderTable
+    });
 
     const events = [
       { date: '2025-01-14 12:05', text: 'Vehicle handover scheduled for 15.01 18:00', icon: 'calendar-check' },

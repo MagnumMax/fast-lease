@@ -21,17 +21,37 @@
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
           <div id="vehicle-component-container"></div>
 
-          <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Specifications</h2>
-              <dl class="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-slate-600">
-                <div><dt>Engine Type</dt><dd class="font-medium text-slate-900">Dual Motor</dd></div>
-                <div><dt>Range</dt><dd class="font-medium text-slate-900">520 km</dd></div>
-                <div><dt>Mileage</dt><dd class="font-medium text-slate-900">12 800 km</dd></div>
-                <div><dt>Battery Condition</dt><dd class="font-medium text-emerald-600">97%</dd></div>
-              </dl>
-            </article>
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-slate-900">Details</h2>
+            <dl class="mt-4 grid gap-4 text-sm text-slate-600 sm:grid-cols-2">
+              <div>
+                <dt class="text-slate-500">Source</dt>
+                <dd class="mt-1 font-medium text-slate-900">Renty website</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Created at</dt>
+                <dd class="mt-1 font-medium text-slate-900">14 Jan 2025 · 09:30</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Acquisition</dt>
+                <dd class="mt-1 font-medium text-slate-900">Lease-to-own</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Fleet status</dt>
+                <dd class="mt-1 font-medium text-slate-900">Available</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Location</dt>
+                <dd class="mt-1 font-medium text-slate-900">Dubai Motor City</dd>
+              </div>
+              <div>
+                <dt class="text-slate-500">Last telematics sync</dt>
+                <dd class="mt-1 font-medium text-slate-900">12 Jan 2025 · 22:45</dd>
+              </div>
+            </dl>
+          </section>
 
+          <section class="grid gap-6">
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 class="text-sm font-semibold text-slate-800">Documents</h2>
               <ul id="car-documents" class="mt-4 space-y-3 text-sm"></ul>
@@ -39,9 +59,60 @@
           </section>
 
           <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 class="text-sm font-semibold text-slate-800">Service History</h2>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <h2 class="text-sm font-semibold text-slate-800">Service History</h2>
+              <button id="open-service-upload" type="button" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-900 hover:text-slate-900">
+                <i data-lucide="paperclip" class="h-4 w-4"></i>
+                Add file
+              </button>
+            </div>
             <ul id="service-log" class="mt-4 space-y-3 text-sm"></ul>
           </section>
+
+          <div id="service-upload-modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/40 px-4 py-6">
+            <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-900">Attach service document</h3>
+                  <p class="mt-1 text-sm text-slate-600">Select file type and upload a document to keep the service history complete.</p>
+                </div>
+                <button id="close-service-upload" type="button" class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:border-slate-900 hover:text-slate-900">
+                  <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+              </div>
+
+              <form id="service-upload-form" class="mt-6 space-y-4">
+                <label class="block text-sm font-medium text-slate-700">
+                  File type
+                  <select name="fileType" required class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900/20">
+                    <option value="Maintenance Report">Maintenance Report</option>
+                    <option value="Invoice">Invoice</option>
+                    <option value="Service Photo">Service Photo</option>
+                    <option value="Warranty Document">Warranty Document</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </label>
+
+                <label class="block text-sm font-medium text-slate-700">
+                  Choose file
+                  <input name="serviceFile" type="file" required class="mt-2 block w-full cursor-pointer rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-3 py-3 text-sm text-slate-600 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900/20" />
+                </label>
+
+                <label class="block text-sm font-medium text-slate-700">
+                  Comment <span class="text-slate-400">(optional)</span>
+                  <textarea name="comment" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900/20" placeholder="Add context or notes for this document"></textarea>
+                </label>
+
+                <div class="flex items-center justify-end gap-2 pt-2">
+                  <button type="button" id="cancel-service-upload" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-900 hover:text-slate-900">Cancel</button>
+                  <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
+                    <i data-lucide="upload" class="h-4 w-4"></i>
+                    Upload
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       </main>
     </div>
@@ -84,6 +155,7 @@
     // Mount vehicle component
     vehicleComponent.mountVehicleComponent('vehicle-component-container', {
       title: 'Vehicle',
+      heading: 'Rolls-Royce Cullinan · VIN AAX-341',
       subtitle: 'Year of manufacture — 2024 · Luxury SUV · Cost AED 2 000 000',
       image: '../../../assets/images/rolls-royce-cullinan-exterior.jpg',
       specs: [
@@ -113,7 +185,8 @@
       { title: 'Telematics Report', status: 'Updated 12.01.2025', icon: 'radar' },
     ];
 
-    document.getElementById('car-documents').innerHTML = docs
+    const carDocumentsEl = document.getElementById('car-documents');
+    carDocumentsEl.innerHTML = docs
       .map(
         (doc) => `
         <li class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
@@ -141,7 +214,8 @@
       { date: '2024-11-18', desc: 'Software Update', note: 'Firmware version 1.4.6' },
     ];
 
-    document.getElementById('service-log').innerHTML = log
+    const serviceLogEl = document.getElementById('service-log');
+    serviceLogEl.innerHTML = log
       .map(
         (item) => `
         <li class="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3">
@@ -157,6 +231,111 @@
       `
       )
       .join('');
+
+    const uploadModal = document.getElementById('service-upload-modal');
+    const openUploadBtn = document.getElementById('open-service-upload');
+    const closeUploadBtn = document.getElementById('close-service-upload');
+    const cancelUploadBtn = document.getElementById('cancel-service-upload');
+    const uploadForm = document.getElementById('service-upload-form');
+
+    const toggleModal = (show) => {
+      if (!uploadModal) return;
+      if (show) {
+        uploadModal.classList.remove('hidden');
+        uploadModal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+      } else {
+        uploadModal.classList.add('hidden');
+        uploadModal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+        if (uploadForm) {
+          uploadForm.reset();
+          const fileInput = uploadForm.querySelector('input[name="serviceFile"]');
+          if (fileInput) {
+            fileInput.value = '';
+          }
+        }
+      }
+    };
+
+    openUploadBtn?.addEventListener('click', () => toggleModal(true));
+    closeUploadBtn?.addEventListener('click', () => toggleModal(false));
+    cancelUploadBtn?.addEventListener('click', () => toggleModal(false));
+
+    uploadModal?.addEventListener('click', (event) => {
+      if (event.target === uploadModal) {
+        toggleModal(false);
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && uploadModal && !uploadModal.classList.contains('hidden')) {
+        toggleModal(false);
+      }
+    });
+
+    uploadForm?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const formData = new FormData(uploadForm);
+      const file = uploadForm.elements.serviceFile?.files?.[0];
+      if (!file) {
+        uploadForm.elements.serviceFile?.focus();
+        return;
+      }
+
+      const fileType = formData.get('fileType');
+      const comment = (formData.get('comment') || '').toString().trim();
+      const timestamp = new Date().toLocaleString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const newEntry = document.createElement('li');
+      newEntry.className = 'flex items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3';
+
+      const leftGroup = document.createElement('div');
+      leftGroup.className = 'flex items-start gap-3';
+
+      const iconHolder = document.createElement('div');
+      iconHolder.className = 'mt-1 h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-600';
+      iconHolder.innerHTML = '<i data-lucide="paperclip" class="h-4 w-4"></i>';
+
+      const textGroup = document.createElement('div');
+      const titleEl = document.createElement('p');
+      titleEl.className = 'text-sm font-medium text-slate-900';
+      titleEl.textContent = `${fileType} — ${file.name}`;
+
+      const timeEl = document.createElement('p');
+      timeEl.className = 'text-xs text-slate-500';
+      timeEl.textContent = `Uploaded ${timestamp}`;
+
+      textGroup.appendChild(titleEl);
+      textGroup.appendChild(timeEl);
+
+      if (comment) {
+        const commentEl = document.createElement('p');
+        commentEl.className = 'text-xs text-slate-500';
+        commentEl.textContent = comment;
+        textGroup.appendChild(commentEl);
+      }
+
+      leftGroup.appendChild(iconHolder);
+      leftGroup.appendChild(textGroup);
+
+      const statusBadge = document.createElement('span');
+      statusBadge.className = 'mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600';
+      statusBadge.textContent = 'New';
+
+      newEntry.appendChild(leftGroup);
+      newEntry.appendChild(statusBadge);
+
+      serviceLogEl?.prepend(newEntry);
+      toggleModal(false);
+      applyIcons();
+    });
 
     applyIcons();
   </script>

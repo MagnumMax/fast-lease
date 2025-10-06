@@ -6,6 +6,7 @@
 export function createVehicleComponent(data = {}) {
   const {
     title = 'Vehicle',
+    heading = '',
     subtitle = 'Lease-to-own program for 36 months',
     image = '',
     specs = [
@@ -18,30 +19,37 @@ export function createVehicleComponent(data = {}) {
     ]
   } = data;
 
-  const specsHtml = specs.map(spec => `
-    <div class="grid grid-cols-[auto_1fr] items-start gap-3 border-b border-slate-200 pb-2">
-      <dt class="text-xs text-slate-500 text-right pr-2">${spec.label}</dt>
-      <dd class="text-sm font-medium text-slate-900 text-right">${spec.value}</dd>
-    </div>
-  `).join('');
+  const specsHtml = specs
+    .map(
+      (spec) => `
+        <div class="rounded-xl bg-slate-50/80 p-3">
+          <dt class="text-[11px] uppercase tracking-wide text-slate-400">${spec.label}</dt>
+          <dd class="mt-1 text-sm font-semibold text-slate-900">${spec.value}</dd>
+        </div>
+      `,
+    )
+    .join('');
 
   return `
     <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div class="grid gap-6 md:grid-cols-2 items-start">
-        <div>
-          <p class="text-xs uppercase tracking-[0.3em] text-slate-400">${title}</p>
-          <h1 class="mt-2 text-2xl font-semibold text-slate-900" data-vehicle-title>—</h1>
-          <p class="text-sm text-slate-600" data-vehicle-subtitle>${subtitle}</p>
+      <div class="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
+        <div class="flex-1 space-y-6">
+          <div class="space-y-4">
+            <p class="text-xs uppercase tracking-[0.3em] text-slate-400">${title}</p>
+            <h1 class="text-3xl font-semibold leading-tight text-slate-900" data-vehicle-title>${heading}</h1>
+            <p class="max-w-xl text-sm text-slate-600" data-vehicle-subtitle>${subtitle}</p>
+          </div>
+
+          <div class="border-y border-slate-200 py-4">
+            <dl class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-vehicle-specs>
+              ${specsHtml}
+            </dl>
+          </div>
         </div>
 
-        <div>
-          <figure class="h-48 md:h-full overflow-hidden rounded-xl border border-slate-200 shadow-sm">
-            <img data-vehicle-image src="${image}" alt="Vehicle" class="h-full w-full object-cover" loading="lazy" />
-          </figure>
-          <dl class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-y-2 gap-x-4 text-sm" data-vehicle-specs>
-            ${specsHtml}
-          </dl>
-        </div>
+        <figure class="relative w-full min-h-[220px] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm aspect-[4/3] lg:ml-auto lg:min-h-[260px] lg:w-[360px] xl:w-[420px]">
+          <img data-vehicle-image src="${image}" alt="Vehicle" class="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+        </figure>
       </div>
     </section>
   `;
@@ -66,13 +74,18 @@ export function updateVehicleData(title, subtitle, image, specs) {
 
   if (titleEl) titleEl.textContent = title;
   if (subtitleEl) subtitleEl.textContent = subtitle;
-  if (imgEl) imgEl.src = image;
+  if (imgEl) {
+    imgEl.src = image;
+    if (title) {
+      imgEl.alt = title;
+    }
+  }
 
   if (specsEl && specs) {
     specsEl.innerHTML = specs.map(spec => `
-      <div class="grid grid-cols-[auto_1fr] items-start gap-3 border-b border-slate-200 pb-2">
-        <dt class="text-xs text-slate-500 text-right pr-2">${spec.label}</dt>
-        <dd class="text-sm font-medium text-slate-900 text-right">${spec.value}</dd>
+      <div class="rounded-xl bg-slate-50/80 p-3">
+        <dt class="text-[11px] uppercase tracking-wide text-slate-400">${spec.label}</dt>
+        <dd class="mt-1 text-sm font-semibold text-slate-900">${spec.value}</dd>
       </div>
     `).join('');
   }

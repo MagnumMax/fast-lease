@@ -11,7 +11,7 @@ import os
 import sys
 from pathlib import Path
 
-PORT = 3000
+PORT = 4003
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):

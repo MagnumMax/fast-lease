@@ -20,24 +20,24 @@
       <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
           <section class="grid gap-6 grid-cols-2 md:grid-cols-4">
             <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Active Deals</p>
-              <h2 id="metric-active" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
-              <p class="text-sm text-slate-500">+4 in the last 24 hours</p>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">On-Time Activations</p>
+              <h2 id="metric-ontime" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
+              <p class="text-sm text-emerald-600">Week target: 95%</p>
             </article>
             <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Cycle Time</p>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Avg Time to Activate</p>
               <h2 id="metric-cycle" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
-              <p class="text-sm text-emerald-600">-12% from last week</p>
+              <p class="text-sm text-slate-500">vs SLA 30h</p>
             </article>
             <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">AI Documents</p>
-              <h2 id="metric-ai" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
-              <p class="text-sm text-slate-500">98% without manual edits</p>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Automation Coverage</p>
+              <h2 id="metric-automation" class="mt-2 text-3xl font-semibold text-slate-900">—</h2>
+              <p class="text-sm text-emerald-600">Manual review trending down</p>
             </article>
             <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Overdue</p>
-              <h2 class="mt-2 text-3xl font-semibold text-emerald-600">0</h2>
-              <p class="text-sm text-slate-500">SLA control at 100%</p>
+              <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Backlog &gt; 24h</p>
+              <h2 id="metric-backlog" class="mt-2 text-3xl font-semibold text-rose-500">—</h2>
+              <p class="text-sm text-slate-500">Escalate above 10</p>
             </article>
           </section>
 
@@ -56,8 +56,58 @@
             </article>
 
             <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 class="text-sm font-semibold text-slate-800">Risks and Signals</h2>
+              <h2 class="text-sm font-semibold text-slate-800">Exception Watchlist</h2>
               <ul id="risk-list" class="mt-4 space-y-3 text-sm"></ul>
+            </article>
+          </section>
+
+          <section class="grid gap-6 lg:grid-cols-[2fr_1fr]">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="mt-2 text-xl font-semibold text-slate-900">Demand vs Capacity</h2>
+                  <p class="text-sm text-slate-500">Seven-day view of submitted vs processed cases</p>
+                </div>
+                <select class="rounded-xl border-slate-200 text-sm focus:border-slate-900 focus:ring-slate-900">
+                  <option>Last 7 days</option>
+                  <option>Last 30 days</option>
+                </select>
+              </div>
+              <canvas id="capacity-chart" height="260" class="mt-6"></canvas>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">SLA Watchlist</h2>
+              <ul id="sla-watchlist" class="mt-4 space-y-3 text-sm"></ul>
+            </article>
+          </section>
+
+          <section class="grid gap-6 lg:grid-cols-3">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-slate-800">Team Load</h2>
+                <span class="badge badge-info">Live</span>
+              </div>
+              <table class="mt-4 w-full text-left text-sm">
+                <thead class="text-xs uppercase text-slate-400">
+                  <tr>
+                    <th class="pb-2">Specialist</th>
+                    <th class="pb-2 text-right">Active</th>
+                    <th class="pb-2 text-right">Over SLA</th>
+                  </tr>
+                </thead>
+                <tbody id="team-load" class="divide-y divide-slate-200"></tbody>
+              </table>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Process Bottlenecks</h2>
+              <ul id="bottleneck-list" class="mt-4 space-y-4 text-sm"></ul>
+            </article>
+
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Automation &amp; Quality</h2>
+              <dl class="mt-4 space-y-4 text-sm" id="automation-metrics"></dl>
             </article>
           </section>
 
@@ -102,9 +152,10 @@
       basePath,
     });
 
-    document.getElementById('metric-active').textContent = '42';
-    document.getElementById('metric-cycle').textContent = '36 hours';
-    document.getElementById('metric-ai').textContent = '312';
+    document.getElementById('metric-ontime').textContent = '92%';
+    document.getElementById('metric-cycle').textContent = '34h';
+    document.getElementById('metric-automation').textContent = '78%';
+    document.getElementById('metric-backlog').textContent = '6';
 
     new Chart(document.getElementById('pipeline-chart'), {
       type: 'bar',
@@ -137,9 +188,41 @@
       plugins: [ChartDataLabels],
     });
 
+    new Chart(document.getElementById('capacity-chart'), {
+      type: 'line',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [
+          {
+            label: 'Applications Submitted',
+            data: [18, 24, 21, 27, 30, 22, 16],
+            borderColor: '#475569',
+            backgroundColor: 'rgba(71, 85, 105, 0.2)',
+            fill: true,
+            tension: 0.4,
+          },
+          {
+            label: 'Applications Activated',
+            data: [16, 22, 19, 25, 28, 20, 18],
+            borderColor: '#0f172a',
+            backgroundColor: 'rgba(15, 23, 42, 0.25)',
+            fill: true,
+            tension: 0.4,
+          },
+        ],
+      },
+      options: {
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 5 } },
+        },
+      },
+    });
+
     const risks = [
       { title: 'Documents for Lamborghini Huracan', description: 'AI noted low quality of Registration Card scan', tone: 'badge-warning' },
       { title: 'Client Payment FL-2025-1042', description: 'Auto-payment postponed due to weekend', tone: 'badge-info' },
+      { title: 'Insurance upload pending', description: 'Waiting for carrier response, SLA in 6h', tone: 'badge-warning' },
     ];
 
     document.getElementById('risk-list').innerHTML = risks
@@ -152,6 +235,85 @@
           </div>
           <a href="../../ops/tasks/index.html" class="text-xs text-slate-500 hover:underline">${risk.description}</a>
         </li>
+      `
+      )
+      .join('');
+
+    const slaWatchlist = [
+      { title: 'KYB verification backlog', description: '9 cases idle &gt; 24h, assign to risk team', tone: 'badge-rose' },
+      { title: 'Bank payouts', description: 'Bank of Europe delay adds +6h to activation', tone: 'badge-warning' },
+      { title: 'Document QA sampling', description: 'Coverage at 82%, schedule additional spot checks', tone: 'badge-info' },
+    ];
+
+    document.getElementById('sla-watchlist').innerHTML = slaWatchlist
+      .map(
+        (item) => `
+        <li class="flex flex-col gap-1 rounded-xl border border-slate-200 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-slate-900">${item.title}</span>
+            <span class="badge ${item.tone}">Action</span>
+          </div>
+          <p class="text-xs text-slate-500">${item.description}</p>
+        </li>
+      `
+      )
+      .join('');
+
+    const teamLoad = [
+      { name: 'Daria K.', active: 14, overdue: 1 },
+      { name: 'Mateusz L.', active: 12, overdue: 0 },
+      { name: 'Hannah S.', active: 10, overdue: 2 },
+      { name: 'Nikola R.', active: 9, overdue: 0 },
+    ];
+
+    document.getElementById('team-load').innerHTML = teamLoad
+      .map(
+        (member) => `
+        <tr class="text-slate-700">
+          <td class="py-3">${member.name}</td>
+          <td class="py-3 text-right font-medium">${member.active}</td>
+          <td class="py-3 text-right ${member.overdue ? 'text-rose-500 font-medium' : 'text-emerald-600'}">${member.overdue}</td>
+        </tr>
+      `
+      )
+      .join('');
+
+    const bottlenecks = [
+      { stage: 'Document review', avg: '18h', sla: '12h', load: 75, tone: 'text-rose-500' },
+      { stage: 'Scoring', avg: '6h', sla: '8h', load: 55, tone: 'text-emerald-600' },
+      { stage: 'Insurance binding', avg: '22h', sla: '18h', load: 82, tone: 'text-amber-500' },
+    ];
+
+    document.getElementById('bottleneck-list').innerHTML = bottlenecks
+      .map(
+        (item) => `
+        <li>
+          <div class="flex items-center justify-between">
+            <span class="font-medium text-slate-900">${item.stage}</span>
+            <span class="text-xs ${item.tone}">${item.avg} avg / ${item.sla} SLA</span>
+          </div>
+          <div class="mt-2 h-2 w-full rounded-full bg-slate-100">
+            <div class="h-2 rounded-full bg-slate-900" style="width: ${item.load}%;"></div>
+          </div>
+        </li>
+      `
+      )
+      .join('');
+
+    const automationMetrics = [
+      { name: 'Manual review rate', primary: '22%', helper: 'goal &lt; 15%', tone: 'text-rose-500' },
+      { name: 'AI document accuracy', primary: '97.8%', helper: '+1.4% WoW', tone: 'text-emerald-600' },
+      { name: 'Auto-routing coverage', primary: '64%', helper: 'add scoring rules for SME segment', tone: 'text-slate-500' },
+    ];
+
+    document.getElementById('automation-metrics').innerHTML = automationMetrics
+      .map(
+        (metric) => `
+        <div>
+          <dt class="text-xs uppercase tracking-[0.3em] text-slate-400">${metric.name}</dt>
+          <dd class="mt-1 text-xl font-semibold text-slate-900">${metric.primary}</dd>
+          <p class="text-xs ${metric.tone}">${metric.helper}</p>
+        </div>
       `
       )
       .join('');
