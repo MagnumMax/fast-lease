@@ -38,8 +38,9 @@ This repository migrates the `/beta` HTML prototype to a modern stack built with
 
 ## Worklog & Next Steps
 
-- Track roadmap progress in [`TODO.md`](./TODO.md). Stage 1 is scaffolded; Stage 2 will focus on porting design tokens and base UI components.
-- Provide real Supabase keys to finalise connectivity tests (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
-- Use `npm run typecheck` and `npm run lint` to validate changes locally.
+- Track roadmap progress in [`TODO.md`](./TODO.md). Stage 2 is complete: Linear design tokens are ported, shadcn/ui primitives are ready, and shared layouts (public/auth/dashboard) mirror the `/beta` structure.
+- Supabase environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, optional service keys) already live in `.env.local`. Connection sanity checks succeed.
+- Use `npm run lint` and `npm run typecheck` before committing feature work.
+- Upcoming focus: Stage 3 — translate the prototype data layer into Supabase migrations, schemas, and seed data.
 
 Refer to `.trae/documents/*` for architecture, design, and product specifications. The `/beta` directory remains the functional specification and must be mirrored exactly during implementation.

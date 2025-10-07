@@ -1,5 +1,15 @@
 import type { ReactNode } from "react";
 
+import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { opsNav } from "@/lib/navigation";
+
 export default function OpsLayout({ children }: { children: ReactNode }) {
-  return <div className="flex flex-1 flex-col gap-6">{children}</div>;
+  return (
+    <DashboardLayout
+      navItems={opsNav}
+      brand={{ title: "Operations", subtitle: "Fast Lease" }}
+    >
+      {children}
+    </DashboardLayout>
+  );
 }
