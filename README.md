@@ -35,10 +35,11 @@ This repository migrates the `/beta` HTML prototype to a modern stack built with
 - `lib/legacy/shared.ts` — original prototype logic, kept as a reference for the migration (excluded from lint/type checks).
 - `public/assets/` — static assets copied from `beta/assets/images` for reuse in the React implementation.
 - `supabase/config.toml` — Supabase CLI configuration with environment-driven URLs.
+- `docs/supabase-data-plan.md` — staged schema plan covering migrations, seeds, and upcoming RLS/edge work.
 
 ## Worklog & Next Steps
 
-- Track roadmap progress in [`TODO.md`](./TODO.md). Stage 2 is complete: Linear design tokens are ported, shadcn/ui primitives are ready, and shared layouts (public/auth/dashboard) mirror the `/beta` structure.
+- Track roadmap progress in [`TODO.md`](./TODO.md). Stage 2 is complete, and Stage 3 has baseline migrations + seed data in place (identity, vehicles, applications, deals, finance tables).
 - Supabase environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, optional service keys) already live in `.env.local`. Connection sanity checks succeed.
 - Use `npm run lint` and `npm run typecheck` before committing feature work.
 - Upcoming focus: Stage 3 — translate the prototype data layer into Supabase migrations, schemas, and seed data.
