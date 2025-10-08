@@ -15,6 +15,7 @@ import {
   Plug,
   Settings,
   Sparkles,
+  UserCircle,
   Users,
   Workflow,
 } from "lucide-react";
@@ -38,6 +39,7 @@ export const clientNav: NavItem[] = [
   { label: "My Vehicle", href: "/client/vehicle", icon: Car },
   { label: "Payments", href: "/client/invoices", icon: CreditCard },
   { label: "Deals", href: "/client/deals", icon: KanbanSquare },
+  { label: "Profile", href: "/client/profile", icon: UserCircle },
   { label: "Referrals", href: "/client/referrals", icon: Users },
   { label: "Support", href: "/client/support", icon: LifeBuoy },
 ];

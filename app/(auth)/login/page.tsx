@@ -1,11 +1,5 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { AuthCard } from "./auth-card";
 
 export default function LoginPage() {
-  return (
-    <RouteScaffold
-      title="Вход в систему"
-      description="Экран аутентификации с табами email/OTP переносится из /beta/login/index.html."
-      referencePath="/beta/login/index.html"
-    />
-  );
+  return <AuthCard initialTab="sign-in" />;
 }

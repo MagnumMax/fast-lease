@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 import { Menu } from "lucide-react";
 
+import { signOutAction } from "@/app/(auth)/actions";
+import type { AppRole } from "@/lib/auth/types";
 import { clientNav } from "@/lib/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,11 @@ type DashboardLayoutProps = {
     title: string;
     subtitle: string;
   };
+  user?: {
+    fullName: string | null;
+    email: string | null;
+    primaryRole: AppRole | null;
+  };
 };
 
 const DEFAULT_BRAND = {
@@ -31,6 +38,7 @@ export function DashboardLayout({
   navItems,
   children,
   brand = DEFAULT_BRAND,
+  user,
 }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -115,6 +123,21 @@ export function DashboardLayout({
               />
             </div>
             <ThemeToggle />
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm">
+              <div className="hidden text-right md:block">
+                <p className="font-semibold leading-tight">
+                  {user?.fullName ?? user?.email ?? "Без имени"}
+                </p>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {user?.primaryRole ?? "guest"}
+                </p>
+              </div>
+              <form action={signOutAction}>
+                <Button type="submit" size="sm" variant="outline" className="rounded-lg">
+                  Выйти
+                </Button>
+              </form>
+            </div>
           </div>
         </header>
 
