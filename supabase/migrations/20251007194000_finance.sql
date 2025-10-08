@@ -1,37 +1,65 @@
 -- Stage 3 • Migration 5: finance layer
 
-create type public.invoice_type as enum (
-  'monthly_payment',
-  'down_payment',
-  'processing_fee',
-  'late_fee',
-  'insurance',
-  'buyout'
-);
+do $$ begin
+  if not exists (
+    select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+    where t.typname = 'invoice_type' and n.nspname = 'public'
+  ) then
+    create type public.invoice_type as enum (
+      'monthly_payment',
+      'down_payment',
+      'processing_fee',
+      'late_fee',
+      'insurance',
+      'buyout'
+    );
+  end if;
+end $$;
 
-create type public.invoice_status as enum (
-  'draft',
-  'pending',
-  'overdue',
-  'paid',
-  'cancelled'
-);
+do $$ begin
+  if not exists (
+    select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+    where t.typname = 'invoice_status' and n.nspname = 'public'
+  ) then
+    create type public.invoice_status as enum (
+      'draft',
+      'pending',
+      'overdue',
+      'paid',
+      'cancelled'
+    );
+  end if;
+end $$;
 
-create type public.payment_status as enum (
-  'initiated',
-  'processing',
-  'succeeded',
-  'failed',
-  'refunded'
-);
+do $$ begin
+  if not exists (
+    select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+    where t.typname = 'payment_status' and n.nspname = 'public'
+  ) then
+    create type public.payment_status as enum (
+      'initiated',
+      'processing',
+      'succeeded',
+      'failed',
+      'refunded'
+    );
+  end if;
+end $$;
 
-create type public.payment_method as enum (
-  'card',
-  'bank_transfer',
-  'cash',
-  'cheque',
-  'wallet'
-);
+do $$ begin
+  if not exists (
+    select 1 from pg_type t join pg_namespace n on n.oid = t.typnamespace
+    where t.typname = 'payment_method' and n.nspname = 'public'
+  ) then
+    create type public.payment_method as enum (
+      'card',
+      'bank_transfer',
+      'cash',
+      'cheque',
+      'wallet'
+    );
+  end if;
+end $$;
 
 create table if not exists public.invoices (
   id uuid primary key default gen_random_uuid(),
@@ -52,6 +80,17 @@ create table if not exists public.invoices (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+do $$ begin
+  if exists (
+    select 1 from information_schema.triggers
+    where event_object_schema = 'public'
+      and event_object_table = 'invoices'
+      and trigger_name = 'trg_invoices_set_updated_at'
+  ) then
+    drop trigger trg_invoices_set_updated_at on public.invoices;
+  end if;
+end $$;
 
 create trigger trg_invoices_set_updated_at
 before update on public.invoices
@@ -74,6 +113,17 @@ create table if not exists public.payments (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+do $$ begin
+  if exists (
+    select 1 from information_schema.triggers
+    where event_object_schema = 'public'
+      and event_object_table = 'payments'
+      and trigger_name = 'trg_payments_set_updated_at'
+  ) then
+    drop trigger trg_payments_set_updated_at on public.payments;
+  end if;
+end $$;
 
 create trigger trg_payments_set_updated_at
 before update on public.payments
@@ -112,6 +162,17 @@ create table if not exists public.payment_schedules (
   updated_at timestamptz not null default timezone('utc', now()),
   unique (deal_id, sequence)
 );
+
+do $$ begin
+  if exists (
+    select 1 from information_schema.triggers
+    where event_object_schema = 'public'
+      and event_object_table = 'payment_schedules'
+      and trigger_name = 'trg_payment_schedules_set_updated_at'
+  ) then
+    drop trigger trg_payment_schedules_set_updated_at on public.payment_schedules;
+  end if;
+end $$;
 
 create trigger trg_payment_schedules_set_updated_at
 before update on public.payment_schedules

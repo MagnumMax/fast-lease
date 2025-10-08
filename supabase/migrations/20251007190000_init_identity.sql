@@ -3,22 +3,38 @@
 
 create extension if not exists "pgcrypto";
 
-create type public.user_role as enum (
-  'client',
-  'operator',
-  'ops_manager',
-  'admin',
-  'investor',
-  'finance',
-  'support'
-);
+do $$ begin
+  if not exists (
+    select 1 from pg_type t
+    join pg_namespace n on n.oid = t.typnamespace
+    where t.typname = 'user_role' and n.nspname = 'public'
+  ) then
+    create type public.user_role as enum (
+      'client',
+      'operator',
+      'ops_manager',
+      'admin',
+      'investor',
+      'finance',
+      'support'
+    );
+  end if;
+end $$;
 
-create type public.user_status as enum (
-  'pending',
-  'active',
-  'suspended',
-  'archived'
-);
+do $$ begin
+  if not exists (
+    select 1 from pg_type t
+    join pg_namespace n on n.oid = t.typnamespace
+    where t.typname = 'user_status' and n.nspname = 'public'
+  ) then
+    create type public.user_status as enum (
+      'pending',
+      'active',
+      'suspended',
+      'archived'
+    );
+  end if;
+end $$;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -42,19 +58,29 @@ create table if not exists public.profiles (
   passport_number text,
   nationality text,
   residency_status text,
-  date date_of_birth,
-  jsonb address default '{}'::jsonb,
-  jsonb employment_info default '{}'::jsonb,
-  jsonb financial_profile default '{}'::jsonb,
-  jsonb metadata default '{}'::jsonb,
-  boolean marketing_opt_in not null default false,
-  text timezone default 'Asia/Dubai',
-  text avatar_url,
-  timestamptz last_login_at,
-  timestamptz created_at not null default timezone('utc', now()),
-  timestamptz updated_at not null default timezone('utc', now()),
+  date_of_birth date,
+  address jsonb default '{}'::jsonb,
+  employment_info jsonb default '{}'::jsonb,
+  financial_profile jsonb default '{}'::jsonb,
+  metadata jsonb default '{}'::jsonb,
+  marketing_opt_in boolean not null default false,
+  timezone text default 'Asia/Dubai',
+  avatar_url text,
+  last_login_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
   unique (user_id)
 );
+
+do $$ begin
+  if exists (
+    select 1 from information_schema.triggers
+    where event_object_table = 'profiles'
+      and trigger_name = 'trg_profiles_set_updated_at'
+  ) then
+    drop trigger trg_profiles_set_updated_at on public.profiles;
+  end if;
+end $$;
 
 create trigger trg_profiles_set_updated_at
 before update on public.profiles
@@ -70,11 +96,21 @@ create table if not exists public.user_roles (
   role public.user_role not null,
   assigned_at timestamptz not null default timezone('utc', now()),
   assigned_by uuid references auth.users(id),
-  jsonb metadata default '{}'::jsonb,
-  timestamptz created_at not null default timezone('utc', now()),
-  timestamptz updated_at not null default timezone('utc', now()),
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
   unique (user_id, role)
 );
+
+do $$ begin
+  if exists (
+    select 1 from information_schema.triggers
+    where event_object_table = 'user_roles'
+      and trigger_name = 'trg_user_roles_set_updated_at'
+  ) then
+    drop trigger trg_user_roles_set_updated_at on public.user_roles;
+  end if;
+end $$;
 
 create trigger trg_user_roles_set_updated_at
 before update on public.user_roles

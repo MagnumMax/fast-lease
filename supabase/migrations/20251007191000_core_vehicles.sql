@@ -1,13 +1,21 @@
 -- Stage 3 • Migration 2: vehicle catalogue
 
-create type public.vehicle_status as enum (
-  'draft',
-  'available',
-  'reserved',
-  'leased',
-  'maintenance',
-  'retired'
-);
+do $$ begin
+  if not exists (
+    select 1 from pg_type t
+    join pg_namespace n on n.oid = t.typnamespace
+    where t.typname = 'vehicle_status' and n.nspname = 'public'
+  ) then
+    create type public.vehicle_status as enum (
+      'draft',
+      'available',
+      'reserved',
+      'leased',
+      'maintenance',
+      'retired'
+    );
+  end if;
+end $$;
 
 create table if not exists public.vehicles (
   id uuid primary key default gen_random_uuid(),
@@ -34,6 +42,17 @@ create table if not exists public.vehicles (
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
+
+do $$ begin
+  if exists (
+    select 1 from information_schema.triggers
+    where event_object_schema = 'public'
+      and event_object_table = 'vehicles'
+      and trigger_name = 'trg_vehicles_set_updated_at'
+  ) then
+    drop trigger trg_vehicles_set_updated_at on public.vehicles;
+  end if;
+end $$;
 
 create trigger trg_vehicles_set_updated_at
 before update on public.vehicles
