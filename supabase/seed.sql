@@ -2,6 +2,12 @@
 
 begin;
 
+truncate table public.investor_reports restart identity cascade;
+truncate table public.portfolio_activity_events restart identity cascade;
+truncate table public.portfolio_performance_snapshots restart identity cascade;
+truncate table public.portfolio_assets restart identity cascade;
+truncate table public.investment_portfolios restart identity cascade;
+truncate table public.investors restart identity cascade;
 truncate table public.support_messages restart identity cascade;
 truncate table public.support_tickets restart identity cascade;
 truncate table public.client_notifications restart identity cascade;
@@ -40,6 +46,9 @@ declare
   ops_id uuid;
   admin_id uuid;
   support_id uuid;
+  investor_user_id uuid;
+  investor_record_id uuid;
+  investor_portfolio_id uuid;
   rolls_id uuid;
   lambo_id uuid;
   volvo_id uuid;
@@ -72,6 +81,11 @@ begin
     (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'sara.support@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000004', jsonb_build_object('full_name', 'Sara Support'), 'authenticated', 'authenticated', now(), now())
   returning id into support_id;
 
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  values
+    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'ilias.investor@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000005', jsonb_build_object('full_name', 'Ilias Investor'), 'authenticated', 'authenticated', now(), now())
+  returning id into investor_user_id;
+
   -- Profiles
   insert into public.profiles (user_id, status, full_name, phone, emirates_id, nationality, residency_status, marketing_opt_in)
   values
@@ -89,6 +103,10 @@ begin
   values
     (support_id, 'active', 'Sara Support', '+971500000004', 'UAE', 'resident', false);
 
+  insert into public.profiles (user_id, status, full_name, phone, nationality, residency_status, marketing_opt_in)
+  values
+    (investor_user_id, 'active', 'Ilias Investor', '+971500000005', 'Greece', 'resident', false);
+
   -- Roles
   insert into public.user_roles (user_id, role, metadata)
   values
@@ -96,7 +114,51 @@ begin
     (ops_id, 'operator', jsonb_build_object('team', 'operations')),
     (ops_id, 'ops_manager', jsonb_build_object('team', 'operations')),
     (admin_id, 'admin', jsonb_build_object('scope', 'platform')),
-    (support_id, 'support', jsonb_build_object('team', 'cx'));
+    (support_id, 'support', jsonb_build_object('team', 'cx')),
+    (investor_user_id, 'investor', jsonb_build_object('segment', 'premium'));
+
+  -- Investors
+  insert into public.investors (user_id, investor_code, display_name, investor_type, status, total_investment, available_funds, compliance_status, onboarded_at, metadata)
+  values
+    (
+      investor_user_id,
+      'INV-2025-0001',
+      'Ilias Capital Partners',
+      'institutional',
+      'active',
+      4560000,
+      320000,
+      'verified',
+      now() - interval '180 days',
+      jsonb_build_object('preferred_currency', 'AED', 'contact_person', 'Ilias Georgiou')
+    )
+  returning id into investor_record_id;
+
+  insert into public.investment_portfolios (investor_id, portfolio_name, portfolio_type, total_value, allocated_amount, available_amount, irr_percent, risk_band, performance_metrics, metadata)
+  values
+    (
+      investor_record_id,
+      'Luxury Fleet UAE',
+      'lease-backed',
+      4560000,
+      4240000,
+      320000,
+      0.084,
+      'moderate',
+      jsonb_build_object(
+        'aum', 4560000,
+        'yield_ytd', 0.084,
+        'overdue_ratio', 0,
+        'status_breakdown', jsonb_build_array(
+          jsonb_build_object('status', 'in_operation', 'count', 18),
+          jsonb_build_object('status', 'pending_delivery', 'count', 4),
+          jsonb_build_object('status', 'under_review', 'count', 2),
+          jsonb_build_object('status', 'attention_required', 'count', 0)
+        )
+      ),
+      jsonb_build_object('primary_currency', 'AED')
+    )
+  returning id into investor_portfolio_id;
 
   -- Vehicles
   insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, monthly_lease_rate, residual_value, status, features, location_data, acquired_at)
@@ -126,6 +188,295 @@ begin
     (rolls_id, 'Dimensions', 'Wheelbase', '3295', 'mm', 2),
     (lambo_id, 'Performance', 'Power', '631', 'hp', 1),
     (volvo_id, 'Battery', 'Capacity', '78', 'kWh', 1);
+
+  -- Investor portfolio assets & performance
+  insert into public.portfolio_assets (
+    portfolio_id,
+    deal_id,
+    vehicle_id,
+    asset_code,
+    vin,
+    vehicle_make,
+    vehicle_model,
+    vehicle_variant,
+    status,
+    irr_percent,
+    last_valuation,
+    last_payout_amount,
+    last_payout_currency,
+    last_payout_date,
+    payout_frequency,
+    acquisition_cost,
+    contract_start_date,
+    contract_end_date,
+    metadata
+  )
+  values
+    (
+      investor_portfolio_id,
+      null,
+      null,
+      'R1T-2204',
+      'R1T-2204',
+      'Bentley',
+      'Continental GT',
+      'Azure',
+      'in_operation',
+      0.104,
+      1120000,
+      4400,
+      'AED',
+      current_date - interval '7 days',
+      'monthly',
+      985000,
+      current_date - interval '380 days',
+      current_date + interval '24 months',
+      jsonb_build_object('link', '/investor/assets/asset-001', 'location', 'Dubai Marina')
+    ),
+    (
+      investor_portfolio_id,
+      deal_id,
+      rolls_id,
+      'AAX-341',
+      'AAX-341',
+      'Rolls-Royce',
+      'Cullinan',
+      'Black Badge',
+      'pending_delivery',
+      0.089,
+      1080000,
+      3080,
+      'AED',
+      current_date - interval '12 days',
+      'monthly',
+      1000000,
+      current_date - interval '45 days',
+      current_date + interval '35 months',
+      jsonb_build_object('link', '/investor/assets/asset-002', 'handoverSlot', 'Next week')
+    ),
+    (
+      investor_portfolio_id,
+      null,
+      null,
+      'BMW-I4-88',
+      'BMW-I4-88',
+      'Ferrari',
+      '488 Spider',
+      'Rosso Corsa',
+      'in_operation',
+      0.096,
+      860000,
+      2680,
+      'AED',
+      current_date - interval '18 days',
+      'monthly',
+      815000,
+      current_date - interval '300 days',
+      current_date + interval '18 months',
+      jsonb_build_object('link', '/investor/assets/asset-003', 'assignedManager', 'Maria G.')
+    ),
+    (
+      investor_portfolio_id,
+      null,
+      lambo_id,
+      'TES-3P-04',
+      'TES-3P-04',
+      'Lamborghini',
+      'Huracan',
+      'EVO AWD',
+      'attention_required',
+      0.078,
+      720000,
+      2530,
+      'AED',
+      current_date - interval '25 days',
+      'monthly',
+      705000,
+      current_date - interval '220 days',
+      current_date + interval '20 months',
+      jsonb_build_object('link', '/investor/assets/asset-004', 'alert', 'Maintenance follow-up')
+    ),
+    (
+      investor_portfolio_id,
+      null,
+      null,
+      'VOL-XC40-12',
+      'VOL-XC40-12',
+      'Bentley',
+      'Bentayga',
+      'V8 Azure',
+      'in_operation',
+      0.091,
+      780000,
+      2170,
+      'AED',
+      current_date - interval '9 days',
+      'monthly',
+      765000,
+      current_date - interval '150 days',
+      current_date + interval '28 months',
+      jsonb_build_object('link', '/investor/assets/asset-005', 'insurer', 'Allianz')
+    );
+
+  insert into public.portfolio_performance_snapshots (
+    portfolio_id,
+    period_start,
+    period_end,
+    period_label,
+    accrued_amount,
+    actual_amount,
+    irr_percent
+  )
+  values
+    (
+      investor_portfolio_id,
+      date '2024-12-01',
+      date '2024-12-31',
+      'Dec',
+      42000,
+      41000,
+      0.082
+    ),
+    (
+      investor_portfolio_id,
+      date '2025-01-01',
+      date '2025-01-31',
+      'Jan',
+      48000,
+      48000,
+      0.083
+    ),
+    (
+      investor_portfolio_id,
+      date '2025-02-01',
+      date '2025-02-28',
+      'Feb',
+      55000,
+      53000,
+      0.084
+    ),
+    (
+      investor_portfolio_id,
+      date '2025-03-01',
+      date '2025-03-31',
+      'Mar',
+      52000,
+      51000,
+      0.083
+    ),
+    (
+      investor_portfolio_id,
+      date '2025-04-01',
+      date '2025-04-30',
+      'Apr',
+      58000,
+      58000,
+      0.085
+    ),
+    (
+      investor_portfolio_id,
+      date '2025-05-01',
+      date '2025-05-31',
+      'May',
+      62000,
+      61000,
+      0.086
+    );
+
+  insert into public.portfolio_activity_events (portfolio_id, occurred_at, category, description, amount, currency, amount_direction, metadata)
+  values
+    (
+      investor_portfolio_id,
+      now() - interval '2 hours',
+      'payout',
+      'Payment settled for asset R1T-2204 (Bentley Continental GT)',
+      4400,
+      'AED',
+      'credit',
+      jsonb_build_object('asset_code', 'R1T-2204')
+    ),
+    (
+      investor_portfolio_id,
+      now() - interval '1 day',
+      'contract',
+      'Rolls-Royce Cullinan contract extended by 6 months',
+      1540,
+      'AED',
+      'credit',
+      jsonb_build_object('asset_code', 'AAX-341')
+    ),
+    (
+      investor_portfolio_id,
+      now() - interval '3 days',
+      'maintenance',
+      'Maintenance report received for Ferrari 488 Spider',
+      null,
+      'AED',
+      'neutral',
+      jsonb_build_object('asset_code', 'BMW-I4-88')
+    );
+
+  insert into public.investor_reports (
+    portfolio_id,
+    report_code,
+    report_type,
+    period_start,
+    period_end,
+    format,
+    status,
+    storage_path,
+    send_copy,
+    requested_by,
+    generated_at,
+    metadata,
+    created_at
+  )
+  values
+    (
+      investor_portfolio_id,
+      'REP-2025-004',
+      'portfolio_yield',
+      date '2024-12-01',
+      date '2025-01-31',
+      'pdf',
+      'ready',
+      'investor-reports/INV-2025-0001/REP-2025-004.pdf',
+      true,
+      investor_user_id,
+      now() - interval '2 days',
+      jsonb_build_object('signature', 'automated'),
+      now() - interval '2 days'
+    ),
+    (
+      investor_portfolio_id,
+      'REP-2024-099',
+      'payment_schedule',
+      date '2024-11-01',
+      date '2024-12-31',
+      'xlsx',
+      'ready',
+      'investor-reports/INV-2025-0001/REP-2024-099.xlsx',
+      false,
+      investor_user_id,
+      now() - interval '32 days',
+      jsonb_build_object('notes', 'Monthly schedule export'),
+      now() - interval '32 days'
+    ),
+    (
+      investor_portfolio_id,
+      'REP-2024-083',
+      'cash_flow',
+      date '2024-10-01',
+      date '2024-11-30',
+      'csv',
+      'ready',
+      'investor-reports/INV-2025-0001/REP-2024-083.csv',
+      false,
+      investor_user_id,
+      now() - interval '68 days',
+      jsonb_build_object('notes', 'Sent to accounting'),
+      now() - interval '68 days'
+    );
 
   -- Applications
   insert into public.applications (application_number, user_id, vehicle_id, status, requested_amount, term_months, down_payment, monthly_payment, interest_rate, personal_info, financial_info, employment_info, references_info, scoring_results, risk_assessment, assigned_to, submitted_at, created_at, updated_at)

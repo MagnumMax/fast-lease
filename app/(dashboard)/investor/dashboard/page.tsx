@@ -1,11 +1,22 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { redirect } from "next/navigation";
+
+import { getSessionUser } from "@/lib/auth/session";
+import { getInvestorDashboardSnapshot } from "@/lib/supabase/queries/investor";
+
+import { InvestorDashboardScreen } from "./dashboard-screen";
 
 export default function InvestorDashboardPage() {
-  return (
-    <RouteScaffold
-      title="Инвестор · Дашборд"
-      description="Обзор портфеля, графики доходности и KPI из /beta/investor/dashboard/index.html."
-      referencePath="/beta/investor/dashboard/index.html"
-    />
-  );
+  return <AsyncInvestorDashboardPage />;
+}
+
+async function AsyncInvestorDashboardPage() {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login?next=/investor/dashboard");
+  }
+
+  const snapshot = await getInvestorDashboardSnapshot(sessionUser.user.id);
+
+  return <InvestorDashboardScreen snapshot={snapshot} />;
 }

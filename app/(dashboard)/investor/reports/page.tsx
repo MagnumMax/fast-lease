@@ -1,11 +1,22 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { redirect } from "next/navigation";
+
+import { getSessionUser } from "@/lib/auth/session";
+import { getInvestorReports } from "@/lib/supabase/queries/investor";
+
+import { InvestorReportScreen } from "./report-screen";
 
 export default function InvestorReportsPage() {
-  return (
-    <RouteScaffold
-      title="Инвестор · Отчеты"
-      description="Формирование и экспорт отчетов с цифровой подписью из /beta/investor/reports/index.html."
-      referencePath="/beta/investor/reports/index.html"
-    />
-  );
+  return <AsyncInvestorReportsPage />;
+}
+
+async function AsyncInvestorReportsPage() {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login?next=/investor/reports");
+  }
+
+  const snapshot = await getInvestorReports(sessionUser.user.id);
+
+  return <InvestorReportScreen snapshot={snapshot} />;
 }

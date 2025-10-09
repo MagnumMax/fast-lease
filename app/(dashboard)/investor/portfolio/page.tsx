@@ -1,11 +1,22 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { redirect } from "next/navigation";
+
+import { getSessionUser } from "@/lib/auth/session";
+import { getInvestorPortfolio } from "@/lib/supabase/queries/investor";
+
+import { InvestorPortfolioScreen } from "./portfolio-screen";
 
 export default function InvestorPortfolioPage() {
-  return (
-    <RouteScaffold
-      title="Инвестор · Портфель"
-      description="Список активов, доходность и фильтры из /beta/investor/portfolio/index.html."
-      referencePath="/beta/investor/portfolio/index.html"
-    />
-  );
+  return <AsyncInvestorPortfolioPage />;
+}
+
+async function AsyncInvestorPortfolioPage() {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/login?next=/investor/portfolio");
+  }
+
+  const snapshot = await getInvestorPortfolio(sessionUser.user.id);
+
+  return <InvestorPortfolioScreen snapshot={snapshot} />;
 }
