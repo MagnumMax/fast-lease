@@ -1,11 +1,8 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { OpsCarsCatalogue } from "@/app/(dashboard)/ops/_components/cars-catalogue";
+import { getOperationsCars } from "@/lib/supabase/queries/operations";
 
-export default function OpsCarsPage() {
-  return (
-    <RouteScaffold
-      title="Операции · Автопарк"
-      description="Управление автопарком, фильтры и интеграции с телематикой из /beta/ops/cars/index.html."
-      referencePath="/beta/ops/cars/index.html"
-    />
-  );
+export default async function OpsCarsPage() {
+  const cars = await getOperationsCars();
+
+  return <OpsCarsCatalogue initialCars={cars} />;
 }

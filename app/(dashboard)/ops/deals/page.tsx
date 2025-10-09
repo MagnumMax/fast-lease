@@ -1,11 +1,8 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { OpsDealsBoard } from "@/app/(dashboard)/ops/_components/deals-board";
+import { getOperationsDeals } from "@/lib/supabase/queries/operations";
 
-export default function OpsDealsPage() {
-  return (
-    <RouteScaffold
-      title="Операции · Сделки"
-      description="Канбан пайплайн сделок с фильтрами, чартами и sortable колонками из /beta/ops/deals/index.html."
-      referencePath="/beta/ops/deals/index.html"
-    />
-  );
+export default async function OpsDealsPage() {
+  const deals = await getOperationsDeals();
+
+  return <OpsDealsBoard initialDeals={deals} />;
 }

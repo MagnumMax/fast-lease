@@ -1,15 +1,24 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { notFound } from "next/navigation";
+
+import { CarDetailView } from "@/app/(dashboard)/ops/_components/car-detail";
+import {
+  getOperationsVehicleDocuments,
+  getOperationsVehicleProfile,
+  getOperationsVehicleServiceLog,
+} from "@/lib/supabase/queries/operations";
 
 type OpsCarDetailsProps = {
   params: { id: string };
 };
 
 export default function OpsCarDetailsPage({ params }: OpsCarDetailsProps) {
-  return (
-    <RouteScaffold
-      title={`Операции · Автомобиль ${params.id}`}
-      description="Детальное досье автомобиля с телематикой и сервисами из /beta/ops/cars/rolls-royce-cullinan/index.html."
-      referencePath="/beta/ops/cars/rolls-royce-cullinan/index.html"
-    />
-  );
+  const profile = getOperationsVehicleProfile();
+  const documents = getOperationsVehicleDocuments();
+  const serviceLog = getOperationsVehicleServiceLog();
+
+  if (!profile) {
+    notFound();
+  }
+
+  return <CarDetailView profile={profile} documents={documents} serviceLog={serviceLog} />;
 }

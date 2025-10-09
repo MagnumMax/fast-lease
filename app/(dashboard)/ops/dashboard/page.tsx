@@ -1,11 +1,8 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { OpsDashboardScreen } from "@/app/(dashboard)/ops/_components/dashboard-screen";
+import { getOperationsDashboardSnapshot } from "@/lib/supabase/queries/operations";
 
-export default function OpsDashboardPage() {
-  return (
-    <RouteScaffold
-      title="Операционный дашборд"
-      description="Рабочий стол операционной команды с метриками и очередью задач из /beta/ops/dashboard/index.html."
-      referencePath="/beta/ops/dashboard/index.html"
-    />
-  );
+export default async function OpsDashboardPage() {
+  const snapshot = await getOperationsDashboardSnapshot();
+
+  return <OpsDashboardScreen snapshot={snapshot} />;
 }

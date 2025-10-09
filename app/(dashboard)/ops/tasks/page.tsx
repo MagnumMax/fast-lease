@@ -1,11 +1,6 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { OpsTasksBoard } from "@/app/(dashboard)/ops/_components/tasks-board";
+import { OPS_TASKS } from "@/lib/data/operations/tasks";
 
 export default function OpsTasksPage() {
-  return (
-    <RouteScaffold
-      title="Операции · Задачи"
-      description="Kanban доска с drag-n-drop и чеклистами из /beta/ops/tasks/index.html."
-      referencePath="/beta/ops/tasks/index.html"
-    />
-  );
+  return <OpsTasksBoard initialTasks={OPS_TASKS} />;
 }

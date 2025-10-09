@@ -1,17 +1,18 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { ClientDetailView } from "@/app/(dashboard)/ops/_components/client-detail";
+import {
+  getOperationsClientDeals,
+  getOperationsClientDocuments,
+  getOperationsClientProfile,
+} from "@/lib/supabase/queries/operations";
 
 type OpsClientDetailsProps = {
   params: { id: string };
 };
 
-export default function OpsClientDetailsPage({
-  params,
-}: OpsClientDetailsProps) {
-  return (
-    <RouteScaffold
-      title={`Операции · Клиент ${params.id}`}
-      description="Расширенная карточка клиента с аналитикой и активами из /beta/ops/clients/client-104/index.html."
-      referencePath="/beta/ops/clients/client-104/index.html"
-    />
-  );
+export default function OpsClientDetailsPage({ params }: OpsClientDetailsProps) {
+  const profile = getOperationsClientProfile();
+  const deals = getOperationsClientDeals();
+  const documents = getOperationsClientDocuments();
+
+  return <ClientDetailView profile={profile} deals={deals} documents={documents} />;
 }
