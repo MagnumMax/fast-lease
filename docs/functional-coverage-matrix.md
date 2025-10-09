@@ -80,9 +80,9 @@
 
 | Beta artifact | Beta path | Scenario highlights | Next.js route / module | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Управление пользователями | `beta/admin/users/index.html` | Роли, статусы, аудит | `app/(dashboard)/admin/users/page.tsx` | ⬜️ | Маршрут существует, требуется CRUD и аудит-лог. |
-| BPM / процессы | `beta/admin/bpm/index.html` | Визуализация процессов, статусы | `app/(dashboard)/admin/bpm/page.tsx` | ⬜️ | Нужно отрисовать диаграммы и интеграцию с `tasks`. |
-| Интеграции | `beta/admin/integrations/index.html` | Ключи, health-check, webhooks | `app/(dashboard)/admin/integrations/page.tsx` | ⬜️ | Необходимы формы и статус внешних API. |
+| Управление пользователями | `beta/admin/users/index.html` | Роли, статусы, аудит | `app/(dashboard)/admin/users/page.tsx` | ✅ | Supabase directory + RBAC UI, аудит-лог синхронизирован. |
+| BPM / процессы | `beta/admin/bpm/index.html` | Визуализация процессов, статусы | `app/(dashboard)/admin/bpm/page.tsx` | ✅ | Таблица процессов, версия, промо в `active`, placeholder canvas. |
+| Интеграции | `beta/admin/integrations/index.html` | Ключи, health-check, webhooks | `app/(dashboard)/admin/integrations/page.tsx` | ✅ | Карточки статусов + API-логи, refresh flow как в прототипе. |
 | Настройки уведомлений | `beta/admin/settings/notifications.html` | Каналы, шаблоны | *(нет маршрута)* | ⬜️ | Создать подмаршрут `/admin/settings/notifications`. |
 
 ---
@@ -103,8 +103,8 @@
 
 ## Coverage Summary
 
-- Реализовано: публичный лендинг, каталог, тарифы, поддержка, FAQ и весь поток заявки (этап 5).
-- В работе / требуется миграция: все кабинеты (клиент, опер, инвестор, админ), большинство бизнес-компонентов и админские настройки.
-- Критичные пробелы: отсутствуют публичные правовые страницы, восстановление пароля и документы/настройки в админке.
+- Реализовано: публичный лендинг, каталог, тарифы, поддержка, FAQ, весь поток заявки (этап 5) и админ-модуль (users, BPM, integrations).
+- В работе / требуется миграция: кабинеты (клиент, опер, инвестор), бизнес-компоненты и админ-настройки (notifications).
+- Критичные пробелы: отсутствуют публичные правовые страницы, восстановление пароля и документы/уведомления в админке.
 
 Обновляйте матрицу при реализации новых экранов: добавляйте строки для новых сценариев или обновляйте статус строки с `⬜️` → `✅` после релиза.

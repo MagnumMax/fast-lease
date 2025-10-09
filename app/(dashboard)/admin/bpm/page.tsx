@@ -1,11 +1,12 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { AdminBpmOverview } from "@/app/(dashboard)/admin/bpm/_components/admin-bpm-overview";
+import { getAdminProcessCatalog } from "@/lib/supabase/queries/admin";
 
-export default function AdminBpmPage() {
+export default async function AdminBpmPage() {
+  const catalog = await getAdminProcessCatalog();
   return (
-    <RouteScaffold
-      title="Админ · Бизнес-процессы"
-      description="Управление BPM сценариями и автоматизациями, перенесенное из /beta/admin/bpm/index.html."
-      referencePath="/beta/admin/bpm/index.html"
+    <AdminBpmOverview
+      initialProcesses={catalog.processes}
+      initialVersions={catalog.versions}
     />
   );
 }

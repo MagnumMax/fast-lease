@@ -1,11 +1,12 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { AdminIntegrationsDashboard } from "@/app/(dashboard)/admin/integrations/_components/admin-integrations-dashboard";
+import { getAdminIntegrationSnapshot } from "@/lib/supabase/queries/admin";
 
-export default function AdminIntegrationsPage() {
+export default async function AdminIntegrationsPage() {
+  const snapshot = await getAdminIntegrationSnapshot();
   return (
-    <RouteScaffold
-      title="Админ · Интеграции"
-      description="Мониторинг и управление интеграциями (BKI, платежи, телематика) как в /beta/admin/integrations/index.html."
-      referencePath="/beta/admin/integrations/index.html"
+    <AdminIntegrationsDashboard
+      initialIntegrations={snapshot.integrations}
+      initialLogs={snapshot.logs}
     />
   );
 }
