@@ -1,6 +1,5 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -36,9 +35,7 @@ export async function updateProfileAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { session },
@@ -87,9 +84,7 @@ export async function updateSecurityAction(
   const newPassword = ensureString(formData.get("newPassword"));
   const notifications = ensureString(formData.get("notifications")) || "proactive";
 
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { session },
@@ -194,9 +189,7 @@ export async function updateSecurityAction(
 }
 
 export async function toggleAutopayAction(enabled: boolean) {
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { session },

@@ -16,10 +16,15 @@ export default async function ClientLayout({
     redirect("/login?next=/client/dashboard");
   }
 
-  const fullName =
-    sessionUser.profile?.full_name ??
-    (sessionUser.user.user_metadata?.full_name as string | undefined) ??
-    null;
+  const profileFullName = sessionUser.profile?.full_name ?? null;
+  const metadataFullName =
+    typeof sessionUser.user.user_metadata?.full_name === "string"
+      ? sessionUser.user.user_metadata.full_name
+      : null;
+
+  const fullName: string | null = profileFullName ?? metadataFullName ?? null;
+
+  const email: string | null = sessionUser.user.email ?? null;
 
   return (
     <DashboardLayout
@@ -27,7 +32,7 @@ export default async function ClientLayout({
       brand={{ title: "Client", subtitle: "Fast Lease" }}
       user={{
         fullName,
-        email: sessionUser.user.email,
+        email,
         primaryRole: sessionUser.primaryRole,
       }}
     >

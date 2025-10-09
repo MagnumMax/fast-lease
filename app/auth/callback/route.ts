@@ -1,19 +1,17 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { createRouteHandlerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolveHomePath } from "@/lib/auth/roles";
 import type { AppRole } from "@/lib/auth/types";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-async function fetchRoles(
-  supabase: ReturnType<typeof createRouteHandlerClient<unknown>>,
-  userId: string,
-): Promise<AppRole[]> {
+async function fetchRoles(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from("user_roles")
     .select("role")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .returns<{ role: AppRole | null }[]>();
 
   if (error) {
     console.error("[auth] failed to fetch roles in callback", error);
@@ -22,7 +20,7 @@ async function fetchRoles(
 
   return (data ?? [])
     .map((row) => row.role)
-    .filter(Boolean) as AppRole[];
+    .filter((role): role is AppRole => Boolean(role));
 }
 
 export async function GET(request: NextRequest) {
@@ -30,7 +28,7 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get("code");
   const next = requestUrl.searchParams.get("next");
 
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await createSupabaseServerClient();
 
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);

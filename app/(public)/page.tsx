@@ -1,13 +1,8 @@
-import { RouteScaffold } from "@/components/placeholders/route-scaffold";
+import { CatalogPage } from "./_components/catalog-page";
+
+export const dynamic = "force-static";
+export const revalidate = 60;
 
 export default function LandingPage() {
-  return (
-    <div className="space-y-6">
-      <RouteScaffold
-        title="Главная · Каталог автомобилей"
-        description="Реализация повторяет прототип /beta/index.html. Здесь появится каталог, фильтры и hero-блок в точности по спецификации."
-        referencePath="/beta/index.html"
-      />
-    </div>
-  );
+  return <CatalogPage />;
 }

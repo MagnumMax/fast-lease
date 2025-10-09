@@ -9,6 +9,7 @@ import {
   KanbanSquare,
   LayoutDashboard,
   LifeBuoy,
+  HelpCircle,
   ListChecks,
   MenuSquare,
   PieChart,
@@ -31,6 +32,7 @@ export const publicNav: NavItem[] = [
   { label: "Каталог", href: "/", icon: Home },
   { label: "Тарифы", href: "/pricing", icon: GaugeCircle },
   { label: "Поддержка", href: "/support", icon: LifeBuoy },
+  { label: "FAQ", href: "/faq", icon: HelpCircle },
   { label: "Лизинг", href: "/apply/start", icon: Sparkles },
 ];
 

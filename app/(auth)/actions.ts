@@ -1,6 +1,5 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import type { AuthError } from "@supabase/supabase-js";
@@ -136,9 +135,7 @@ export async function signInWithPasswordAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -239,11 +236,9 @@ export async function completeMfaChallengeAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase.auth.mfa.verify({
+  const { error } = await supabase.auth.mfa.verify({
     factorId,
     challengeId,
     code,
@@ -262,7 +257,11 @@ export async function completeMfaChallengeAction(
     };
   }
 
-  if (!data.session) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
     return {
       status: "error",
       message: "Supabase не вернул сессию после MFA. Повторите попытку.",
@@ -297,9 +296,7 @@ export async function sendSmsOtpAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const { error } = await supabase.auth.signInWithOtp({
     phone,
@@ -343,11 +340,9 @@ export async function verifySmsOtpAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase.auth.verifyOtp({
+  const { error } = await supabase.auth.verifyOtp({
     phone,
     token,
     type: "sms",
@@ -365,7 +360,11 @@ export async function verifySmsOtpAction(
     };
   }
 
-  if (!data.session) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
     return {
       status: "error",
       message: "Supabase не вернул сессию после проверки кода.",
@@ -403,9 +402,7 @@ export async function signUpAction(
     };
   }
 
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -438,9 +435,7 @@ export async function signUpAction(
 }
 
 export async function signInWithOAuthAction(provider: "google" | "apple") {
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -470,9 +465,7 @@ export async function signInWithOAuthAction(provider: "google" | "apple") {
 }
 
 export async function signOutAction() {
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const { error } = await supabase.auth.signOut({
     scope: "global",

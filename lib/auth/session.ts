@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 
 import { resolvePrimaryRole } from "@/lib/auth/roles";
@@ -100,9 +98,7 @@ async function fetchProfile(
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
-  const supabase = await createSupabaseServerClient({
-    cookieStore: cookies(),
-  });
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { session },
