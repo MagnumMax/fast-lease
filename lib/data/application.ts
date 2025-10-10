@@ -1,7 +1,7 @@
 export type ResidencyStatus = "resident" | "nonresident";
 
 export type ApplicationStep = {
-  id: "start" | "profile" | "documents" | "summary" | "status";
+  id: "start" | "documents" | "summary" | "status";
   title: string;
   description: string;
 };
@@ -16,11 +16,6 @@ export type ApplicationDocumentDefinition = {
 export const applicationSteps: ApplicationStep[] = [
   {
     id: "start",
-    title: "Preferences",
-    description: "Select vehicle and buyout terms",
-  },
-  {
-    id: "profile",
     title: "Profile",
     description: "Personal data and contacts",
   },

@@ -49,6 +49,8 @@ export default function ApplicationDocumentsPage() {
           planId: draft.planId,
           preferences: draft.preferences,
           personal: draft.personal,
+          vehicleCode: draft.source.vehicleCode,
+          referralCode: draft.source.referralCode,
         });
         hasEnsuredRef.current = true;
         updateDraft((prev) => ({
@@ -72,6 +74,8 @@ export default function ApplicationDocumentsPage() {
     draft.preferences,
     draft.residencyStatus,
     draft.selectedCarId,
+    draft.source.vehicleCode,
+    draft.source.referralCode,
     updateDraft,
   ]);
 
@@ -90,6 +94,8 @@ export default function ApplicationDocumentsPage() {
       planId: draft.planId,
       preferences: draft.preferences,
       personal: draft.personal,
+      vehicleCode: draft.source.vehicleCode,
+      referralCode: draft.source.referralCode,
     });
     updateDraft((prev) => ({
       ...prev,
@@ -316,7 +322,7 @@ export default function ApplicationDocumentsPage() {
             type="button"
             variant="outline"
             className="rounded-xl border-border"
-            onClick={() => router.push("/apply/profile")}
+            onClick={() => router.push("/apply/start")}
           >
             Назад
           </Button>

@@ -16,8 +16,8 @@
 | Поддержка / Контакты | `beta/index.html#support` | Каналы связи, SLA, форма обращения | `app/(public)/support/page.tsx` | ✅ | Объединяет контактные сценарии, Stage 5.3. |
 | FAQ | `beta/index.html#faq` | Частые вопросы, свёрнутые блоки | `app/(public)/faq/page.tsx` | ✅ | Контент перенесен в `lib/data/faq`. |
 | Правовые документы | `beta/legal/index.html` | Политики, оферта, загрузка PDF | `app/(public)/legal` *(нет маршрута)* | ⬜️ | Требуется создать публичный маршрут и подтянуть Storage. |
-| Запуск заявки | `beta/application/new/index.html` | Шаг 1 — выбор авто и условий | `app/(public)/apply/start/page.tsx` | ✅ | Использует `ApplicationFormProvider`, сохраняет черновик через Supabase. |
-| Личные данные | `beta/application/new/index.html#profile` | Шаг 2 — данные клиента и компании | `app/(public)/apply/profile/page.tsx` | ✅ | Многошаговая форма, валидация zod. |
+| Запуск заявки | `beta/application/new/index.html` | Шаг 1 — выбор авто и условий | `app/offer/page.tsx` | ✅ | Конфигуратор вне `/apply`, генерирует ссылку с `auto`/`ref`. |
+| Личные данные | `beta/application/new/index.html#profile` | Шаг 2 — данные клиента и компании | `app/(public)/apply/start/page.tsx` | ✅ | Шаг выведен первым для лидов из внешних каналов. |
 | Документы | `beta/application/new/index.html#documents` | Загрузка файлов, чек-лист | `app/(public)/apply/documents/page.tsx` | ✅ | Интеграция с Supabase Storage (`application_documents`). |
 | Итог и отправка | `beta/application/new/index.html#summary` | Подтверждение, согласия, отправка | `app/(public)/apply/summary/page.tsx` | ✅ | Финальный шаг заявки, Stage 5.4. |
 | Статус заявки | `beta/application/submitted/index.html` | Трекер статуса, документы, CTA | `app/(public)/apply/status/page.tsx` | ✅ | Использует данные из таблицы `applications`, Stage 5.5. |

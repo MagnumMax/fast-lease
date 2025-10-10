@@ -32,6 +32,8 @@ type EnsureDraftInput = {
   planId?: string;
   preferences: PreferencesPayload;
   personal?: PersonalPayload;
+  vehicleCode?: string;
+  referralCode?: string;
 };
 
 type SubmitApplicationInput = {
@@ -41,6 +43,8 @@ type SubmitApplicationInput = {
   planId?: string;
   preferences: PreferencesPayload;
   personal: PersonalPayload;
+  vehicleCode?: string;
+  referralCode?: string;
 };
 
 export async function ensureApplicationDraftAction(
@@ -79,6 +83,12 @@ export async function ensureApplicationDraftAction(
       }
     : undefined;
 
+  const referencesInfo = {
+    selectedCarId: payload.selectedCarId ?? null,
+    vehicleCode: payload.vehicleCode ?? null,
+    referralCode: payload.referralCode ?? null,
+  };
+
   if (payload.applicationId) {
     const { data, error } = await supabase
       .from("applications")
@@ -87,9 +97,7 @@ export async function ensureApplicationDraftAction(
         status: "draft",
         personal_info: personalInfo,
         financial_info: financialInfo,
-        references_info: {
-          selectedCarId: payload.selectedCarId ?? null,
-        },
+        references_info: referencesInfo,
         term_months: plan?.termMonths ?? null,
         down_payment: plan ? Number(plan.downPaymentPercent) : null,
         monthly_payment:
@@ -121,9 +129,7 @@ export async function ensureApplicationDraftAction(
       residency_status: payload.residencyStatus,
       personal_info: personalInfo,
       financial_info: financialInfo,
-      references_info: {
-        selectedCarId: payload.selectedCarId ?? null,
-      },
+      references_info: referencesInfo,
       term_months: plan?.termMonths ?? null,
       down_payment: plan ? Number(plan.downPaymentPercent) : null,
       monthly_payment:
@@ -280,6 +286,8 @@ export async function submitApplicationAction(
       },
       references_info: {
         selectedCarId: payload.selectedCarId ?? null,
+        vehicleCode: payload.vehicleCode ?? null,
+        referralCode: payload.referralCode ?? null,
       },
       term_months: plan?.termMonths ?? null,
       down_payment: plan ? Number(plan.downPaymentPercent) : null,

@@ -33,6 +33,10 @@ type ApplicationDraft = {
   submittedAt?: string;
   applicationId?: string;
   applicationNumber?: string;
+  source: {
+    vehicleCode?: string;
+    referralCode?: string;
+  };
   residencyStatus: ResidencyStatus;
   selectedCarId?: string;
   planId?: string;
@@ -64,6 +68,10 @@ const defaultDraft: ApplicationDraft = {
   status: "draft",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
+  source: {
+    vehicleCode: undefined,
+    referralCode: undefined,
+  },
   residencyStatus: "resident",
   selectedCarId: undefined,
   planId: undefined,
@@ -122,6 +130,10 @@ export function ApplicationFormProvider({
         setDraft({
           ...defaultDraft,
           ...parsed,
+          source: {
+            vehicleCode: parsed.source?.vehicleCode,
+            referralCode: parsed.source?.referralCode,
+          },
           documents: mergeDocuments(parsed.residencyStatus, parsed.documents),
         });
       }

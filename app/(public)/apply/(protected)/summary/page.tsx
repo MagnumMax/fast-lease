@@ -85,6 +85,8 @@ export default function ApplicationSummaryPage() {
           planId: draft.planId,
           preferences: draft.preferences,
           personal: draft.personal,
+          vehicleCode: draft.source.vehicleCode,
+          referralCode: draft.source.referralCode,
         });
 
         updateDraft((prev) => ({
@@ -128,7 +130,7 @@ export default function ApplicationSummaryPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <SummaryCard title="Автомобиль" href="/apply/start">
+          <SummaryCard title="Автомобиль" href="/offer">
             {selectedCar ? (
               <div className="space-y-1 text-sm text-muted-foreground">
                 <p className="text-base font-semibold text-foreground">
@@ -145,7 +147,7 @@ export default function ApplicationSummaryPage() {
             )}
           </SummaryCard>
 
-          <SummaryCard title="Тариф" href="/apply/start">
+          <SummaryCard title="Тариф" href="/offer">
             {selectedPlan ? (
               <div className="space-y-1 text-sm text-muted-foreground">
                 <p className="text-base font-semibold text-foreground">
@@ -163,7 +165,7 @@ export default function ApplicationSummaryPage() {
             )}
           </SummaryCard>
 
-          <SummaryCard title="Личные данные" href="/apply/profile">
+          <SummaryCard title="Личные данные" href="/apply/start">
             <ul className="space-y-1 text-sm text-muted-foreground">
               <li>
                 <span className="font-medium text-foreground">Имя:</span> {" "}
@@ -188,7 +190,7 @@ export default function ApplicationSummaryPage() {
             </ul>
           </SummaryCard>
 
-          <SummaryCard title="Предпочтения" href="/apply/start">
+          <SummaryCard title="Предпочтения" href="/offer">
             <ul className="space-y-1 text-sm text-muted-foreground">
               <li>
                 <span className="font-medium text-foreground">
