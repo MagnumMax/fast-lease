@@ -14,8 +14,8 @@ type AuthLayoutProps = {
 
 export function AuthLayout({
   children,
-  title = "Добро пожаловать в Fast Lease",
-  caption = "Управляйте договорами, платежами и поддержкой в едином личном кабинете.",
+  title = "Welcome to Fast Lease",
+  caption = "Manage contracts, payments and support in a unified personal account.",
 }: AuthLayoutProps) {
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_1fr]">
@@ -42,24 +42,24 @@ export function AuthLayout({
           </div>
           <div className="mt-12 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-300/80">
-              Интересные факты
+              Interesting Facts
             </p>
             <p className="mt-3 text-lg font-medium">
-              Fast Lease помогает быстрее получать одобрение и контролировать
-              все этапы лизинга в одном месте.
+              Fast Lease helps get approval faster and control
+              all leasing stages in one place.
             </p>
             <div className="mt-6 grid gap-3 text-sm text-slate-200/80">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                90% заявок одобряем в течение 24 часов после подачи
+                90% of applications approved within 24 hours of submission
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Прозрачный график платежей и напоминания в личном кабинете
+                Transparent payment schedule and reminders in personal account
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Личный менеджер помогает на каждом шаге сделки
+                Personal manager helps at every step of the deal
               </div>
             </div>
           </div>
@@ -83,7 +83,7 @@ export function AuthLayout({
             <ThemeToggle />
             <Button asChild variant="ghost" className="rounded-xl border border-border bg-card px-4">
               <Link href="/apply/start" className="flex items-center gap-2 text-sm">
-                <span>Оформить заявку</span>
+                <span>Apply</span>
               </Link>
             </Button>
           </div>

@@ -26,29 +26,29 @@ export const pricingPlans: PricingPlan[] = [
     id: "foundation",
     name: "Foundation",
     description:
-      "Идеально для клиентов, берущих автомобиль в лизинг впервые. Поддерживает базовый пакет услуг и прозрачный buy-out.",
+      "Perfect for clients leasing a vehicle for the first time. Supports basic service package and transparent buy-out.",
     priceAED: 1750,
     termMonths: 36,
     downPaymentPercent: 15,
     includes: [
-      "Поддержка 5/2, SLA 6 часов",
-      "Базовая телематика и страхование",
-      "Раз в квартал технический осмотр",
+      "5/2 support, SLA 6 hours",
+      "Basic telematics and insurance",
+      "Quarterly technical inspection",
     ],
   },
   {
     id: "growth",
     name: "Growth",
     description:
-      "Для растущих семей и малого бизнеса. Дополнительные страховки, сервисы и гибкие условия выкупа.",
+      "For growing families and small businesses. Additional insurance, services and flexible buyout terms.",
     priceAED: 3200,
     termMonths: 48,
     downPaymentPercent: 12,
     includes: [
-      "Поддержка 7/7, SLA 3 часа",
-      "Расширенная телематика и страхование КАСКО",
-      "Подменный автомобиль в случае сервисных работ",
-      "Опция замены автомобиля на 24 месяце",
+      "7/7 support, SLA 3 hours",
+      "Extended telematics and comprehensive insurance",
+      "Replacement vehicle during service works",
+      "Vehicle replacement option at 24 months",
     ],
     recommended: true,
   },
@@ -56,77 +56,77 @@ export const pricingPlans: PricingPlan[] = [
     id: "enterprise",
     name: "Enterprise",
     description:
-      "Корпоративный флот с персональным менеджером, страхованием и сервисами Fast Lease Premium.",
+      "Corporate fleet with personal manager, insurance and Fast Lease Premium services.",
     priceAED: 5600,
     termMonths: 60,
     downPaymentPercent: 10,
     includes: [
-      "24/7 dedicated concierge, SLA 1 час",
-      "Полный пакет страховок + расширенный GAP",
-      "Техобслуживание и хранение зимней резины",
-      "Ежемесячный отчёт по TCO и телематике",
-      "Включены услуги водителя (8 часов / мес)",
+      "24/7 dedicated concierge, SLA 1 hour",
+      "Full insurance package + extended GAP",
+      "Maintenance and winter tire storage",
+      "Monthly TCO and telematics report",
+      "Driver services included (8 hours / month)",
     ],
   },
 ];
 
 export const pricingComparison: PricingComparisonRow[] = [
   {
-    label: "Онлайн-оформление заявки",
+    label: "Online application submission",
     foundation: true,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Телематика и мониторинг",
+    label: "Telematics and monitoring",
     foundation: true,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Подменный автомобиль",
+    label: "Replacement vehicle",
     foundation: false,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Консьерж и выделенный менеджер",
+    label: "Concierge and dedicated manager",
     foundation: false,
     growth: false,
     enterprise: true,
   },
   {
-    label: "Антиугонный пакет и Smart-страхование",
+    label: "Anti-theft package and Smart insurance",
     foundation: false,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Ежемесячный отчёт об эксплуатации",
+    label: "Monthly operation report",
     foundation: false,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Скидка на buy-out после 24 мес",
+    label: "Buy-out discount after 24 months",
     foundation: false,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Опция замены авто в середине срока",
+    label: "Mid-term vehicle replacement option",
     foundation: false,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Доступ к корпоративному тарифу Fast Fuel",
+    label: "Access to corporate Fast Fuel rate",
     foundation: false,
     growth: true,
     enterprise: true,
   },
   {
-    label: "Финансовый аудит и отчёты TCO",
+    label: "Financial audit and TCO reports",
     foundation: false,
     growth: false,
     enterprise: true,
@@ -135,28 +135,28 @@ export const pricingComparison: PricingComparisonRow[] = [
 
 export const pricingFaqs: PricingFaq[] = [
   {
-    question: "Как рассчитывается ежемесячный платеж?",
+    question: "How is the monthly payment calculated?",
     answer:
-      "Платёж формируется из стоимости автомобиля, выбранного срока, страховок и сервисов. Вы можете зафиксировать ставку на весь срок договора.",
+      "Payment is formed from vehicle cost, selected term, insurance and services. You can fix the rate for the entire contract period.",
   },
   {
-    question: "Можно ли досрочно выкупить автомобиль?",
+    question: "Can I buy out the vehicle early?",
     answer:
-      "Да. В тарифах Growth и Enterprise предусмотрены скидки при досрочном выкупе после 24 месяцев. Для Foundation действуют стандартные условия buy-out.",
+      "Yes. Growth and Enterprise plans include discounts for early buyout after 24 months. Foundation plan has standard buy-out terms.",
   },
   {
-    question: "Что входит в страховку и обслуживание?",
+    question: "What is included in insurance and maintenance?",
     answer:
-      "Базовый тариф покрывает ОСАГО и сервис каждые 10 000 км. Более высокие тарифы включают КАСКО, расширенный GAP и подменный автомобиль.",
+      "Basic plan covers third-party liability and service every 10,000 km. Higher plans include comprehensive insurance, extended GAP and replacement vehicle.",
   },
   {
-    question: "Какие документы нужны для подачи заявки?",
+    question: "What documents are needed for application?",
     answer:
-      "Паспорт, водительское удостоверение, подтверждение дохода и резидентства. Для компаний — регистрационные документы и финансовая отчётность.",
+      "Passport, driving license, proof of income and residency. For companies — registration documents and financial statements.",
   },
   {
-    question: "Можно ли изменить тариф во время договора?",
+    question: "Can I change the plan during the contract?",
     answer:
-      "Да. Мы можем пересмотреть тариф при изменении потребностей. Подайте заявку в поддержке, и менеджер предложит оптимальные условия.",
+      "Yes. We can review the plan when needs change. Submit a request to support, and manager will suggest optimal terms.",
   },
 ];

@@ -166,7 +166,7 @@ function computePipelineFromDeals(deals: SupabaseDealRow[]): OpsPipelineDataset 
 export async function getOperationsDashboardSnapshot(): Promise<OpsDashboardSnapshot> {
    const supabase = await createSupabaseServerClient();
 
-   // Используем более безопасный метод аутентификации
+   // Using more secure authentication method
    const { data: userData, error: userError } = await supabase.auth.getUser();
 
    if (userError) {
@@ -205,7 +205,7 @@ export async function getOperationsDashboardSnapshot(): Promise<OpsDashboardSnap
 export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
    const supabase = await createSupabaseServerClient();
 
-   // Используем более безопасный метод аутентификации
+   // Using more secure authentication method
    const { data: userData, error: userError } = await supabase.auth.getUser();
 
    if (userError) {
@@ -240,7 +240,7 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
    return data.map((row) => {
      const dealNumber = (row.deal_number as string) ?? `DEAL-${row.id.slice(-6)}`;
 
-     const vehicle = "Luxury Vehicle"; // Заглушка вместо связи с таблицей vehicles
+     const vehicle = "Luxury Vehicle"; // Placeholder instead of connection to vehicles table
 
      const updatedAt =
        (row.updated_at as string) ??
@@ -270,7 +270,7 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
      return {
        id: row.id as string,
        dealId: dealNumber,
-       client: `Client ${row.client_id?.slice(-4) ?? "0000"}`, // Заглушка вместо связи с profiles
+       client: `Client ${row.client_id?.slice(-4) ?? "0000"}`, // Placeholder instead of connection to profiles
        vehicle,
        updatedAt,
        stage: status.replace(/_/g, " "),
@@ -380,7 +380,7 @@ export async function getOperationsDealDetail(slug: string): Promise<OpsDealDeta
    const normalizedSlug = toSlug(slug);
    const supabase = await createSupabaseServerClient();
 
-   // Используем более безопасный метод аутентификации
+   // Using more secure authentication method
    const { data: userData, error: userError } = await supabase.auth.getUser();
 
    if (userError) {

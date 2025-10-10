@@ -39,7 +39,7 @@ export const INVESTOR_DASHBOARD_FALLBACK = {
       value: 4560000,
       format: "currency" as const,
       currency: "AED",
-      helper: "+12% за 12 месяцев",
+      helper: "+12% over 12 months",
       tone: "positive" as const,
     },
     {
@@ -47,7 +47,7 @@ export const INVESTOR_DASHBOARD_FALLBACK = {
       label: "Yield YTD",
       value: 0.084,
       format: "percent" as const,
-      helper: "Пересчет еженедельно",
+      helper: "Recalculation weekly",
       tone: "positive" as const,
     },
     {
@@ -55,7 +55,7 @@ export const INVESTOR_DASHBOARD_FALLBACK = {
       label: "Overdue exposure",
       value: 0,
       format: "percent" as const,
-      helper: "Все активы в зеленой зоне",
+      helper: "All assets in green zone",
       tone: "positive" as const,
     },
   ] satisfies InvestorKpiMetric[],

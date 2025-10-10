@@ -10,10 +10,10 @@ export const APP_ROLE_PRIORITY: AppRole[] = [
 ];
 
 /**
- * СООТВЕТСТВИЕ РОЛЕЙ И ДОМАШНИХ ПУТЕЙ
+ * ROLE TO HOME PATH MAPPING
  *
- * Определяет, куда перенаправляется пользователь после логина
- * в зависимости от его основной роли
+ * Determines where user is redirected after login
+ * based on their primary role
  */
 export const APP_ROLE_HOME_PATH: Record<AppRole, string> = {
   admin: "/admin/bpm",
@@ -97,10 +97,10 @@ export function isAccessAllowed(pathname: string, roles: AppRole[]): boolean {
 }
 
 /**
- * ВАЛИДАЦИЯ ПУТИ ДЛЯ РОЛИ
+ * VALIDATE PATH FOR ROLE
  *
- * Безопасная функция для получения корректного пути для роли
- * Возвращает "/client/dashboard" как fallback для неизвестных ролей
+ * Safe function to get correct path for role
+ * Returns "/client/dashboard" as fallback for unknown roles
  */
 export function validateRolePath(role: AppRole | null): string {
   if (!role) {

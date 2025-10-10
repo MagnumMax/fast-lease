@@ -22,7 +22,7 @@ export function ThemeToggle() {
       type="button"
       variant="ghost"
       size="icon"
-      aria-label="Переключение темы"
+      aria-label="Toggle theme"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className="rounded-xl border border-border bg-card text-slate-600 hover:border-brand-500 hover:text-brand-600 dark:text-slate-300 dark:hover:text-white"
     >

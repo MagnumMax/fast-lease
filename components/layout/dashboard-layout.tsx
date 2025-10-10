@@ -104,7 +104,7 @@ export function DashboardLayout({
               variant="ghost"
               onClick={() => setSidebarOpen((prev) => !prev)}
               className="dashboard-mobile-trigger lg:hidden"
-              aria-label={sidebarOpen ? "Скрыть меню" : "Открыть меню"}
+              aria-label={sidebarOpen ? "Hide menu" : "Open menu"}
               aria-expanded={sidebarOpen}
               aria-controls={sidebarId}
             >
@@ -112,7 +112,7 @@ export function DashboardLayout({
             </Button>
             <nav
               className="dashboard-header__breadcrumbs"
-              aria-label="Хлебные крошки"
+              aria-label="Breadcrumbs"
             >
               <ol className="flex list-none items-center gap-2">
                 <li>{brand.title}</li>
@@ -137,24 +137,24 @@ export function DashboardLayout({
               onSubmit={(event) => event.preventDefault()}
             >
               <label htmlFor={searchInputId} className="sr-only">
-                Поиск по панели управления
+                Dashboard search
               </label>
               <Input
                 id={searchInputId}
                 type="search"
-                placeholder="Поиск по панели"
+                placeholder="Search dashboard"
                 className="h-9 border-none bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
                 aria-describedby={`${searchInputId}-hint`}
               />
               <span id={`${searchInputId}-hint`} className="sr-only">
-                Функция поиска находится в разработке
+                Search function is under development
               </span>
             </form>
             <ThemeToggle />
             <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm">
               <div className="hidden text-right md:block">
                 <p className="font-semibold leading-tight">
-                  {user?.fullName ?? user?.email ?? "Без имени"}
+                  {user?.fullName ?? user?.email ?? "No name"}
                 </p>
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   {user?.primaryRole ?? "guest"}
@@ -162,7 +162,7 @@ export function DashboardLayout({
               </div>
               <form action={signOutAction}>
                 <Button type="submit" size="sm" variant="outline" className="rounded-lg">
-                  Выйти
+                  Sign out
                 </Button>
               </form>
             </div>

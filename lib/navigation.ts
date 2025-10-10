@@ -26,11 +26,11 @@ export type NavItem = {
 };
 
 export const publicNav: NavItem[] = [
-  { label: "Каталог", href: "/", icon: "Home" },
-  { label: "Тарифы", href: "/pricing", icon: "GaugeCircle" },
-  { label: "Поддержка", href: "/support", icon: "LifeBuoy" },
+  { label: "Catalog", href: "/", icon: "Home" },
+  { label: "Pricing", href: "/pricing", icon: "GaugeCircle" },
+  { label: "Support", href: "/support", icon: "LifeBuoy" },
   { label: "FAQ", href: "/faq", icon: "HelpCircle" },
-  { label: "Лизинг", href: "/apply/start", icon: "Sparkles" },
+  { label: "Leasing", href: "/apply/start", icon: "Sparkles" },
 ];
 
 export const clientNav: NavItem[] = [

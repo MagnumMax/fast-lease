@@ -10,85 +10,85 @@ export type FaqCategory = {
 export const publicFaqs: FaqCategory[] = [
   {
     id: "leasing",
-    name: "Оформление лизинга",
+    name: "Leasing Application",
     questions: [
       {
-        question: "Какие документы нужны для старта заявки?",
+        question: "What documents are needed to start an application?",
         answer:
-          "Паспорт, водительское удостоверение, подтверждение дохода и проживания в ОАЭ. Для юридических лиц — лицензия и финансовая отчётность.",
+          "Passport, driving license, proof of income and UAE residency. For legal entities — license and financial statements.",
       },
       {
-        question: "Сколько времени занимает одобрение?",
+        question: "How long does approval take?",
         answer:
-          "В среднем 6 рабочих часов при корректно загруженных документах. О статусе мы уведомляем в приложении и по email.",
+          "On average 6 business hours with correctly uploaded documents. We notify about status in the app and by email.",
       },
       {
-        question: "Можно ли выбрать автомобиль из собственного каталога?",
+        question: "Can I choose a vehicle from my own catalog?",
         answer:
-          "Да. Вы можете выбрать авто из каталога Fast Lease или предоставить VIN автомобиля от дилера, чтобы мы просчитали предложение.",
+          "Yes. You can select a car from Fast Lease catalog or provide VIN of a vehicle from dealer so we can calculate an offer.",
       },
     ],
   },
   {
     id: "payments",
-    name: "Платежи и buy-out",
+    name: "Payments and Buy-out",
     questions: [
       {
-        question: "Как списываются ежемесячные платежи?",
+        question: "How are monthly payments debited?",
         answer:
-          "Платёж привязывается к банковской карте или счёту. За 3 дня до списания отправляем напоминание и чек после оплаты.",
+          "Payment is linked to bank card or account. We send reminder 3 days before debit and receipt after payment.",
       },
       {
-        question: "Есть ли штрафы за досрочное погашение?",
+        question: "Are there penalties for early repayment?",
         answer:
-          "Нет. Мы фиксируем скидку на buy-out при выборе тарифов Growth или Enterprise. Для Foundation применяется стандартная остаточная стоимость.",
+          "No. We fix buy-out discount when choosing Growth or Enterprise plans. Standard residual value applies to Foundation.",
       },
       {
-        question: "Можно ли временно приостановить платежи?",
+        question: "Can I temporarily suspend payments?",
         answer:
-          "Да, в программах Growth и Enterprise предусмотрены каникулы до 60 дней раз в 12 месяцев. Подайте запрос в поддержку, и менеджер согласует детали.",
+          "Yes, Growth and Enterprise programs include holidays up to 60 days once every 12 months. Submit request to support, manager will coordinate details.",
       },
     ],
   },
   {
     id: "service",
-    name: "Сервис и страхование",
+    name: "Service and Insurance",
     questions: [
       {
-        question: "Что входит в план обслуживания?",
+        question: "What is included in the maintenance plan?",
         answer:
-          "Регулярный сервис каждые 10 000 км, помощь на дороге 24/7 и подменный автомобиль для тарифов Growth и Enterprise.",
+          "Regular service every 10,000 km, 24/7 roadside assistance and replacement vehicle for Growth and Enterprise plans.",
       },
       {
-        question: "Как оформляется страховой случай?",
+        question: "How to file an insurance claim?",
         answer:
-          "Сообщите в поддержку через приложение или по горячей линии, загрузите фото. Мы согласуем ремонт и предоставим подменный автомобиль.",
+          "Report to support via app or hotline, upload photos. We will coordinate repair and provide replacement vehicle.",
       },
       {
-        question: "Предоставляется ли телематика?",
+        question: "Is telematics provided?",
         answer:
-          "Да. Все автомобили оснащены телематикой. Вы получаете отчёты по стилю вождения, расходу энергии и геозоны в личном кабинете.",
+          "Yes. All vehicles are equipped with telematics. You receive reports on driving style, energy consumption and geozones in your personal account.",
       },
     ],
   },
   {
     id: "account",
-    name: "Личный кабинет",
+    name: "Personal Account",
     questions: [
       {
-        question: "Как изменить персональные данные?",
+        question: "How to change personal data?",
         answer:
-          "Перейдите в раздел Profile, обновите информацию и подтвердите изменения кодом из email или SMS.",
+          "Go to Profile section, update information and confirm changes with code from email or SMS.",
       },
       {
-        question: "Можно ли добавить второго водителя?",
+        question: "Can I add a second driver?",
         answer:
-          "Да. В разделе Documents загрузите водительское удостоверение второго водителя, и мы активируем его в течение 1 рабочего дня.",
+          "Yes. In Documents section upload second driver's license, and we will activate it within 1 business day.",
       },
       {
-        question: "Как настроить уведомления?",
+        question: "How to set up notifications?",
         answer:
-          "В разделе Settings вы можете включить push, email или SMS на разные типы событий: платежи, сервис, штрафы.",
+          "In Settings section you can enable push, email or SMS for different event types: payments, service, fines.",
       },
     ],
   },

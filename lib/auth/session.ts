@@ -98,15 +98,15 @@ async function fetchProfile(
 }
 
 /**
- * ПОЛУЧЕНИЕ ИНФОРМАЦИИ О ТЕКУЩЕМ ПОЛЬЗОВАТЕЛЕ
+ * GETTING CURRENT USER INFORMATION
  *
- * Использует supabase.auth.getUser() вместо getSession() для безопасности
- * getUser() аутентифицирует данные через Supabase Auth сервер
+ * Uses supabase.auth.getUser() instead of getSession() for security
+ * getUser() authenticates data through Supabase Auth server
  */
 export async function getSessionUser(): Promise<SessionUser | null> {
   const supabase = await createSupabaseServerClient();
 
-  // Используем getUser() вместо getSession() для безопасности
+  // Using getUser() instead of getSession() for security
   const { data: userData, error: userError } = await supabase.auth.getUser();
 
   if (userError) {
@@ -119,7 +119,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return null;
   }
 
-  // Получаем сессию отдельно для дополнительной информации
+  // Getting session separately for additional information
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData.session ?? null;
 

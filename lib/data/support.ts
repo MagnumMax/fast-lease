@@ -25,54 +25,54 @@ export type OfficeLocation = {
 export const supportChannels: SupportChannel[] = [
   {
     id: "hotline",
-    title: "Горячая линия",
+    title: "Hotline",
     description:
-      "Для срочных вопросов по ДТП, техническим неисправностям и экстренной помощи.",
+      "For urgent questions about accidents, technical issues and emergency assistance.",
     contact: "+971 800 55 44",
-    actionLabel: "Позвонить",
+    actionLabel: "Call",
     href: "tel:+9718005544",
-    availability: "24/7, среднее время ответа — 2 минуты",
+    availability: "24/7, average response time — 2 minutes",
   },
   {
     id: "whatsapp",
     title: "WhatsApp Concierge",
     description:
-      "Чат с оператором, отправка фото документов и отслеживание статуса заявки.",
+      "Chat with operator, send document photos and track application status.",
     contact: "+971 50 123 45 67",
-    actionLabel: "Написать в WhatsApp",
+    actionLabel: "Write to WhatsApp",
     href: "https://wa.me/971501234567",
-    availability: "Ежедневно 08:00–22:00 GST",
+    availability: "Daily 08:00–22:00 GST",
   },
   {
     id: "email",
-    title: "Email Поддержка",
+    title: "Email Support",
     description:
-      "Неформальные запросы, продление договора, коммерческие предложения.",
+      "Informal inquiries, contract extensions, commercial proposals.",
     contact: "care@fastlease.ae",
-    actionLabel: "Написать письмо",
+    actionLabel: "Send email",
     href: "mailto:care@fastlease.ae",
-    availability: "Ответ в течение 6 рабочих часов",
+    availability: "Response within 6 business hours",
   },
 ];
 
 export const supportWorkflow: SupportStep[] = [
   {
-    title: "Регистрация запроса",
+    title: "Request Registration",
     description:
-      "Мы фиксируем ваш вопрос в единой системе и назначаем ответственного специалиста.",
-    eta: "менее 10 минут",
+      "We record your question in a unified system and assign a responsible specialist.",
+    eta: "less than 10 minutes",
   },
   {
-    title: "Диагностика и решение",
+    title: "Diagnosis and Resolution",
     description:
-      "Проверяем статус договора, бронируем сервис или подменный автомобиль, если требуется.",
-    eta: "от 30 минут",
+      "We check contract status, book service or replacement vehicle if required.",
+    eta: "from 30 minutes",
   },
   {
-    title: "Закрытие и обратная связь",
+    title: "Closure and Feedback",
     description:
-      "Проверяем, что проблема решена, и отправляем резюме по каналу, который вы выбрали.",
-    eta: "не позднее 24 часов",
+      "We verify that the issue is resolved and send a summary via your chosen channel.",
+    eta: "no later than 24 hours",
   },
 ];
 
@@ -80,14 +80,14 @@ export const officeLocations: OfficeLocation[] = [
   {
     city: "Dubai",
     address: "ICD Brookfield Place, DIFC, Level 12",
-    workingHours: "Будни 09:00–18:00 GST",
+    workingHours: "Weekdays 09:00–18:00 GST",
     phone: "+971 4 555 0192",
     mapLink: "https://maps.app.goo.gl/JwcmmEgJXGwe2d9s5",
   },
   {
     city: "Abu Dhabi",
     address: "Al Maryah Island, Global Market Square, Tower 2",
-    workingHours: "Будни 09:00–18:00 GST",
+    workingHours: "Weekdays 09:00–18:00 GST",
     phone: "+971 2 440 7711",
     mapLink: "https://maps.app.goo.gl/4T3jkqVQmUtsWn3QA",
   },

@@ -614,8 +614,8 @@ export function updateMobileNavActiveState(container, currentPath) {
   });
 }
 
-// Функция для добавления кнопки "Назад к списку" на детальные страницы
-export function mountBackToListButton({ containerId, listHref, label = "Назад к списку" }) {
+// Function to add "Back to list" button on detail pages
+export function mountBackToListButton({ containerId, listHref, label = "Back to list" }) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
