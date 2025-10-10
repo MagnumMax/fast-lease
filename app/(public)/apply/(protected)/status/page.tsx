@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { getCarById } from "@/lib/data/cars";
 import { pricingPlans } from "@/lib/data/pricing";
 
-import { useApplicationForm } from "../_components/application-form-context";
+import { useApplicationForm } from "../../_components/application-form-context";
 
 export default function ApplicationStatusPage() {
   const router = useRouter();

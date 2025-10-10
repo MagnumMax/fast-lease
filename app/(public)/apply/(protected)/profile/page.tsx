@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { getCarById } from "@/lib/data/cars";
 import { pricingPlans } from "@/lib/data/pricing";
 
-import { useApplicationForm } from "../_components/application-form-context";
+import { useApplicationForm } from "../../_components/application-form-context";
 
 const cityOptions = [
   "Dubai",

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolvePrimaryRole } from "@/lib/auth/roles";
 import type { AppRole, ProfileRecord, SessionUser } from "@/lib/auth/types";

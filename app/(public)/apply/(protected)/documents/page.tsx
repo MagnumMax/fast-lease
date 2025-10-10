@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils";
 
 import {
   useApplicationForm,
-} from "../_components/application-form-context";
+} from "../../_components/application-form-context";
 import {
   ensureApplicationDraftAction,
   uploadApplicationDocumentAction,
   updateDocumentStatusAction,
-} from "../actions";
+} from "../../actions";
 
 export default function ApplicationDocumentsPage() {
   const router = useRouter();
