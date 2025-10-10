@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { resolveNavIcon } from "@/components/navigation/nav-icon";
 
 type MobileNavProps = {
   items: NavItem[];
@@ -19,7 +20,7 @@ export function MobileNav({ items, className }: MobileNavProps) {
     <nav className={cn("mobile-bottom-nav lg:hidden", className)}>
       <div className="mobile-bottom-nav__container">
         {items.slice(0, 5).map((item) => {
-          const Icon = item.icon;
+          const Icon = resolveNavIcon(item.icon);
           const isActive = pathname.startsWith(item.href);
 
           return (

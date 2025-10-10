@@ -80,9 +80,9 @@
 
 | Beta artifact | Beta path | Scenario highlights | Next.js route / module | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Управление пользователями | `beta/admin/users/index.html` | Роли, статусы, аудит | `app/(dashboard)/admin/users/page.tsx` | ✅ | Supabase directory + RBAC UI, аудит-лог синхронизирован. |
-| BPM / процессы | `beta/admin/bpm/index.html` | Визуализация процессов, статусы | `app/(dashboard)/admin/bpm/page.tsx` | ✅ | Таблица процессов, версия, промо в `active`, placeholder canvas. |
-| Интеграции | `beta/admin/integrations/index.html` | Ключи, health-check, webhooks | `app/(dashboard)/admin/integrations/page.tsx` | ✅ | Карточки статусов + API-логи, refresh flow как в прототипе. |
+| Управление пользователями | `beta/admin/users/index.html` | Роли, статусы, аудит | `app/(dashboard)/admin/users/page.tsx` | ✅ | Supabase directory + RBAC UI, аудит-лог (демо, без записи в prod). |
+| BPM / процессы | `beta/admin/bpm/index.html` | Визуализация процессов, статусы | `app/(dashboard)/admin/bpm/page.tsx` | ✅ | Таблица процессов, версия, промо в `active` (canvas в демо-режиме). |
+| Интеграции | `beta/admin/integrations/index.html` | Ключи, health-check, webhooks | `app/(dashboard)/admin/integrations/page.tsx` | ✅ | Карточки статусов + API-логи (данные из демо-источника). |
 | Настройки уведомлений | `beta/admin/settings/notifications.html` | Каналы, шаблоны | *(нет маршрута)* | ⬜️ | Создать подмаршрут `/admin/settings/notifications`. |
 
 ---

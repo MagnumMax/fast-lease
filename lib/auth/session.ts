@@ -1,4 +1,4 @@
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { resolvePrimaryRole } from "@/lib/auth/roles";
 import type { AppRole, ProfileRecord, SessionUser } from "@/lib/auth/types";
@@ -62,12 +62,12 @@ function normalizeProfile(
 
 async function fetchRoles(
   supabase: SupabaseClient,
-  session: Session,
+  userId: string,
 ): Promise<AppRole[]> {
   const { data, error } = await supabase
     .from("user_roles")
     .select("role")
-    .eq("user_id", session.user.id);
+    .eq("user_id", userId);
 
   if (error) {
     console.error("[auth] failed to load roles", error);
@@ -81,12 +81,12 @@ async function fetchRoles(
 
 async function fetchProfile(
   supabase: SupabaseClient,
-  session: Session,
+  userId: string,
 ): Promise<ProfileRecord | null> {
   const { data, error } = await supabase
     .from("profiles")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", userId)
     .maybeSingle();
 
   if (error) {
@@ -97,31 +97,40 @@ async function fetchProfile(
   return normalizeProfile(data);
 }
 
+/**
+ * ПОЛУЧЕНИЕ ИНФОРМАЦИИ О ТЕКУЩЕМ ПОЛЬЗОВАТЕЛЕ
+ *
+ * Использует supabase.auth.getUser() вместо getSession() для безопасности
+ * getUser() аутентифицирует данные через Supabase Auth сервер
+ */
 export async function getSessionUser(): Promise<SessionUser | null> {
   const supabase = await createSupabaseServerClient();
 
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
+  // Используем getUser() вместо getSession() для безопасности
+  const { data: userData, error: userError } = await supabase.auth.getUser();
 
-  if (error) {
-    console.error("[auth] failed to resolve session", error);
+  if (userError) {
+    console.error("[auth] failed to resolve user", userError);
     return null;
   }
 
-  if (!session) {
+  const user = userData.user;
+  if (!user) {
     return null;
   }
+
+  // Получаем сессию отдельно для дополнительной информации
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData.session ?? null;
 
   const [profile, roles] = await Promise.all([
-    fetchProfile(supabase, session),
-    fetchRoles(supabase, session),
+    fetchProfile(supabase, user.id),
+    fetchRoles(supabase, user.id),
   ]);
 
   return {
     session,
-    user: session.user,
+    user,
     profile,
     roles,
     primaryRole: resolvePrimaryRole(roles),

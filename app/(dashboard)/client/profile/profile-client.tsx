@@ -11,8 +11,6 @@ import {
 } from "lucide-react";
 
 import {
-  INITIAL_PROFILE_STATE,
-  ProfileActionState,
   toggleAutopayAction,
   updateProfileAction,
   updateSecurityAction,
@@ -22,6 +20,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+type ProfileActionState = {
+  status: "idle" | "success" | "error";
+  message?: string;
+  fieldErrors?: Record<string, string>;
+};
+
+const INITIAL_PROFILE_STATE: ProfileActionState = {
+  status: "idle",
+};
 
 type ActivityItem = {
   id: string;

@@ -2,7 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { Check, Plus, Search, Shield, UserCog } from "lucide-react";
+import { AlertCircle, Check, Plus, Search, Shield, UserCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -108,16 +108,31 @@ function formatDateTime(value: string | null) {
   }
 }
 
+function generateClientId(prefix: string) {
+  try {
+    if (
+      typeof globalThis !== "undefined" &&
+      globalThis.crypto &&
+      typeof globalThis.crypto.randomUUID === "function"
+    ) {
+      return globalThis.crypto.randomUUID();
+    }
+  } catch {
+    // Ignore and fallback to manual ID generation
+  }
+
+  const random = Math.random().toString(36).slice(2, 10);
+  const timestamp = Date.now().toString(36);
+  return `${prefix}-${random}${timestamp}`;
+}
+
 function makeAuditEntry(
   actorName: string,
   message: string,
   target: string,
 ): AdminAuditLogEntry {
   return {
-    id:
-      (typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `audit-${Math.random().toString(36).slice(2)}`),
+    id: generateClientId("audit"),
     actor: actorName,
     action: message,
     target,
@@ -195,14 +210,8 @@ export function AdminUsersDirectory({
 
     setTimeout(() => {
       const newUser: AdminUserRecord = {
-        id:
-          (typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `profile-${Math.random().toString(36).slice(2)}`),
-        userId:
-          (typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `user-${Math.random().toString(36).slice(2)}`),
+        id: generateClientId("profile"),
+        userId: generateClientId("user"),
         fullName: createForm.fullName,
         email: createForm.email,
         roles: [createForm.role],
@@ -299,6 +308,10 @@ export function AdminUsersDirectory({
             <CardDescription>
               Manage platform roles, invitations, and access policies as defined in /beta/admin/users.
             </CardDescription>
+            <div className="flex items-center gap-2 rounded-2xl border border-dashed border-amber-400 bg-amber-50/60 px-3 py-2 text-xs text-amber-600 dark:border-amber-300 dark:bg-amber-500/10 dark:text-amber-200">
+              <AlertCircle className="h-4 w-4" />
+              Изменения выполняются в симуляционном режиме и не сохраняются в Supabase.
+            </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="relative">

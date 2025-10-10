@@ -45,7 +45,7 @@ export const ADMIN_INTEGRATIONS_FALLBACK: AdminIntegrationRecord[] = [
   },
   {
     id: "fallback-integration-aurora-telematics",
-    name: "Aurora Telematics",
+    name: "Al Thuraya GPS",
     category: "telematics",
     status: "active",
     latencyMs: 210,
@@ -73,7 +73,7 @@ export const ADMIN_INTEGRATION_LOGS_FALLBACK: AdminIntegrationLogEntry[] = [
   },
   {
     id: "LOG-3919",
-    system: "Aurora Telematics",
+    system: "Al Thuraya GPS",
     status: "200 OK",
     message: "Sensor data ingestion complete",
     occurredAt: "2025-01-14T10:23:31+04:00",

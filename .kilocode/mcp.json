@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "FastLease-Supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=sfekjkzuionqapecccwf"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_ba72d73135538af60402ba2e50629543ffcd31d2"
+      },
+      "alwaysAllow": [
+        "execute_sql"
+      ]
+    }
+  }
+}

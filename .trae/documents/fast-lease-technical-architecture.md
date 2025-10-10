@@ -54,7 +54,7 @@ graph TD
     subgraph "External Services"
         L[BKI Scoring API]
         M[Odoo ERP]
-        N[Aurora Telematics]
+        N[Al Thuraya GPS]
         O[SMS/Email Providers]
     end
     

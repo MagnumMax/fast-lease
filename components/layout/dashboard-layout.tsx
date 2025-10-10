@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/system/theme-toggle";
 import { MobileNav } from "@/components/navigation/mobile-nav";
+import { resolveNavIcon } from "@/components/navigation/nav-icon";
 
 type DashboardLayoutProps = {
   navItems: NavItem[];
@@ -42,6 +43,8 @@ export function DashboardLayout({
 }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const sidebarId = React.useId();
+  const searchInputId = React.useId();
 
   const activeItem =
     navItems.find((item) => pathname.startsWith(item.href)) ?? navItems[0];
@@ -52,7 +55,11 @@ export function DashboardLayout({
 
   return (
     <div className="dashboard-shell">
-      <aside className="dashboard-sidebar" data-open={sidebarOpen}>
+      <aside
+        id={sidebarId}
+        className="dashboard-sidebar"
+        data-open={sidebarOpen}
+      >
         <div className="dashboard-sidebar__brand">
           <span className="dashboard-sidebar__brand-badge">FL</span>
           <div>
@@ -62,7 +69,7 @@ export function DashboardLayout({
         </div>
         <nav className="dashboard-sidebar__nav">
           {navItems.map((item) => {
-            const Icon = item.icon;
+            const Icon = resolveNavIcon(item.icon);
             const active = pathname.startsWith(item.href);
             return (
               <Link
@@ -98,30 +105,51 @@ export function DashboardLayout({
               onClick={() => setSidebarOpen((prev) => !prev)}
               className="dashboard-mobile-trigger lg:hidden"
               aria-label={sidebarOpen ? "Скрыть меню" : "Открыть меню"}
+              aria-expanded={sidebarOpen}
+              aria-controls={sidebarId}
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
             </Button>
-            <div className="dashboard-header__breadcrumbs">
-              <span>{brand.title}</span>
-              <span className="opacity-40">/</span>
-              <span>{activeItem?.label ?? "Dashboard"}</span>
-            </div>
+            <nav
+              className="dashboard-header__breadcrumbs"
+              aria-label="Хлебные крошки"
+            >
+              <ol className="flex list-none items-center gap-2">
+                <li>{brand.title}</li>
+                <li aria-hidden="true" className="opacity-40">
+                  /
+                </li>
+                <li aria-current="page">
+                  {activeItem?.label ?? "Dashboard"}
+                </li>
+              </ol>
+            </nav>
             <div className="flex flex-col">
-              <span className="dashboard-header__title">
+              <h1 className="dashboard-header__title">
                 {activeItem?.label ?? "Dashboard"}
-              </span>
-              <span className="hidden text-sm text-muted-foreground sm:block">
-                Данные соответствуют прототипу из /beta/
-              </span>
+              </h1>
             </div>
           </div>
           <div className="dashboard-header__actions">
-            <div className="hidden items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-sm sm:flex">
+            <form
+              role="search"
+              className="hidden items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-sm sm:flex"
+              onSubmit={(event) => event.preventDefault()}
+            >
+              <label htmlFor={searchInputId} className="sr-only">
+                Поиск по панели управления
+              </label>
               <Input
-                placeholder="Поиск по прототипу"
+                id={searchInputId}
+                type="search"
+                placeholder="Поиск по панели"
                 className="h-9 border-none bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
+                aria-describedby={`${searchInputId}-hint`}
               />
-            </div>
+              <span id={`${searchInputId}-hint`} className="sr-only">
+                Функция поиска находится в разработке
+              </span>
+            </form>
             <ThemeToggle />
             <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm">
               <div className="hidden text-right md:block">

@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Fast Lease Platform",
   description:
-    "Мигрированный на Next.js прототип Fast Lease с интеграцией Supabase и Linear Design System.",
+    "Платформа для лизинга автомобилей с интеграцией Supabase и современным дизайном.",
 };
 
 export default function RootLayout({

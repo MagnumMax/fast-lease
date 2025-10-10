@@ -1,5 +1,4 @@
 import { AppRole } from "@/lib/auth/types";
-
 export const APP_ROLE_PRIORITY: AppRole[] = [
   "admin",
   "ops_manager",
@@ -10,6 +9,12 @@ export const APP_ROLE_PRIORITY: AppRole[] = [
   "client",
 ];
 
+/**
+ * СООТВЕТСТВИЕ РОЛЕЙ И ДОМАШНИХ ПУТЕЙ
+ *
+ * Определяет, куда перенаправляется пользователь после логина
+ * в зависимости от его основной роли
+ */
 export const APP_ROLE_HOME_PATH: Record<AppRole, string> = {
   admin: "/admin/bpm",
   ops_manager: "/ops/dashboard",
@@ -89,4 +94,25 @@ export function isAccessAllowed(pathname: string, roles: AppRole[]): boolean {
   }
 
   return roles.some((role) => allowed.includes(role));
+}
+
+/**
+ * ВАЛИДАЦИЯ ПУТИ ДЛЯ РОЛИ
+ *
+ * Безопасная функция для получения корректного пути для роли
+ * Возвращает "/client/dashboard" как fallback для неизвестных ролей
+ */
+export function validateRolePath(role: AppRole | null): string {
+  if (!role) {
+    console.error(`[ERROR] Role validation failed: role is null or undefined`);
+    return "/client/dashboard";
+  }
+
+  const targetPath = APP_ROLE_HOME_PATH[role];
+  if (!targetPath) {
+    console.error(`[ERROR] Role validation failed: no path found for role ${role}`);
+    return "/client/dashboard";
+  }
+
+  return targetPath;
 }

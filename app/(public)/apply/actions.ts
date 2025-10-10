@@ -309,7 +309,7 @@ export async function submitApplicationAction(
 }
 
 function generateApplicationNumber() {
-  const timestamp = new Date().toISOString().replace(/[-:TZ]/g, "").slice(0, 14);
+  const timestamp = new Date().toISOString().replace(/\D/g, "").slice(0, 14);
   const suffix = Math.floor(Math.random() * 10_000)
     .toString()
     .padStart(4, "0");

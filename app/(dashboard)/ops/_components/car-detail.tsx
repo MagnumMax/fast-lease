@@ -87,7 +87,7 @@ export function CarDetailView({ profile, documents, serviceLog }: CarDetailProps
             <CardTitle>History log</CardTitle>
           </div>
           <Badge variant="outline" className="rounded-lg">
-            Aurora Telematics
+            Al Thuraya GPS
           </Badge>
         </CardHeader>
         <CardContent className="space-y-3">

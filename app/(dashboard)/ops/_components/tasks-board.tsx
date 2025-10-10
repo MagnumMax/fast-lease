@@ -84,50 +84,72 @@ export function OpsTasksBoard({ initialTasks }: OpsTasksBoardProps) {
   }, [tasks, searchQuery, statusFilter]);
 
   useEffect(() => {
+    // Уничтожаем все существующие instances перед созданием новых
+    Object.values(sortableInstances.current).forEach((instance) => {
+      if (instance && typeof instance.destroy === 'function') {
+        try {
+          instance.destroy();
+        } catch (error) {
+          console.warn("[tasks-board] Error destroying sortable instance:", error);
+        }
+      }
+    });
+
+    // Очищаем ссылки на instances
+    Object.keys(sortableInstances.current).forEach((status) => {
+      sortableInstances.current[status as OpsTaskStatus] = null;
+    });
+
+    // Создаем новые instances для каждого статуса
     STATUS_ORDER.forEach((status) => {
       const element = columnRefs.current[status];
-      if (!element) {
-        sortableInstances.current[status]?.destroy();
-        sortableInstances.current[status] = null;
-        return;
+      if (element && element.querySelector('[data-task-card]')) {
+        try {
+          sortableInstances.current[status] = Sortable.create(element, {
+            group: "ops-tasks",
+            animation: 150,
+            handle: "[data-task-card]",
+            ghostClass: "opacity-60",
+            dragClass: "shadow-linear",
+            onEnd: (event: SortableEvent) => {
+              const taskId = event.item.getAttribute("data-task-id");
+              const newStatus = event.to.getAttribute("data-status") as OpsTaskStatus | null;
+
+              if (!taskId || !newStatus || !STATUS_ORDER.includes(newStatus)) {
+                return;
+              }
+
+              setTasks((prev) =>
+                prev.map((task) =>
+                  task.id === taskId
+                    ? {
+                        ...task,
+                        status: newStatus,
+                      }
+                    : task,
+                ),
+              );
+            },
+          });
+        } catch (error) {
+          console.error("[tasks-board] Error creating sortable instance:", error);
+          sortableInstances.current[status] = null;
+        }
       }
-
-      sortableInstances.current[status]?.destroy();
-
-      sortableInstances.current[status] = Sortable.create(element, {
-        group: "ops-tasks",
-        animation: 150,
-        handle: "[data-task-card]",
-        ghostClass: "opacity-60",
-        dragClass: "shadow-linear",
-        onEnd: (event: SortableEvent) => {
-          const taskId = event.item.getAttribute("data-task-id");
-          const newStatus = event.to.getAttribute("data-status") as OpsTaskStatus | null;
-
-          if (!taskId || !newStatus || !STATUS_ORDER.includes(newStatus)) {
-            return;
-          }
-
-          setTasks((prev) =>
-            prev.map((task) =>
-              task.id === taskId
-                ? {
-                    ...task,
-                    status: newStatus,
-                  }
-                : task,
-            ),
-          );
-        },
-      });
     });
 
     return () => {
       Object.values(sortableInstances.current).forEach((instance) => {
-        instance?.destroy();
+        if (instance && typeof instance.destroy === 'function') {
+          try {
+            instance.destroy();
+          } catch (error) {
+            console.warn("[tasks-board] Error in cleanup destroying sortable instance:", error);
+          }
+        }
       });
     };
-  }, [filteredTasks.length]);
+  }, [filteredTasks]);
 
   function handleCreateTask() {
     if (!formState.title.trim()) return;

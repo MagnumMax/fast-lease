@@ -36,7 +36,7 @@ export const OPS_TASKS: OpsTask[] = [
     priority: "normal",
     source: "AI",
     status: "in-progress",
-    description: "VIN mismatch flagged by Aurora Telematics check.",
+    description: "VIN mismatch flagged by Al Thuraya GPS check.",
     createdBy: "ai",
   },
   {

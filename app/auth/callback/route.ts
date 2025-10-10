@@ -23,6 +23,11 @@ async function fetchRoles(supabase: SupabaseClient, userId: string) {
     .filter((role): role is AppRole => Boolean(role));
 }
 
+/**
+ * ОБРАБОТЧИК OAUTH КОЛБЭКОВ ОТ SUPABASE
+ *
+ * Безопасная обработка кода авторизации с использованием getUser()
+ */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -37,13 +42,12 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  // Используем getUser() вместо getSession() для безопасности
+  const { data: userData, error: userError } = await supabase.auth.getUser();
 
   let roles: AppRole[] = [];
-  if (session) {
-    roles = await fetchRoles(supabase, session.user.id);
+  if (!userError && userData.user) {
+    roles = await fetchRoles(supabase, userData.user.id);
   }
 
   const redirectPath = next || resolveHomePath(roles, "/client/dashboard");

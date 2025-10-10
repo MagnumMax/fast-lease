@@ -2,7 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
-import { DownloadCloud, Plus, Workflow } from "lucide-react";
+import { AlertCircle, DownloadCloud, Plus, Workflow } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,6 +81,24 @@ function formatDate(value: string) {
   }
 }
 
+function generateClientId(prefix: string) {
+  try {
+    if (
+      typeof globalThis !== "undefined" &&
+      globalThis.crypto &&
+      typeof globalThis.crypto.randomUUID === "function"
+    ) {
+      return globalThis.crypto.randomUUID();
+    }
+  } catch {
+    // Ignore and fallback below
+  }
+
+  const random = Math.random().toString(36).slice(2, 10);
+  const timestamp = Date.now().toString(36);
+  return `${prefix}-${random}${timestamp}`;
+}
+
 export function AdminBpmOverview({
   initialProcesses,
   initialVersions,
@@ -130,10 +148,7 @@ export function AdminBpmOverview({
 
     setTimeout(() => {
       const newProcess: AdminProcessRecord = {
-        id:
-          (typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `process-${Math.random().toString(36).slice(2)}`),
+        id: generateClientId("process"),
         code,
         name: form.name.trim(),
         status: "draft",
@@ -147,10 +162,7 @@ export function AdminBpmOverview({
       };
 
       const initialVersion: AdminProcessVersion = {
-        id:
-          (typeof crypto !== "undefined" && "randomUUID" in crypto
-            ? crypto.randomUUID()
-            : `version-${Math.random().toString(36).slice(2)}`),
+        id: generateClientId("version"),
         processId: newProcess.id,
         version: "v1.0",
         note: "Initial draft created via admin console.",
@@ -194,6 +206,10 @@ export function AdminBpmOverview({
             <CardDescription>
               Mirror of /beta/admin/bpm — manage lease orchestration and compliance flows.
             </CardDescription>
+            <div className="flex items-center gap-2 rounded-2xl border border-dashed border-amber-400 bg-amber-50/60 px-3 py-2 text-xs text-amber-600 dark:border-amber-300 dark:bg-amber-500/10 dark:text-amber-200">
+              <AlertCircle className="h-4 w-4" />
+              Конструктор работает в демо-режиме и не синхронизирует диаграммы с Supabase.
+            </div>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>

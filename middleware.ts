@@ -3,10 +3,14 @@ import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { isAccessAllowed, resolveHomePath } from "@/lib/auth/roles";
+import { isAccessAllowed, resolveHomePath, allowedRolesForPath } from "@/lib/auth/roles";
 import type { AppRole } from "@/lib/auth/types";
-
 const AUTH_ROUTES = ["/login", "/register", "/auth/callback"];
+
+/**
+ * ЗАЩИЩЕННЫЕ ПРЕФИКСЫ ПУТЕЙ
+ * Доступ к этим разделам контролируется на основе ролей пользователя
+ */
 const PROTECTED_PREFIXES = ["/client", "/ops", "/admin", "/investor"];
 
 async function loadUserRoles(
@@ -81,11 +85,11 @@ export async function middleware(req: NextRequest) {
   }
 
   const supabase = createSupabaseMiddlewareClient(req, res);
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
 
-  if (!session) {
+  // Используем getUser() вместо getSession() для безопасности
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData.user) {
     if (needsProtection(pathname)) {
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
@@ -96,11 +100,20 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  const roles = await loadUserRoles(supabase, session.user.id);
+  const roles = await loadUserRoles(supabase, userData.user.id);
 
   if (isAuthRoute(pathname) && roles.length) {
+    const nextPath = req.nextUrl.searchParams.get("next");
     const redirectUrl = req.nextUrl.clone();
-    redirectUrl.pathname = resolveHomePath(roles, "/");
+
+    if (nextPath && nextPath !== "/" && !nextPath.startsWith("/login")) {
+      // Если есть целевой путь, использовать его
+      redirectUrl.pathname = nextPath;
+    } else {
+      // Иначе использовать стандартную логику на основе ролей
+      redirectUrl.pathname = resolveHomePath(roles, "/");
+    }
+
     redirectUrl.searchParams.delete("next");
     return NextResponse.redirect(redirectUrl);
   }

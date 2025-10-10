@@ -35,7 +35,7 @@ export type ProfileRecord = {
 };
 
 export type SessionUser = {
-  session: Session;
+  session: Session | null;
   user: User;
   profile: ProfileRecord | null;
   roles: AppRole[];

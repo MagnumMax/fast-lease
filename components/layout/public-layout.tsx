@@ -7,6 +7,7 @@ import { publicNav } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/system/theme-toggle";
+import { resolveNavIcon } from "@/components/navigation/nav-icon";
 
 type PublicLayoutProps = {
   children: React.ReactNode;
@@ -34,7 +35,7 @@ export function PublicLayout({
             <nav className="hidden items-center gap-4 text-sm font-medium text-muted-foreground lg:flex">
               {navItems.map((item) => {
                 const active = pathname === item.href;
-                const Icon = item.icon;
+                const Icon = resolveNavIcon(item.icon);
                 return (
                   <Link
                     key={item.href}

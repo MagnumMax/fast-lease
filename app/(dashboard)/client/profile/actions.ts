@@ -4,27 +4,15 @@ import { revalidatePath } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export type ProfileActionState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  fieldErrors?: Record<string, string>;
-};
 
-export const INITIAL_PROFILE_STATE: ProfileActionState = {
-  status: "idle",
-};
-
-function ensureString(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim() : "";
-}
 
 export async function updateProfileAction(
-  _prev: ProfileActionState,
+  _prev: { status: "idle" | "success" | "error"; message?: string; fieldErrors?: Record<string, string> },
   formData: FormData,
-): Promise<ProfileActionState> {
-  const fullName = ensureString(formData.get("fullName"));
-  const phone = ensureString(formData.get("phone"));
-  const timezone = ensureString(formData.get("timezone")) || "Asia/Dubai";
+): Promise<{ status: "idle" | "success" | "error"; message?: string; fieldErrors?: Record<string, string> }> {
+  const fullName = typeof formData.get("fullName") === "string" ? (formData.get("fullName") as string).trim() : "";
+  const phone = typeof formData.get("phone") === "string" ? (formData.get("phone") as string).trim() : "";
+  const timezone = typeof formData.get("timezone") === "string" ? (formData.get("timezone") as string).trim() : "Asia/Dubai";
   const marketingOptIn = formData.get("marketing") === "on";
 
   if (!fullName) {
@@ -77,12 +65,12 @@ export async function updateProfileAction(
 }
 
 export async function updateSecurityAction(
-  _prev: ProfileActionState,
+  _prev: { status: "idle" | "success" | "error"; message?: string; fieldErrors?: Record<string, string> },
   formData: FormData,
-): Promise<ProfileActionState> {
-  const currentPassword = ensureString(formData.get("currentPassword"));
-  const newPassword = ensureString(formData.get("newPassword"));
-  const notifications = ensureString(formData.get("notifications")) || "proactive";
+): Promise<{ status: "idle" | "success" | "error"; message?: string; fieldErrors?: Record<string, string> }> {
+  const currentPassword = typeof formData.get("currentPassword") === "string" ? (formData.get("currentPassword") as string).trim() : "";
+  const newPassword = typeof formData.get("newPassword") === "string" ? (formData.get("newPassword") as string).trim() : "";
+  const notifications = typeof formData.get("notifications") === "string" ? (formData.get("notifications") as string).trim() : "proactive";
 
   const supabase = await createSupabaseServerClient();
 

@@ -1,5 +1,6 @@
-import { AuthCard } from "../login/auth-card";
+import { redirect } from "next/navigation";
 
 export default function RegisterPage() {
-  return <AuthCard initialTab="sign-up" />;
+  redirect("/login");
+  return null;
 }

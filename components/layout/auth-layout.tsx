@@ -15,7 +15,7 @@ type AuthLayoutProps = {
 export function AuthLayout({
   children,
   title = "Добро пожаловать в Fast Lease",
-  caption = "Единый портал для клиентов, операторов и инвесторов. Всё из прототипа `/beta/` перенесено в современный стек.",
+  caption = "Управляйте договорами, платежами и поддержкой в едином личном кабинете.",
 }: AuthLayoutProps) {
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-[1.05fr_1fr]">
@@ -42,24 +42,24 @@ export function AuthLayout({
           </div>
           <div className="mt-12 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-300/80">
-              Proactive notifications
+              Интересные факты
             </p>
             <p className="mt-3 text-lg font-medium">
-              Мы предупреждаем о следующем шаге и рисках до того, как они
-              проявятся.
+              Fast Lease помогает быстрее получать одобрение и контролировать
+              все этапы лизинга в одном месте.
             </p>
             <div className="mt-6 grid gap-3 text-sm text-slate-200/80">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Мгновенная синхронизация с Supabase и edge-functions
+                90% заявок одобряем в течение 24 часов после подачи
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                Linear Design System с автоматическими темами
+                Прозрачный график платежей и напоминания в личном кабинете
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                UX полностью повторяет `/beta/login/index.html`
+                Личный менеджер помогает на каждом шаге сделки
               </div>
             </div>
           </div>
@@ -93,23 +93,6 @@ export function AuthLayout({
           <div className="w-full max-w-md">
             <div className="space-y-4 rounded-3xl border border-border bg-card/60 p-8 shadow-outline backdrop-blur">
               {children}
-            </div>
-            <div className="mt-6 rounded-3xl border border-border bg-muted/40 p-6 text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">Что нового</p>
-              <ul className="mt-3 space-y-2">
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                  Email/пароль, SMS и соц-провайдеры через Supabase Auth
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                  MFA (TOTP) и маршрутные защиты на уровне middleware
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                  Типографика Geist Sans, компоненты shadcn/ui
-                </li>
-              </ul>
             </div>
           </div>
         </div>

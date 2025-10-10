@@ -137,11 +137,16 @@ export function OpsDealsBoard({ initialDeals }: OpsDealsBoardProps) {
     STATUS_ORDER.forEach((status) => {
       const element = columnRefs.current[status];
       if (!element) {
-        sortableInstances.current[status]?.destroy();
-        sortableInstances.current[status] = null;
+        if (sortableInstances.current[status]) {
+          sortableInstances.current[status]?.destroy();
+          sortableInstances.current[status] = null;
+        }
         return;
       }
-      sortableInstances.current[status]?.destroy();
+      if (sortableInstances.current[status]) {
+        sortableInstances.current[status]?.destroy();
+        sortableInstances.current[status] = null;
+      }
       sortableInstances.current[status] = Sortable.create(element, {
         group: "ops-deals",
         animation: 150,

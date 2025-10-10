@@ -1,75 +1,74 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Check, Eye, EyeOff, Loader2, Lock, LogIn, Phone, UserPlus } from "lucide-react";
+import React, { useActionState, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, Check, Loader2, Lock, LogIn } from "lucide-react";
 
-import {
-  completeMfaChallengeAction,
-  sendSmsOtpAction,
-  signInWithOAuthAction,
-  signInWithPasswordAction,
-  signUpAction as registerAccountAction,
-  verifySmsOtpAction,
-} from "@/app/(auth)/actions";
+import { requestOtpAction, verifyOtpAction } from "@/app/(auth)/actions";
 import {
   INITIAL_AUTH_STATE,
   type AuthActionState,
-  type MFAContext,
 } from "@/app/(auth)/action-state";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { APP_ROLE_HOME_PATH, validateRolePath } from "@/lib/auth/roles";
+import type { AppRole } from "@/lib/auth/types";
 
-type AuthTab = "sign-in" | "sign-up";
-type SignInMode = "password" | "sms";
-
+type Stage = "request" | "verify";
 const ROLE_PRESETS = {
   client: {
     label: "Клиент",
-    email: "client@fastlease.io",
-    password: "client123",
+    identity: "client@fastlease.io",
+    role: "client",
   },
   investor: {
     label: "Инвестор",
-    email: "investor@fastlease.io",
-    password: "investor123",
+    identity: "investor@fastlease.io",
+    role: "investor",
   },
   ops: {
     label: "Операционный менеджер",
-    email: "ops.manager@fastlease.io",
-    password: "ops123",
+    identity: "ops.manager@fastlease.io",
+    role: "ops_manager",
   },
   admin: {
     label: "Администратор",
-    email: "admin@fastlease.io",
-    password: "admin123",
+    identity: "admin@fastlease.io",
+    role: "admin",
   },
 } as const;
 
 type RoleKey = keyof typeof ROLE_PRESETS;
 
 const DEFAULT_PHONE_PLACEHOLDER = "+971500000000";
+const IDENTITY_PLACEHOLDER = `client@fastlease.io или ${DEFAULT_PHONE_PLACEHOLDER}`;
 
 function MessageBanner({ state }: { state: AuthActionState }) {
-  if (state.status === "idle") return null;
-  if (!state.message) return null;
+  if (state.status === "idle" || !state.message) return null;
 
-  const tone =
-    state.status === "success" || state.status === "needs_verification"
-      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-500/10"
-      : state.status === "mfa_required"
-        ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 dark:bg-indigo-500/10"
-        : "bg-red-500/10 text-red-600 dark:text-red-400 dark:bg-red-500/10";
+  let tone =
+    "bg-slate-500/10 text-slate-600 dark:text-slate-300 dark:bg-slate-500/10";
+  let icon: React.ReactElement = <LogIn className="h-4 w-4" aria-hidden="true" />;
 
-  const icon =
-    state.status === "success" || state.status === "needs_verification" ? (
-      <Check className="h-4 w-4" aria-hidden="true" />
-    ) : state.status === "mfa_required" ? (
-      <Lock className="h-4 w-4" aria-hidden="true" />
-    ) : (
-      <Lock className="h-4 w-4" aria-hidden="true" />
-    );
+  switch (state.status) {
+    case "success":
+      tone =
+        "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-500/10";
+      icon = <Check className="h-4 w-4" aria-hidden="true" />;
+      break;
+    case "otp_requested":
+      tone =
+        "bg-brand-500/10 text-brand-600 dark:text-brand-400 dark:bg-brand-500/10";
+      icon = <Lock className="h-4 w-4" aria-hidden="true" />;
+      break;
+    case "error":
+    default:
+      tone =
+        "bg-red-500/10 text-red-600 dark:text-red-400 dark:bg-red-500/10";
+      icon = <AlertCircle className="h-4 w-4" aria-hidden="true" />;
+      break;
+  }
 
   return (
     <div
@@ -81,513 +80,283 @@ function MessageBanner({ state }: { state: AuthActionState }) {
   );
 }
 
-type AuthCardProps = {
-  initialTab?: AuthTab;
+type PendingIdentity = {
+  identity: string;
+  identityType: "email" | "phone";
+  displayIdentity: string;
+  targetRole: AppRole | null;
 };
 
-export function AuthCard({ initialTab = "sign-in" }: AuthCardProps) {
+function normalizeRole(value: string | undefined): AppRole | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  const roles: AppRole[] = [
+    "admin",
+    "ops_manager",
+    "operator",
+    "finance",
+    "support",
+    "investor",
+    "client",
+  ];
+  return (roles.find((role) => role === normalized) ?? null) as AppRole | null;
+}
+
+export function AuthCard() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<AuthTab>(initialTab);
-  const [mode, setMode] = useState<SignInMode>("password");
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [mfaContext, setMfaContext] = useState<MFAContext | null>(null);
-  const [pendingOAuth, startOAuthTransition] = useTransition();
+  const isProduction = process.env.NODE_ENV === "production";
 
-  const [signInState, signInAction, signInPending] = useActionState(
-    signInWithPasswordAction,
+  const [stage, setStage] = useState<Stage>("request");
+  const [identityValue, setIdentityValue] = useState<string>("");
+  const [otpValue, setOtpValue] = useState<string>("");
+  const [selectedPreset, setSelectedPreset] = useState<RoleKey | "">("");
+  const [pendingIdentity, setPendingIdentity] = useState<PendingIdentity | null>(
+    null,
+  );
+  const [pendingRole, setPendingRole] = useState<AppRole | null>(null);
+
+  const [requestState, requestAction, requestPending] = useActionState(
+    requestOtpAction,
     INITIAL_AUTH_STATE,
   );
-  const [mfaState, mfaAction, mfaPending] = useActionState(
-    completeMfaChallengeAction,
-    INITIAL_AUTH_STATE,
-  );
-  const [smsState, smsAction, smsPending] = useActionState(
-    sendSmsOtpAction,
-    INITIAL_AUTH_STATE,
-  );
-  const [smsVerifyState, smsVerifyAction, smsVerifyPending] = useActionState(
-    verifySmsOtpAction,
-    INITIAL_AUTH_STATE,
-  );
-  const [signUpState, signUpAction, signUpPending] = useActionState(
-    registerAccountAction,
+  const [verifyState, verifyAction, verifyPending] = useActionState(
+    verifyOtpAction,
     INITIAL_AUTH_STATE,
   );
 
   useEffect(() => {
-    const requestedTab = searchParams?.get("tab");
-    if (!requestedTab) return;
-    const normalized = requestedTab.toLowerCase();
-    if (normalized === "register" || normalized === "sign-up") {
-      setActiveTab("sign-up");
-    } else if (normalized === "sign-in" || normalized === "login") {
-      setActiveTab("sign-in");
-    }
-  }, [searchParams]);
+    if (requestState.status !== "otp_requested") return;
 
-  useEffect(() => {
-    const successfulState = [signInState, mfaState, smsVerifyState].find(
-      (state) => state.status === "success" && state.redirectPath,
+    const contextIdentity = requestState.context?.identity ?? identityValue.trim();
+    if (!contextIdentity) return;
+
+    const identityType =
+      (requestState.context?.identityType as "email" | "phone") ??
+      (contextIdentity.includes("@") ? "email" : "phone");
+    const contextRole = normalizeRole(
+      requestState.context?.targetRole as string | undefined,
     );
-    if (successfulState?.redirectPath) {
-      router.push(successfulState.redirectPath);
-      router.refresh();
-    }
-  }, [router, signInState, mfaState, smsVerifyState]);
 
-  useEffect(() => {
-    if (signInState.status === "mfa_required" && signInState.mfa) {
-      setMfaContext(signInState.mfa);
-    }
-  }, [signInState]);
+    setPendingIdentity({
+      identity: contextIdentity,
+      identityType,
+      displayIdentity:
+        requestState.context?.displayIdentity ?? contextIdentity,
+      targetRole: contextRole,
+    });
+    setPendingRole(contextRole);
+    setStage("verify");
+    setOtpValue("");
+  }, [identityValue, requestState]);
 
-  useEffect(() => {
-    if (smsState.status === "mfa_required" && smsState.mfa) {
-      setMode("sms");
-      setMfaContext(smsState.mfa);
-    }
-  }, [smsState]);
-
-  useEffect(() => {
-    if (mfaState.status === "error" && mfaState.mfa) {
-      setMfaContext(mfaState.mfa);
-    } else if (mfaState.status === "success") {
-      setMfaContext(null);
-    }
-  }, [mfaState]);
-
-  useEffect(() => {
-    if (signUpState.status === "needs_verification") {
-      setActiveTab("sign-in");
-    }
-  }, [signUpState]);
-
-  const anyPending =
-    signInPending ||
-    mfaPending ||
-    smsPending ||
-    smsVerifyPending ||
-    signUpPending ||
-    pendingOAuth;
-
+  const anyPending = requestPending || verifyPending;
   const sharedDisabled = anyPending;
 
-  const signInBanners: AuthActionState[] = [];
-  if (mode === "sms") {
-    if (smsState.status !== "idle") signInBanners.push(smsState);
-    if (smsVerifyState.status !== "idle") signInBanners.push(smsVerifyState);
-  } else {
-    if (signInState.status !== "idle") signInBanners.push(signInState);
-    if (mfaState.status !== "idle") signInBanners.push(mfaState);
+  const presetForDev = useMemo(() => {
+    if (!selectedPreset) return null;
+    return ROLE_PRESETS[selectedPreset];
+  }, [selectedPreset]);
+
+  const devPresetForBypass =
+    !isProduction && stage === "request" ? presetForDev : null;
+
+  const presetRole = presetForDev?.role ?? null;
+  const activeRole =
+    stage === "verify"
+      ? pendingRole ?? pendingIdentity?.targetRole ?? presetRole
+      : presetRole;
+  const targetRoleValue = activeRole ?? "";
+
+  useEffect(() => {
+    const successfulState = [verifyState, requestState].find(
+      (state) => state.status === "success",
+    );
+
+    if (!successfulState || !successfulState.redirectPath) {
+      return;
+    }
+
+    console.log("[DEBUG] successfulState.redirectPath:", successfulState.redirectPath);
+    console.log("[DEBUG] targetRoleValue:", targetRoleValue);
+
+    // Если redirectPath равен "/", используем fallback для роли
+    let finalRedirectPath = successfulState.redirectPath;
+    if (successfulState.redirectPath === "/") {
+      const normalizedRole = normalizeRole(targetRoleValue);
+      finalRedirectPath = validateRolePath(normalizedRole);
+    }
+
+    console.log("[DEBUG] finalRedirectPath:", finalRedirectPath);
+
+    if (finalRedirectPath && finalRedirectPath !== "/") {
+      router.push(finalRedirectPath);
+      router.refresh();
+    }
+  }, [router, requestState, targetRoleValue, verifyState]);
+
+  useEffect(() => {
+    if (stage !== "verify" || !pendingIdentity) return;
+
+    const normalize = (value: string) => value.replace(/\s+/g, "").toLowerCase();
+    if (normalize(identityValue) !== normalize(pendingIdentity.identity)) {
+      setStage("request");
+      setPendingIdentity(null);
+      setPendingRole(null);
+      setOtpValue("");
+    }
+  }, [identityValue, pendingIdentity, stage]);
+
+  const banners = useMemo(() => {
+    const activeStates =
+      stage === "verify"
+        ? [requestState, verifyState]
+        : [requestState];
+    return activeStates.filter(
+      (state) => state.status !== "idle" && state.status !== "success",
+    );
+  }, [requestState, verifyState, stage]);
+
+  function handlePresetChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const value = event.currentTarget.value;
+
+    if (!value) {
+      setSelectedPreset("");
+      setIdentityValue("");
+      setStage("request");
+      setPendingIdentity(null);
+      setPendingRole(null);
+      setOtpValue("");
+      return;
+    }
+
+    const preset = ROLE_PRESETS[value as RoleKey];
+    if (!preset) return;
+
+    setSelectedPreset(value as RoleKey);
+    setIdentityValue(preset.identity);
+    setStage("request");
+    setPendingIdentity(null);
+    setPendingRole(preset.role);
+    setOtpValue("");
   }
 
-  function handleRoleChange(
-    value: string,
-    emailInput: HTMLInputElement | null,
-    passwordInput: HTMLInputElement | null,
-  ) {
-    const preset = ROLE_PRESETS[value as RoleKey];
-    if (preset) {
-      if (emailInput) {
-        emailInput.value = preset.email;
-      }
-      if (passwordInput) {
-        passwordInput.value = preset.password;
-      }
-    } else if (emailInput && passwordInput) {
-      emailInput.value = "";
-      passwordInput.value = "";
+  function handleIdentityChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setIdentityValue(event.currentTarget.value);
+    if (selectedPreset) {
+      setSelectedPreset("");
     }
   }
 
-  function renderSignInForm() {
-    return (
-      <form
-        action={
-          mfaContext?.type === "totp"
-            ? mfaAction
-            : mode === "sms"
-              ? mfaContext?.type === "sms"
-                ? smsVerifyAction
-                : smsAction
-              : signInAction
-        }
-        className="space-y-5"
-      >
-        <div className="grid gap-3">
-          <div className="flex items-center justify-between rounded-xl bg-muted/40 p-1 text-xs font-medium text-muted-foreground">
-            <button
-              type="button"
-              className={`flex-1 rounded-lg px-3 py-2 transition ${
-                mode === "password"
-                  ? "bg-background text-foreground shadow-sm"
-                  : ""
-              }`}
-              onClick={() => {
-                setMode("password");
-                setMfaContext(null);
-              }}
-            >
-              Пароль
-            </button>
-            <button
-              type="button"
-              className={`flex-1 rounded-lg px-3 py-2 transition ${
-                mode === "sms"
-                  ? "bg-background text-foreground shadow-sm"
-                  : ""
-              }`}
-              onClick={() => {
-                setMode("sms");
-                setMfaContext(null);
-              }}
-            >
-              SMS
-            </button>
-          </div>
-
-          {mode === "password" ? (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="role-select" className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-                  Быстрый доступ
-                </Label>
-                <select
-                  id="role-select"
-                  name="rolePreset"
-                  defaultValue=""
-                  disabled={sharedDisabled}
-                  className="w-full rounded-xl border border-border bg-transparent px-4 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
-                  onChange={(event) => {
-                    const form = event.currentTarget.form;
-                    if (!form) return;
-                    const emailInput = form.querySelector<HTMLInputElement>(
-                      'input[name="email"]',
-                    );
-                    const passwordInput = form.querySelector<HTMLInputElement>(
-                      'input[name="password"]',
-                    );
-                    handleRoleChange(event.currentTarget.value, emailInput, passwordInput);
-                  }}
-                >
-                  <option value="">Выберите роль</option>
-                  {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
-                    <option key={key} value={key}>
-                      {preset.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="jan.kowalski@example.com"
-                  autoComplete="email"
-                  required
-                  disabled={sharedDisabled}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <Label htmlFor="password">Пароль</Label>
-                  <a
-                    className="text-brand-600 hover:text-brand-500"
-                    href="/reset-password"
-                  >
-                    Забыли пароль?
-                  </a>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    required
-                    disabled={sharedDisabled}
-                    className="pr-12"
-                  />
-                  <button
-                    type="button"
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition hover:text-foreground"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    tabIndex={-1}
-                    aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                      <Eye className="h-4 w-4" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {mfaContext?.type === "totp" ? (
-                <div className="space-y-2">
-                  <Label htmlFor="code">Код MFA</Label>
-                  <div className="grid gap-2">
-                    <Input
-                      id="code"
-                      name="code"
-                      inputMode="numeric"
-                      placeholder="Введите код из приложения"
-                      disabled={mfaPending}
-                      autoFocus
-                    />
-                    <input type="hidden" name="factorId" value={mfaContext.factorId} />
-                    <input
-                      type="hidden"
-                      name="challengeId"
-                      value={mfaContext.challengeId}
-                    />
-                  </div>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Телефон</Label>
-                <div className="relative">
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder={DEFAULT_PHONE_PLACEHOLDER}
-                    autoComplete="tel"
-                    disabled={sharedDisabled}
-                    className="pl-10"
-                    required
-                  />
-                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-              </div>
-              {mfaContext?.type === "sms" ? (
-                <div className="space-y-2">
-                  <Label htmlFor="token">Код в SMS</Label>
-                  <Input
-                    id="token"
-                    name="token"
-                    inputMode="numeric"
-                    pattern="\d{4,8}"
-                    placeholder="Например, 123456"
-                    disabled={sharedDisabled}
-                    required
-                  />
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-
-        <div className="grid gap-2">
-          {signInBanners.map((state, index) => (
-            <MessageBanner key={index} state={state} />
-          ))}
-        </div>
-
-        <Button
-          type="submit"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-          disabled={sharedDisabled}
-        >
-          {anyPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Выполняем запрос
-            </>
-          ) : mfaContext ? (
-            <>
-              <Lock className="h-4 w-4" aria-hidden="true" />
-              Подтвердить
-            </>
-          ) : (
-            <>
-              <LogIn className="h-4 w-4" aria-hidden="true" />
-              Войти
-            </>
-          )}
-        </Button>
-
-        {mode === "password" && !mfaContext ? (
-          <div className="grid gap-2 text-xs text-muted-foreground">
-            <p>Или продолжить через</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={sharedDisabled}
-                onClick={() =>
-                  startOAuthTransition(async () => {
-                    await signInWithOAuthAction("google");
-                  })
-                }
-              >
-                Google
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={sharedDisabled}
-                onClick={() =>
-                  startOAuthTransition(async () => {
-                    await signInWithOAuthAction("apple");
-                  })
-                }
-              >
-                Apple
-              </Button>
-            </div>
-          </div>
-        ) : null}
-      </form>
-    );
+  function handleOtpChange(event: React.ChangeEvent<HTMLInputElement>) {
+    setOtpValue(event.currentTarget.value);
   }
 
-  function renderSignUpForm() {
-    return (
-      <form action={signUpAction} className="space-y-4">
-        <div className="grid gap-3">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Полное имя</Label>
-            <Input
-              id="fullName"
-              name="fullName"
-              type="text"
-              placeholder="Maxime Dupont"
-              autoComplete="name"
-              required
-              disabled={sharedDisabled}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="signUpEmail">Email</Label>
-            <Input
-              id="signUpEmail"
-              name="email"
-              type="email"
-              placeholder="jan.kowalski@example.com"
-              autoComplete="email"
-              required
-              disabled={sharedDisabled}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="signUpPassword">Пароль</Label>
-            <Input
-              id="signUpPassword"
-              name="password"
-              type="password"
-              placeholder="Не менее 8 символов"
-              minLength={8}
-              required
-              disabled={sharedDisabled}
-            />
-            <p className="text-xs text-muted-foreground">
-              Минимум 8 символов, одна цифра и одна буква.
-            </p>
-          </div>
-          <label className="flex items-center gap-3 rounded-xl border border-border px-3 py-3 text-xs md:text-sm">
-            <input
-              type="checkbox"
-              name="marketing"
-              className="h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
-              defaultChecked
-              disabled={sharedDisabled}
-            />
-            <span>
-              Получать продуктивные инсайты и чек-листы по ускорению одобрения
-              лизинга.
-            </span>
-          </label>
-        </div>
-
-        <MessageBanner state={signUpState} />
-
-        <Button
-          type="submit"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-          disabled={sharedDisabled}
-        >
-          {signUpPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Создаем аккаунт
-            </>
-          ) : (
-            <>
-              <UserPlus className="h-4 w-4" aria-hidden="true" />
-              Зарегистрироваться
-            </>
-          )}
-        </Button>
-      </form>
-    );
-  }
+  const submitDisabled =
+    sharedDisabled ||
+    (stage === "request"
+      ? identityValue.trim().length === 0
+      : identityValue.trim().length === 0 || otpValue.trim().length === 0);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-1 text-sm font-medium text-muted-foreground">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("sign-in");
-            setMode("password");
-            setMfaContext(null);
-          }}
-          className={`flex-1 rounded-lg px-4 py-2 transition ${
-            activeTab === "sign-in" ? "bg-background text-foreground shadow-sm" : ""
-          }`}
-        >
-          Вход
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("sign-up");
-            setMfaContext(null);
-          }}
-          className={`flex-1 rounded-lg px-4 py-2 transition ${
-            activeTab === "sign-up" ? "bg-background text-foreground shadow-sm" : ""
-          }`}
-        >
-          Регистрация
-        </button>
+    <form
+      action={stage === "verify" ? verifyAction : requestAction}
+      className="space-y-6"
+    >
+      <div className="grid gap-3">
+        <div className="space-y-2">
+          <Label
+            htmlFor="role-select"
+            className="text-xs uppercase tracking-[0.3em] text-muted-foreground"
+          >
+            Быстрый доступ
+          </Label>
+          <select
+            id="role-select"
+            name="rolePreset"
+            value={selectedPreset}
+            disabled={sharedDisabled}
+            className="w-full rounded-xl border border-border bg-transparent px-4 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
+            onChange={handlePresetChange}
+          >
+            <option value="">Выберите роль</option>
+            {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
+              <option key={key} value={key}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="identity">Телефон или Email</Label>
+          <Input
+            id="identity"
+            name="identity"
+            type="text"
+            placeholder={IDENTITY_PLACEHOLDER}
+            autoComplete="username"
+            value={identityValue}
+            onChange={handleIdentityChange}
+            disabled={sharedDisabled}
+          />
+        </div>
+
+        {stage === "verify" ? (
+          <div className="space-y-2">
+            <Label htmlFor="otp">Код подтверждения</Label>
+            <Input
+              id="otp"
+              name="token"
+              type="text"
+              inputMode="numeric"
+              pattern="\d{4,8}"
+              placeholder="Например, 123456"
+              autoComplete="one-time-code"
+              autoFocus
+              value={otpValue}
+              onChange={handleOtpChange}
+              disabled={sharedDisabled}
+            />
+            {pendingIdentity?.displayIdentity ? (
+              <p className="text-xs text-muted-foreground">
+                Код отправлен на {pendingIdentity.displayIdentity}.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        <input type="hidden" name="targetRole" value={targetRoleValue} />
+        {devPresetForBypass ? (
+          <input type="hidden" name="devBypass" value="true" />
+        ) : null}
       </div>
 
-      {activeTab === "sign-in" ? renderSignInForm() : renderSignUpForm()}
+      <div className="grid gap-2">
+        {banners.map((state, index) => (
+          <MessageBanner
+            key={`${state.status}-${index}-${state.errorCode ?? "state"}`}
+            state={state}
+          />
+        ))}
+      </div>
 
-      {activeTab === "sign-in" ? (
-        <p className="text-center text-sm text-muted-foreground">
-          Нет аккаунта?{" "}
-          <button
-            type="button"
-            className="font-medium text-brand-600 hover:text-brand-500"
-            onClick={() => setActiveTab("sign-up")}
-          >
-            Создайте его
-          </button>
-        </p>
-      ) : (
-        <p className="text-center text-sm text-muted-foreground">
-          Уже есть аккаунт?{" "}
-          <button
-            type="button"
-            className="font-medium text-brand-600 hover:text-brand-500"
-            onClick={() => setActiveTab("sign-in")}
-          >
-            Войдите
-          </button>
-        </p>
-      )}
-    </div>
+      <Button
+        type="submit"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+        disabled={submitDisabled}
+      >
+        {anyPending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            Выполняем запрос
+          </>
+        ) : (
+          <>
+            <LogIn className="h-4 w-4" aria-hidden="true" />
+            Войти
+          </>
+        )}
+      </Button>
+    </form>
   );
 }

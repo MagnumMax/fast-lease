@@ -128,34 +128,43 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
 
     let authUsers: AuthUserRow[] = [];
 
-    try {
-      const serviceClient = await createSupabaseServiceClient();
-      const { data, error } = await serviceClient.auth.admin.listUsers({ perPage: 200 });
-      if (error) {
-        console.warn("[admin] Failed to list auth users, continuing without email enrichment", error);
-      } else {
-        authUsers =
-          data?.users?.map((user) => {
-            const email =
-              typeof user.email === "string" && user.email.length > 0 ? user.email : null;
-            const lastSignIn =
-              typeof user.last_sign_in_at === "string" ? user.last_sign_in_at : null;
-            const metadata =
-              user.user_metadata && typeof user.user_metadata === "object"
-                ? (user.user_metadata as Record<string, unknown>)
-                : null;
+    const hasServiceRoleKey =
+      typeof process !== "undefined" &&
+      typeof process.env?.SUPABASE_SERVICE_ROLE_KEY === "string" &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY.length > 0;
 
-            return {
-              id: user.id,
-              email,
-              user_metadata: metadata,
-              last_sign_in_at: lastSignIn,
-              created_at: user.created_at,
-            };
-          }) ?? [];
+    if (!hasServiceRoleKey) {
+      console.warn("[admin] Skipping auth directory enrichment – SUPABASE_SERVICE_ROLE_KEY is not configured.");
+    } else {
+      try {
+        const serviceClient = await createSupabaseServiceClient();
+        const { data, error } = await serviceClient.auth.admin.listUsers({ perPage: 200 });
+        if (error) {
+          console.warn("[admin] Failed to list auth users, continuing without email enrichment", error);
+        } else {
+          authUsers =
+            data?.users?.map((user) => {
+              const email =
+                typeof user.email === "string" && user.email.length > 0 ? user.email : null;
+              const lastSignIn =
+                typeof user.last_sign_in_at === "string" ? user.last_sign_in_at : null;
+              const metadata =
+                user.user_metadata && typeof user.user_metadata === "object"
+                  ? (user.user_metadata as Record<string, unknown>)
+                  : null;
+
+              return {
+                id: user.id,
+                email,
+                user_metadata: metadata,
+                last_sign_in_at: lastSignIn,
+                created_at: user.created_at,
+              };
+            }) ?? [];
+        }
+      } catch (serviceError) {
+        console.warn("[admin] Service client unavailable, skipping email enrichment", serviceError);
       }
-    } catch (serviceError) {
-      console.warn("[admin] Service client unavailable, skipping email enrichment", serviceError);
     }
 
     const roleMap = roles.reduce<Record<string, UserRoleRow[]>>((acc, role) => {

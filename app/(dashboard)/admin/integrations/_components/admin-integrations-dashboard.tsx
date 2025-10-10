@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, AlertTriangle, PlugZap, RefreshCw } from "lucide-react";
+import { Activity, AlertCircle, AlertTriangle, PlugZap, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,24 @@ function formatTimestamp(value: string): string {
   }
 }
 
+function generateClientId(prefix: string) {
+  try {
+    if (
+      typeof globalThis !== "undefined" &&
+      globalThis.crypto &&
+      typeof globalThis.crypto.randomUUID === "function"
+    ) {
+      return globalThis.crypto.randomUUID();
+    }
+  } catch {
+    // Ignore and fallback
+  }
+
+  const random = Math.random().toString(36).slice(2, 10);
+  const timestamp = Date.now().toString(36);
+  return `${prefix}-${random}${timestamp}`;
+}
+
 export function AdminIntegrationsDashboard({
   initialIntegrations,
   initialLogs,
@@ -96,10 +114,7 @@ export function AdminIntegrationsDashboard({
       );
       setLogs((prev) => [
         {
-          id:
-            (typeof crypto !== "undefined" && "randomUUID" in crypto
-              ? crypto.randomUUID()
-              : `log-${Math.random().toString(36).slice(2)}`),
+          id: generateClientId("log"),
           system: "Health Monitor",
           status: "200 OK",
           message: "Manual refresh completed",
@@ -125,6 +140,10 @@ export function AdminIntegrationsDashboard({
             <CardDescription>
               Mirroring /beta/admin/integrations — track banking, telematics, and ERP connectivity.
             </CardDescription>
+            <div className="flex items-center gap-2 rounded-2xl border border-dashed border-amber-400 bg-amber-50/60 px-3 py-2 text-xs text-amber-600 dark:border-amber-300 dark:bg-amber-500/10 dark:text-amber-200">
+              <AlertCircle className="h-4 w-4" />
+              Метрики отображаются из демо-источника; реальные webhooks и health-check пока не подключены.
+            </div>
           </div>
           <Button
             variant="outline"
