@@ -74,14 +74,14 @@ function resolveHeroImage(
 }
 
 function resolveDealStatusTone(status: string) {
-  const normalized = status.toLowerCase();
-  if (normalized === "active") {
+  const normalized = status.toUpperCase();
+  if (normalized === "ACTIVE") {
     return "bg-emerald-500/15 text-emerald-500";
   }
-  if (normalized === "pending_activation" || normalized === "draft") {
+  if (["SIGNING_FUNDING", "VEHICLE_DELIVERY"].includes(normalized)) {
     return "bg-amber-500/15 text-amber-500";
   }
-  if (normalized === "suspended" || normalized === "defaulted") {
+  if (normalized === "CANCELLED") {
     return "bg-rose-500/15 text-rose-500";
   }
   return "bg-slate-500/15 text-slate-500";

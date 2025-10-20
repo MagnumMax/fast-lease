@@ -1,0 +1,408 @@
+openapi: 3.0.3
+info:
+  title: Fast Lease API
+  version: "1.0.0"
+  description: >
+    API для управления бизнес-процессом Fast Lease (Дубай):
+    сделки, статусы, задания, вебхуки интеграций, метрики.
+
+servers:
+  - url: https://api.fastlease.local/v1
+    description: Prod (пример)
+  - url: https://staging.fastlease.local/v1
+    description: Staging
+
+tags:
+  - name: Deals
+  - name: Tasks
+  - name: Webhooks
+  - name: Metrics
+
+paths:
+  /deals:
+    post:
+      tags: [Deals]
+      summary: Создать сделку (источник — сайт/брокер)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDealRequest"
+      responses:
+        "201":
+          description: Создано
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deal"
+    get:
+      tags: [Deals]
+      summary: Список сделок (фильтры по статусу/менеджеру/источнику)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: op_manager_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: source
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, minimum: 1, maximum: 200 }
+        - in: query
+          name: cursor
+          schema: { type: string }
+      responses:
+        "200":
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealList"
+
+  /deals/{id}:
+    get:
+      tags: [Deals]
+      summary: Получить карточку сделки
+      parameters:
+        - $ref: "#/components/parameters/DealId"
+      responses:
+        "200":
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DealFull"
+
+  /deals/{id}/transition:
+    post:
+      tags: [Deals]
+      summary: Запросить переход сделки в следующий статус
+      description: Переход разрешён только для нужной роли и при выполнении guard-условий.
+      parameters:
+        - $ref: "#/components/parameters/DealId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransitionRequest"
+      responses:
+        "200":
+          description: Статус обновлён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deal"
+        "409":
+          description: Guard-условия не выполнены
+
+  /deals/{id}/tasks:
+    get:
+      tags: [Tasks]
+      summary: Список заданий по сделке
+      parameters:
+        - $ref: "#/components/parameters/DealId"
+        - in: query
+          name: status
+          schema: { type: string, enum: [OPEN, IN_PROGRESS, DONE, BLOCKED] }
+      responses:
+        "200":
+          description: Ок
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Task" }
+
+  /tasks/{id}/start:
+    post:
+      tags: [Tasks]
+      summary: Начать выполнение задания
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+
+  /tasks/{id}/complete:
+    post:
+      tags: [Tasks]
+      summary: Завершить задание
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payload:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Ок
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+
+  /webhooks/esign:
+    post:
+      tags: [Webhooks]
+      summary: Вебхук провайдера e-sign (DocuSign/UAE Pass)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EsignEvent"
+      responses:
+        "204": { description: Принято }
+
+  /webhooks/bank:
+    post:
+      tags: [Webhooks]
+      summary: Вебхук банка о платеже
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankEvent"
+      responses:
+        "204": { description: Принято }
+
+  /webhooks/aecb:
+    post:
+      tags: [Webhooks]
+      summary: Вебхук AECB (кредитный отчёт/скор)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AecbEvent"
+      responses:
+        "204": { description: Принято }
+
+  /metrics/process:
+    get:
+      tags: [Metrics]
+      summary: Агрегаты процесса (SLA, конверсия, время в статусах)
+      responses:
+        "200":
+          description: Ок
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessMetrics"
+
+components:
+  parameters:
+    DealId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+    TaskId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+
+  schemas:
+    Deal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        workflow_id: { type: string }
+        customer_id: { type: string, format: uuid }
+        asset_id: { type: string, format: uuid }
+        source: { type: string }
+        status:
+          type: string
+          enum: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, SIGNING_FUNDING, VEHICLE_DELIVERY, ACTIVE]
+        op_manager_id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        payload:
+          type: object
+          additionalProperties: true
+
+    DealFull:
+      allOf:
+        - $ref: "#/components/schemas/Deal"
+        - type: object
+          properties:
+            tasks:
+              type: array
+              items: { $ref: "#/components/schemas/Task" }
+            documents:
+              type: array
+              items: { $ref: "#/components/schemas/Document" }
+            payments:
+              type: array
+              items: { $ref: "#/components/schemas/Payment" }
+            risk_report:
+              $ref: "#/components/schemas/RiskReport"
+
+    DealList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Deal" }
+        next_cursor:
+          type: string
+          nullable: true
+
+    Task:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        deal_id: { type: string, format: uuid }
+        type: { type: string }
+        status: { type: string, enum: [OPEN, IN_PROGRESS, DONE, BLOCKED] }
+        assignee_role: { type: string, enum: [OP_MANAGER, RISK_MANAGER, FINANCE, INVESTOR, LEGAL, ACCOUNTING, ADMIN] }
+        assignee_user_id: { type: string, format: uuid, nullable: true }
+        sla_due_at: { type: string, format: date-time, nullable: true }
+        payload:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    Document:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        deal_id: { type: string, format: uuid }
+        type: { type: string, enum: [QUOTE, CONTRACT, SCHEDULE, DELIVERY_ACT, KYC_DOC] }
+        storage_url: { type: string }
+        signed: { type: boolean }
+        meta:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+
+    Payment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        deal_id: { type: string, format: uuid }
+        kind: { type: string, enum: [ADVANCE, SUPPLIER] }
+        amount: { type: number, format: double }
+        currency: { type: string, example: AED }
+        status: { type: string, enum: [PENDING, CONFIRMED, FAILED] }
+        external_ref: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    RiskReport:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        deal_id: { type: string, format: uuid }
+        aecb_score: { type: integer, minimum: 0, maximum: 1000 }
+        approved: { type: boolean }
+        notes: { type: string, nullable: true }
+        raw:
+          type: object
+          additionalProperties: true
+        created_at: { type: string, format: date-time }
+
+    CreateDealRequest:
+      type: object
+      required: [customer_id, asset_id, source]
+      properties:
+        customer_id: { type: string, format: uuid }
+        asset_id: { type: string, format: uuid }
+        source: { type: string, example: website }
+        op_manager_id: { type: string, format: uuid }
+        payload:
+          type: object
+          additionalProperties: true
+
+    TransitionRequest:
+      type: object
+      required: [to_status]
+      properties:
+        to_status:
+          type: string
+          enum: [OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, SIGNING_FUNDING, VEHICLE_DELIVERY, ACTIVE]
+        actor_role:
+          type: string
+          enum: [OP_MANAGER, RISK_MANAGER, FINANCE, INVESTOR, LEGAL, ACCOUNTING, ADMIN]
+        guard_context:
+          type: object
+          additionalProperties: true
+        comment:
+          type: string
+
+    EsignEvent:
+      type: object
+      required: [deal_id, status]
+      properties:
+        deal_id: { type: string, format: uuid }
+        status: { type: string, enum: [COMPLETED, DECLINED] }
+        envelope_id: { type: string }
+        meta:
+          type: object
+          additionalProperties: true
+
+    BankEvent:
+      type: object
+      required: [deal_id, kind, status]
+      properties:
+        deal_id: { type: string, format: uuid }
+        kind: { type: string, enum: [ADVANCE, SUPPLIER] }
+        status: { type: string, enum: [CONFIRMED, FAILED] }
+        amount: { type: number, format: double }
+        currency: { type: string }
+        external_ref: { type: string }
+
+    AecbEvent:
+      type: object
+      required: [deal_id, aecb_score, approved]
+      properties:
+        deal_id: { type: string, format: uuid }
+        aecb_score: { type: integer }
+        approved: { type: boolean }
+        notes: { type: string }
+        raw:
+          type: object
+          additionalProperties: true
+
+    ProcessMetrics:
+      type: object
+      properties:
+        totals:
+          type: object
+          properties:
+            deals_total: { type: integer }
+            active_total: { type: integer }
+        funnel:
+          type: array
+          items:
+            type: object
+            properties:
+              status: { type: string }
+              count: { type: integer }
+        sla:
+          type: array
+          items:
+            type: object
+            properties:
+              task_type: { type: string }
+              overdue_count: { type: integer }
+              avg_hours: { type: number, format: float }

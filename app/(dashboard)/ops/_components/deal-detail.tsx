@@ -18,13 +18,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
+import { DealGuardTasks } from "@/app/(dashboard)/ops/_components/deal-guard-tasks";
 
 type DealDetailProps = {
   detail: OpsDealDetail;
 };
 
 export function DealDetailView({ detail }: DealDetailProps) {
-  const { profile, client, keyInformation, overview, documents, invoices, timeline } = detail;
+  const { profile, client, keyInformation, overview, documents, invoices, timeline, guardStatuses, dealUuid, statusKey, slug } =
+    detail;
 
   return (
     <div className="space-y-6">
@@ -121,6 +123,16 @@ export function DealDetailView({ detail }: DealDetailProps) {
               <p className="mt-1 text-sm text-foreground">{item.value}</p>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card/60 backdrop-blur" id="tasks">
+        <CardHeader>
+          <CardDescription>Workflow</CardDescription>
+          <CardTitle>Guard задачи для перехода</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DealGuardTasks dealId={dealUuid} statusKey={statusKey} guardStatuses={guardStatuses} slug={slug} />
         </CardContent>
       </Card>
 

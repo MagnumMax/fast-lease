@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/system/theme-toggle";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
+import { AuthLayout } from "@/components/layout/auth-layout";
 
 type PublicLayoutProps = {
   children: React.ReactNode;
@@ -19,6 +20,10 @@ export function PublicLayout({
   navItems = publicNav,
 }: PublicLayoutProps) {
   const pathname = usePathname();
+
+  if (pathname === "/") {
+    return <AuthLayout>{children}</AuthLayout>;
+  }
 
   return (
     <div className="min-h-screen bg-background">

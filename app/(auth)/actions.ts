@@ -82,7 +82,7 @@ function formatIdentityForDisplay(identity: Identity): string {
 
 function normalizeRole(value: FormDataEntryValue | null): AppRole | null {
   if (typeof value !== "string") return null;
-  const normalized = value.trim().toLowerCase();
+  const normalized = value.trim().toUpperCase();
   if (!normalized) return null;
   const match = APP_ROLE_PRIORITY.find((role) => role === normalized);
   return match ?? null;
@@ -114,7 +114,7 @@ async function ensureDefaultProfileAndRole(supabase: Awaited<ReturnType<typeof c
     .upsert(
       {
         user_id: userId,
-        role: "client",
+        role: "CLIENT",
       },
       { onConflict: "user_id,role" },
     );

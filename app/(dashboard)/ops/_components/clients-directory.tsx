@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { createOperationsClient } from "@/app/(dashboard)/ops/clients/actions";
 import type { OpsClientRecord } from "@/lib/data/operations/clients";
+
+type ClientFormState = {
+  name: string;
+  email: string;
+  phone: string;
+  status: OpsClientRecord["status"];
+};
+
+function createDefaultClientFormState(): ClientFormState {
+  return {
+    name: "",
+    email: "",
+    phone: "",
+    status: "Active",
+  };
+}
 
 type OpsClientsDirectoryProps = {
   initialClients: OpsClientRecord[];
@@ -51,12 +68,11 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [overdueFilter, setOverdueFilter] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formState, setFormState] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    status: "Active",
-  });
+  const [isSaving, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [formState, setFormState] = useState<ClientFormState>(() =>
+    createDefaultClientFormState(),
+  );
 
   const filteredClients = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -74,21 +90,33 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
 
   function handleCreateClient() {
     if (!formState.name.trim()) return;
-    const nextId = `CL-${(1000 + clients.length + 1).toString()}`;
-    const newClient: OpsClientRecord = {
-      id: nextId,
-      name: formState.name.trim(),
-      email: formState.email.trim() || `${toSlug(formState.name)}@fastlease.io`,
-      phone: formState.phone.trim() || "+971 50 000 0000",
-      status: formState.status as OpsClientRecord["status"],
-      scoring: "—",
-      overdue: 0,
-      limit: "—",
-      detailHref: `/ops/clients/${toSlug(formState.name)}`,
-    };
-    setClients((prev) => [newClient, ...prev]);
-    setFormState({ name: "", email: "", phone: "", status: "Active" });
-    setIsModalOpen(false);
+    setErrorMessage(null);
+
+    startTransition(async () => {
+      const result = await createOperationsClient({
+        name: formState.name.trim(),
+        email: formState.email.trim() || undefined,
+        phone: formState.phone.trim() || undefined,
+        status: formState.status,
+      });
+
+      if (result.error) {
+        setErrorMessage(result.error);
+        return;
+      }
+
+      if (result.data) {
+        setClients((prev) => {
+          const filtered = prev.filter(
+            (client) => client.detailHref !== result.data.detailHref,
+          );
+          return [result.data, ...filtered];
+        });
+
+        setFormState(createDefaultClientFormState());
+        setIsModalOpen(false);
+      }
+    });
   }
 
   return (
@@ -127,7 +155,16 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
               <option value="0">No overdue</option>
               <option value=">0">Overdue</option>
             </select>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <Dialog
+              open={isModalOpen}
+              onOpenChange={(open) => {
+                setIsModalOpen(open);
+                if (!open) {
+                  setErrorMessage(null);
+                  setFormState(createDefaultClientFormState());
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="rounded-xl">
                   <Plus className="mr-2 h-4 w-4" />
@@ -190,7 +227,10 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                       id="client-status"
                       value={formState.status}
                       onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, status: event.target.value }))
+                        setFormState((prev) => ({
+                          ...prev,
+                          status: event.target.value as OpsClientRecord["status"],
+                        }))
                       }
                       className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
                     >
@@ -199,12 +239,19 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                     </select>
                   </div>
                 </div>
+                {errorMessage ? (
+                  <p className="text-sm text-destructive">{errorMessage}</p>
+                ) : null}
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateClient} className="rounded-xl">
-                    Save
+                  <Button
+                    onClick={handleCreateClient}
+                    className="rounded-xl"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save"}
                   </Button>
                 </DialogFooter>
               </DialogContent>

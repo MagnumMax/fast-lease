@@ -24,6 +24,11 @@ truncate table public.payment_schedules restart identity cascade;
 truncate table public.invoices restart identity cascade;
 truncate table public.deal_events restart identity cascade;
 truncate table public.deals restart identity cascade;
+truncate table public.workflow_deal_audit_log restart identity cascade;
+truncate table public.workflow_action_queue restart identity cascade;
+truncate table public.workflow_notification_queue restart identity cascade;
+truncate table public.workflow_assets restart identity cascade;
+truncate table public.workflow_contacts restart identity cascade;
 truncate table public.application_documents restart identity cascade;
 truncate table public.applications restart identity cascade;
 truncate table public.vehicle_images restart identity cascade;
@@ -59,6 +64,8 @@ declare
   payment_id uuid;
   support_ticket_id uuid;
   referral_id uuid;
+  status_codes text[];
+  source_options text[];
 begin
   -- Auth users
   insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
@@ -110,12 +117,12 @@ begin
   -- Roles
   insert into public.user_roles (user_id, role, metadata)
   values
-    (client_id, 'client', jsonb_build_object('scope', 'frontend')),
-    (ops_id, 'operator', jsonb_build_object('team', 'operations')),
-    (ops_id, 'ops_manager', jsonb_build_object('team', 'operations')),
-    (admin_id, 'admin', jsonb_build_object('scope', 'platform')),
-    (support_id, 'support', jsonb_build_object('team', 'cx')),
-    (investor_user_id, 'investor', jsonb_build_object('segment', 'premium'));
+    (client_id, 'CLIENT', jsonb_build_object('scope', 'frontend')),
+    (ops_id, 'OPERATOR', jsonb_build_object('team', 'operations')),
+    (ops_id, 'OP_MANAGER', jsonb_build_object('team', 'operations')),
+    (admin_id, 'ADMIN', jsonb_build_object('scope', 'platform')),
+    (support_id, 'SUPPORT', jsonb_build_object('team', 'cx')),
+    (investor_user_id, 'INVESTOR', jsonb_build_object('segment', 'premium'));
 
   -- Investors
   insert into public.investors (user_id, investor_code, display_name, investor_type, status, total_investment, available_funds, compliance_status, onboarded_at, metadata)
@@ -188,6 +195,19 @@ begin
     (rolls_id, 'Dimensions', 'Wheelbase', '3295', 'mm', 2),
     (lambo_id, 'Performance', 'Power', '631', 'hp', 1),
     (volvo_id, 'Battery', 'Capacity', '78', 'kWh', 1);
+
+  -- Workflow contacts & assets directory
+  insert into public.workflow_contacts (full_name, email, phone, emirates_id)
+  values
+    ('Michael Adams', 'michael.adams@fastlease.dev', '+971 50 111 2233', '784-1987-2233445-1'),
+    ('Aisha Khan', 'aisha.khan@fastlease.dev', '+971 50 555 7890', '784-1990-9876543-2'),
+    ('Noah Lee', 'noah.lee@fastlease.dev', '+971 52 333 4477', '784-1992-4455667-3');
+
+  insert into public.workflow_assets (type, vin, make, model, trim, year, supplier, price, meta)
+  values
+    ('VEHICLE', 'WF-ROLLS-001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'DXB Motors', 985000, jsonb_build_object('color', 'Obsidian', 'battery', 'N/A')),
+    ('VEHICLE', 'WF-LAMBO-002', 'Lamborghini', 'Huracán', 'EVO AWD', 2023, 'Elite Motors', 720000, jsonb_build_object('color', 'Verde Mantis', 'feature', 'Launch control')),
+    ('VEHICLE', 'WF-VOLVO-003', 'Volvo', 'XC40 Recharge', 'Twin Motor', 2024, 'Nordic Auto', 149000, jsonb_build_object('color', 'Cloud Blue', 'batteryRange', '450 km'));
 
   -- Investor portfolio assets & performance
   insert into public.portfolio_assets (
@@ -530,7 +550,7 @@ begin
       application_id,
       rolls_id,
       client_id,
-      'active',
+      'ACTIVE',
       855000,
       1440000,
       30000,
@@ -556,10 +576,64 @@ begin
     (
       deal_id,
       'status_change',
-      jsonb_build_object('from', 'pending_activation', 'to', 'active'),
+      jsonb_build_object('from', 'SIGNING_FUNDING', 'to', 'ACTIVE'),
       ops_id,
       now() - interval '12 days'
     );
+
+  -- Additional pipeline coverage deals across statuses
+  status_codes := array[
+    'NEW',
+    'OFFER_PREP',
+    'VEHICLE_CHECK',
+    'DOCS_COLLECT',
+    'RISK_REVIEW',
+    'FINANCE_REVIEW',
+    'INVESTOR_PENDING',
+    'CONTRACT_PREP',
+    'SIGNING_FUNDING',
+    'VEHICLE_DELIVERY',
+    'ACTIVE',
+    'CANCELLED'
+  ];
+
+  source_options := array['Website', 'Broker', 'Referral'];
+
+  for idx in array_lower(status_codes, 1)..array_upper(status_codes, 1) loop
+    insert into public.deals (
+      deal_number,
+      application_id,
+      vehicle_id,
+      client_id,
+      status,
+      customer_id,
+      asset_id,
+      source,
+      payload,
+      created_at,
+      updated_at
+    )
+    values (
+      format('DEAL-STAGE-%s', replace(status_codes[idx], '_', '-')),
+      application_id,
+      case mod(idx, 3)
+        when 1 then rolls_id
+        when 2 then lambo_id
+        else volvo_id
+      end,
+      client_id,
+      status_codes[idx],
+      (select id from public.workflow_contacts order by random() limit 1),
+      (select id from public.workflow_assets order by random() limit 1),
+      source_options[(mod(idx - 1, array_length(source_options, 1)) + 1)],
+      jsonb_build_object(
+        'reference', format('WF-SEED-%s', status_codes[idx]),
+        'generated', true
+      ),
+      now() - (idx || ' days')::interval,
+      now() - (idx || ' days')::interval
+    );
+  end loop;
 
   -- Finance
   insert into public.invoices (invoice_number, deal_id, invoice_type, amount, tax_amount, total_amount, currency, due_date, issue_date, status, line_items, tax_breakdown, payment_terms, paid_at, created_at, updated_at, pdf_storage_path)
@@ -739,7 +813,7 @@ begin
     (
       deal_id,
       'Payment schedule (v02/2025)',
-      'finance',
+      'FINANCE',
       'active',
       'deals/deal-2025-0001/payment-schedule-v02.pdf',
       null,
@@ -843,8 +917,8 @@ begin
 
   insert into public.referral_deals (referral_id, deal_id, friend_name, status, monthly_payment, created_at)
   values
-    (referral_id, null, 'Ivan Petrov', 'active', 2260, now() - interval '2 days'),
-    (referral_id, null, 'Olga Sidorova', 'pending_activation', 3460, now() - interval '15 days');
+    (referral_id, null, 'Ivan Petrov', 'ACTIVE', 2260, now() - interval '2 days'),
+    (referral_id, null, 'Olga Sidorova', 'SIGNING_FUNDING', 3460, now() - interval '15 days');
 
   insert into public.referral_rewards (referral_id, deal_id, reward_amount, status, created_at, paid_at)
   values

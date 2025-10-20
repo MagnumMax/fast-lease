@@ -75,6 +75,7 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const { pathname } = req.nextUrl;
 
+
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
@@ -84,48 +85,37 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  const supabase = createSupabaseMiddlewareClient(req, res);
+  // Для публичных маршрутов пропускаем обращение к Supabase
+  if (!needsProtection(pathname) && !isAuthRoute(pathname)) {
+    return res;
+  }
 
-  // Используем getUser() вместо getSession() для безопасности
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  // Only hit Supabase for protected routes; skip on auth routes to reduce noisy fetch errors when offline.
+  if (needsProtection(pathname)) {
+    const supabase = createSupabaseMiddlewareClient(req, res);
 
-  if (userError || !userData.user) {
-    if (needsProtection(pathname)) {
+    // Используем getUser() вместо getSession() для безопасности
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) {
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    return res;
-  }
+    const roles = await loadUserRoles(supabase, userData.user.id);
 
-  const roles = await loadUserRoles(supabase, userData.user.id);
-
-  if (isAuthRoute(pathname) && roles.length) {
-    const nextPath = req.nextUrl.searchParams.get("next");
-    const redirectUrl = req.nextUrl.clone();
-
-    if (nextPath && nextPath !== "/" && !nextPath.startsWith("/login")) {
-      // Если есть целевой путь, использовать его
-      redirectUrl.pathname = nextPath;
-    } else {
-      // Иначе использовать стандартную логику на основе ролей
-      redirectUrl.pathname = resolveHomePath(roles, "/");
-    }
-
-    redirectUrl.searchParams.delete("next");
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  if (needsProtection(pathname)) {
     if (!isAccessAllowed(pathname, roles)) {
       const redirectUrl = req.nextUrl.clone();
       redirectUrl.pathname = resolveHomePath(roles, "/");
       return NextResponse.redirect(redirectUrl);
     }
+
+    return res;
   }
 
+  // Auth routes (/login, /register, /auth/callback) are public and should not call Supabase here.
   return res;
 }
 

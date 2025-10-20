@@ -105,7 +105,7 @@ create policy "Support tickets client read" on public.support_tickets
   for select
   using (
     client_id = auth.uid()
-    or public.has_any_role(array['support','operator','ops_manager','admin'])
+    or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN'])
   );
 
 drop policy if exists "Support tickets manage" on public.support_tickets;
@@ -113,11 +113,11 @@ create policy "Support tickets manage" on public.support_tickets
   for all
   using (
     client_id = auth.uid()
-    or public.has_any_role(array['support','operator','ops_manager','admin'])
+    or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN'])
   )
   with check (
     client_id = auth.uid()
-    or public.has_any_role(array['support','operator','ops_manager','admin'])
+    or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN'])
   );
 
 drop policy if exists "Support messages read" on public.support_messages;
@@ -130,7 +130,7 @@ create policy "Support messages read" on public.support_messages
       where t.id = support_messages.ticket_id
         and (
           t.client_id = auth.uid()
-          or public.has_any_role(array['support','operator','ops_manager','admin'])
+          or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN'])
         )
     )
   );
@@ -145,7 +145,7 @@ create policy "Support messages write" on public.support_messages
       where t.id = support_messages.ticket_id
         and (
           t.client_id = auth.uid()
-          or public.has_any_role(array['support','operator','ops_manager','admin'])
+          or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN'])
         )
     )
     and author_id = auth.uid()
@@ -154,14 +154,14 @@ create policy "Support messages write" on public.support_messages
 drop policy if exists "Support messages update" on public.support_messages;
 create policy "Support messages update" on public.support_messages
   for update
-  using (author_id = auth.uid() or public.has_any_role(array['support','operator','ops_manager','admin']))
-  with check (author_id = auth.uid() or public.has_any_role(array['support','operator','ops_manager','admin']));
+  using (author_id = auth.uid() or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN']))
+  with check (author_id = auth.uid() or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN']));
 
 drop policy if exists "Referral codes client access" on public.referral_codes;
 create policy "Referral codes client access" on public.referral_codes
   for all
-  using (client_id = auth.uid() or public.has_any_role(array['admin','finance','operator']))
-  with check (client_id = auth.uid() or public.has_any_role(array['admin','finance','operator']));
+  using (client_id = auth.uid() or public.has_any_role(array['ADMIN','FINANCE','OPERATOR']))
+  with check (client_id = auth.uid() or public.has_any_role(array['ADMIN','FINANCE','OPERATOR']));
 
 create policy "Referral events client read" on public.referral_events
   for select
@@ -169,14 +169,14 @@ create policy "Referral events client read" on public.referral_events
     exists (
       select 1 from public.referral_codes c
       where c.id = referral_events.referral_id
-        and (c.client_id = auth.uid() or public.has_any_role(array['admin','finance','operator']))
+        and (c.client_id = auth.uid() or public.has_any_role(array['ADMIN','FINANCE','OPERATOR']))
     )
   );
 
 create policy "Referral events manage" on public.referral_events
   for all
-  using (public.has_any_role(array['admin','finance','operator']))
-  with check (public.has_any_role(array['admin','finance','operator']));
+  using (public.has_any_role(array['ADMIN','FINANCE','OPERATOR']))
+  with check (public.has_any_role(array['ADMIN','FINANCE','OPERATOR']));
 
 create policy "Referral deals client read" on public.referral_deals
   for select
@@ -184,14 +184,14 @@ create policy "Referral deals client read" on public.referral_deals
     exists (
       select 1 from public.referral_codes c
       where c.id = referral_deals.referral_id
-        and (c.client_id = auth.uid() or public.has_any_role(array['admin','finance','operator']))
+        and (c.client_id = auth.uid() or public.has_any_role(array['ADMIN','FINANCE','OPERATOR']))
     )
   );
 
 create policy "Referral deals manage" on public.referral_deals
   for all
-  using (public.has_any_role(array['admin','finance','operator']))
-  with check (public.has_any_role(array['admin','finance','operator']));
+  using (public.has_any_role(array['ADMIN','FINANCE','OPERATOR']))
+  with check (public.has_any_role(array['ADMIN','FINANCE','OPERATOR']));
 
 create policy "Referral rewards client read" on public.referral_rewards
   for select
@@ -199,14 +199,14 @@ create policy "Referral rewards client read" on public.referral_rewards
     exists (
       select 1 from public.referral_codes c
       where c.id = referral_rewards.referral_id
-        and (c.client_id = auth.uid() or public.has_any_role(array['admin','finance','operator']))
+        and (c.client_id = auth.uid() or public.has_any_role(array['ADMIN','FINANCE','OPERATOR']))
     )
   );
 
 create policy "Referral rewards manage" on public.referral_rewards
   for all
-  using (public.has_any_role(array['admin','finance','operator']))
-  with check (public.has_any_role(array['admin','finance','operator']));
+  using (public.has_any_role(array['ADMIN','FINANCE','OPERATOR']))
+  with check (public.has_any_role(array['ADMIN','FINANCE','OPERATOR']));
 
 create policy "Deal documents client read" on public.deal_documents
   for select
@@ -214,13 +214,13 @@ create policy "Deal documents client read" on public.deal_documents
 
 create policy "Deal documents manage" on public.deal_documents
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','finance']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']));
 
 create policy "Client notifications access" on public.client_notifications
   for all
-  using (client_id = auth.uid() or public.has_any_role(array['support','operator','ops_manager','admin']))
-  with check (client_id = auth.uid() or public.has_any_role(array['support','operator','ops_manager','admin']));
+  using (client_id = auth.uid() or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN']))
+  with check (client_id = auth.uid() or public.has_any_role(array['SUPPORT','OPERATOR','OP_MANAGER','ADMIN']));
 
 create policy "Vehicle services client read" on public.vehicle_services
   for select
@@ -232,8 +232,8 @@ create policy "Vehicle services client read" on public.vehicle_services
 
 create policy "Vehicle services manage" on public.vehicle_services
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','support']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','support']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','SUPPORT']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','SUPPORT']));
 
 create policy "Vehicle telematics client read" on public.vehicle_telematics
   for select
@@ -248,5 +248,5 @@ create policy "Vehicle telematics client read" on public.vehicle_telematics
 
 create policy "Vehicle telematics manage" on public.vehicle_telematics
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','support']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','support']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','SUPPORT']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','SUPPORT']));

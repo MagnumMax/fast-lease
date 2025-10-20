@@ -1,13 +1,10 @@
 import { AppRole } from "@/lib/auth/types";
-export const APP_ROLE_PRIORITY: AppRole[] = [
-  "admin",
-  "ops_manager",
-  "operator",
-  "finance",
-  "support",
-  "investor",
-  "client",
-];
+import {
+  APP_ROLE_HOME_PATH as ROLE_HOME_PATH_DATA,
+  APP_ROLE_PRIORITY as ROLE_PRIORITY_DATA,
+} from "@/lib/data/app-roles";
+
+export const APP_ROLE_PRIORITY = ROLE_PRIORITY_DATA;
 
 /**
  * ROLE TO HOME PATH MAPPING
@@ -15,43 +12,35 @@ export const APP_ROLE_PRIORITY: AppRole[] = [
  * Determines where user is redirected after login
  * based on their primary role
  */
-export const APP_ROLE_HOME_PATH: Record<AppRole, string> = {
-  admin: "/admin/bpm",
-  ops_manager: "/ops/dashboard",
-  operator: "/ops/dashboard",
-  finance: "/ops/deals",
-  support: "/ops/tasks",
-  investor: "/investor/dashboard",
-  client: "/client/dashboard",
-};
+export const APP_ROLE_HOME_PATH = ROLE_HOME_PATH_DATA;
 
 type AccessRule = {
   test: (pathname: string) => boolean;
   allowed: AppRole[];
 };
 
-const ADMIN_OVERRIDES: AppRole[] = ["admin"];
+const ADMIN_OVERRIDES: AppRole[] = ["ADMIN"];
 
 const accessRules: AccessRule[] = [
   {
     test: (pathname) => pathname.startsWith("/client"),
-    allowed: ["client"],
+    allowed: ["CLIENT"],
   },
   {
     test: (pathname) => pathname.startsWith("/ops"),
-    allowed: ["ops_manager", "operator", "support", "finance", "admin"],
+    allowed: ["OP_MANAGER", "OPERATOR", "SUPPORT", "FINANCE", "ADMIN"],
   },
   {
     test: (pathname) => pathname.startsWith("/admin"),
-    allowed: ["admin"],
+    allowed: ["ADMIN"],
   },
   {
     test: (pathname) => pathname.startsWith("/investor"),
-    allowed: ["investor", "admin"],
+    allowed: ["INVESTOR", "ADMIN"],
   },
   {
     test: (pathname) => pathname.startsWith("/settings"),
-    allowed: ["client", "ops_manager", "operator", "support", "finance"],
+    allowed: ["CLIENT", "OP_MANAGER", "OPERATOR", "SUPPORT", "FINANCE"],
   },
 ];
 

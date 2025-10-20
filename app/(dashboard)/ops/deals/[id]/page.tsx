@@ -8,7 +8,8 @@ type OpsDealDetailsProps = {
 };
 
 export default async function OpsDealDetailsPage({ params }: OpsDealDetailsProps) {
-  const detail = await getOperationsDealDetail(params.id);
+  const { id } = await params;
+  const detail = await getOperationsDealDetail(id);
 
   if (!detail) {
     notFound();

@@ -12,37 +12,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { APP_ROLE_HOME_PATH, validateRolePath } from "@/lib/auth/roles";
+import { validateRolePath } from "@/lib/auth/roles";
 import type { AppRole } from "@/lib/auth/types";
+import {
+  APP_ROLE_CODES,
+  APP_ROLE_DEFAULT_PHONES,
+  APP_ROLE_LOGIN_PRESETS,
+  type AppRoleLoginPreset,
+} from "@/lib/data/app-roles";
 
 type Stage = "request" | "verify";
-const ROLE_PRESETS = {
-  client: {
-    label: "Клиент",
-    identity: "client@fastlease.io",
-    role: "client",
-  },
-  investor: {
-    label: "Инвестор",
-    identity: "investor@fastlease.io",
-    role: "investor",
-  },
-  ops: {
-    label: "Операционный менеджер",
-    identity: "ops.manager@fastlease.io",
-    role: "ops_manager",
-  },
-  admin: {
-    label: "Администратор",
-    identity: "admin@fastlease.io",
-    role: "admin",
-  },
-} as const;
+const LOGIN_PRESETS: AppRoleLoginPreset[] = APP_ROLE_LOGIN_PRESETS;
 
-type RoleKey = keyof typeof ROLE_PRESETS;
+type LoginPresetRole = (typeof LOGIN_PRESETS)[number]["role"];
 
-const DEFAULT_PHONE_PLACEHOLDER = "+971500000000";
-const IDENTITY_PLACEHOLDER = `client@fastlease.io или ${DEFAULT_PHONE_PLACEHOLDER}`;
+const DEFAULT_PHONE_PLACEHOLDER =
+  APP_ROLE_DEFAULT_PHONES.CLIENT ?? "+971500000000";
+const IDENTITY_PLACEHOLDER = LOGIN_PRESETS.length
+  ? `${LOGIN_PRESETS[0]?.identity ?? "client@fastlease.io"} или ${DEFAULT_PHONE_PLACEHOLDER}`
+  : `client@fastlease.io или ${DEFAULT_PHONE_PLACEHOLDER}`;
 
 function MessageBanner({ state }: { state: AuthActionState }) {
   if (state.status === "idle" || !state.message) return null;
@@ -89,16 +77,8 @@ type PendingIdentity = {
 
 function normalizeRole(value: string | undefined): AppRole | null {
   if (!value) return null;
-  const normalized = value.trim().toLowerCase();
-  const roles: AppRole[] = [
-    "admin",
-    "ops_manager",
-    "operator",
-    "finance",
-    "support",
-    "investor",
-    "client",
-  ];
+  const normalized = value.trim().toUpperCase();
+  const roles: AppRole[] = APP_ROLE_CODES;
   return (roles.find((role) => role === normalized) ?? null) as AppRole | null;
 }
 
@@ -109,7 +89,7 @@ export function AuthCard() {
   const [stage, setStage] = useState<Stage>("request");
   const [identityValue, setIdentityValue] = useState<string>("");
   const [otpValue, setOtpValue] = useState<string>("");
-  const [selectedPreset, setSelectedPreset] = useState<RoleKey | "">("");
+  const [selectedPreset, setSelectedPreset] = useState<LoginPresetRole | "">("");
   const [pendingIdentity, setPendingIdentity] = useState<PendingIdentity | null>(
     null,
   );
@@ -154,7 +134,7 @@ export function AuthCard() {
 
   const presetForDev = useMemo(() => {
     if (!selectedPreset) return null;
-    return ROLE_PRESETS[selectedPreset];
+    return LOGIN_PRESETS.find((preset) => preset.role === selectedPreset) ?? null;
   }, [selectedPreset]);
 
   const devPresetForBypass =
@@ -218,6 +198,7 @@ export function AuthCard() {
 
   function handlePresetChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const value = event.currentTarget.value;
+    const selectedRole = value as AppRole;
 
     if (!value) {
       setSelectedPreset("");
@@ -229,10 +210,10 @@ export function AuthCard() {
       return;
     }
 
-    const preset = ROLE_PRESETS[value as RoleKey];
+    const preset = LOGIN_PRESETS.find((item) => item.role === selectedRole);
     if (!preset) return;
 
-    setSelectedPreset(value as RoleKey);
+    setSelectedPreset(preset.role);
     setIdentityValue(preset.identity);
     setStage("request");
     setPendingIdentity(null);
@@ -279,8 +260,8 @@ export function AuthCard() {
             onChange={handlePresetChange}
           >
             <option value="">Выберите роль</option>
-            {Object.entries(ROLE_PRESETS).map(([key, preset]) => (
-              <option key={key} value={key}>
+            {LOGIN_PRESETS.map((preset) => (
+              <option key={preset.role} value={preset.role}>
                 {preset.label}
               </option>
             ))}

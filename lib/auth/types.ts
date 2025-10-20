@@ -1,13 +1,16 @@
 import type { Session, User } from "@supabase/supabase-js";
 
 export type AppRole =
-  | "client"
-  | "operator"
-  | "ops_manager"
-  | "admin"
-  | "investor"
-  | "finance"
-  | "support";
+  | "ADMIN"
+  | "OP_MANAGER"
+  | "OPERATOR"
+  | "SUPPORT"
+  | "FINANCE"
+  | "RISK_MANAGER"
+  | "INVESTOR"
+  | "LEGAL"
+  | "ACCOUNTING"
+  | "CLIENT";
 
 export type ProfileRecord = {
   id: string;

@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev -p 3333 --turbopack",
     "build": "next build --turbopack",
-    "start": "next start",
+    "start": "next start -p 3333",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest --run",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop"
   },
@@ -28,6 +30,7 @@
     "sortablejs": "^1.15.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "yaml": "^2.7.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -42,6 +45,8 @@
     "postcss": "^8.5.6",
     "supabase": "^2.48.3",
     "tailwindcss": "^3.4.13",
-    "typescript": "^5"
+    "typescript": "^5",
+    "ts-node": "^10.9.2",
+    "vitest": "^2.1.9"
   }
 }

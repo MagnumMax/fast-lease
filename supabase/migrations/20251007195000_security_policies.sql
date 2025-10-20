@@ -61,7 +61,7 @@ as $$
     select
       a.user_id = auth.uid()
       or a.assigned_to = auth.uid()
-      or public.has_any_role(array['operator','ops_manager','admin','finance','support'])
+      or public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT'])
     from public.applications a
     where a.id = target_application_id
     limit 1
@@ -94,7 +94,7 @@ as $$
     select
       public.is_deal_client(d.id)
       or d.assigned_account_manager = auth.uid()
-      or public.has_any_role(array['operator','ops_manager','admin','finance','support','investor'])
+      or public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT','INVESTOR'])
     from public.deals d
     where d.id = target_deal_id
     limit 1
@@ -153,7 +153,7 @@ create policy "Profiles self read or staff" on public.profiles
   for select
   using (
     auth.uid() = user_id
-    or public.has_any_role(array['operator','ops_manager','admin','finance','support'])
+    or public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT'])
   );
 
 drop policy if exists "Profiles self insert" on public.profiles;
@@ -161,7 +161,7 @@ create policy "Profiles self insert" on public.profiles
   for insert
   with check (
     auth.uid() = user_id
-    or public.has_any_role(array['operator','ops_manager','admin','finance','support'])
+    or public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT'])
   );
 
 drop policy if exists "Profiles self update" on public.profiles;
@@ -169,17 +169,17 @@ create policy "Profiles self update" on public.profiles
   for update
   using (
     auth.uid() = user_id
-    or public.has_any_role(array['operator','ops_manager','admin','finance','support'])
+    or public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT'])
   )
   with check (
     auth.uid() = user_id
-    or public.has_any_role(array['operator','ops_manager','admin','finance','support'])
+    or public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT'])
   );
 
 drop policy if exists "Profiles admin delete" on public.profiles;
 create policy "Profiles admin delete" on public.profiles
   for delete
-  using (public.has_any_role(array['admin']));
+  using (public.has_any_role(array['ADMIN']));
 
 -- User roles ----------------------------------------------------------------
 
@@ -189,13 +189,13 @@ alter table public.user_roles force row level security;
 drop policy if exists "User roles staff read" on public.user_roles;
 create policy "User roles staff read" on public.user_roles
   for select
-  using (public.has_any_role(array['admin','ops_manager']));
+  using (public.has_any_role(array['ADMIN','OP_MANAGER']));
 
 drop policy if exists "User roles admin manage" on public.user_roles;
 create policy "User roles admin manage" on public.user_roles
   for all
-  using (public.has_any_role(array['admin']))
-  with check (public.has_any_role(array['admin']));
+  using (public.has_any_role(array['ADMIN']))
+  with check (public.has_any_role(array['ADMIN']));
 
 -- Vehicles ------------------------------------------------------------------
 
@@ -216,23 +216,23 @@ create policy "Vehicles authenticated read" on public.vehicles
 drop policy if exists "Vehicles staff read" on public.vehicles;
 create policy "Vehicles staff read" on public.vehicles
   for select
-  using (public.has_any_role(array['operator','ops_manager','admin','finance','support']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']));
 
 drop policy if exists "Vehicles staff insert" on public.vehicles;
 create policy "Vehicles staff insert" on public.vehicles
   for insert
-  with check (public.has_any_role(array['operator','ops_manager','admin']));
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN']));
 
 drop policy if exists "Vehicles staff update" on public.vehicles;
 create policy "Vehicles staff update" on public.vehicles
   for update
-  using (public.has_any_role(array['operator','ops_manager','admin']))
-  with check (public.has_any_role(array['operator','ops_manager','admin']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN']));
 
 drop policy if exists "Vehicles admin delete" on public.vehicles;
 create policy "Vehicles admin delete" on public.vehicles
   for delete
-  using (public.has_any_role(array['admin']));
+  using (public.has_any_role(array['ADMIN']));
 
 -- Vehicle images ------------------------------------------------------------
 
@@ -253,8 +253,8 @@ create policy "Vehicle images authenticated read" on public.vehicle_images
 drop policy if exists "Vehicle images staff manage" on public.vehicle_images;
 create policy "Vehicle images staff manage" on public.vehicle_images
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin']))
-  with check (public.has_any_role(array['operator','ops_manager','admin']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN']));
 
 -- Vehicle specifications ----------------------------------------------------
 
@@ -275,8 +275,8 @@ create policy "Vehicle specs authenticated read" on public.vehicle_specification
 drop policy if exists "Vehicle specs staff manage" on public.vehicle_specifications;
 create policy "Vehicle specs staff manage" on public.vehicle_specifications
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin']))
-  with check (public.has_any_role(array['operator','ops_manager','admin']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN']));
 
 -- Applications --------------------------------------------------------------
 
@@ -291,7 +291,7 @@ create policy "Applications owner read" on public.applications
 drop policy if exists "Applications staff read" on public.applications;
 create policy "Applications staff read" on public.applications
   for select
-  using (public.has_any_role(array['operator','ops_manager','admin','finance','support']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']));
 
 drop policy if exists "Applications owner insert" on public.applications;
 create policy "Applications owner insert" on public.applications
@@ -301,7 +301,7 @@ create policy "Applications owner insert" on public.applications
 drop policy if exists "Applications staff insert" on public.applications;
 create policy "Applications staff insert" on public.applications
   for insert
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance','support']));
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']));
 
 drop policy if exists "Applications owner update" on public.applications;
 create policy "Applications owner update" on public.applications
@@ -315,8 +315,8 @@ create policy "Applications owner update" on public.applications
 drop policy if exists "Applications staff update" on public.applications;
 create policy "Applications staff update" on public.applications
   for update
-  using (public.has_any_role(array['operator','ops_manager','admin','finance','support']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance','support']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']));
 
 drop policy if exists "Applications owner delete draft" on public.applications;
 create policy "Applications owner delete draft" on public.applications
@@ -329,7 +329,7 @@ create policy "Applications owner delete draft" on public.applications
 drop policy if exists "Applications staff delete" on public.applications;
 create policy "Applications staff delete" on public.applications
   for delete
-  using (public.has_any_role(array['admin','ops_manager']));
+  using (public.has_any_role(array['ADMIN','OP_MANAGER']));
 
 -- Application documents -----------------------------------------------------
 
@@ -355,8 +355,8 @@ create policy "Application documents owner update" on public.application_documen
 drop policy if exists "Application documents staff manage" on public.application_documents;
 create policy "Application documents staff manage" on public.application_documents
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','finance','support']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance','support']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']));
 
 -- Deals ---------------------------------------------------------------------
 
@@ -371,23 +371,23 @@ create policy "Deals client read" on public.deals
 drop policy if exists "Deals staff read" on public.deals;
 create policy "Deals staff read" on public.deals
   for select
-  using (public.has_any_role(array['operator','ops_manager','admin','finance','support','investor']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT','INVESTOR']));
 
 drop policy if exists "Deals staff insert" on public.deals;
 create policy "Deals staff insert" on public.deals
   for insert
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance']));
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']));
 
 drop policy if exists "Deals staff update" on public.deals;
 create policy "Deals staff update" on public.deals
   for update
-  using (public.has_any_role(array['operator','ops_manager','admin','finance']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']));
 
 drop policy if exists "Deals admin delete" on public.deals;
 create policy "Deals admin delete" on public.deals
   for delete
-  using (public.has_any_role(array['admin']));
+  using (public.has_any_role(array['ADMIN']));
 
 -- Deal events ---------------------------------------------------------------
 
@@ -402,8 +402,8 @@ create policy "Deal events client read" on public.deal_events
 drop policy if exists "Deal events staff manage" on public.deal_events;
 create policy "Deal events staff manage" on public.deal_events
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','finance','support']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance','support']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE','SUPPORT']));
 
 -- Invoices ------------------------------------------------------------------
 
@@ -418,8 +418,8 @@ create policy "Invoices client read" on public.invoices
 drop policy if exists "Invoices staff manage" on public.invoices;
 create policy "Invoices staff manage" on public.invoices
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','finance']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']));
 
 -- Payments ------------------------------------------------------------------
 
@@ -434,8 +434,8 @@ create policy "Payments client read" on public.payments
 drop policy if exists "Payments staff manage" on public.payments;
 create policy "Payments staff manage" on public.payments
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','finance']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']));
 
 -- Payment transactions ------------------------------------------------------
 
@@ -450,8 +450,8 @@ create policy "Payment transactions read" on public.payment_transactions
 drop policy if exists "Payment transactions manage" on public.payment_transactions;
 create policy "Payment transactions manage" on public.payment_transactions
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','finance']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']));
 
 -- Payment schedules ---------------------------------------------------------
 
@@ -466,8 +466,8 @@ create policy "Payment schedules read" on public.payment_schedules
 drop policy if exists "Payment schedules manage" on public.payment_schedules;
 create policy "Payment schedules manage" on public.payment_schedules
   for all
-  using (public.has_any_role(array['operator','ops_manager','admin','finance']))
-  with check (public.has_any_role(array['operator','ops_manager','admin','finance']));
+  using (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']))
+  with check (public.has_any_role(array['OPERATOR','OP_MANAGER','ADMIN','FINANCE']));
 
 -- Finalize ------------------------------------------------------------------
 

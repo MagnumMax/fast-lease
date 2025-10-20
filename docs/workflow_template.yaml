@@ -1,0 +1,444 @@
+workflow:
+  id: fast-lease-v1
+  title: "Fast Lease — основной бизнес-процесс (Дубай)"
+  entity: Deal
+  owner_role: OP_MANAGER
+  timezone: Asia/Dubai
+
+roles:
+  - code: ADMIN
+    name: Администратор процесса
+    categories: [auth, workflow]
+  - code: OP_MANAGER
+    name: Операционный менеджер
+    categories: [auth, workflow]
+  - code: OPERATOR
+    name: Оператор процесса
+    categories: [auth]
+  - code: SUPPORT
+    name: Поддержка операций
+    categories: [auth]
+  - code: FINANCE
+    name: Финансовый отдел
+    categories: [auth, workflow]
+  - code: RISK_MANAGER
+    name: Менеджер по управлению рисками
+    categories: [workflow]
+  - code: INVESTOR
+    name: Инвестор / ЛПР
+    categories: [auth, workflow]
+  - code: LEGAL
+    name: Юридический отдел
+    categories: [workflow]
+  - code: ACCOUNTING
+    name: Бухгалтерия (опционально для пост-учёта)
+    categories: [workflow]
+  - code: CLIENT
+    name: Клиент
+    categories: [auth]
+
+kanban_order:
+  - NEW
+  - OFFER_PREP
+  - VEHICLE_CHECK
+  - DOCS_COLLECT
+  - RISK_REVIEW
+  - FINANCE_REVIEW
+  - INVESTOR_PENDING
+  - CONTRACT_PREP
+  - SIGNING_FUNDING
+  - VEHICLE_DELIVERY
+  - ACTIVE
+  - CANCELLED
+
+statuses:
+  NEW:
+    title: "Новая заявка"
+    description: "Лид создан (сайт/брокер)."
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: CONFIRM_CAR
+          title: "Подтвердить авто у дилера/брокера"
+          assignee_role: OP_MANAGER
+          guard_key: "tasks.confirmCar.completed"
+          sla: { hours: 8 }
+      - type: NOTIFY
+        to_roles: [OP_MANAGER]
+        template: "new_deal_created"
+    exit_requirements:
+      - key: tasks.confirmCar.completed
+        rule: "== true"
+        message: "Авто не подтверждено у дилера/брокера."
+
+  OFFER_PREP:
+    title: "Подготовка предложения"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: PREPARE_QUOTE
+          title: "Подготовить коммерческое предложение"
+          assignee_role: OP_MANAGER
+          guard_key: "quotationPrepared"
+          sla: { hours: 8 }
+    exit_requirements:
+      - key: quotationPrepared
+        rule: "== true"
+        message: "Не сформировано коммерческое предложение."
+
+  VEHICLE_CHECK:
+    title: "Проверка авто"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: VERIFY_VEHICLE
+          title: "Проверить VIN/комплектацию/цену"
+          assignee_role: OP_MANAGER
+          guard_key: "vehicle.verified"
+          sla: { hours: 8 }
+    exit_requirements:
+      - key: vehicle.verified
+        rule: "== true"
+        message: "Данные по авто не подтверждены."
+
+  DOCS_COLLECT:
+    title: "Сбор документов"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: COLLECT_DOCS
+          title: "Собрать пакет документов от клиента"
+          assignee_role: OP_MANAGER
+          guard_key: "docs.required.allUploaded"
+          checklist:
+            - passport
+            - emirates_id
+            - driver_license
+            - bank_statements
+            - proof_of_income
+          sla: { hours: 48 }
+    exit_requirements:
+      - key: docs.required.allUploaded
+        rule: "== true"
+        message: "Не все обязательные документы загружены."
+
+  RISK_REVIEW:
+    title: "Проверка риска"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: AECB_CHECK
+          title: "AECB и скоринг"
+          assignee_role: RISK_MANAGER
+          guard_key: "risk.approved"
+          sla: { hours: 24 }
+      - type: WEBHOOK
+        endpoint: "aecb.request"
+        payload: { dealId: "{{deal.id}}", customerId: "{{deal.customer_id}}" }
+    exit_requirements:
+      - key: risk.approved
+        rule: "== true"
+        message: "Отсутствует одобрение отдела рисков."
+    sla:
+      max_hours: 24
+      escalation:
+        - after_hours: 18
+          action: { type: NOTIFY, to_roles: [RISK_MANAGER], template: "sla_warning" }
+        - after_hours: 24
+          action: { type: ESCALATE, to_roles: [ADMIN], template: "sla_breach" }
+
+  FINANCE_REVIEW:
+    title: "Финансовое утверждение"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: FIN_CALC
+          title: "Проверить график/взнос/остаток/маржу"
+          assignee_role: FINANCE
+          guard_key: "finance.approved"
+          sla: { hours: 48 }
+    exit_requirements:
+      - key: finance.approved
+        rule: "== true"
+        message: "Финансовые параметры не утверждены."
+
+  INVESTOR_PENDING:
+    title: "Одобрение инвестора"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: INVESTOR_APPROVAL
+          title: "Согласование сделки инвестором"
+          assignee_role: INVESTOR
+          guard_key: "investor.approved"
+          sla: { hours: 48 }
+      - type: NOTIFY
+        to_roles: [INVESTOR]
+        template: "need_investor_approval"
+    exit_requirements:
+      - key: investor.approved
+        rule: "== true"
+        message: "Нет подтверждения инвестора."
+
+  CONTRACT_PREP:
+    title: "Подготовка договора"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: PREPARE_CONTRACT
+          title: "Сформировать договор/график/акт"
+          assignee_role: LEGAL
+          guard_key: "legal.contractReady"
+          sla: { hours: 24 }
+    exit_requirements:
+      - key: legal.contractReady
+        rule: "== true"
+        message: "Договор ещё не готов."
+
+  SIGNING_FUNDING:
+    title: "Подписание и финансирование"
+    entry_actions:
+      - type: WEBHOOK
+        endpoint: "esign.createEnvelope"
+        payload:
+          dealId: "{{deal.id}}"
+          parties:
+            customer: "{{customer.email}}"
+            investor: "{{investor.email}}"
+      - type: TASK_CREATE
+        task:
+          type: RECEIVE_ADVANCE
+          title: "Получить аванс от клиента"
+          assignee_role: FINANCE
+          guard_key: "payments.advanceReceived"
+          sla: { hours: 24 }
+      - type: TASK_CREATE
+        task:
+          type: PAY_SUPPLIER
+          title: "Оплата поставщику (дилеру)"
+          assignee_role: FINANCE
+          guard_key: "payments.supplierPaid"
+          sla: { hours: 12 }
+    webhooks:
+      on_event:
+        - event: esign.completed
+          transition_to: VEHICLE_DELIVERY
+          conditions:
+            - key: payments.advanceReceived
+              rule: "== true"
+            - key: payments.supplierPaid
+              rule: "== true"
+    exit_requirements:
+      - key: esign.allSigned
+        rule: "== true"
+        message: "Документы ещё не подписаны."
+      - key: payments.advanceReceived
+        rule: "== true"
+        message: "Аванс не получен."
+      - key: payments.supplierPaid
+        rule: "== true"
+        message: "Оплата поставщику не проведена."
+
+  VEHICLE_DELIVERY:
+    title: "Выдача автомобиля"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          type: ARRANGE_DELIVERY
+          title: "Организовать выдачу авто клиенту"
+          assignee_role: OP_MANAGER
+          guard_key: "delivery.confirmed"
+          sla: { hours: 24 }
+    exit_requirements:
+      - key: delivery.confirmed
+        rule: "== true"
+        message: "Выдача авто не подтверждена."
+
+  ACTIVE:
+    title: "Активный лизинг"
+    entry_actions:
+      - type: SCHEDULE
+        job:
+          type: INVOICE_SCHEDULE
+          cron: "0 8 1 * *"   # инвойс ежемесячно 1-го числа 08:00
+      - type: NOTIFY
+        to_roles: [OP_MANAGER, ACCOUNTING]
+        template: "lease_activated"
+    exit_requirements: []  # финальный статус
+
+  CANCELLED:
+    title: "Отменена"
+    entry_actions:
+      - type: NOTIFY
+        to_roles: [OP_MANAGER]
+        template: "deal_cancelled"
+    exit_requirements: []  # терминальное состояние
+
+transitions:
+  - from: NEW
+    to: OFFER_PREP
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: tasks.confirmCar.completed
+        rule: "== true"
+
+  - from: OFFER_PREP
+    to: VEHICLE_CHECK
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: quotationPrepared
+        rule: "== true"
+
+  - from: VEHICLE_CHECK
+    to: DOCS_COLLECT
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: vehicle.verified
+        rule: "== true"
+
+  - from: DOCS_COLLECT
+    to: RISK_REVIEW
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: docs.required.allUploaded
+        rule: "== true"
+
+  - from: RISK_REVIEW
+    to: FINANCE_REVIEW
+    by_roles: [RISK_MANAGER]
+    guards:
+      - key: risk.approved
+        rule: "== true"
+
+  - from: FINANCE_REVIEW
+    to: INVESTOR_PENDING
+    by_roles: [FINANCE]
+    guards:
+      - key: finance.approved
+        rule: "== true"
+
+  - from: INVESTOR_PENDING
+    to: CONTRACT_PREP
+    by_roles: [INVESTOR]
+    guards:
+      - key: investor.approved
+        rule: "== true"
+
+  - from: CONTRACT_PREP
+    to: SIGNING_FUNDING
+    by_roles: [LEGAL]
+    guards:
+      - key: legal.contractReady
+        rule: "== true"
+
+  - from: SIGNING_FUNDING
+    to: VEHICLE_DELIVERY
+    by_roles: [FINANCE]
+    guards:
+      - key: esign.allSigned
+        rule: "== true"
+      - key: payments.advanceReceived
+        rule: "== true"
+      - key: payments.supplierPaid
+        rule: "== true"
+
+  - from: VEHICLE_DELIVERY
+    to: ACTIVE
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: delivery.confirmed
+        rule: "== true"
+
+  # Отмена сделки на любом этапе по решению операционного менеджера
+  - from: NEW
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: OFFER_PREP
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: VEHICLE_CHECK
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: DOCS_COLLECT
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: RISK_REVIEW
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: FINANCE_REVIEW
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: INVESTOR_PENDING
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: CONTRACT_PREP
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: SIGNING_FUNDING
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: VEHICLE_DELIVERY
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+
+permissions:
+  # Пример матрицы доступа: кто может менять что
+  DEAL_VIEW:
+    roles: [OP_MANAGER, RISK_MANAGER, FINANCE, INVESTOR, LEGAL, ACCOUNTING, ADMIN]
+  DEAL_EDIT:
+    roles: [OP_MANAGER, ADMIN]
+  STATUS_TRANSITION:
+    rules:
+      - role: OP_MANAGER
+        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, VEHICLE_DELIVERY]
+      - role: RISK_MANAGER
+        allowed_from: [RISK_REVIEW]
+      - role: FINANCE
+        allowed_from: [FINANCE_REVIEW, SIGNING_FUNDING]
+      - role: INVESTOR
+        allowed_from: [INVESTOR_PENDING]
+      - role: LEGAL
+        allowed_from: [CONTRACT_PREP]
+
+integrations:
+  webhooks:
+    aecb.request: "https://{{host}}/api/int/aecb/request"
+    esign.createEnvelope: "https://{{host}}/api/int/esign/create"
+  callbacks:
+    esign.completed: "POST https://{{host}}/api/webhooks/esign"
+    bank.paymentConfirmed: "POST https://{{host}}/api/webhooks/bank"
+  retries:
+    policy: exponential
+    base_ms: 500
+    max_retries: 5
+
+metrics:
+  enabled: true
+  timers:
+    - name: "t_docs_collect"
+      from: DOCS_COLLECT
+      to: RISK_REVIEW
+    - name: "t_risk_review"
+      from: RISK_REVIEW
+      to: FINANCE_REVIEW
+    - name: "t_fin_approval"
+      from: FINANCE_REVIEW
+      to: INVESTOR_PENDING
+    - name: "t_total_to_active"
+      from: NEW
+      to: ACTIVE
+  export:
+    prometheus: "/metrics/process"
+    dimensions: [source, op_manager_id, investor_id]
+
+notifications:
+  channels:
+    - email
+    - whatsapp
+    - telegram
+  templates:
+    new_deal_created: "Создана новая заявка #{{deal.id}}"
+    sla_warning: "Задание по сделке #{{deal.id}} близко к просрочке."
+    sla_breach: "Просрочка SLA по сделке #{{deal.id}}."
+    need_investor_approval: "Сделка #{{deal.id}} ожидает одобрения инвестора."
+    lease_activated: "Лизинг активирован по сделке #{{deal.id}}."

@@ -1,4 +1,7 @@
+import { z } from "zod";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSignedStorageUrl } from "@/lib/supabase/storage";
 
 import {
   OPS_AUTOMATION_METRICS,
@@ -22,12 +25,16 @@ import {
   OPS_DEAL_PROFILE,
   OPS_DEAL_TIMELINE,
   OPS_DEALS,
+  OPS_DEAL_PIPELINE_GROUPS,
+  OPS_WORKFLOW_STATUS_MAP,
   type OpsDealClientProfile,
   type OpsDealDetailsEntry,
   type OpsDealDocument,
   type OpsDealInvoice,
   type OpsDealKeyInfoEntry,
   type OpsDealProfile,
+  type OpsDealStatusKey,
+  type OpsDealGuardStatus,
   type OpsDealSummary,
   type OpsDealTimelineEvent,
 } from "@/lib/data/operations/deals";
@@ -61,6 +68,7 @@ type SupabaseDealRow = {
   client_id: string;
   application_id: string;
   vehicle_id: string;
+  payload: Record<string, unknown> | null;
 };
 
 export type OpsPipelineDataset = Array<{
@@ -87,6 +95,9 @@ export type OpsDashboardSnapshot = {
 
 export type OpsDealDetail = {
   slug: string;
+  dealUuid: string;
+  statusKey: OpsDealStatusKey;
+  guardStatuses: OpsDealGuardStatus[];
   profile: OpsDealProfile;
   client: OpsDealClientProfile;
   keyInformation: OpsDealKeyInfoEntry[];
@@ -106,61 +117,69 @@ function toSlug(value: string | null | undefined): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function mapStatusToWorkflow(status: string | null | undefined): OpsDealSummary["statusKey"] {
+  const normalized = (status ?? "").toUpperCase();
+  if (normalized in OPS_WORKFLOW_STATUS_MAP) {
+    return normalized as OpsDealSummary["statusKey"];
+  }
+  return "NEW";
+}
+
+type GuardTaskState = {
+  fulfilled?: boolean;
+  note?: string | null;
+  attachment_path?: string | null;
+  completed_at?: string | null;
+};
+
+function resolveGuardStatuses(
+  statusKey: OpsDealStatusKey,
+  payload: Record<string, unknown> | null | undefined,
+): OpsDealGuardStatus[] {
+  const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
+  const tasks = (payload?.guard_tasks as Record<string, GuardTaskState> | undefined) ?? {};
+
+  return statusMeta.exitGuards.map((guard) => {
+    const taskState = tasks[guard.key] ?? {};
+
+    return {
+      key: guard.key,
+      label: guard.label,
+      hint: guard.hint,
+      requiresDocument: guard.requiresDocument ?? false,
+      fulfilled: Boolean(taskState.fulfilled),
+      note: taskState.note ?? null,
+      attachmentPath: taskState.attachment_path ?? null,
+      attachmentUrl: null,
+      completedAt: taskState.completed_at ?? null,
+    } satisfies OpsDealGuardStatus;
+  });
+}
+
 function computePipelineFromDeals(deals: SupabaseDealRow[]): OpsPipelineDataset {
   if (!deals.length) {
-    const fallbackStages: Record<string, number> = OPS_DEALS.reduce(
-      (acc, deal) => {
-        acc[deal.statusKey] = (acc[deal.statusKey] ?? 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-
-    return [
-      { label: "Applications", value: fallbackStages.applications ?? 0 },
-      { label: "Scoring", value: fallbackStages.documents ?? 0 },
-      { label: "Documents", value: fallbackStages.documents ?? 0 },
-      { label: "Handover", value: fallbackStages.handover ?? 0 },
-      { label: "Active", value: fallbackStages.active ?? 0 },
-    ];
+    return OPS_DEAL_PIPELINE_GROUPS.map((group) => ({
+      label: group.label,
+      value: OPS_DEALS.filter((deal) => group.statuses.includes(deal.statusKey)).length,
+    }));
   }
 
-  const stages = deals.reduce(
-    (acc, deal) => {
-      const status = deal.status;
-      if (status === "draft" || status === "pending_activation") {
-        acc.applications += 1;
-      } else if (status === "active") {
-        acc.active += 1;
-      } else if (status === "completed") {
-        acc.handover += 1;
-      } else if (status === "suspended") {
-        acc.documents += 1;
-      } else if (status === "defaulted") {
-        acc.documents += 1;
-      } else if (status === "cancelled") {
-        acc.documents += 1;
-      } else {
-        acc.scoring += 1;
-      }
-      return acc;
-    },
-    {
-      applications: 0,
-      scoring: 0,
-      documents: 0,
-      handover: 0,
-      active: 0,
-    },
-  );
+  const groups = OPS_DEAL_PIPELINE_GROUPS.map((group) => ({
+    label: group.label,
+    value: 0,
+  }));
 
-  return [
-    { label: "Applications", value: stages.applications || 1 },
-    { label: "Scoring", value: stages.scoring || 1 },
-    { label: "Documents", value: stages.documents || 1 },
-    { label: "Handover", value: stages.handover || 1 },
-    { label: "Active", value: stages.active || 1 },
-  ];
+  deals.forEach((deal) => {
+    const statusKey = mapStatusToWorkflow(deal.status);
+    const index = OPS_DEAL_PIPELINE_GROUPS.findIndex((group) =>
+      group.statuses.includes(statusKey),
+    );
+    if (index >= 0) {
+      groups[index].value += 1;
+    }
+  });
+
+  return groups;
 }
 
 export async function getOperationsDashboardSnapshot(): Promise<OpsDashboardSnapshot> {
@@ -212,21 +231,22 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
      console.error("[operations] authentication error:", userError);
    }
 
-   const { data, error } = await supabase
-     .from("deals")
-     .select(
-       `
-         id,
-         deal_number,
-         status,
-         updated_at,
-         created_at,
-         client_id,
-         application_id,
-         vehicle_id
-       `,
-     )
-     .order("updated_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("deals")
+    .select(
+      `
+        id,
+        deal_number,
+        status,
+        updated_at,
+        created_at,
+        client_id,
+        application_id,
+        vehicle_id,
+        payload
+      `,
+    )
+    .order("updated_at", { ascending: false });
 
    if (error) {
      console.error("[operations] failed to load deals", error);
@@ -242,41 +262,29 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
 
      const vehicle = "Luxury Vehicle"; // Placeholder instead of connection to vehicles table
 
-     const updatedAt =
-       (row.updated_at as string) ??
-       (row.created_at as string) ??
-       new Date().toISOString();
+    const updatedAt =
+      (row.updated_at as string) ??
+      (row.created_at as string) ??
+      new Date().toISOString();
 
-     let statusKey: OpsDealSummary["statusKey"] = "applications";
-     const status = (row.status as string) ?? "draft";
-     switch (status) {
-       case "active":
-         statusKey = "active";
-         break;
-       case "completed":
-       case "pending_activation":
-         statusKey = "handover";
-         break;
-       case "draft":
-       case "cancelled":
-       case "defaulted":
-       case "suspended":
-         statusKey = "documents";
-         break;
-       default:
-         statusKey = "applications";
-     }
+    const statusKey = mapStatusToWorkflow(row.status as string);
+    const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
 
-     return {
-       id: row.id as string,
-       dealId: dealNumber,
-       client: `Client ${row.client_id?.slice(-4) ?? "0000"}`, // Placeholder instead of connection to profiles
-       vehicle,
-       updatedAt,
-       stage: status.replace(/_/g, " "),
-       statusKey,
-     };
-   });
+    return {
+      id: row.id as string,
+      dealId: dealNumber,
+      client: `Client ${row.client_id?.slice(-4) ?? "0000"}`, // Placeholder instead of connection to profiles
+      vehicle,
+      updatedAt,
+      stage: statusMeta.description,
+      statusKey,
+      ownerRole: statusMeta.ownerRole,
+      source: "Supabase import",
+      nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
+      slaDueAt: null,
+      guardStatuses: resolveGuardStatuses(statusKey, row.payload as Record<string, unknown> | null),
+    };
+  });
 }
 
 export async function getOperationsCars(): Promise<OpsCarRecord[]> {
@@ -316,7 +324,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, full_name, status, phone, nationality")
+    .select("user_id, full_name, status, phone, nationality, metadata")
     .order("full_name", { ascending: true });
 
   if (error) {
@@ -328,20 +336,28 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     return OPS_CLIENTS;
   }
 
-  return data.map((profile, index) => ({
-    id: `CL-${(101 + index).toString().padStart(4, "0")}`,
-    name: (profile.full_name as string) ?? "Client",
-    email: `${(profile.full_name as string)?.replace(/\s+/g, ".").toLowerCase() ?? "client"}@fastlease.dev`,
-    phone: (profile.phone as string) ?? "+971 50 000 0000",
-    status: profile.status === "blocked" ? "Blocked" : "Active",
-    scoring: "90/100",
-    overdue: index % 3 === 0 ? 1 : 0,
-    limit: "AED 350,000",
-    detailHref: `/ops/clients/${((profile.full_name as string) ?? "client")
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "") || "client-104"}`,
-  }));
+  return data.map((profile, index) => {
+    const metadata = (profile.metadata as { ops_email?: string } | null) ?? null;
+    const emailFromMetadata =
+      typeof metadata?.ops_email === "string" ? metadata.ops_email : null;
+
+    return {
+      id: `CL-${(101 + index).toString().padStart(4, "0")}`,
+      name: (profile.full_name as string) ?? "Client",
+      email:
+        emailFromMetadata ??
+        `${(profile.full_name as string)?.replace(/\s+/g, ".").toLowerCase() ?? "client"}@fastlease.dev`,
+      phone: (profile.phone as string) ?? "+971 50 000 0000",
+      status: profile.status === "blocked" ? "Blocked" : "Active",
+      scoring: "90/100",
+      overdue: index % 3 === 0 ? 1 : 0,
+      limit: "AED 350,000",
+      detailHref: `/ops/clients/${((profile.full_name as string) ?? "client")
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "") || "client-104"}`,
+    };
+  });
 }
 
 export function getOperationsDealDocuments(): OpsDealDocument[] {
@@ -376,64 +392,179 @@ export function getOperationsVehicleProfile(): OpsVehicleProfile {
   return OPS_VEHICLE_PROFILE;
 }
 
+type DealDetailRow = {
+  id: string;
+  deal_number: string | null;
+  status: string;
+  monthly_payment: number | null;
+  total_amount: number | null;
+  principal_amount: number | null;
+  payload: Record<string, unknown> | null;
+  deal_documents: {
+    id: string;
+    document_type: string | null;
+    title: string | null;
+    storage_path: string | null;
+    created_at: string | null;
+  }[];
+};
+
+function computeFallbackDealNumber(id: string) {
+  return `DEAL-${id.slice(-6).toUpperCase()}`;
+}
+
+function matchesDealSlug(row: DealDetailRow, slug: string) {
+  const normalizedSlug = slug.toLowerCase();
+  const byNumber = row.deal_number ? toSlug(row.deal_number).toLowerCase() : "";
+  const byId = toSlug(row.id).toLowerCase();
+  const fallback = toSlug(computeFallbackDealNumber(row.id)).toLowerCase();
+
+  return normalizedSlug === byNumber || normalizedSlug === byId || normalizedSlug === fallback;
+}
+
+async function buildDetailGuardStatuses(
+  statusKey: OpsDealStatusKey,
+  payload: Record<string, unknown> | null,
+  documents: DealDetailRow["deal_documents"],
+): Promise<OpsDealGuardStatus[]> {
+  const baseStatuses = resolveGuardStatuses(statusKey, payload);
+
+  return Promise.all(
+    baseStatuses.map(async (status) => {
+      let attachmentPath = status.attachmentPath;
+
+      if (!attachmentPath) {
+        const doc = documents.find((document) => document.document_type === status.key && document.storage_path);
+        attachmentPath = doc?.storage_path ?? null;
+      }
+
+      const attachmentUrl = attachmentPath
+        ? await createSignedStorageUrl({ bucket: "deal-documents", path: attachmentPath })
+        : null;
+
+      return {
+        ...status,
+        attachmentPath,
+        attachmentUrl,
+      } satisfies OpsDealGuardStatus;
+    }),
+  );
+}
+
 export async function getOperationsDealDetail(slug: string): Promise<OpsDealDetail | null> {
-   const normalizedSlug = toSlug(slug);
-   const supabase = await createSupabaseServerClient();
+  const normalizedSlug = toSlug(slug);
+  const supabase = await createSupabaseServerClient();
 
-   // Using more secure authentication method
-   const { data: userData, error: userError } = await supabase.auth.getUser();
+  const fetchFields =
+    "id, deal_number, status, monthly_payment, total_amount, principal_amount, payload, deal_documents (id, document_type, title, storage_path, created_at)";
 
-   if (userError) {
-     console.error("[operations] authentication error:", userError);
-   }
+  let dealRow: DealDetailRow | null = null;
 
-   const { data, error } = await supabase
-     .from("deals")
-     .select("id, deal_number, status, monthly_payment, total_amount, principal_amount")
-     .limit(25);
+  const byNumber = await supabase
+    .from("deals")
+    .select(fetchFields)
+    .eq("deal_number", slug)
+    .maybeSingle();
 
-   if (error) {
-     console.error("[operations] failed to load deal detail", error);
-   }
+  if (byNumber.error) {
+    console.error("[operations] failed to load deal detail by number", byNumber.error);
+  }
 
-   const fallbackSlug = toSlug(OPS_DEAL_PROFILE.dealId);
+  if (byNumber.data) {
+    dealRow = byNumber.data as DealDetailRow;
+  }
 
-   const dealRow = data?.find((row) => toSlug(row.deal_number as string) === normalizedSlug);
+  if (!dealRow) {
+    const { data: insensitiveMatch, error: insensitiveError } = await supabase
+      .from("deals")
+      .select(fetchFields)
+      .ilike("deal_number", slug)
+      .maybeSingle();
 
-   if (!dealRow && normalizedSlug !== fallbackSlug && !data?.length) {
-     return null;
-   }
+    if (insensitiveError) {
+      console.error("[operations] failed to load deal detail by insensitive number", insensitiveError);
+    }
 
-   const profile: OpsDealProfile =
-     dealRow && (dealRow.deal_number || dealRow.status)
-       ? {
-           dealId: (dealRow.deal_number as string) ?? (dealRow.id as string),
-           vehicleName: OPS_DEAL_PROFILE.vehicleName,
-           status: (dealRow.status as string) ?? OPS_DEAL_PROFILE.status,
-           description: `Client — ${OPS_DEAL_CLIENT.name}.`,
-           image: OPS_DEAL_PROFILE.image,
-           monthlyPayment:
-             dealRow.monthly_payment != null
-               ? `AED ${Number(dealRow.monthly_payment).toLocaleString("en-US")}`
-               : OPS_DEAL_PROFILE.monthlyPayment,
-           nextPayment: OPS_DEAL_PROFILE.nextPayment,
-           dueAmount:
-             dealRow.total_amount != null
-               ? `AED ${Number(dealRow.total_amount).toLocaleString("en-US")}`
-               : OPS_DEAL_PROFILE.dueAmount,
-         }
-       : OPS_DEAL_PROFILE;
+    if (insensitiveMatch) {
+      dealRow = insensitiveMatch as DealDetailRow;
+    }
+  }
 
-   const client: OpsDealClientProfile = OPS_DEAL_CLIENT;
+  if (!dealRow && z.string().uuid().safeParse(slug).success) {
+    const byId = await supabase
+      .from("deals")
+      .select(fetchFields)
+      .eq("id", slug)
+      .maybeSingle();
 
-   return {
-     slug: toSlug(profile.dealId),
-     profile,
-     client,
-     keyInformation: OPS_DEAL_KEY_INFO,
-     overview: OPS_DEAL_DETAILS,
-     documents: OPS_DEAL_DOCUMENTS,
-     invoices: OPS_DEAL_INVOICES,
-     timeline: OPS_DEAL_TIMELINE,
-   };
+    if (byId.error) {
+      console.error("[operations] failed to load deal detail by id", byId.error);
+    }
+
+    if (byId.data) {
+      dealRow = byId.data as DealDetailRow;
+    }
+  }
+
+  if (!dealRow) {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("deals")
+      .select(fetchFields)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (fallbackError) {
+      console.error("[operations] failed to load fallback deals", fallbackError);
+    }
+
+    const matched = fallbackData?.find((row) => matchesDealSlug(row as DealDetailRow, normalizedSlug));
+
+    if (matched) {
+      dealRow = matched as DealDetailRow;
+    }
+  }
+
+  if (!dealRow) {
+    return null;
+  }
+
+  const statusKey = mapStatusToWorkflow(dealRow.status);
+  const guardStatuses = await buildDetailGuardStatuses(statusKey, dealRow.payload, dealRow.deal_documents ?? []);
+
+  const profile: OpsDealProfile = {
+    dealId: (dealRow.deal_number as string) ?? dealRow.id,
+    vehicleName: OPS_DEAL_PROFILE.vehicleName,
+    status: statusKey,
+    description: `Client — ${OPS_DEAL_CLIENT.name}.`,
+    image: OPS_DEAL_PROFILE.image,
+    monthlyPayment:
+      dealRow.monthly_payment != null
+        ? `AED ${Number(dealRow.monthly_payment).toLocaleString("en-US")}`
+        : OPS_DEAL_PROFILE.monthlyPayment,
+    nextPayment: OPS_DEAL_PROFILE.nextPayment,
+    dueAmount:
+      dealRow.total_amount != null
+        ? `AED ${Number(dealRow.total_amount).toLocaleString("en-US")}`
+        : OPS_DEAL_PROFILE.dueAmount,
+  };
+
+  const client: OpsDealClientProfile = OPS_DEAL_CLIENT;
+
+  const outboundSlug = matchesDealSlug(dealRow, normalizedSlug)
+    ? normalizedSlug
+    : toSlug(dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id));
+
+  return {
+    slug: outboundSlug,
+    dealUuid: dealRow.id,
+    statusKey,
+    guardStatuses,
+    profile,
+    client,
+    keyInformation: OPS_DEAL_KEY_INFO,
+    overview: OPS_DEAL_DETAILS,
+    documents: OPS_DEAL_DOCUMENTS,
+    invoices: OPS_DEAL_INVOICES,
+    timeline: OPS_DEAL_TIMELINE,
+  };
 }

@@ -9,28 +9,28 @@
 #### 1. Роли пользователей
 ```typescript
 type AppRole =
-  | "client"        // Клиент (базовая роль)
-  | "investor"      // Инвестор
-  | "operator"      // Оператор
-  | "ops_manager"   // Операционный менеджер
-  | "finance"       // Финансовый специалист
-  | "support"       // Специалист поддержки
-  | "admin"         // Администратор
+  | "CLIENT"        // Клиент (базовая роль)
+  | "INVESTOR"      // Инвестор
+  | "OPERATOR"      // Оператор
+  | "OP_MANAGER"    // Операционный менеджер
+  | "FINANCE"       // Финансовый специалист
+  | "SUPPORT"       // Специалист поддержки
+  | "ADMIN"         // Администратор
 ```
 
 #### 2. Иерархия ролей по приоритету
 ```
-admin > ops_manager > operator > finance > support > investor > client
+ADMIN > OP_MANAGER > OPERATOR > FINANCE > SUPPORT > INVESTOR > CLIENT
 ```
 
 #### 3. Домашние пути по ролям
-- `admin` → `/admin/bpm`
-- `ops_manager` → `/ops/dashboard`
-- `operator` → `/ops/dashboard`
-- `finance` → `/ops/deals`
-- `support` → `/ops/tasks`
-- `investor` → `/investor/dashboard`
-- `client` → `/client/dashboard`
+- `ADMIN` → `/admin/bpm`
+- `OP_MANAGER` → `/ops/dashboard`
+- `OPERATOR` → `/ops/dashboard`
+- `FINANCE` → `/ops/deals`
+- `SUPPORT` → `/ops/tasks`
+- `INVESTOR` → `/investor/dashboard`
+- `CLIENT` → `/client/dashboard`
 
 ## Процесс аутентификации
 
@@ -71,7 +71,7 @@ admin > ops_manager > operator > finance > support > investor > client
 
 #### Защищенные префиксы:
 - `/client` - только для клиентов
-- `/ops` - для операционных ролей (ops_manager, operator, finance, support)
+- `/ops` - для операционных ролей (OP_MANAGER, OPERATOR, FINANCE, SUPPORT)
 - `/admin` - только для администраторов
 - `/investor` - для инвесторов и администраторов
 

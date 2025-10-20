@@ -33,9 +33,23 @@ type ReferralOverviewProps = {
 };
 
 function resolveDealStatusTone(status: string | null | undefined) {
-  const normalized = (status ?? "").toLowerCase();
-  if (normalized === "active") return "bg-emerald-100 text-emerald-700";
-  if (normalized === "pending" || normalized === "pending_activation") {
+  const normalized = (status ?? "").toUpperCase();
+  if (normalized === "ACTIVE") return "bg-emerald-100 text-emerald-700";
+  if (normalized === "CANCELLED") return "bg-rose-100 text-rose-700";
+  if (
+    [
+      "NEW",
+      "OFFER_PREP",
+      "VEHICLE_CHECK",
+      "DOCS_COLLECT",
+      "RISK_REVIEW",
+      "FINANCE_REVIEW",
+      "INVESTOR_PENDING",
+      "CONTRACT_PREP",
+      "SIGNING_FUNDING",
+      "VEHICLE_DELIVERY",
+    ].includes(normalized)
+  ) {
     return "bg-amber-100 text-amber-700";
   }
   return "bg-slate-100 text-slate-700";

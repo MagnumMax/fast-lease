@@ -10,13 +10,13 @@ do $$ begin
     where t.typname = 'user_role' and n.nspname = 'public'
   ) then
     create type public.user_role as enum (
-      'client',
-      'operator',
-      'ops_manager',
-      'admin',
-      'investor',
-      'finance',
-      'support'
+      'CLIENT',
+      'OPERATOR',
+      'OP_MANAGER',
+      'ADMIN',
+      'INVESTOR',
+      'FINANCE',
+      'SUPPORT'
     );
   end if;
 end $$;

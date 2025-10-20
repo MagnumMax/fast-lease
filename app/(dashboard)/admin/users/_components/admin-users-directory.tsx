@@ -38,6 +38,10 @@ import type {
   AdminUserStatus,
 } from "@/lib/data/admin/users";
 import type { AppRole } from "@/lib/auth/types";
+import {
+  APP_ROLE_CODES,
+  APP_ROLE_LABELS,
+} from "@/lib/data/app-roles";
 
 type AdminUsersDirectoryProps = {
   initialUsers: AdminUserRecord[];
@@ -60,15 +64,7 @@ type ManageAccessState = {
   isSaving: boolean;
 };
 
-const ROLE_LABELS: Record<AppRole, string> = {
-  admin: "Administrator",
-  client: "Client",
-  finance: "Finance",
-  investor: "Investor",
-  operator: "Operator",
-  ops_manager: "Operations Manager",
-  support: "Support",
-};
+const ROLE_LABELS: Record<AppRole, string> = APP_ROLE_LABELS;
 
 const STATUS_META: Record<
   AdminUserStatus,
@@ -140,15 +136,7 @@ function makeAuditEntry(
   };
 }
 
-const AVAILABLE_ROLES: AppRole[] = [
-  "admin",
-  "ops_manager",
-  "operator",
-  "finance",
-  "support",
-  "investor",
-  "client",
-];
+const AVAILABLE_ROLES: AppRole[] = APP_ROLE_CODES;
 
 export function AdminUsersDirectory({
   initialUsers,
@@ -169,7 +157,7 @@ export function AdminUsersDirectory({
   const [createForm, setCreateForm] = useState<CreateUserForm>({
     fullName: "",
     email: "",
-    role: "ops_manager",
+    role: "OP_MANAGER",
     sendInvite: true,
   });
 
@@ -197,7 +185,7 @@ export function AdminUsersDirectory({
     setCreateForm({
       fullName: "",
       email: "",
-      role: "ops_manager",
+      role: "OP_MANAGER",
       sendInvite: true,
     });
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -32,12 +32,33 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { OpsCarRecord } from "@/lib/data/operations/cars";
+import { createOperationsCar } from "@/app/(dashboard)/ops/cars/actions";
 
 type OpsCarsCatalogueProps = {
   initialCars: OpsCarRecord[];
 };
 
 const BODY_TYPES = ["Luxury SUV", "Luxury sedan", "Sports car", "Electric car"];
+
+type CarFormState = {
+  name: string;
+  vin: string;
+  year: string;
+  type: string;
+  price: string;
+  mileage: string;
+};
+
+function createDefaultCarFormState(): CarFormState {
+  return {
+    name: "",
+    vin: "",
+    year: "",
+    type: "Luxury SUV",
+    price: "",
+    mileage: "",
+  };
+}
 
 function toSlug(value: string) {
   return value
@@ -52,14 +73,11 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formState, setFormState] = useState({
-    name: "",
-    vin: "",
-    year: "",
-    type: "Luxury SUV",
-    price: "",
-    mileage: "",
-  });
+  const [isSaving, startTransition] = useTransition();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [formState, setFormState] = useState<CarFormState>(() =>
+    createDefaultCarFormState(),
+  );
 
   const filteredCars = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -77,27 +95,33 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
       return;
     }
 
-    const newCar: OpsCarRecord = {
-      vin: formState.vin.trim(),
-      name: formState.name.trim(),
-      year: Number(formState.year) || new Date().getFullYear(),
-      type: formState.type,
-      price: formState.price || "—",
-      mileage: formState.mileage || "0 km",
-      battery: "100%",
-      detailHref: `/ops/cars/${toSlug(formState.name)}`,
-    };
+    setErrorMessage(null);
 
-    setCars((prev) => [newCar, ...prev]);
-    setFormState({
-      name: "",
-      vin: "",
-      year: "",
-      type: "Luxury SUV",
-      price: "",
-      mileage: "",
+    startTransition(async () => {
+      const result = await createOperationsCar({
+        name: formState.name.trim(),
+        vin: formState.vin.trim(),
+        year: formState.year.trim() || undefined,
+        type: formState.type,
+        price: formState.price.trim() || undefined,
+        mileage: formState.mileage.trim() || undefined,
+      });
+
+      if (result.error) {
+        setErrorMessage(result.error);
+        return;
+      }
+
+      if (result.data) {
+        setCars((prev) => {
+          const filtered = prev.filter((car) => car.vin !== result.data.vin);
+          return [result.data, ...filtered];
+        });
+
+        setFormState(createDefaultCarFormState());
+        setIsModalOpen(false);
+      }
     });
-    setIsModalOpen(false);
   }
 
   return (
@@ -130,7 +154,16 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 </option>
               ))}
             </select>
-            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+            <Dialog
+              open={isModalOpen}
+              onOpenChange={(open) => {
+                setIsModalOpen(open);
+                if (!open) {
+                  setErrorMessage(null);
+                  setFormState(createDefaultCarFormState());
+                }
+              }}
+            >
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="rounded-xl">
                   <Plus className="mr-2 h-4 w-4" />
@@ -236,12 +269,19 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                     />
                   </div>
                 </div>
+                {errorMessage ? (
+                  <p className="text-sm text-destructive">{errorMessage}</p>
+                ) : null}
                 <DialogFooter>
                   <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateCar} className="rounded-xl">
-                    Save
+                  <Button
+                    onClick={handleCreateCar}
+                    className="rounded-xl"
+                    disabled={isSaving}
+                  >
+                    {isSaving ? "Saving..." : "Save"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
