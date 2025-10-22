@@ -6,10 +6,11 @@ import {
 } from "@/lib/supabase/queries/operations";
 
 type OpsClientDetailsProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
-export default function OpsClientDetailsPage({ params }: OpsClientDetailsProps) {
+export default async function OpsClientDetailsPage({ params }: OpsClientDetailsProps) {
+  const { id } = await params;
   const profile = OPS_CLIENT_PROFILE;
   const deals = OPS_CLIENT_DEALS;
   const documents = OPS_CLIENT_DOCUMENTS;

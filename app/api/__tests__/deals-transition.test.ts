@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { WorkflowService } from "@/lib/workflow/service";
 
 vi.mock("@/lib/workflow", async () => {
   const actual = await vi.importActual<typeof import("@/lib/workflow")>(
@@ -62,7 +63,12 @@ describe("POST /api/deals/{id}/transition", () => {
           reason: "GUARD_FAILED",
         }),
       ),
-    } as MockWorkflowService);
+      versionService: {},
+      dealRepository: {},
+      buildGuardContext: vi.fn(),
+      buildActionContext: vi.fn(),
+      resolveWorkflowVersion: vi.fn(),
+    } as unknown as WorkflowService);
 
     const response = await POST(
       new Request("http://localhost/api/deals/123/transition", {

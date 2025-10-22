@@ -17,7 +17,7 @@ import {
 } from "@/app/(dashboard)/client/_components";
 
 type InvoiceDetailsPageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 type InvoiceRow = {
@@ -81,9 +81,10 @@ const DOCUMENTS_BUCKET = "application-documents";
 export default async function InvoiceDetailsPage({
   params,
 }: InvoiceDetailsPageProps) {
+  const { id } = await params;
   const sessionUser = await getSessionUser();
   if (!sessionUser) {
-    redirect(`/login?next=/client/invoices/${params.id}`);
+    redirect(`/login?next=/client/invoices/${id}`);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -98,7 +99,7 @@ export default async function InvoiceDetailsPage({
         )
       `,
     )
-    .eq("id", params.id)
+    .eq("id", id)
     .maybeSingle<InvoiceRow>();
 
   if (invoiceError) {

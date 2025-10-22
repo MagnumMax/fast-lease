@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3333 --turbopack",
     "build": "next build --turbopack",
+    "vercel-build": "next build",
     "start": "next start -p 3333",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

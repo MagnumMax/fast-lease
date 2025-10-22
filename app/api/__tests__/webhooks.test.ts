@@ -82,7 +82,6 @@ function createEsignSupabaseMock() {
   });
 
   return {
-    // @ts-expect-error - Mock object for testing
     client: { from: fromMock },
     fromMock,
   };
@@ -140,7 +139,6 @@ function createBankSupabaseMock() {
   });
 
   return {
-    // @ts-expect-error - Mock object for testing
     client: { from: fromMock },
     fromMock,
   };
@@ -183,7 +181,6 @@ function createAecbSupabaseMock() {
   });
 
   return {
-    // @ts-expect-error - Mock object for testing
     client: { from: fromMock },
     fromMock,
   };
@@ -192,12 +189,10 @@ function createAecbSupabaseMock() {
 describe("webhook handlers", () => {
   it("применяет переход для e-sign webhook", async () => {
     const supabaseMock = createEsignSupabaseMock();
-    // @ts-expect-error - Mock object for testing
-    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client);
+    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client as unknown);
 
     const transitionDeal = vi.fn().mockResolvedValue({});
-    // @ts-expect-error - Mock object for testing
-    mockedCreateWorkflowService.mockResolvedValue({ transitionDeal });
+    mockedCreateWorkflowService.mockResolvedValue({ transitionDeal } as unknown);
 
     const response = await postEsign(
       new Request("http://localhost/api/webhooks/esign", {
@@ -223,12 +218,10 @@ describe("webhook handlers", () => {
 
   it("применяет переход для bank webhook", async () => {
     const supabaseMock = createBankSupabaseMock();
-    // @ts-expect-error - Mock object for testing
-    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client);
+    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client as unknown);
 
     const transitionDeal = vi.fn().mockResolvedValue({});
-    // @ts-expect-error - Mock object for testing
-    mockedCreateWorkflowService.mockResolvedValue({ transitionDeal });
+    mockedCreateWorkflowService.mockResolvedValue({ transitionDeal } as unknown);
 
     const response = await postBank(
       new Request("http://localhost/api/webhooks/bank", {
@@ -254,12 +247,10 @@ describe("webhook handlers", () => {
 
   it("обновляет deal и рисковый статус для aecb webhook", async () => {
     const supabaseMock = createAecbSupabaseMock();
-    // @ts-expect-error - Mock object for testing
-    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client);
+    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client as unknown);
 
     const transitionDeal = vi.fn().mockResolvedValue({});
-    // @ts-expect-error - Mock object for testing
-    mockedCreateWorkflowService.mockResolvedValue({ transitionDeal });
+    mockedCreateWorkflowService.mockResolvedValue({ transitionDeal } as unknown);
 
     const response = await postAecb(
       new Request("http://localhost/api/webhooks/aecb", {

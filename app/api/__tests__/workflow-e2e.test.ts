@@ -170,8 +170,7 @@ function createSupabaseMock() {
   };
 
   return {
-    // @ts-expect-error - Mock object for testing
-    client: { from },
+    client: { from } as unknown,
     deal,
     notifications,
   };
@@ -184,10 +183,10 @@ describe("end-to-end workflow", () => {
 
   it("выполняет цепочку webhook → queue → telegram", async () => {
     const supabaseMock = createSupabaseMock();
-    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client);
+    mockedCreateSupabaseServiceClient.mockResolvedValue(supabaseMock.client as any);
 
-    const transitionSpy = vi.fn(async () => {
-      await supabaseMock.client
+    const transitionSpy = vi.fn(async (): Promise<unknown> => {
+      await (supabaseMock.client as any)
         .from("workflow_notification_queue")
         .upsert({
           action_hash: "hash-1",
@@ -197,12 +196,12 @@ describe("end-to-end workflow", () => {
         })
         .select()
         .maybeSingle();
+      return {};
     });
 
-    // @ts-expect-error - Mock object for testing
     mockedCreateWorkflowService.mockResolvedValueOnce({
       transitionDeal: transitionSpy,
-    });
+    } as any);
 
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
     const originalFetch = global.fetch;

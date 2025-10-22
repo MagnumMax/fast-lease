@@ -3,8 +3,8 @@ import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { isAccessAllowed, resolveHomePath, allowedRolesForPath } from "@/lib/auth/roles";
-import type { AppRole } from "@/lib/auth/types";
+import { isAccessAllowed, resolveHomePath, allowedRolesForPath } from "./lib/auth/roles";
+import type { AppRole } from "./lib/auth/types";
 const AUTH_ROUTES = ["/login", "/register", "/auth/callback"];
 
 /**

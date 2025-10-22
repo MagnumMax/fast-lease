@@ -4,7 +4,7 @@ import { DealDetailView } from "@/app/(dashboard)/ops/_components/deal-detail";
 import { getOperationsDealDetail } from "@/lib/supabase/queries/operations-server";
 
 type OpsDealDetailsProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 export default async function OpsDealDetailsPage({ params }: OpsDealDetailsProps) {
