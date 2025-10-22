@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { createWorkflowActionExecutor } from "../actions";
+import type { WorkflowTemplate } from "../types";
 
 const createUpsertChain = (data: unknown) => {
   const maybeSingle = vi.fn().mockResolvedValue({ data, error: null });
@@ -29,7 +31,7 @@ const createSupabaseMock = () => {
 
   const client = {
     from: fromMock,
-  } as unknown as Parameters<typeof createWorkflowActionExecutor>[0];
+  } as SupabaseClient;
 
   return {
     client,
@@ -58,7 +60,7 @@ describe("workflow action executor", () => {
       {
         actorRole: "OP_MANAGER",
         transition: { from: "NEW", to: "OFFER_PREP" },
-        template: {} as unknown,
+        template: {} as WorkflowTemplate,
         dealId: "deal-1",
       },
     );
@@ -102,13 +104,21 @@ describe("workflow action executor", () => {
         actorRole: "ADMIN",
         transition: { from: "NEW", to: "OFFER_PREP" },
         template: {
+          workflow: { id: "test", title: "Test", entity: "Deal", ownerRole: "ADMIN", timezone: "UTC" },
+          roles: [{ code: "ADMIN", name: "Admin", categories: ["auth"] }],
+          kanbanOrder: [],
+          statuses: {},
+          transitions: [],
+          permissions: {},
+          integrations: {},
+          metrics: { enabled: false },
           notifications: {
             channels: {},
             templates: {
               new_deal_created: "Создана новая заявка",
             },
           },
-        } as unknown,
+        } as WorkflowTemplate,
         dealId: "deal-1",
       },
     );

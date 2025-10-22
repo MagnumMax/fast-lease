@@ -8,6 +8,7 @@ import {
   type WorkflowVersionRecord,
   type WorkflowVersionRepository,
 } from "../versioning";
+import type { WorkflowTemplate } from "../types";
 
 const TEMPLATE_PATH = resolve(
   __dirname,

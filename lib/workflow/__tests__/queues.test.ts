@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { WorkflowQueueProcessor } from "../queues";
 
@@ -73,7 +74,7 @@ const createClientMock = (options: QueueOptions = {}) => {
 
   const client = {
     from: fromMock,
-  } as unknown as ConstructorParameters<typeof WorkflowQueueProcessor>[0];
+  } as SupabaseClient;
 
   return {
     client,
@@ -212,7 +213,7 @@ describe("WorkflowQueueProcessor", () => {
     const { client, webhookUpdate } = createClientMock({ webhooks: [webhookRow] });
     const processor = new WorkflowQueueProcessor(client);
 
-    (processor as unknown as { dispatchWebhook: (row: unknown) => Promise<unknown> }).dispatchWebhook = vi
+    (processor as unknown as { dispatchWebhook: (row: any) => Promise<any> }).dispatchWebhook = vi
       .fn()
       .mockResolvedValue({
         status: "PENDING",

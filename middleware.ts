@@ -17,7 +17,8 @@ async function loadUserRoles(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<AppRole[]> {
-  const { data, error } = await supabase
+  console.log("[middleware] Loading roles for user:", userId);
+  const { data: rolesData, error } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId);
@@ -27,9 +28,12 @@ async function loadUserRoles(
     return [];
   }
 
-  return (data ?? [])
+  console.log("[middleware] Raw roles data:", rolesData);
+  const roles = (rolesData ?? [])
     .map((row) => row.role)
     .filter(Boolean) as AppRole[];
+  console.log("[middleware] Processed roles:", roles);
+  return roles;
 }
 
 function isAuthRoute(pathname: string) {
@@ -75,6 +79,10 @@ export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
   const { pathname } = req.nextUrl;
 
+  console.log("[middleware] Processing request for:", pathname);
+  console.log("[middleware] Is auth route:", isAuthRoute(pathname));
+  console.log("[middleware] Needs protection:", needsProtection(pathname));
+
 
   if (
     pathname.startsWith("/_next") ||
@@ -92,26 +100,41 @@ export async function middleware(req: NextRequest) {
 
   // Only hit Supabase for protected routes; skip on auth routes to reduce noisy fetch errors when offline.
   if (needsProtection(pathname)) {
+    console.log("[middleware] Creating Supabase client for protected route");
     const supabase = createSupabaseMiddlewareClient(req, res);
 
     // Используем getUser() вместо getSession() для безопасности
+    console.log("[middleware] Calling supabase.auth.getUser()");
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
+    if (userError) {
+      console.error("[middleware] Auth error:", userError);
+    } else {
+      console.log("[middleware] User data:", userData.user ? "present" : "null");
+    }
+
     if (userError || !userData.user) {
+      console.log("[middleware] No user found, redirecting to login");
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
+    console.log("[middleware] Loading user roles for user:", userData.user.id);
     const roles = await loadUserRoles(supabase, userData.user.id);
+    console.log("[middleware] User roles:", roles);
 
+    console.log("[middleware] Checking access for path:", pathname, "with roles:", roles);
     if (!isAccessAllowed(pathname, roles)) {
+      console.log("[middleware] Access denied, redirecting to home path");
       const redirectUrl = req.nextUrl.clone();
       redirectUrl.pathname = resolveHomePath(roles, "/");
+      console.log("[middleware] Redirecting to:", redirectUrl.pathname);
       return NextResponse.redirect(redirectUrl);
     }
 
+    console.log("[middleware] Access granted, proceeding");
     return res;
   }
 

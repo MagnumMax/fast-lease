@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type SupabaseServerClientOptions = {
   cookieStore?: Awaited<ReturnType<typeof cookies>>;
@@ -25,6 +26,9 @@ export async function createSupabaseServerClient(
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  console.log(`${LOG_PREFIX} Creating server client with URL:`, supabaseUrl ? "present" : "missing");
+  console.log(`${LOG_PREFIX} Anon key present:`, supabaseAnonKey ? "yes" : "no");
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
@@ -52,9 +56,12 @@ export async function createSupabaseServerClient(
   });
 }
 
-export async function createSupabaseServiceClient() {
+export async function createSupabaseServiceClient(): Promise<SupabaseClient> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  console.log(`${LOG_PREFIX} Creating service client with URL:`, supabaseUrl ? "present" : "missing");
+  console.log(`${LOG_PREFIX} Service key present:`, serviceRoleKey ? "yes" : "no");
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
