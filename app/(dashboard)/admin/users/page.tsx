@@ -2,6 +2,8 @@ import { AdminUsersDirectory } from "@/app/(dashboard)/admin/users/_components/a
 import { getSessionUser } from "@/lib/auth/session";
 import { getAdminUserDirectory } from "@/lib/supabase/queries/admin";
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminUsersPage() {
   const [directory, sessionUser] = await Promise.all([
     getAdminUserDirectory(),
