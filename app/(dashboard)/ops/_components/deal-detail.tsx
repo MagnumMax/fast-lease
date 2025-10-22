@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import {
   AlertTriangle,
@@ -196,10 +199,11 @@ export function DealDetailView({ detail }: DealDetailProps) {
     invoice.status.toLowerCase().includes("pending"),
   );
   const completedInvoices = invoices.length - overdueInvoices.length - pendingInvoices.length;
-  const vehicleImageSrc = profile.image.trim();
-  const hasVehicleImage = vehicleImageSrc.length > 0;
-  const isRelativeVehicleImage = vehicleImageSrc.startsWith("/");
+  const vehicleImageSrc = profile.image?.trim();
+  const hasVehicleImage = Boolean(vehicleImageSrc && vehicleImageSrc.length > 0);
   const vehicleImageAlt = profile.vehicleName || "Изображение автомобиля";
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
 
   return (
     <div className="space-y-6">
@@ -229,23 +233,36 @@ export function DealDetailView({ detail }: DealDetailProps) {
                     <SummaryBlock label="Создана" value={createdAtEntry?.value ?? "—"} />
                   </div>
                 </div>
-                {hasVehicleImage ? (
+                {hasVehicleImage && !imageError ? (
                   <div className="relative h-40 w-full overflow-hidden rounded-xl bg-muted sm:h-48">
-                    {isRelativeVehicleImage ? (
-                      <Image
-                        src={vehicleImageSrc}
-                        alt={vehicleImageAlt}
-                        fill
-                        className="object-cover"
-                        sizes="(min-width: 1280px) 18rem, (min-width: 1024px) 16rem, 100vw"
-                        priority
-                      />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={vehicleImageSrc} alt={vehicleImageAlt} className="h-full w-full object-cover" />
+                    <Image
+                      src={vehicleImageSrc}
+                      alt={vehicleImageAlt}
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 1280px) 18rem, (min-width: 1024px) 16rem, 100vw"
+                      priority
+                      onError={() => setImageError(true)}
+                      onLoad={() => setImageLoading(false)}
+                    />
+                    {imageLoading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      </div>
                     )}
                   </div>
-                ) : null}
+                ) : (
+                  <div className="relative h-40 w-full overflow-hidden rounded-xl bg-muted sm:h-48">
+                    <Image
+                      src="/assets/vehicle-placeholder.svg"
+                      alt="Изображение автомобиля недоступно"
+                      fill
+                      className="object-cover opacity-50"
+                      sizes="(min-width: 1280px) 18rem, (min-width: 1024px) 16rem, 100vw"
+                      priority
+                    />
+                  </div>
+                )}
               </div>
             </CardHeader>
           </Card>

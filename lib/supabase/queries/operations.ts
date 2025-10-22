@@ -400,6 +400,7 @@ export type OpsDealSummary = {
   slaLabel?: string | null;
   ownerRoleLabel?: string | null;
   ownerName?: string | null;
+  ownerUserId?: string | null;
   guardStatuses: OpsDealGuardStatus[];
   amount?: string;
 };
@@ -503,7 +504,7 @@ export type OpsVehicleDocument = {
   id: string;
   title: string;
   status: string;
-  icon: string;
+  icon?: string;
 };
 
 export type OpsVehicleServiceLogEntry = {
@@ -511,7 +512,7 @@ export type OpsVehicleServiceLogEntry = {
   date: string;
   description: string;
   note?: string;
-  icon?: string;
+  icon: string;
 };
 
 export type OpsVehicleProfile = {
@@ -519,6 +520,26 @@ export type OpsVehicleProfile = {
   subtitle: string;
   image: string;
   specs: Array<{ label: string; value: string }>;
+};
+
+export type CarDetailResult = {
+  slug: string;
+  vehicleUuid: string;
+  profile: OpsVehicleProfile;
+  documents: Array<{
+    id: string;
+    title: string;
+    status: string;
+    url: string | null;
+    icon?: string;
+  }>;
+  serviceLog: Array<{
+    id: string;
+    date: string;
+    description: string;
+    note?: string;
+    icon: string;
+  }>;
 };
 
 export type OpsKpiMetric = {
@@ -658,6 +679,9 @@ export const OPS_VEHICLE_PROFILE = {
     { label: "Battery Condition", value: "100%" },
   ],
 };
+
+// Временные фоллбеки для отладки
+console.log("[DEBUG] Using fallback vehicle profile:", OPS_VEHICLE_PROFILE);
 
 
 export type OpsPipelineDataset = Array<{

@@ -12,7 +12,8 @@
     "test": "vitest",
     "test:run": "vitest --run",
     "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop"
+    "supabase:stop": "supabase stop",
+    "sync:vehicle-images": "ts-node scripts/sync_vehicle_images.ts"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

@@ -24,12 +24,12 @@ type DealSummaryCardProps = {
 };
 
 export const FALLBACK_IMAGES: Record<string, string> = {
-  "rolls-royce-cullinan": "/assets/rolls-royce-cullinan-exterior.jpg",
+  "rolls-royce-cullinan": "/assets/rolls-royce-cullinan.jpg",
   "lamborghini-huracan": "/assets/lamborghini-huracan.jpg",
   "volvo-xc40-recharge": "/assets/volvo-xc40-recharge.jpg",
   "rivian-r1t-adventure": "/assets/rivian-r1t-adventure.jpg",
-  "bentley-bentayga": "/assets/bentley-bw.jpg",
-  "ferrari-488-spider": "/assets/ferrari-458-italia.jpg",
+  "bentley-bentayga": "/assets/bentley-bentayga.jpg",
+  "ferrari-488-spider": "/assets/ferrari-488-spider.jpg",
 };
 
 function resolveVehicleSlug(vehicle: DealSummaryCardProps["vehicle"]) {
@@ -70,7 +70,7 @@ function resolveHeroImage(
     return FALLBACK_IMAGES[slug];
   }
 
-  return "/assets/rolls-royce-cullinan-exterior.jpg";
+  return "/assets/rolls-royce-cullinan.jpg";
 }
 
 function resolveDealStatusTone(status: string) {

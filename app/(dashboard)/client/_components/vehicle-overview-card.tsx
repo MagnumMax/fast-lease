@@ -44,7 +44,7 @@ function resolveVehicleImage(
 
   const fallback =
     (slug && DEAL_FALLBACK_IMAGES[slug]) ??
-    "/assets/rolls-royce-cullinan-exterior.jpg";
+    "/assets/rolls-royce-cullinan.jpg";
   return fallback;
 }
 

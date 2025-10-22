@@ -314,6 +314,9 @@ function mapDealRowToSummary(
     stage: statusMeta.description,
     statusKey,
     ownerRole: statusMeta.ownerRole,
+    ownerRoleLabel: WORKFLOW_ROLE_LABELS[statusMeta.ownerRole] ?? statusMeta.ownerRole,
+    ownerName: null,
+    ownerUserId: null,
     source: source ?? row.source ?? FALLBACK_SOURCE,
     nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
     slaDueAt,
@@ -1014,6 +1017,8 @@ export function OpsDealsBoard({
                         WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
                         deal.ownerRole;
                       const ownerDisplay = deal.ownerName ?? ownerRoleLabel;
+                      const ownerSubLabel =
+                        deal.ownerName && deal.ownerRoleLabel ? deal.ownerRoleLabel : null;
                       const slaCountdown = formatSlaCountdown(deal.slaDueAt ?? null);
                       const slaDisplay = slaCountdown ?? formatSlaLabel(deal, meta);
                       const clientIdValue = deal.clientId ?? null;
@@ -1091,22 +1096,26 @@ export function OpsDealsBoard({
                                 {vehicleLabel ? ` · ${vehicleLabel}` : null}
                               </p>
                             </div>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDateLabel(deal.updatedAt)}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span className="inline-flex items-center gap-1">
-                              <UserCircle2 className="h-3.5 w-3.5" />
-                              {ownerDisplay}
-                            </span>
                             {slaDisplay ? (
-                              <span className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 font-medium text-foreground">
+                              <span className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-medium text-foreground">
                                 <Clock className="h-3.5 w-3.5" />
                                 {slaDisplay}
                               </span>
                             ) : null}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span className="inline-flex items-start gap-1">
+                              <UserCircle2 className="h-3.5 w-3.5" />
+                              <span className="flex flex-col leading-tight">
+                                <span>{ownerDisplay}</span>
+                                {ownerSubLabel ? (
+                                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                                    {ownerSubLabel}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </span>
                           </div>
 
                           {deal.guardStatuses.length > 0 ? (

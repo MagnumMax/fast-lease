@@ -41,7 +41,7 @@ const CAR_DATA: CarRecord[] = [
     brand: "Rolls-Royce",
     year: 2024,
     body: "SUV",
-    heroImage: "/assets/rolls-royce-cullinan-exterior.jpg",
+    heroImage: "/assets/rolls-royce-cullinan.jpg",
     badges: ["Electric", "Insurance Included"],
     description:
       "Rolls-Royce Cullinan — a luxury SUV with V12 engine, all-wheel drive, and maximum comfort. Ideal for luxury trips with unparalleled finish and technology.",
@@ -125,7 +125,7 @@ const CAR_DATA: CarRecord[] = [
     brand: "Ferrari",
     year: 2024,
     body: "Sedan",
-    heroImage: "/assets/ferrari-458-italia.jpg",
+    heroImage: "/assets/ferrari-488-spider.jpg",
     badges: ["M-package", "HUD"],
     description:
       "Italian roadster with V8 turbo engine, retractable hardtop, and 0-100 km/h in 3.0 seconds. Ferrari icon with advanced technologies.",
@@ -167,7 +167,7 @@ const CAR_DATA: CarRecord[] = [
     brand: "Bentley",
     year: 2024,
     body: "Hatchback",
-    heroImage: "/assets/bentley-bw.jpg",
+    heroImage: "/assets/bentley-bentayga.jpg",
     badges: ["V2L", "800V Charging"],
     description:
       "Bentley Bentayga — luxury SUV with V8 engine, all-wheel drive, and opulent interior. Perfect for comfortable and dynamic journeys.",

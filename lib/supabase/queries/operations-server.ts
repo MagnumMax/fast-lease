@@ -293,6 +293,13 @@ export type SupabaseVehicleData = {
   current_value: number | null;
   status: string | null;
   image?: string | null;
+  vehicle_images?: Array<{
+    id: string;
+    storage_path: string | null;
+    label: string | null;
+    is_primary: boolean | null;
+    sort_order: number | null;
+  }>;
 };
 
 export type SupabaseDealDocument = {
@@ -373,17 +380,6 @@ type TimelineEvent = {
   icon: string;
 };
 
-type GuardStatusItem = {
-  key: string;
-  label: string;
-  hint: string | null;
-  requiresDocument: boolean;
-  fulfilled: boolean;
-  note: string | null;
-  attachmentPath: string | null;
-  attachmentUrl: string | null;
-  completedAt: string | null;
-};
 
 type RawTransition = {
   from?: string | null;
@@ -442,7 +438,7 @@ function buildTimelineEvents(params: {
   createdAt: string | null;
   updatedAt: string | null;
   payload: Record<string, unknown> | null | undefined;
-  guardStatuses: GuardStatusItem[];
+  guardStatuses: OpsDealGuardStatus[];
   statusKey: OpsDealStatusKey;
 }): TimelineEvent[] {
   const drafts: TimelineDraft[] = [];
@@ -482,8 +478,8 @@ function buildTimelineEvents(params: {
   });
 
   params.guardStatuses
-    .filter((guard: GuardStatusItem) => Boolean(guard.completedAt))
-    .forEach((guard: GuardStatusItem) => {
+    .filter((guard: OpsDealGuardStatus) => Boolean(guard.completedAt))
+    .forEach((guard: OpsDealGuardStatus) => {
       pushDraft(
         `guard-${guard.key}`,
         guard.completedAt ?? null,
@@ -531,6 +527,17 @@ function mapStatusToWorkflow(status: string | null | undefined): OpsDealStatusKe
   return "NEW";
 }
 
+function normalizeWorkflowRole(role: string | null | undefined): WorkflowRole | null {
+  if (!role || typeof role !== "string") {
+    return null;
+  }
+  const normalized = role.toUpperCase();
+  if (normalized in WORKFLOW_ROLE_LABELS) {
+    return normalized as WorkflowRole;
+  }
+  return null;
+}
+
 type GuardTaskState = {
   fulfilled?: boolean;
   note?: string | null;
@@ -541,7 +548,7 @@ type GuardTaskState = {
 function resolveGuardStatuses(
   statusKey: OpsDealStatusKey,
   payload: Record<string, unknown> | null | undefined,
-): GuardStatusItem[] {
+): OpsDealGuardStatus[] {
   const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
   const tasks = (payload?.guard_tasks as Record<string, GuardTaskState> | undefined) ?? {};
 
@@ -566,7 +573,7 @@ async function buildDetailGuardStatuses(
   statusKey: OpsDealStatusKey,
   payload: Record<string, unknown> | null,
   documents: SupabaseDealDocument[],
-): Promise<GuardStatusItem[]> {
+): Promise<OpsDealGuardStatus[]> {
   const baseStatuses = resolveGuardStatuses(statusKey, payload);
 
   return Promise.all(
@@ -622,6 +629,8 @@ type OperationsDeal = {
   statusKey: OpsDealStatusKey;
   ownerRole: WorkflowRole;
   ownerRoleLabel?: string | null;
+  ownerName?: string | null;
+  ownerUserId?: string | null;
   source: string;
   nextAction: string;
   guardStatuses: OpsDealGuardStatus[];
@@ -638,6 +647,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
     .select(`
       id,
       deal_number,
+      op_manager_id,
       status,
       created_at,
       updated_at,
@@ -656,6 +666,19 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
 
   console.log(`[SERVER-OPS] loaded ${data?.length || 0} deals`);
 
+  // Диагностика: проверяем структуру данных из Supabase
+  if (data?.length > 0) {
+    const firstDeal = data[0];
+    console.log("[DEBUG] First deal structure:", {
+      id: firstDeal.id,
+      client_id: firstDeal.client_id,
+      vehicle_id: firstDeal.vehicle_id,
+      vehicles_type: typeof firstDeal.vehicles,
+      vehicles_array: Array.isArray(firstDeal.vehicles) ? firstDeal.vehicles.length : 'not array',
+      vehicles_content: firstDeal.vehicles
+    });
+  }
+
   if (!data?.length) {
     return [];
   }
@@ -664,17 +687,23 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   const uniqueClientIds = [...new Set(data.map(deal => deal.client_id).filter(Boolean))];
 
   // Загружаем данные клиентов отдельным запросом
-  const { data: clientsData } = await supabase
+  console.log(`[DEBUG] Loading clients for IDs:`, uniqueClientIds.slice(0, 5), `... (total: ${uniqueClientIds.length})`);
+  const { data: clientsData, error: clientsError } = await supabase
     .from("profiles")
-    .select("user_id, full_name, phone, email, status, nationality, metadata")
+    .select("user_id, full_name, phone, status, nationality, metadata")
     .in("user_id", uniqueClientIds);
+
+  console.log(`[DEBUG] Clients query result:`, {
+    data_length: clientsData?.length || 0,
+    error: clientsError,
+    first_client: clientsData?.[0]
+  });
 
   // Создаем карту клиентов для быстрого поиска
   type ClientData = {
     user_id: string;
     full_name: string | null;
     phone: string | null;
-    email: string | null;
     status: string | null;
     nationality: string | null;
     metadata: Record<string, unknown> | null;
@@ -685,7 +714,109 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
     clientsMap.set(client.user_id, client);
   });
 
-  return data.map((row) => {
+  console.log(`[DEBUG] Clients loaded: ${clientsData?.length || 0}`);
+  console.log(`[DEBUG] Unique client IDs from deals: ${uniqueClientIds.length}`);
+  console.log(`[DEBUG] Sample client data:`, clientsData?.slice(0, 3));
+
+  const dealIds = data.map((deal) => deal.id as string).filter(Boolean);
+  const fallbackOwnerIds = new Set<string>();
+  data.forEach((row) => {
+    const managerId = typeof row.op_manager_id === "string" ? row.op_manager_id : null;
+    if (managerId) {
+      fallbackOwnerIds.add(managerId);
+    }
+  });
+
+  type TaskAssignmentRow = {
+    deal_id: string | null;
+    status: string | null;
+    assignee_role: string | null;
+    assignee_user_id: string | null;
+    updated_at: string | null;
+  };
+
+  type AssignmentEntry = {
+    assigneeUserId: string | null;
+    assigneeRole: string | null;
+  };
+
+  const activeStatuses = new Set(["OPEN", "IN_PROGRESS"]);
+  const primaryAssignments = new Map<string, AssignmentEntry>();
+  const fallbackAssignments = new Map<string, AssignmentEntry>();
+  const assigneeUserIds = new Set<string>();
+
+  if (dealIds.length > 0) {
+    const { data: tasksData, error: tasksError } = await supabase
+      .from("tasks")
+      .select("deal_id, status, assignee_role, assignee_user_id, updated_at")
+      .in("deal_id", dealIds)
+      .order("updated_at", { ascending: false });
+
+    if (tasksError) {
+      if ((tasksError as { code?: string }).code === "PGRST205") {
+        console.info("[SERVER-OPS] tasks table not available; falling back to op_manager assignments only");
+      } else {
+        console.error("[SERVER-OPS] failed to load task assignments:", tasksError);
+      }
+    } else {
+      (tasksData as TaskAssignmentRow[] | null | undefined)?.forEach((task) => {
+        const dealId = task.deal_id ?? undefined;
+        if (!dealId) {
+          return;
+        }
+
+        const status = typeof task.status === "string" ? task.status.toUpperCase() : "";
+        const assigneeUserId =
+          typeof task.assignee_user_id === "string" && task.assignee_user_id.length > 0
+            ? task.assignee_user_id
+            : null;
+        const assigneeRole =
+          typeof task.assignee_role === "string" && task.assignee_role.length > 0
+            ? task.assignee_role.toUpperCase()
+            : null;
+
+        if (!assigneeUserId) {
+          return;
+        }
+
+        if (activeStatuses.has(status)) {
+          if (!primaryAssignments.has(dealId)) {
+            primaryAssignments.set(dealId, { assigneeUserId, assigneeRole });
+            assigneeUserIds.add(assigneeUserId);
+          }
+          return;
+        }
+
+        if (!fallbackAssignments.has(dealId)) {
+          fallbackAssignments.set(dealId, { assigneeUserId, assigneeRole });
+          assigneeUserIds.add(assigneeUserId);
+        }
+      });
+    }
+  }
+
+  const assigneeProfiles = new Map<string, { name: string | null }>();
+
+  fallbackOwnerIds.forEach((id) => assigneeUserIds.add(id));
+
+  if (assigneeUserIds.size > 0) {
+    const { data: assigneesData, error: assigneesError } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, metadata")
+      .in("user_id", Array.from(assigneeUserIds));
+
+    if (assigneesError) {
+      console.error("[SERVER-OPS] failed to load assignment profiles:", assigneesError);
+    } else {
+      (assigneesData || []).forEach((profile) => {
+        const metadata = (profile.metadata as { ops_name?: string } | null) ?? null;
+        const fullName = (profile.full_name as string | null | undefined) ?? metadata?.ops_name ?? null;
+        assigneeProfiles.set(profile.user_id as string, { name: fullName });
+      });
+    }
+  }
+
+  return data.map((row, index) => {
     const dealNumber = (row.deal_number as string) ?? `DEAL-${row.id.slice(-6)}`;
 
     const payload = (row.payload as Record<string, unknown> | null) ?? null;
@@ -693,12 +824,17 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
 
     const statusKey = mapStatusToWorkflow(row.status as string);
     const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
-    const ownerRole = statusMeta.ownerRole;
+
+    const assignment = primaryAssignments.get(row.id as string) ?? fallbackAssignments.get(row.id as string) ?? null;
+    const normalizedAssignmentRole = normalizeWorkflowRole(assignment?.assigneeRole ?? null);
+    const ownerRole = normalizedAssignmentRole ?? statusMeta.ownerRole;
     const ownerRoleLabel = WORKFLOW_ROLE_LABELS[ownerRole] ?? ownerRole;
 
     // Обрабатываем данные автомобиля из связанной таблицы
-    const vehicleArray = (row as Record<string, unknown>).vehicles || [];
-    const vehicleDataRaw = Array.isArray(vehicleArray) && vehicleArray.length > 0 ? vehicleArray[0] : {};
+    const vehicleRaw = (row as Record<string, unknown>).vehicles;
+    const vehicleDataRaw = (vehicleRaw && typeof vehicleRaw === 'object' && !Array.isArray(vehicleRaw))
+      ? vehicleRaw
+      : Array.isArray(vehicleRaw) && vehicleRaw.length > 0 ? vehicleRaw[0] : {};
     const vehicleData = vehicleDataRaw as SupabaseVehicleData;
 
     // Получаем данные клиента из карты
@@ -712,9 +848,31 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       ? `${vehicleData.make} ${vehicleData.model}`
       : "Vehicle TBD";
 
-    const source = getString(payload?.["source_label"]) ?? getString(payload?.["source"]) ?? "Website";
+    // Диагностика обработки данных
+    if (index < 5) {
+      console.log(`[DEBUG] Deal ${index + 1} data processing:`, {
+        dealId: row.id,
+        client_id: row.client_id,
+        clientData_exists: !!clientData,
+        clientName,
+        vehicleDataRaw,
+        vehicleData_make: vehicleData?.make,
+        vehicleData_model: vehicleData?.model,
+        vehicleName,
+        vehicles_type: typeof (row as Record<string, unknown>).vehicles,
+        vehicles_isArray: Array.isArray((row as Record<string, unknown>).vehicles),
+        vehicles_isObject: !!(row as Record<string, unknown>).vehicles && typeof (row as Record<string, unknown>).vehicles === 'object' && !Array.isArray((row as Record<string, unknown>).vehicles)
+      });
+    }
 
-    return {
+    const source = getString(payload?.["source_label"]) ?? getString(payload?.["source"]) ?? "Website";
+    const guardStatuses = resolveGuardStatuses(statusKey, payload);
+    const fallbackOwnerId = typeof row.op_manager_id === "string" ? row.op_manager_id : null;
+    const ownerUserId = assignment?.assigneeUserId ?? fallbackOwnerId;
+    const ownerProfile = ownerUserId ? assigneeProfiles.get(ownerUserId) ?? null : null;
+    const ownerName = ownerProfile?.name ?? null;
+
+    const result = {
       id: row.id as string,
       dealId: dealNumber,
       clientId: row.client_id as string,
@@ -725,12 +883,23 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       stage: statusMeta.description,
       statusKey,
       ownerRole,
-      ownerRoleLabel: WORKFLOW_ROLE_LABELS[ownerRole] ?? ownerRole,
+      ownerRoleLabel,
+      ownerName,
+      ownerUserId,
       source,
       nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
-      guardStatuses: [],
+      guardStatuses,
       amount: row.total_amount ? `AED ${Number(row.total_amount).toLocaleString("en-US")}` : undefined,
     };
+    if (index < 3) {
+      console.log("[SERVER-OPS] deal assignment snapshot:", {
+        dealId: result.dealId,
+        ownerName: result.ownerName,
+        ownerUserId: result.ownerUserId,
+        ownerRole: result.ownerRole,
+      });
+    }
+    return result;
   });
 }
 
@@ -799,6 +968,30 @@ type OperationsCar = {
   detailHref: string;
 };
 
+export type CarDetailResult = {
+  slug: string;
+  vehicleUuid: string;
+  profile: {
+    heading: string;
+    subtitle: string;
+    image: string;
+    specs: Array<{ label: string; value: string }>;
+  };
+  documents: Array<{
+    id: string;
+    title: string;
+    status: string;
+    url: string | null;
+  }>;
+  serviceLog: Array<{
+    id: string;
+    date: string;
+    description: string;
+    note?: string;
+    icon: string;
+  }>;
+};
+
 export async function getOperationsCars(): Promise<OperationsCar[]> {
   console.log("[SERVER-OPS] getOperationsCars called");
 
@@ -839,7 +1032,7 @@ type DealDetailResult = {
   slug: string;
   dealUuid: string;
   statusKey: OpsDealStatusKey;
-  guardStatuses: GuardStatusItem[];
+  guardStatuses: OpsDealGuardStatus[];
   profile: {
     dealId: string;
     vehicleName: string;
@@ -898,7 +1091,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   // Загружаем данные сделки с связанными таблицами
   const fetchFields = `
     id, deal_number, status, created_at, updated_at, monthly_payment, total_amount, principal_amount, payload, client_id,
-    vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, current_value, status),
+    vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, current_value, status, vehicle_images(id, storage_path, label, is_primary, sort_order)),
     deal_documents(id, document_type, title, storage_path, created_at)
   `;
 
@@ -923,6 +1116,13 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       mileage: number | null;
       current_value: number | null;
       status: string | null;
+      vehicle_images?: Array<{
+        id: string;
+        storage_path: string | null;
+        label: string | null;
+        is_primary: boolean | null;
+        sort_order: number | null;
+      }>;
     }>;
     deal_documents?: SupabaseDealDocument[];
   };
@@ -1025,11 +1225,30 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const statusKey = mapStatusToWorkflow(dealRow.status);
 
   // Загружаем данные клиента отдельным запросом
-  const { data: clientData } = await supabase
+  const { data: clientData, error: clientError } = await supabase
     .from("profiles")
-    .select("id, user_id, full_name, phone, email, status, nationality, metadata")
+    .select("id, user_id, full_name, phone, status, nationality, metadata")
     .eq("user_id", dealRow.client_id)
     .maybeSingle();
+
+  // Загружаем email из auth.users
+  const { data: authUser } = await supabase.auth.admin.getUserById(dealRow.client_id);
+
+  // Загружаем scoring из applications
+  const { data: applicationData } = await supabase
+    .from("applications")
+    .select("scoring_results")
+    .eq("user_id", dealRow.client_id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  console.log(`[DEBUG] Client data query result:`, { clientData, clientError, clientId: dealRow.client_id });
+  console.log(`[DEBUG] Client full_name: "${clientData?.full_name}"`);
+  console.log(`[DEBUG] Client phone: "${clientData?.phone}"`);
+  console.log(`[DEBUG] Auth user email: "${authUser?.user?.email}"`);
+  console.log(`[DEBUG] Client metadata:`, clientData?.metadata);
+  console.log(`[DEBUG] Application scoring results:`, applicationData?.scoring_results);
 
   // Загружаем реальные документы с подписанными URL
   const documents = await Promise.all(
@@ -1088,12 +1307,20 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     ? `${vehicleData.make} ${vehicleData.model}`
     : "Vehicle TBD";
 
+  // Загружаем изображения
+  const images = vehicleData.vehicle_images || [];
+  const primaryImage = images.find((img: typeof images[0]) => img.is_primary) || images[0];
+  const signedUrl = primaryImage?.storage_path
+    ? await createSignedStorageUrl({ bucket: "vehicle-images", path: primaryImage.storage_path })
+    : null;
+  const imageUrl = signedUrl || "/assets/vehicle-placeholder.svg";
+
   const profile: DealDetailResult['profile'] = {
     dealId: (dealRow.deal_number as string) ?? dealRow.id,
     vehicleName,
     status: statusKey,
     description: `Client — ${clientData?.full_name || "Unknown client"}.`,
-    image: "/assets/vehicle-placeholder.svg",
+    image: imageUrl,
     monthlyPayment:
       dealRow.monthly_payment != null
         ? `AED ${Number(dealRow.monthly_payment).toLocaleString("en-US")}`
@@ -1107,13 +1334,24 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   // Формируем профиль клиента с реальными данными
   const client = clientData || {} as SupabaseClientData;
+  const scoringResults = applicationData?.scoring_results as { score?: number } | null;
+  const realScoring = scoringResults?.score ? `${scoringResults.score}/100` : "90/100"; // Фоллбек если нет данных
+
   const clientProfile: DealDetailResult['client'] = {
     name: client.full_name || "Unknown Client",
     phone: client.phone || "+971 50 000 0000",
-    email: (client.metadata as { ops_email?: string } | null)?.ops_email || client.email || "—",
-    scoring: "90/100", // TODO: рассчитывать на основе реальных данных
+    email: (client.metadata as { ops_email?: string } | null)?.ops_email || authUser?.user?.email || "—",
+    scoring: realScoring,
     notes: "Client profile loaded from database",
   };
+
+  console.log(`[DEBUG] Final client profile:`, {
+    name: clientProfile.name,
+    phone: clientProfile.phone,
+    email: clientProfile.email,
+    scoring: clientProfile.scoring,
+    notes: clientProfile.notes,
+  });
 
   // Формируем ключевую информацию об автомобиле
   const keyInformation: DealDetailResult['keyInformation'] = [];
@@ -1210,5 +1448,92 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     documents,
     invoices,
     timeline,
+  };
+}
+
+// Функция для загрузки деталей автомобиля
+export async function getOperationsCarDetail(slug: string): Promise<CarDetailResult | null> {
+  console.log(`[SERVER-OPS] getOperationsCarDetail called with slug: "${slug}"`);
+
+  const normalizedSlug = toSlug(slug);
+  console.log(`[SERVER-OPS] normalized slug: "${normalizedSlug}"`);
+
+  const supabase = await createSupabaseServerClient();
+
+  // Check authentication
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  console.log(`[SERVER-OPS] user authenticated:`, !!userData?.user, `error:`, userError);
+
+  // Загружаем данные автомобиля
+  const { data: vehicleData, error: vehicleError } = await supabase
+    .from("vehicles")
+    .select(`
+      id, vin, make, model, year, body_type, mileage, current_value, status,
+      vehicle_images(id, storage_path, label, is_primary, sort_order)
+    `)
+    .or(`vin.ilike.${slug},make.ilike.${slug},model.ilike.${slug}`)
+    .limit(1)
+    .maybeSingle();
+
+  if (vehicleError) {
+    console.error("[SERVER-OPS] failed to load vehicle detail:", vehicleError);
+    return null;
+  }
+
+  console.log(`[DEBUG] Vehicle data query result:`, { vehicleData, vehicleError });
+
+  if (!vehicleData) {
+    console.log(`[SERVER-OPS] no vehicle found for slug: "${slug}"`);
+    return null;
+  }
+
+  console.log(`[SERVER-OPS] successfully found vehicle:`, vehicleData.id);
+
+  // Загружаем изображения
+  const images = vehicleData.vehicle_images || [];
+  const primaryImage = images.find(img => img.is_primary) || images[0];
+  const imageUrl = primaryImage?.storage_path
+    ? await createSignedStorageUrl({ bucket: "vehicle-images", path: primaryImage.storage_path })
+    : "/assets/vehicle-placeholder.svg";
+
+  console.log(`[DEBUG] Vehicle image:`, imageUrl);
+
+  // Формируем профиль автомобиля
+  const vehicleName = `${vehicleData.make} ${vehicleData.model}`.trim();
+  const profile: CarDetailResult['profile'] = {
+    heading: vehicleName,
+    subtitle: `${vehicleData.year} ${vehicleData.body_type || "Vehicle"}`,
+    image: imageUrl || "/assets/vehicle-placeholder.svg",
+    specs: [
+      { label: "VIN", value: vehicleData.vin || "TBD" },
+      { label: "Year", value: vehicleData.year?.toString() || "TBD" },
+      { label: "Mileage", value: vehicleData.mileage ? `${Number(vehicleData.mileage).toLocaleString("en-US")} km` : "0 km" },
+      { label: "Body Type", value: vehicleData.body_type || "TBD" },
+      { label: "Value", value: vehicleData.current_value ? `AED ${Number(vehicleData.current_value).toLocaleString("en-US")}` : "TBD" },
+    ],
+  };
+
+  console.log(`[DEBUG] Vehicle profile:`, profile);
+
+  // Загружаем документы (пока пусто, можно расширить)
+  const documents: CarDetailResult['documents'] = [];
+
+  // Загружаем сервис-лог (пока пусто, можно расширить)
+  const serviceLog: CarDetailResult['serviceLog'] = [
+    // Добавляем пустой элемент для соответствия типу
+    {
+      id: "empty",
+      date: new Date().toISOString(),
+      description: "No service records",
+      icon: "info"
+    }
+  ];
+
+  return {
+    slug: normalizedSlug,
+    vehicleUuid: vehicleData.id,
+    profile,
+    documents,
+    serviceLog,
   };
 }

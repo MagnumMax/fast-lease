@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { CarDetailView } from "@/app/(dashboard)/ops/_components/car-detail";
-import {
-  OPS_VEHICLE_DOCUMENTS,
-  OPS_VEHICLE_PROFILE,
-  OPS_VEHICLE_SERVICE_LOG,
-} from "@/lib/supabase/queries/operations";
+import { getOperationsCarDetail } from "@/lib/supabase/queries/operations-server";
+import type { CarDetailResult } from "@/lib/supabase/queries/operations-server";
 
 type OpsCarDetailsProps = {
   params: Promise<{ id: string }>;
@@ -13,13 +10,11 @@ type OpsCarDetailsProps = {
 
 export default async function OpsCarDetailsPage({ params }: OpsCarDetailsProps) {
   const { id } = await params;
-  const profile = OPS_VEHICLE_PROFILE;
-  const documents = OPS_VEHICLE_DOCUMENTS;
-  const serviceLog = OPS_VEHICLE_SERVICE_LOG;
+  const detail = await getOperationsCarDetail(id);
 
-  if (!profile) {
+  if (!detail) {
     notFound();
   }
 
-  return <CarDetailView profile={profile} documents={documents} serviceLog={serviceLog} />;
+  return <CarDetailView profile={detail.profile} documents={detail.documents} serviceLog={detail.serviceLog} />;
 }

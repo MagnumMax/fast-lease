@@ -487,6 +487,8 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       statusKey,
       ownerRole,
       ownerRoleLabel,
+      ownerName: null,
+      ownerUserId: null,
       source,
       nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
       guardStatuses: [],
