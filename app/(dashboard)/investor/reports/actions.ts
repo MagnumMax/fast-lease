@@ -133,6 +133,6 @@ export async function requestInvestorReportAction(
   }
 }
 
-export function getInitialReportState(): RequestReportState {
-  return INITIAL_STATE;
+export async function getInitialReportState(): Promise<RequestReportState> {
+  return Promise.resolve(INITIAL_STATE);
 }

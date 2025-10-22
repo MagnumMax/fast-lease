@@ -1,8 +1,8 @@
 import { ClientDetailView } from "@/app/(dashboard)/ops/_components/client-detail";
 import {
-  getOperationsClientDeals,
-  getOperationsClientDocuments,
-  getOperationsClientProfile,
+  OPS_CLIENT_DEALS,
+  OPS_CLIENT_DOCUMENTS,
+  OPS_CLIENT_PROFILE,
 } from "@/lib/supabase/queries/operations";
 
 type OpsClientDetailsProps = {
@@ -10,9 +10,9 @@ type OpsClientDetailsProps = {
 };
 
 export default function OpsClientDetailsPage({ params }: OpsClientDetailsProps) {
-  const profile = getOperationsClientProfile();
-  const deals = getOperationsClientDeals();
-  const documents = getOperationsClientDocuments();
+  const profile = OPS_CLIENT_PROFILE;
+  const deals = OPS_CLIENT_DEALS;
+  const documents = OPS_CLIENT_DOCUMENTS;
 
   return <ClientDetailView profile={profile} deals={deals} documents={documents} />;
 }

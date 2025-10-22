@@ -30,13 +30,18 @@ export type CreateOperationsDealResult =
   | { data?: undefined; error: string };
 
 export async function createOperationsDeal(
-  input: CreateOperationsDealInput,
-): Promise<CreateOperationsDealResult> {
-  const parsed = inputSchema.safeParse(input);
+   input: CreateOperationsDealInput,
+ ): Promise<CreateOperationsDealResult> {
+   console.log(`[DEBUG] createOperationsDeal called with input:`, input);
 
-  if (!parsed.success) {
-    return { error: "Введите корректные данные сделки." };
-  }
+   const parsed = inputSchema.safeParse(input);
+
+   if (!parsed.success) {
+     console.error(`[DEBUG] input validation failed:`, parsed.error);
+     return { error: "Введите корректные данные сделки." };
+   }
+
+   console.log(`[DEBUG] parsed input:`, parsed.data);
 
   const payload: CreateDealWithEntitiesRequest = {
     source: parsed.data.source,
@@ -60,11 +65,15 @@ export async function createOperationsDeal(
       : undefined,
   };
 
+  console.log(`[DEBUG] calling createDealWithWorkflow with payload:`, payload);
   const result = await createDealWithWorkflow(payload);
 
   if (!result.success) {
+    console.error(`[DEBUG] createDealWithWorkflow failed:`, result.message);
     return { error: result.message };
   }
+
+  console.log(`[DEBUG] deal created successfully:`, result.deal.id, `deal_number:`, result.deal.deal_number);
 
   revalidatePath("/ops/deals");
 

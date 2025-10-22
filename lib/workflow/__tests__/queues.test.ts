@@ -212,7 +212,7 @@ describe("WorkflowQueueProcessor", () => {
     const { client, webhookUpdate } = createClientMock({ webhooks: [webhookRow] });
     const processor = new WorkflowQueueProcessor(client);
 
-    (processor as unknown as { dispatchWebhook: (row: any) => Promise<any> }).dispatchWebhook = vi
+    (processor as unknown as { dispatchWebhook: (row: unknown) => Promise<unknown> }).dispatchWebhook = vi
       .fn()
       .mockResolvedValue({
         status: "PENDING",

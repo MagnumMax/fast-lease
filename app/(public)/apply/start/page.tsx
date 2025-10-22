@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition, type ReactNode, Suspense } from "react";
 import { AlertTriangle, Mail, Phone, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ const cityOptions = [
   "Fujairah",
 ];
 
-export default function ApplicationStartPage() {
+function ApplicationStartContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { draft, updateDraft, isHydrated } = useApplicationForm();
@@ -462,5 +462,13 @@ function Field({
         />
       </div>
     </div>
+  );
+}
+
+export default function ApplicationStartPage() {
+  return (
+    <Suspense fallback={<div className="h-40 animate-pulse rounded-3xl bg-surface-subtle" />}>
+      <ApplicationStartContent />
+    </Suspense>
   );
 }

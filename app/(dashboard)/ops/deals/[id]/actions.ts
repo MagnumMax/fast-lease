@@ -5,7 +5,7 @@ import { Buffer } from "node:buffer";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/data/operations/deals";
+import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/supabase/queries/operations";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
 const inputSchema = z.object({
@@ -21,7 +21,7 @@ const STORAGE_BUCKET = "deal-documents";
 function resolveGuardMeta(statusKey: string, guardKey: string) {
   const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey as keyof typeof OPS_WORKFLOW_STATUS_MAP];
   if (!statusMeta) return null;
-  return statusMeta.exitGuards.find((guard) => guard.key === guardKey) ?? null;
+  return statusMeta.exitGuards.find((guard: { key: string }) => guard.key === guardKey) ?? null;
 }
 
 function ensureGuardPayload(base: Record<string, unknown> | null | undefined) {

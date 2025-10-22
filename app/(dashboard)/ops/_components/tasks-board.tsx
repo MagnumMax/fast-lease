@@ -6,11 +6,11 @@ import { Plus, Search, Check, Ban, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { OpsTask, OpsTaskStatus } from "@/lib/data/operations/tasks";
+import type { OpsTask, OpsTaskStatus } from "@/lib/supabase/queries/operations";
 
 type OpsTasksBoardProps = {
   initialTasks: OpsTask[];
@@ -138,8 +138,11 @@ export function OpsTasksBoard({ initialTasks }: OpsTasksBoardProps) {
       }
     });
 
+    // Сохраняем текущее значение для cleanup
+    const currentInstances = sortableInstances.current;
+
     return () => {
-      Object.values(sortableInstances.current).forEach((instance) => {
+      Object.values(currentInstances).forEach((instance) => {
         if (instance && typeof instance.destroy === 'function') {
           try {
             instance.destroy();
@@ -149,7 +152,7 @@ export function OpsTasksBoard({ initialTasks }: OpsTasksBoardProps) {
         }
       });
     };
-  }, [filteredTasks]);
+  }, [columnRefs]);
 
   function handleCreateTask() {
     if (!formState.title.trim()) return;

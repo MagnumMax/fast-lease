@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import type { OpsCarRecord } from "@/lib/data/operations/cars";
+import type { OpsCarRecord } from "@/lib/supabase/queries/operations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const inputSchema = z.object({

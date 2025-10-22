@@ -75,6 +75,11 @@ const STATUS_META: Record<
     description: "User has full access.",
     badgeVariant: "success",
   },
+  inactive: {
+    label: "Inactive",
+    description: "User is inactive.",
+    badgeVariant: "outline",
+  },
   pending: {
     label: "Invitation sent",
     description: "Awaiting invitation acceptance.",
@@ -129,10 +134,13 @@ function makeAuditEntry(
 ): AdminAuditLogEntry {
   return {
     id: generateClientId("audit"),
+    userId: "system",
     actor: actorName,
     action: message,
     target,
+    timestamp: new Date().toISOString(),
     occurredAt: new Date().toISOString(),
+    details: message,
   };
 }
 
@@ -176,7 +184,7 @@ export function AdminUsersDirectory({
       return (
         user.fullName.toLowerCase().includes(query) ||
         user.email.toLowerCase().includes(query) ||
-        user.roles.some((role) => ROLE_LABELS[role]?.toLowerCase().includes(query))
+        user.roles.some((role: AppRole) => ROLE_LABELS[role]?.toLowerCase().includes(query))
       );
     });
   }, [searchQuery, users]);
@@ -199,15 +207,16 @@ export function AdminUsersDirectory({
     setTimeout(() => {
       const newUser: AdminUserRecord = {
         id: generateClientId("profile"),
-        userId: generateClientId("user"),
+        name: "",
         fullName: createForm.fullName,
         email: createForm.email,
+        role: createForm.role,
         roles: [createForm.role],
         status: createForm.sendInvite ? "pending" : "active",
-        lastLoginAt: null,
+        lastLogin: "",
+        lastLoginAt: createForm.sendInvite ? null : new Date().toISOString(),
         invitationSentAt: createForm.sendInvite ? new Date().toISOString() : null,
-        phone: null,
-        metadata: { createdOffline: true },
+        createdAt: new Date().toISOString(),
       };
 
       setUsers((prev) => [newUser, ...prev]);
@@ -452,7 +461,7 @@ export function AdminUsersDirectory({
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-2 py-1">
-                        {user.roles.map((role) => (
+                        {user.roles.map((role: AppRole) => (
                           <Badge key={`${user.id}-${role}`} variant="secondary">
                             {ROLE_LABELS[role] ?? role}
                           </Badge>
@@ -575,6 +584,7 @@ export function AdminUsersDirectory({
                   className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
                 >
                   <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
                   <option value="pending">Invitation sent</option>
                   <option value="suspended">Suspended</option>
                   <option value="archived">Deactivated</option>

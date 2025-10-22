@@ -32,7 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createOperationsClient } from "@/app/(dashboard)/ops/clients/actions";
-import type { OpsClientRecord } from "@/lib/data/operations/clients";
+import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
 
 type ClientFormState = {
   name: string;
@@ -285,7 +285,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                   </Link>
                 </TableCell>
                 <TableCell>{client.name}</TableCell>
-                <TableCell>{client.email}</TableCell>
+                <TableCell>{client.email || "—"}</TableCell>
                 <TableCell>{client.phone}</TableCell>
                 <TableCell>{client.scoring}</TableCell>
                 <TableCell>{client.overdue}</TableCell>
@@ -303,7 +303,9 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold text-foreground">{client.name}</p>
-                  <p className="text-xs text-muted-foreground">{client.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {client.email || "—"}
+                  </p>
                 </div>
                 <Badge
                   variant={client.status === "Active" ? "success" : "danger"}

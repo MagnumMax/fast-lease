@@ -22,8 +22,7 @@ const KPI_TONE_TO_BADGE: Record<
 > = {
   positive: "success",
   warning: "warning",
-  critical: "danger",
-  muted: "secondary",
+  negative: "secondary",
 };
 
 const STATUS_TONE_TO_CLASS: Record<string, string> = {

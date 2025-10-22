@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
-import type { OpsClientRecord } from "@/lib/data/operations/clients";
+import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
 import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
@@ -35,13 +35,11 @@ function toSlug(value: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-function normalizeEmail(name: string, email?: string) {
-  if (email && email.trim()) {
-    return email.trim().toLowerCase();
-  }
-
-  const fallback = `${toSlug(name)}@fastlease.io`;
-  return fallback.replace(/@+/, "@");
+function normalizeEmail(email?: string) {
+  if (!email) return null;
+  const trimmed = email.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase();
 }
 
 function sanitizePhone(phone?: string) {
@@ -63,12 +61,12 @@ function parseNameParts(name: string) {
 function formatClientRecord(
   profile: { phone: string | null; status: string },
   name: string,
-  email: string,
+  email: string | null,
 ): OpsClientRecord {
   return {
     id: `CL-${Math.floor(Date.now() / 1000).toString().slice(-4).padStart(4, "0")}`,
     name,
-    email,
+    email: email ?? "",
     phone: profile.phone ?? "+971 50 000 0000",
     status: profile.status === "suspended" ? "Blocked" : "Active",
     scoring: "—",
@@ -78,11 +76,11 @@ function formatClientRecord(
   };
 }
 
-async function resolveUserIdByEmail(
-  email: string,
+async function resolveUserId(
+  email: string | null,
+  phone: string | null,
   serviceClient: Awaited<ReturnType<typeof createSupabaseServiceClient>>,
 ) {
-  const normalized = email.toLowerCase();
   let page: number | null = 1;
 
   while (page !== null) {
@@ -93,14 +91,23 @@ async function resolveUserIdByEmail(
     });
 
     if (error) {
-      console.error("[operations] failed to lookup auth user", { email, error });
+      console.error("[operations] failed to lookup auth user", { email, phone, error });
       return null;
     }
 
     const users = data?.users ?? [];
-    const match = users.find(
-      (user) => user.email?.toLowerCase() === normalized,
-    );
+    const match = users.find((user) => {
+      const matchesEmail =
+        email && user.email?.toLowerCase() === email;
+      if (matchesEmail) return true;
+
+      if (!phone) return false;
+      const userPhoneDigits = (user.phone ?? "").replace(/\D/g, "");
+      const inputPhoneDigits = phone.replace(/\D/g, "");
+      if (!inputPhoneDigits) return false;
+      return userPhoneDigits === inputPhoneDigits;
+    });
+
     if (match) {
       return match.id ?? null;
     }
@@ -126,7 +133,7 @@ export async function createOperationsClient(
 
   const { name, email, phone, status } = parsed.data;
   const { fullName, firstName, lastName } = parseNameParts(name);
-  const normalizedEmail = normalizeEmail(fullName, email);
+  const normalizedEmail = normalizeEmail(email);
   const sanitizedPhone = sanitizePhone(phone);
   const userStatus = status === "Blocked" ? "suspended" : "active";
 
@@ -134,26 +141,51 @@ export async function createOperationsClient(
     const supabase = await createSupabaseServerClient();
     const serviceClient = await createSupabaseServiceClient();
 
-    let userId = await resolveUserIdByEmail(normalizedEmail, serviceClient);
+    if (!normalizedEmail && !sanitizedPhone) {
+      return {
+        error: "Укажите email или телефон клиента.",
+      };
+    }
+
+    let userId = await resolveUserId(normalizedEmail, sanitizedPhone, serviceClient);
 
     if (!userId) {
+      const createPayload: {
+        email?: string;
+        email_confirm?: boolean;
+        phone?: string;
+        phone_confirm?: boolean;
+        password: string;
+        user_metadata: Record<string, unknown>;
+        app_metadata: Record<string, unknown>;
+      } = {
+        password: generateRandomPassword(),
+        user_metadata: {
+          full_name: fullName,
+          source: "ops_dashboard",
+        },
+        app_metadata: {
+          roles: ["CLIENT"],
+        },
+      };
+
+      if (normalizedEmail) {
+        createPayload.email = normalizedEmail;
+        createPayload.email_confirm = true;
+      }
+
+      if (sanitizedPhone) {
+        createPayload.phone = sanitizedPhone;
+        createPayload.phone_confirm = true;
+      }
+
       const { data: created, error: createError } =
-        await serviceClient.auth.admin.createUser({
-          email: normalizedEmail,
-          email_confirm: true,
-          password: generateRandomPassword(),
-          user_metadata: {
-            full_name: fullName,
-            source: "ops_dashboard",
-          },
-          app_metadata: {
-            roles: ["CLIENT"],
-          },
-        });
+        await serviceClient.auth.admin.createUser(createPayload);
 
       if (createError) {
         console.error("[operations] failed to create auth user", {
           email: normalizedEmail,
+          phone: sanitizedPhone,
           error: createError,
         });
         return {
@@ -188,7 +220,7 @@ export async function createOperationsClient(
 
     const metadata: ProfileMetadata = {
       ...((existingProfile?.metadata as ProfileMetadata | null) ?? {}),
-      ops_email: normalizedEmail,
+      ...(normalizedEmail ? { ops_email: normalizedEmail } : {}),
     };
 
     const { data: profile, error: profileError } = await supabase
@@ -234,7 +266,7 @@ export async function createOperationsClient(
     const profileMetadata =
       (profile?.metadata as ProfileMetadata | null) ?? null;
     const emailFromProfile =
-      (profileMetadata?.ops_email as string | undefined) ?? normalizedEmail;
+      (profileMetadata?.ops_email as string | undefined) ?? normalizedEmail ?? null;
 
     const record = formatClientRecord(
       { phone: profile.phone, status: profile.status },

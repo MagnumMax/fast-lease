@@ -35,7 +35,7 @@ const STATUS_META: Record<
   IntegrationHealthStatus,
   { label: string; badgeVariant: "success" | "warning" | "danger"; description: string }
 > = {
-  active: {
+  healthy: {
     label: "Active",
     badgeVariant: "success",
     description: "Integration responding within SLA.",
@@ -98,6 +98,19 @@ export function AdminIntegrationsDashboard({
   const [logs, setLogs] = useState<AdminIntegrationLogEntry[]>(initialLogs);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  function getHealthStatus(integrationStatus: AdminIntegrationRecord["status"]): IntegrationHealthStatus {
+    switch (integrationStatus) {
+      case "active":
+        return "healthy";
+      case "inactive":
+        return "warning";
+      case "error":
+        return "error";
+      default:
+        return "healthy";
+    }
+  }
+
   function handleRefresh() {
     setIsRefreshing(true);
     setTimeout(() => {
@@ -107,7 +120,7 @@ export function AdminIntegrationsDashboard({
           ...integration,
           lastSyncAt: now.toISOString(),
           latencyMs:
-            integration.status === "warning"
+            integration.status === "error"
               ? integration.latencyMs
               : Math.max(180, Math.round(integration.latencyMs * 0.9)),
         })),
@@ -115,10 +128,14 @@ export function AdminIntegrationsDashboard({
       setLogs((prev) => [
         {
           id: generateClientId("log"),
+          integrationId: "system",
           system: "Health Monitor",
-          status: "200 OK",
+          action: "REFRESH",
+          status: "success",
           message: "Manual refresh completed",
+          timestamp: now.toISOString(),
           occurredAt: now.toISOString(),
+          details: "System health check completed successfully",
         },
         ...prev,
       ]);
@@ -176,7 +193,7 @@ export function AdminIntegrationsDashboard({
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             {integrations.map((integration) => {
-              const meta = STATUS_META[integration.status];
+              const meta = STATUS_META[getHealthStatus(integration.status)];
               return (
                 <div
                   key={integration.id}

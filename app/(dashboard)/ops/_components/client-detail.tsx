@@ -21,7 +21,7 @@ import type {
   OpsClientDeal,
   OpsClientDocument,
   OpsClientProfile,
-} from "@/lib/data/operations/clients";
+} from "@/lib/supabase/queries/operations";
 
 function toSlug(value: string) {
   return value

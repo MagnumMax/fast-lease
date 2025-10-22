@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { AlertTriangle, Car, Link2, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ const usageOptions = [
   { value: "mixed", label: "Смешанный" },
 ];
 
-export default function OfferConfigurationPage() {
+function OfferConfigurationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { draft, updateDraft, setResidencyStatus, isHydrated } =
@@ -450,5 +450,19 @@ function formatCurrency(value: number) {
     currency: "AED",
     minimumFractionDigits: 0,
   }).format(value);
+}
+
+export default function OfferPage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 py-10">
+        <div className="rounded-3xl border border-border bg-card p-6 shadow-linear">
+          <div className="h-10 animate-pulse rounded-xl bg-surface-subtle" />
+        </div>
+      </div>
+    }>
+      <OfferConfigurationPage />
+    </Suspense>
+  );
 }
 

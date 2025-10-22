@@ -170,7 +170,8 @@ function createSupabaseMock() {
   };
 
   return {
-    client: { from } as any,
+    // @ts-expect-error - Mock object for testing
+    client: { from },
     deal,
     notifications,
   };
@@ -198,9 +199,10 @@ describe("end-to-end workflow", () => {
         .maybeSingle();
     });
 
+    // @ts-expect-error - Mock object for testing
     mockedCreateWorkflowService.mockResolvedValueOnce({
       transitionDeal: transitionSpy,
-    } as any);
+    });
 
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
     const originalFetch = global.fetch;

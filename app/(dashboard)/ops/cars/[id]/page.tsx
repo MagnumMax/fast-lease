@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 
 import { CarDetailView } from "@/app/(dashboard)/ops/_components/car-detail";
 import {
-  getOperationsVehicleDocuments,
-  getOperationsVehicleProfile,
-  getOperationsVehicleServiceLog,
+  OPS_VEHICLE_DOCUMENTS,
+  OPS_VEHICLE_PROFILE,
+  OPS_VEHICLE_SERVICE_LOG,
 } from "@/lib/supabase/queries/operations";
 
 type OpsCarDetailsProps = {
@@ -12,9 +12,9 @@ type OpsCarDetailsProps = {
 };
 
 export default function OpsCarDetailsPage({ params }: OpsCarDetailsProps) {
-  const profile = getOperationsVehicleProfile();
-  const documents = getOperationsVehicleDocuments();
-  const serviceLog = getOperationsVehicleServiceLog();
+  const profile = OPS_VEHICLE_PROFILE;
+  const documents = OPS_VEHICLE_DOCUMENTS;
+  const serviceLog = OPS_VEHICLE_SERVICE_LOG;
 
   if (!profile) {
     notFound();

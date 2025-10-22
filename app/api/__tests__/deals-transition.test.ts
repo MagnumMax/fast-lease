@@ -51,6 +51,10 @@ describe("POST /api/deals/{id}/transition", () => {
       "@/lib/workflow/state-machine"
     );
 
+    type MockWorkflowService = {
+      transitionDeal: ReturnType<typeof vi.fn>;
+    };
+
     mockedCreateWorkflowService.mockResolvedValueOnce({
       transitionDeal: vi.fn().mockRejectedValue(
         new WorkflowTransitionError("blocked", {
@@ -58,7 +62,7 @@ describe("POST /api/deals/{id}/transition", () => {
           reason: "GUARD_FAILED",
         }),
       ),
-    } as any);
+    } as MockWorkflowService);
 
     const response = await POST(
       new Request("http://localhost/api/deals/123/transition", {
@@ -75,11 +79,11 @@ describe("POST /api/deals/{id}/transition", () => {
   });
 
   it("returns updated deal when transition succeeds", async () => {
-    mockedCreateWorkflowService.mockResolvedValueOnce({
+    const mockWorkflowService = {
       transitionDeal: vi.fn().mockResolvedValue({}),
-    } as any);
+    };
 
-    mockedCreateSupabaseServiceClient.mockResolvedValueOnce({
+    const mockSupabaseClient = {
       from: () => ({
         select: () => ({
           eq: () => ({
@@ -93,7 +97,12 @@ describe("POST /api/deals/{id}/transition", () => {
           }),
         }),
       }),
-    } as any);
+    };
+
+    // @ts-expect-error - Mock object for testing
+    mockedCreateWorkflowService.mockResolvedValueOnce(mockWorkflowService);
+    // @ts-expect-error - Mock object for testing
+    mockedCreateSupabaseServiceClient.mockResolvedValueOnce(mockSupabaseClient);
 
     const response = await POST(
       new Request("http://localhost/api/deals/123/transition", {

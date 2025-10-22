@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { Menu } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
 import type { AppRole } from "@/lib/auth/types";
@@ -11,7 +11,6 @@ import { clientNav } from "@/lib/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/system/theme-toggle";
 import { MobileNav } from "@/components/navigation/mobile-nav";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
@@ -44,14 +43,46 @@ export function DashboardLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const sidebarId = React.useId();
-  const searchInputId = React.useId();
+  const profileMenuId = React.useId();
+  const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
+  const profileMenuRef = React.useRef<HTMLDivElement>(null);
 
   const activeItem =
     navItems.find((item) => pathname.startsWith(item.href)) ?? navItems[0];
 
   React.useEffect(() => {
     setSidebarOpen(false);
+    setProfileMenuOpen(false);
   }, [pathname]);
+
+  React.useEffect(() => {
+    if (!profileMenuOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [profileMenuOpen]);
 
   return (
     <div className="dashboard-shell">
@@ -110,20 +141,6 @@ export function DashboardLayout({
             >
               <Menu className="h-5 w-5" aria-hidden="true" />
             </Button>
-            <nav
-              className="dashboard-header__breadcrumbs"
-              aria-label="Breadcrumbs"
-            >
-              <ol className="flex list-none items-center gap-2">
-                <li>{brand.title}</li>
-                <li aria-hidden="true" className="opacity-40">
-                  /
-                </li>
-                <li aria-current="page">
-                  {activeItem?.label ?? "Dashboard"}
-                </li>
-              </ol>
-            </nav>
             <div className="flex flex-col">
               <h1 className="dashboard-header__title">
                 {activeItem?.label ?? "Dashboard"}
@@ -131,40 +148,64 @@ export function DashboardLayout({
             </div>
           </div>
           <div className="dashboard-header__actions">
-            <form
-              role="search"
-              className="hidden items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 shadow-sm sm:flex"
-              onSubmit={(event) => event.preventDefault()}
-            >
-              <label htmlFor={searchInputId} className="sr-only">
-                Dashboard search
-              </label>
-              <Input
-                id={searchInputId}
-                type="search"
-                placeholder="Search dashboard"
-                className="h-9 border-none bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
-                aria-describedby={`${searchInputId}-hint`}
-              />
-              <span id={`${searchInputId}-hint`} className="sr-only">
-                Search function is under development
-              </span>
-            </form>
-            <ThemeToggle />
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm">
-              <div className="hidden text-right md:block">
-                <p className="font-semibold leading-tight">
-                  {user?.fullName ?? user?.email ?? "No name"}
-                </p>
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {user?.primaryRole ?? "guest"}
-                </p>
-              </div>
-              <form action={signOutAction}>
-                <Button type="submit" size="sm" variant="outline" className="rounded-lg">
-                  Sign out
-                </Button>
-              </form>
+            <div className="relative" ref={profileMenuRef}>
+              <Button
+                type="button"
+                variant="subtle"
+                size="sm"
+                className="flex h-auto items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm"
+                onClick={() => setProfileMenuOpen((prev) => !prev)}
+                aria-haspopup="menu"
+                aria-expanded={profileMenuOpen}
+                aria-controls={profileMenuId}
+              >
+                <div className="hidden text-left md:block">
+                  <p className="font-semibold leading-tight">
+                    {user?.fullName ?? "Profile"}
+                  </p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {user?.primaryRole ?? "guest"}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold md:hidden">
+                  {user?.fullName?.split(" ")[0] ?? "Profile"}
+                </span>
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              </Button>
+              {profileMenuOpen ? (
+                <div
+                  id={profileMenuId}
+                  role="menu"
+                  aria-label="User menu"
+                  className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border bg-card p-3 text-sm shadow-lg"
+                >
+                  <div className="border-b border-border pb-3">
+                    <p className="font-semibold leading-tight">
+                      {user?.fullName ?? user?.email ?? "No name"}
+                    </p>
+                    {user?.email ? (
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    ) : null}
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {user?.primaryRole ?? "guest"}
+                    </p>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium">Theme</span>
+                    <ThemeToggle />
+                  </div>
+                  <form action={signOutAction} className="mt-3">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="sm"
+                      className="w-full rounded-lg"
+                    >
+                      Sign out
+                    </Button>
+                  </form>
+                </div>
+              ) : null}
             </div>
           </div>
         </header>

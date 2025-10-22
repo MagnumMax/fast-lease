@@ -58,7 +58,8 @@ describe("workflow action executor", () => {
       {
         actorRole: "OP_MANAGER",
         transition: { from: "NEW", to: "OFFER_PREP" },
-        template: {} as any,
+        // @ts-expect-error - Mock object for testing
+        template: {},
         dealId: "deal-1",
       },
     );
@@ -103,11 +104,13 @@ describe("workflow action executor", () => {
         transition: { from: "NEW", to: "OFFER_PREP" },
         template: {
           notifications: {
+            channels: {},
             templates: {
               new_deal_created: "Создана новая заявка",
             },
           },
-        } as any,
+        // @ts-expect-error - Mock object for testing
+        },
         dealId: "deal-1",
       },
     );

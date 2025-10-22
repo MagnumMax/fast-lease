@@ -106,10 +106,10 @@ function fallbackReports(): InvestorReportsSnapshot {
       periodEnd: report.periodEnd,
       format: report.format,
       status: report.status,
-      storagePath: report.storagePath,
+      storagePath: report.storagePath ?? null,
       downloadUrl: null,
       createdAt: report.createdAt,
-      generatedAt: report.generatedAt,
+      generatedAt: report.generatedAt ?? null,
     })),
     lastReadyAt:
       INVESTOR_REPORTS_FALLBACK.find((report) => report.status === "ready")?.generatedAt ?? null,
@@ -178,14 +178,26 @@ function buildStatusSummary(
         label: meta.label,
         count: toNumber(entry.count) ?? 0,
         tone: meta.tone,
+        totalPortfolioValue: 0,
+        monthlyIncome: 0,
+        activeAssets: 0,
+        averageIrr: 0,
+        nextPaymentDate: "",
+        pendingReports: 0,
       };
     });
   }
 
   if (assets?.length) {
+    const statusMapping: Record<InvestorPortfolioAssetRecord["status"], InvestorStatusSummary["status"]> = {
+      active: "in_operation",
+      completed: "in_operation",
+      defaulted: "attention_required",
+    };
+
     const counts = assets.reduce((acc, asset) => {
-      const status = asset.status;
-      acc[status] = (acc[status] ?? 0) + 1;
+      const mappedStatus = statusMapping[asset.status] ?? "in_operation";
+      acc[mappedStatus] = (acc[mappedStatus] ?? 0) + 1;
       return acc;
     }, {} as Record<InvestorStatusSummary["status"], number>);
 
@@ -198,6 +210,12 @@ function buildStatusSummary(
           label: meta.label,
           count: counts[status] ?? 0,
           tone: meta.tone,
+          totalPortfolioValue: 0,
+          monthlyIncome: 0,
+          activeAssets: 0,
+          averageIrr: 0,
+          nextPaymentDate: "",
+          pendingReports: 0,
         };
       },
     );
@@ -421,9 +439,15 @@ async function loadPortfolioAssetsForStatus(
     id: toString(row.id) ?? randomUUID(),
     assetCode: toString(row.asset_code) ?? "—",
     vin: toString(row.vin) ?? "—",
+    vehicleVin: toString(row.vin) ?? "—",
     vehicleMake: toString(row.vehicle_make) ?? "—",
     vehicleModel: toString(row.vehicle_model) ?? "—",
-    status: (row.status as InvestorPortfolioAssetRecord["status"]) ?? "in_operation",
+    status: (row.status as InvestorPortfolioAssetRecord["status"]) ?? "active",
+    acquisitionCost: 0,
+    currentValue: 0,
+    monthlyPayment: 0,
+    remainingTerm: 0,
+    nextPaymentDate: "",
     irrPercent: toNumber(row.irr_percent) ?? 0,
     lastPayoutAmount: toNumber(row.last_payout_amount) ?? 0,
     lastPayoutCurrency: toString(row.last_payout_currency) ?? "AED",
@@ -554,10 +578,10 @@ export async function getInvestorReports(
           periodEnd: toString(row.period_end),
           format: (row.format as InvestorReportRecord["format"]) ?? "pdf",
           status,
-          storagePath,
+          storagePath: storagePath ?? null,
           downloadUrl,
           createdAt: toString(row.created_at) ?? new Date().toISOString(),
-          generatedAt: toString(row.generated_at),
+          generatedAt: toString(row.generated_at) ?? null,
         };
       }),
     );

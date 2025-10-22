@@ -27,25 +27,23 @@ import {
 } from "@/components/ui/table";
 
 const STATUS_CONFIG: Record<
-  InvestorStatusSummary["status"],
+  InvestorPortfolioAssetRecord["status"],
   { label: string; badgeVariant: React.ComponentProps<typeof Badge>["variant"] }
 > = {
-  in_operation: { label: "In operation", badgeVariant: "success" },
-  pending_delivery: { label: "Delivery", badgeVariant: "secondary" },
-  under_review: { label: "Under review", badgeVariant: "warning" },
-  attention_required: { label: "Requires attention", badgeVariant: "danger" },
+  active: { label: "Active", badgeVariant: "success" },
+  completed: { label: "Completed", badgeVariant: "secondary" },
+  defaulted: { label: "Defaulted", badgeVariant: "danger" },
 };
 
 const FILTERS: Array<{
-  value: InvestorStatusSummary["status"] | "all";
+  value: InvestorPortfolioAssetRecord["status"] | "all";
   label: string;
   icon?: React.ComponentType<{ className?: string }>;
 }> = [
   { value: "all", label: "All statuses" },
-  { value: "in_operation", label: "In operation" },
-  { value: "pending_delivery", label: "Delivery" },
-  { value: "under_review", label: "Under review" },
-  { value: "attention_required", label: "Attention" },
+  { value: "active", label: "Active" },
+  { value: "completed", label: "Completed" },
+  { value: "defaulted", label: "Defaulted" },
 ];
 
 function formatCurrency(value: number, currency: string = "AED") {
@@ -60,8 +58,8 @@ function formatPercent(value: number) {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function statusBadge(status: InvestorStatusSummary["status"]) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.in_operation;
+function statusBadge(status: InvestorPortfolioAssetRecord["status"]) {
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.active;
   return config;
 }
 
@@ -71,7 +69,7 @@ function normalizeAssets(
 ) {
   return assets.map((asset) => ({
     ...asset,
-    lastPayoutFormatted: formatCurrency(asset.lastPayoutAmount, currency),
+    lastPayoutFormatted: asset.lastPayoutAmount ? formatCurrency(asset.lastPayoutAmount, currency) : "—",
     irrFormatted: formatPercent(asset.irrPercent),
   }));
 }
@@ -82,7 +80,7 @@ type InvestorPortfolioScreenProps = {
 
 export function InvestorPortfolioScreen({ snapshot }: InvestorPortfolioScreenProps) {
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<InvestorStatusSummary["status"] | "all">("all");
+  const [filter, setFilter] = useState<InvestorPortfolioAssetRecord["status"] | "all">("all");
 
   const normalizedAssets = useMemo(
     () => normalizeAssets(snapshot.assets, snapshot.investor.currency),
@@ -99,13 +97,9 @@ export function InvestorPortfolioScreen({ snapshot }: InvestorPortfolioScreenPro
     });
   }, [normalizedAssets, filter, query]);
 
-  const selectedSummary =
-    filter === "all"
-      ? null
-      : snapshot.statusSummary.find((status) => status.status === filter);
-  const selectedLabel = filter === "all" ? "All statuses" : selectedSummary?.label ?? "Status";
+  const selectedLabel = filter === "all" ? "All statuses" : FILTERS.find(f => f.value === filter)?.label ?? "Status";
   const selectedCount =
-    filter === "all" ? normalizedAssets.length : selectedSummary?.count ?? 0;
+    filter === "all" ? normalizedAssets.length : normalizedAssets.filter(a => a.status === filter).length;
 
   return (
     <div className="space-y-6">

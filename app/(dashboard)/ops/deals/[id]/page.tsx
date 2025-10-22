@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { DealDetailView } from "@/app/(dashboard)/ops/_components/deal-detail";
-import { getOperationsDealDetail } from "@/lib/supabase/queries/operations";
+import { getOperationsDealDetail } from "@/lib/supabase/queries/operations-server";
 
 type OpsDealDetailsProps = {
   params: { id: string };
@@ -9,6 +9,7 @@ type OpsDealDetailsProps = {
 
 export default async function OpsDealDetailsPage({ params }: OpsDealDetailsProps) {
   const { id } = await params;
+
   const detail = await getOperationsDealDetail(id);
 
   if (!detail) {

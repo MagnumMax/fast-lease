@@ -15,7 +15,7 @@ export async function GET(_: Request, context: RouteContext) {
   const { data, error } = await supabase
     .from("deals")
     .select(
-      "id, workflow_id, workflow_version_id, customer_id, asset_id, source, status, op_manager_id, created_at, updated_at, payload, tasks(*), documents(*), payments(*), risk_reports(*)",
+      "id, workflow_id, workflow_version_id, customer_id, asset_id, source, status, op_manager_id, created_at, updated_at, payload, deal_documents(*), invoices(*), payments(*)",
     )
     .eq("id", id)
     .maybeSingle();
@@ -32,10 +32,5 @@ export async function GET(_: Request, context: RouteContext) {
     return NextResponse.json({ error: "Deal not found" }, { status: 404 });
   }
 
-  const { risk_reports, ...rest } = data as any;
-
-  return NextResponse.json({
-    ...rest,
-    risk_report: Array.isArray(risk_reports) ? risk_reports[0] ?? null : null,
-  });
+  return NextResponse.json(data);
 }

@@ -14,7 +14,7 @@ import type {
   OpsVehicleDocument,
   OpsVehicleProfile,
   OpsVehicleServiceLogEntry,
-} from "@/lib/data/operations/cars";
+} from "@/lib/supabase/queries/operations";
 
 type CarDetailProps = {
   profile: OpsVehicleProfile;

@@ -15,22 +15,33 @@ import type {
 } from "@/lib/workflow";
 
 export type DealRow = {
-  id: string;
-  workflow_id: string;
-  workflow_version_id: string | null;
-  customer_id: string | null;
-  asset_id: string | null;
-  source: string | null;
-  status: string;
-  op_manager_id: string | null;
-  created_at: string;
-  updated_at: string;
-  payload: Record<string, unknown> | null;
-};
+   id: string;
+   workflow_id: string;
+   workflow_version_id: string | null;
+   customer_id: string | null;
+   asset_id: string | null;
+   source: string | null;
+   status: string;
+   op_manager_id: string | null;
+   deal_number: string | null;
+   created_at: string;
+   updated_at: string;
+   payload: Record<string, unknown> | null;
+ };
 
 type CreateDealResult =
   | { success: true; deal: DealRow }
   | { success: false; statusCode: number; message: string };
+
+// Sequential deal number generator starting from 1000
+let dealNumberCounter = 1000;
+
+async function generateSequentialDealNumber(): Promise<string> {
+  // In a real application, this would query the database for the last used number
+  // For now, we'll use an in-memory counter starting from 1000
+  const currentNumber = dealNumberCounter++;
+  return `FL-${currentNumber}`;
+}
 
 const DEFAULT_GUARD_PAYLOAD: Record<string, unknown> = {
   quotationPrepared: false,
@@ -249,6 +260,10 @@ export async function createDealWithWorkflow(
       payload.payload ?? null,
     );
 
+    // Generate deal number - SEQUENTIAL NUMBERING starting from 1000
+    const dealNumber = await generateSequentialDealNumber();
+    console.log(`[DEBUG] Generated sequential deal number: ${dealNumber}`);
+
     const { data, error } = await supabase
       .from("deals")
       .insert({
@@ -259,14 +274,16 @@ export async function createDealWithWorkflow(
         source: payload.source,
         status: "NEW",
         op_manager_id: payload.op_manager_id ?? null,
+        deal_number: dealNumber,
         payload: mergedPayload,
       })
       .select(
-        "id, workflow_id, workflow_version_id, customer_id, asset_id, source, status, op_manager_id, created_at, updated_at, payload",
+        "id, workflow_id, workflow_version_id, customer_id, asset_id, source, status, op_manager_id, deal_number, created_at, updated_at, payload",
       )
       .single<DealRow>();
 
     if (error || !data) {
+      console.error(`[DEBUG] failed to create deal in database:`, error);
       if (createdCustomer && customerId) {
         const cleanupContact = await supabase
           .from("workflow_contacts")
@@ -299,6 +316,7 @@ export async function createDealWithWorkflow(
       };
     }
 
+    console.log(`[DEBUG] successfully created deal:`, data.id, `with deal_number:`, data.deal_number);
     return { success: true, deal: data };
   } catch (error) {
     console.error("[workflow] unexpected error while creating deal", error);

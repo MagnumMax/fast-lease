@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 320" role="img" aria-labelledby="vehicle-placeholder-title">
+  <title id="vehicle-placeholder-title">Vehicle image not available</title>
+  <rect width="480" height="320" fill="#f4f4f5" />
+  <g fill="none" stroke="#d1d5db" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="80" y="120" width="320" height="140" rx="36" />
+    <circle cx="150" cy="260" r="36" />
+    <circle cx="330" cy="260" r="36" />
+    <path d="M140 120 L160 80 H320 L340 120" />
+  </g>
+  <text x="240" y="80" text-anchor="middle" font-family="Inter, 'Segoe UI', sans-serif" font-size="26" fill="#9ca3af">
+    No Vehicle Photo
+  </text>
+</svg>

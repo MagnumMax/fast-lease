@@ -6,7 +6,8 @@ import {
   OPS_WORKFLOW_STATUS_EXIT_ROLE,
   OPS_WORKFLOW_STATUS_MAP,
   WORKFLOW_ROLE_LABELS,
-} from "@/lib/data/operations/deals";
+  type OpsDealStatusKey,
+} from "@/lib/supabase/queries/operations";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { completeTaskRequestSchema, createWorkflowService } from "@/lib/workflow";
 import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
@@ -118,8 +119,8 @@ function normalizeStatusKey(value: string | null | undefined) {
   return null;
 }
 
-function determineNextStatus(statusKey: keyof typeof OPS_WORKFLOW_STATUS_MAP) {
-  const index = OPS_DEAL_STATUS_ORDER.indexOf(statusKey);
+function determineNextStatus(statusKey: string) {
+  const index = OPS_DEAL_STATUS_ORDER.findIndex(status => status === statusKey);
   if (index === -1 || index >= OPS_DEAL_STATUS_ORDER.length - 1) {
     return null;
   }
@@ -148,19 +149,19 @@ async function autoTransitionOnTaskCompletion(params: {
   }
 
   const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
-  const guardMatches = statusMeta.exitGuards.some((guard) => guard.key === params.guardKey);
+  const guardMatches = statusMeta.exitGuards.some((guard: { key: string }) => guard.key === params.guardKey);
   if (!guardMatches) {
     return;
   }
 
-  const targetStatus = determineNextStatus(statusKey);
+  const targetStatus = determineNextStatus(statusKey as string);
   if (!targetStatus) {
     return;
   }
 
   const actorRole =
     normalizeAppRole(params.assigneeRole) ??
-    OPS_WORKFLOW_STATUS_EXIT_ROLE[statusKey] ??
+    OPS_WORKFLOW_STATUS_EXIT_ROLE[statusKey as OpsDealStatusKey] ??
     "OP_MANAGER";
 
   try {

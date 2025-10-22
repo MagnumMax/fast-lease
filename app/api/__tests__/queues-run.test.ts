@@ -35,8 +35,10 @@ describe("POST /api/workflow/queues/run", () => {
       processSchedules: vi.fn().mockResolvedValue({ processed: 3, failed: 0 }),
     };
 
-    mockedQueueProcessor.mockReturnValue(processorInstance as any);
-    mockedCreateSupabaseServiceClient.mockResolvedValue({} as any);
+    // @ts-expect-error - Mock object for testing
+    mockedQueueProcessor.mockReturnValue(processorInstance);
+    // @ts-expect-error - Mock object for testing
+    mockedCreateSupabaseServiceClient.mockResolvedValue({});
 
     const response = await POST();
 

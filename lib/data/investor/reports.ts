@@ -1,3 +1,4 @@
+// Investor Reports Data Module
 export type InvestorReportRecord = {
   id: string;
   reportCode: string;
@@ -5,47 +6,28 @@ export type InvestorReportRecord = {
   periodStart: string;
   periodEnd: string;
   format: "pdf" | "xlsx" | "csv";
-  status: "ready" | "queued" | "processing" | "failed";
-  storagePath: string | null;
+  status: "queued" | "processing" | "ready" | "failed";
+  requestedAt: string;
   createdAt: string;
   generatedAt: string | null;
+  downloadUrl?: string;
+  storagePath: string | null;
 };
 
+// Fallback data for development
 export const INVESTOR_REPORTS_FALLBACK: InvestorReportRecord[] = [
   {
-    id: "rep-1",
-    reportCode: "REP-2025-004",
+    id: "report-1",
+    reportCode: "REP-2025-001",
     reportType: "portfolio_yield",
-    periodStart: "2024-12-01",
+    periodStart: "2025-01-01",
     periodEnd: "2025-01-31",
     format: "pdf",
     status: "ready",
-    storagePath: null,
+    requestedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     generatedAt: new Date().toISOString(),
-  },
-  {
-    id: "rep-2",
-    reportCode: "REP-2024-099",
-    reportType: "payment_schedule",
-    periodStart: "2024-11-01",
-    periodEnd: "2024-12-31",
-    format: "xlsx",
-    status: "ready",
-    storagePath: null,
-    createdAt: new Date().toISOString(),
-    generatedAt: new Date().toISOString(),
-  },
-  {
-    id: "rep-3",
-    reportCode: "REP-2024-083",
-    reportType: "cash_flow",
-    periodStart: "2024-10-01",
-    periodEnd: "2024-11-30",
-    format: "csv",
-    status: "ready",
-    storagePath: null,
-    createdAt: new Date().toISOString(),
-    generatedAt: new Date().toISOString(),
+    storagePath: "/reports/REP-2025-001.pdf",
+    downloadUrl: "/api/reports/REP-2025-001/download",
   },
 ];

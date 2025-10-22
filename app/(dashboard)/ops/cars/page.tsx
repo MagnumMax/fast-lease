@@ -1,5 +1,5 @@
 import { OpsCarsCatalogue } from "@/app/(dashboard)/ops/_components/cars-catalogue";
-import { getOperationsCars } from "@/lib/supabase/queries/operations";
+import { getOperationsCars } from "@/lib/supabase/queries/operations-server";
 
 export default async function OpsCarsPage() {
   const cars = await getOperationsCars();

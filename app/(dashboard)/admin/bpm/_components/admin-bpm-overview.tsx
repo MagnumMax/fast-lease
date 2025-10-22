@@ -59,6 +59,11 @@ const STATUS_META: Record<
     description: "Process is live and orchestrating operations.",
     badgeVariant: "success",
   },
+  inactive: {
+    label: "Inactive",
+    description: "Process is temporarily disabled.",
+    badgeVariant: "outline",
+  },
   draft: {
     label: "Draft",
     description: "Process is in design, not yet deployed.",
@@ -153,6 +158,8 @@ export function AdminBpmOverview({
         name: form.name.trim(),
         status: "draft",
         version: "v1.0",
+        description: `Process created for ${form.name.trim()}`,
+        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         owner: form.owner.trim() || "Automation",
         tags: form.tags
@@ -165,7 +172,10 @@ export function AdminBpmOverview({
         id: generateClientId("version"),
         processId: newProcess.id,
         version: "v1.0",
+        status: "current",
+        changes: ["Initial version"],
         note: "Initial draft created via admin console.",
+        effectiveDate: newProcess.updatedAt,
         createdAt: newProcess.updatedAt,
       };
 
@@ -344,7 +354,7 @@ export function AdminBpmOverview({
                         Owner: {process.owner}
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {process.tags.map((tag) => (
+                        {process.tags.map((tag: string) => (
                           <Badge key={`${process.id}-${tag}`} variant="secondary">
                             #{tag}
                           </Badge>

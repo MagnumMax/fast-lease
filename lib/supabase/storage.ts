@@ -13,7 +13,10 @@ export async function createSignedStorageUrl({
   path,
   expiresIn = DEFAULT_EXPIRATION,
 }: SignedUrlOptions): Promise<string | null> {
-  if (!path) {
+  const normalizedPath = typeof path === "string" ? path.trim().replace(/^\/+/, "") : "";
+
+  if (!normalizedPath) {
+    console.warn("[storage] skipping signed url: empty path", { bucket, path });
     return null;
   }
 
@@ -21,16 +24,46 @@ export async function createSignedStorageUrl({
     const supabase = await createSupabaseServiceClient();
     const { data, error } = await supabase.storage
       .from(bucket)
-      .createSignedUrl(path, expiresIn, { download: true });
+      .createSignedUrl(normalizedPath, expiresIn, { download: true });
 
     if (error) {
-      console.error("[storage] failed to create signed url", { bucket, path, error });
+      const normalizedError = error as {
+        status?: number;
+        statusCode?: string | number;
+        message?: string;
+      };
+      const statusCodeValue = normalizedError.statusCode ?? normalizedError.status;
+      const statusCode = typeof statusCodeValue === "string"
+        ? Number(statusCodeValue)
+        : Number(statusCodeValue ?? NaN);
+      const isNotFound =
+        statusCode === 404 ||
+        /not found/i.test(normalizedError.message ?? "") ||
+        /object .+ does not exist/i.test(normalizedError.message ?? "");
+
+      if (isNotFound) {
+        console.warn("[storage] object not found, returning null URL", {
+          bucket,
+          path: normalizedPath,
+        });
+        return null;
+      }
+
+      console.error("[storage] failed to create signed url", {
+        bucket,
+        path: normalizedPath,
+        error,
+      });
       return null;
     }
 
     return data?.signedUrl ?? null;
   } catch (error) {
-    console.error("[storage] unexpected error generating signed url", error);
+    console.error("[storage] unexpected error generating signed url", {
+      bucket,
+      path: normalizedPath,
+      error,
+    });
     return null;
   }
 }

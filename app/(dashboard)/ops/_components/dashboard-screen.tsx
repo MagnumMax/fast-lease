@@ -39,12 +39,18 @@ function resolveToneBadge(tone?: string) {
   return toneToBadgeVariant[tone] ?? "secondary";
 }
 
-function WatchlistIndicator({ tone }: { tone: "info" | "warning" | "danger" }) {
-  if (tone === "danger") {
+function WatchlistIndicator({ tone }: { tone?: "emerald" | "indigo" | "amber" | "rose" }) {
+  if (tone === "rose") {
     return <OctagonAlert className="h-4 w-4 text-rose-500" aria-hidden="true" />;
   }
-  if (tone === "warning") {
+  if (tone === "amber") {
     return <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden="true" />;
+  }
+  if (tone === "emerald") {
+    return <MonitorDot className="h-4 w-4 text-emerald-500" aria-hidden="true" />;
+  }
+  if (tone === "indigo") {
+    return <MonitorDot className="h-4 w-4 text-indigo-500" aria-hidden="true" />;
   }
   return <MonitorDot className="h-4 w-4 text-brand-500" aria-hidden="true" />;
 }

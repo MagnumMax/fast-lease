@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import {
-  getInitialReportState,
   requestInvestorReportAction,
   type RequestReportState,
 } from "./actions";
@@ -80,7 +79,7 @@ function SubmitButton() {
 function ReportGeneratorForm({ lastReadyAt }: { lastReadyAt: string | null }) {
   const [state, formAction] = useFormState<RequestReportState, FormData>(
     requestInvestorReportAction,
-    getInitialReportState(),
+    { status: "idle" },
   );
 
   const statusBadge =

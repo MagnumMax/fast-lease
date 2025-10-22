@@ -79,15 +79,16 @@ function createUserRecord(
 
   return {
     id: profile.id,
-    userId: profile.user_id,
+    name: profile.full_name ?? primaryEmail ?? "—",
     fullName: profile.full_name ?? primaryEmail ?? "—",
     email: primaryEmail ?? "—",
+    role: Array.from(roleSet)[0] ?? "CLIENT",
     roles: Array.from(roleSet),
     status: normaliseStatus(profile.status),
+    lastLogin: profile.last_login_at ?? authUser?.last_sign_in_at ?? "—",
     lastLoginAt: profile.last_login_at ?? authUser?.last_sign_in_at ?? null,
     invitationSentAt,
-    phone: profile.phone,
-    metadata: profile.metadata,
+    createdAt: authUser?.created_at ?? new Date().toISOString(),
   };
 }
 

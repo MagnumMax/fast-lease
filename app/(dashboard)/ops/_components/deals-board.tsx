@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+} from "react";
 import Sortable, { type SortableEvent } from "sortablejs";
 import {
   AlertTriangle,
@@ -22,14 +29,12 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -55,12 +60,17 @@ import {
   type OpsDealGuardStatus,
   type OpsDealSummary,
   type WorkflowRole,
-  type WorkflowStatusMeta,
-} from "@/lib/data/operations/deals";
-import { type OpsCarRecord } from "@/lib/data/operations/cars";
-import { type OpsClientRecord } from "@/lib/data/operations/clients";
+  type WorkflowStatusItem,
+} from "@/lib/supabase/queries/operations";
+
+import { type OpsCarRecord, type OpsClientRecord } from "@/lib/supabase/queries/operations";
 import { cn } from "@/lib/utils";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
+
+// Обновляем тип для включения deal_number
+type DealRowWithDealNumber = DealRow & {
+  deal_number: string | null;
+};
 
 type OpsDealsBoardProps = {
   initialDeals: OpsDealSummary[];
@@ -98,6 +108,7 @@ const CURRENT_USER_ROLE: WorkflowRole = "OP_MANAGER";
 
 const FALLBACK_VEHICLE = "Vehicle TBD";
 const FALLBACK_SOURCE = "Website";
+const BASE_SOURCE_OPTIONS = ["Supabase import", "Broker", "Dubizzle"];
 
 function extractSourceOptions(deals: OpsDealSummary[]) {
   const sources = Array.from(new Set(deals.map((deal) => deal.source))).filter(Boolean);
@@ -140,21 +151,36 @@ function formatDateLabel(value: string) {
   });
 }
 
-function formatSlaLabel(deal: OpsDealSummary | undefined, meta: WorkflowStatusMeta) {
-  if (deal?.slaDueAt) {
-    const dueDate = new Date(deal.slaDueAt);
-    if (!Number.isNaN(dueDate.getTime())) {
-      const diffMs = dueDate.getTime() - Date.now();
-      const diffHours = Math.round(diffMs / (1000 * 60 * 60));
-      if (diffHours > 0) {
-        return `Due in ${diffHours}h`;
-      }
-      if (diffHours < 0) {
-        return `Overdue ${Math.abs(diffHours)}h`;
-      }
-      return "Due now";
-    }
+function formatSlaCountdown(slaDueAt: string | null | undefined): string | null {
+  if (!slaDueAt) {
+    return null;
   }
+  const dueDate = new Date(slaDueAt);
+  if (Number.isNaN(dueDate.getTime())) {
+    return null;
+  }
+  const diffMs = dueDate.getTime() - Date.now();
+  const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+  if (diffHours > 0) {
+    return `Осталось ${diffHours} ч`;
+  }
+  if (diffHours < 0) {
+    return `Просрочка ${Math.abs(diffHours)} ч`;
+  }
+  return "Срок истекает";
+}
+
+function formatSlaLabel(deal: OpsDealSummary | undefined, meta: WorkflowStatusItem) {
+  const countdown = formatSlaCountdown(deal?.slaDueAt ?? null);
+
+  if (deal?.slaLabel) {
+    return countdown ? `${countdown}` : deal.slaLabel;
+  }
+
+  if (countdown) {
+    return countdown;
+  }
+
   return meta.slaLabel ?? "SLA —";
 }
 
@@ -194,10 +220,10 @@ function createGuardStatusesFromMeta(
   payload: Record<string, unknown> | null = null,
 ): OpsDealGuardStatus[] {
   const meta = OPS_WORKFLOW_STATUS_MAP[statusKey];
-  return meta.exitGuards.map((guard) => ({
+  return meta.exitGuards.map((guard: { key: string; label: string; hint?: string }) => ({
     key: guard.key,
     label: guard.label,
-    hint: guard.hint,
+    hint: guard.hint || null,
     fulfilled: Boolean(getPayloadValue(payload, guard.key)),
   }));
 }
@@ -234,38 +260,63 @@ function buildGuardContextFromStatuses(
 }
 
 function mapDealRowToSummary(
-  row: DealRow,
-  {
-    reference,
-    clientName,
-    vehicleLabel,
-    source,
-  }: {
-    reference?: string;
-    clientName?: string;
-    vehicleLabel?: string;
-    source?: string;
-  } = {},
-): OpsDealSummary {
+   row: DealRowWithDealNumber,
+   {
+     reference,
+     clientName,
+     vehicleLabel,
+     source,
+   }: {
+     reference?: string;
+     clientName?: string;
+     vehicleLabel?: string;
+     source?: string;
+   } = {},
+ ): OpsDealSummary {
   const statusKey = (row.status as OpsDealStatusKey) ?? "NEW";
   const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
   const guardStatuses = createGuardStatusesFromMeta(statusKey, row.payload);
 
+  // Используем deal_number из базы данных, если он есть, иначе формируем fallback
   const fallbackId = row.id ? `FL-${row.id.slice(-6).toUpperCase()}` : `deal-${Date.now()}`;
-  const dealIdentifier = reference?.trim() || fallbackId;
+  const dealIdentifier = (row.deal_number?.trim()) || reference?.trim() || fallbackId;
+
+  console.log(`[DEBUG] mapDealRowToSummary:`, {
+    rowId: row.id,
+    dealNumber: row.deal_number,
+    reference,
+    fallbackId,
+    finalDealIdentifier: dealIdentifier
+  });
+  const updatedAt = row.updated_at ?? new Date().toISOString();
+  const updatedAtDate = new Date(updatedAt);
+  let slaDueAt: string | null = null;
+
+  if (statusMeta.slaLabel) {
+    const match = statusMeta.slaLabel.match(/(\d+)\s*h/i);
+    if (match) {
+      const hours = Number(match[1]);
+      if (!Number.isNaN(hours)) {
+        const due = new Date(updatedAtDate.getTime() + hours * 60 * 60 * 1000);
+        slaDueAt = due.toISOString();
+      }
+    }
+  }
 
   return {
     id: row.id,
     dealId: dealIdentifier,
+    clientId: row.customer_id,
     client: clientName ?? `Client ${row.customer_id?.slice(-4) ?? "0000"}`,
+    vehicleId: row.asset_id,
     vehicle: vehicleLabel ?? FALLBACK_VEHICLE,
-    updatedAt: row.updated_at ?? new Date().toISOString(),
+    updatedAt,
     stage: statusMeta.description,
     statusKey,
     ownerRole: statusMeta.ownerRole,
     source: source ?? row.source ?? FALLBACK_SOURCE,
     nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
-    slaDueAt: null,
+    slaDueAt,
     guardStatuses,
   };
 }
@@ -276,6 +327,15 @@ export function OpsDealsBoard({
   vehicleDirectory,
 }: OpsDealsBoardProps) {
   const router = useRouter();
+
+  console.log("[DEBUG] OpsDealsBoard received:", {
+    initialDealsCount: initialDeals.length,
+    clientDirectoryCount: clientDirectory.length,
+    vehicleDirectoryCount: vehicleDirectory.length,
+    firstDeal: initialDeals[0],
+    firstClient: clientDirectory[0],
+    firstVehicle: vehicleDirectory[0],
+  });
 
   const [deals, setDeals] = useState<OpsDealSummary[]>(() => initialDeals);
   const dealsRef = useRef<OpsDealSummary[]>(initialDeals);
@@ -291,14 +351,45 @@ export function OpsDealsBoard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingTransitionId, setPendingTransitionId] = useState<string | null>(null);
 
-  const sourceOptions = useMemo(() => extractSourceOptions(deals), [deals]);
+  const sourceOptions = useMemo(() => {
+    const merged = new Set<string>(BASE_SOURCE_OPTIONS);
+    extractSourceOptions(deals).forEach((option) => merged.add(option));
+    return Array.from(merged);
+  }, [deals]);
   const defaultSource = sourceOptions[0] ?? FALLBACK_SOURCE;
+  const clientNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    clientDirectory.forEach((client) => {
+      map.set(client.id, client.name);
+      map.set(client.id.toLowerCase(), client.name);
+      const suffix = client.id.slice(-4).toLowerCase();
+      if (suffix) {
+        map.set(suffix, client.name);
+      }
+    });
+    return map;
+  }, [clientDirectory]);
+  const vehicleNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    vehicleDirectory.forEach((vehicle) => {
+      map.set(vehicle.vin, vehicle.name);
+      map.set(vehicle.vin.toLowerCase(), vehicle.name);
+      if (vehicle.name) {
+        map.set(vehicle.name.toLowerCase(), vehicle.name);
+      }
+      if (vehicle.detailHref) {
+        map.set(vehicle.detailHref.toLowerCase(), vehicle.name);
+      }
+    });
+    return map;
+  }, [vehicleDirectory]);
   const [formState, setFormState] = useState<DealFormState>(() => ({
     reference: "",
     clientId: clientDirectory[0]?.id ?? "",
     vehicleVin: vehicleDirectory[0]?.vin ?? "",
     source: defaultSource,
   }));
+  const [showCustomSource, setShowCustomSource] = useState(false);
 
   useEffect(() => {
     if (formState.clientId && clientDirectory.some((client) => client.id === formState.clientId)) {
@@ -496,7 +587,7 @@ export function OpsDealsBoard({
               return;
             }
 
-            const updatedRow = json as DealRow;
+            const updatedRow = json as DealRowWithDealNumber;
             const nextMeta = OPS_WORKFLOW_STATUS_MAP[newStatus];
             setDeals((prev) =>
               prev.map((deal) =>
@@ -535,7 +626,7 @@ export function OpsDealsBoard({
       Object.values(sortableInstances.current).forEach((instance) => instance?.destroy());
       sortableInstances.current = createSortableSeed();
     };
-  }, [columnSignature]);
+  }, [columnSignature, columnRefs, sortableInstances, router]);
 
   async function handleCreateDeal() {
     if (isSubmitting) {
@@ -570,6 +661,21 @@ export function OpsDealsBoard({
       vehicleNameParts.length > 1 ? vehicleNameParts.slice(1).join(" ") : selectedVehicle.name;
 
     try {
+      console.log(`[DEBUG] calling createOperationsDeal with:`, {
+        source: normalizedSource,
+        reference,
+        customer: {
+          full_name: selectedClient.name,
+          email: selectedClient.email || undefined,
+          phone: selectedClient.phone || undefined,
+        },
+        asset: {
+          type: "VEHICLE",
+          make: vehicleMake,
+          model: vehicleModel,
+        },
+      });
+
       const result = await createOperationsDeal({
         source: normalizedSource,
         reference,
@@ -585,6 +691,8 @@ export function OpsDealsBoard({
         },
       });
 
+      console.log(`[DEBUG] createOperationsDeal result:`, result);
+
       if (result.error || !result.data) {
         setFeedback({
           type: "error",
@@ -593,7 +701,8 @@ export function OpsDealsBoard({
         return;
       }
 
-      const createdDeal = result.data as DealRow;
+      const createdDeal = result.data as DealRowWithDealNumber;
+      console.log(`[DEBUG] created deal data:`, createdDeal);
       const vehicleLabel = selectedVehicle.name || `${vehicleMake} ${vehicleModel}`.trim();
 
       const summary = mapDealRowToSummary(createdDeal, {
@@ -602,6 +711,8 @@ export function OpsDealsBoard({
         vehicleLabel: vehicleLabel || `${vehicleMake} ${vehicleModel}`,
         source: normalizedSource,
       });
+
+      console.log(`[DEBUG] mapped deal summary:`, summary);
 
       setDeals((prev) => {
         const filtered = prev.filter((deal) => deal.id !== summary.id);
@@ -633,7 +744,6 @@ export function OpsDealsBoard({
       <Card className="bg-card/60 backdrop-blur">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
-            <CardDescription>Operations · Fast Lease workflow</CardDescription>
             <CardTitle>Deals</CardTitle>
             {feedback ? (
               <p
@@ -680,9 +790,6 @@ export function OpsDealsBoard({
               <DialogContent className="max-w-xl rounded-3xl">
                 <DialogHeader>
                   <DialogTitle>Create deal</DialogTitle>
-                  <DialogDescription>
-                    Создайте сделку, контакт и карточку авто напрямую из операционной панели.
-                  </DialogDescription>
                 </DialogHeader>
                 <form
                   className="space-y-4"
@@ -730,11 +837,8 @@ export function OpsDealsBoard({
                     </select>
                     {selectedClient ? (
                       <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-                        <p>{selectedClient.email}</p>
+                        <p>{selectedClient.email || "—"}</p>
                         <p>{selectedClient.phone}</p>
-                        <p className="mt-1 uppercase tracking-[0.2em] text-[10px] text-muted-foreground/70">
-                          {selectedClient.status}
-                        </p>
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground">
@@ -782,21 +886,39 @@ export function OpsDealsBoard({
                     <label htmlFor="deal-source" className="text-sm font-medium text-foreground/80">
                       Источник сделки
                     </label>
-                    <Input
+                    <select
                       id="deal-source"
-                      value={formState.source}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, source: event.target.value }))
-                      }
-                      list="deal-source-suggestions"
-                      placeholder={sourceOptions[0] ?? FALLBACK_SOURCE}
-                      className="rounded-xl"
-                    />
-                    <datalist id="deal-source-suggestions">
+                      value={showCustomSource ? "__custom" : formState.source}
+                      onChange={(event) => {
+                        const selected = event.target.value;
+                        if (selected === "__custom") {
+                          setShowCustomSource(true);
+                          setFormState((prev) => ({ ...prev, source: "" }));
+                        } else {
+                          setShowCustomSource(false);
+                          setFormState((prev) => ({ ...prev, source: selected }));
+                        }
+                      }}
+                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+                    >
                       {sourceOptions.map((option) => (
-                        <option key={option} value={option} />
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
                       ))}
-                    </datalist>
+                      <option value="__custom">Другое...</option>
+                    </select>
+                    {showCustomSource ? (
+                      <Input
+                        id="deal-source-custom"
+                        value={formState.source}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, source: event.target.value }))
+                        }
+                        placeholder="Укажите источник"
+                        className="rounded-xl"
+                      />
+                    ) : null}
                   </div>
 
                   {feedback?.type === "error" ? (
@@ -822,24 +944,28 @@ export function OpsDealsBoard({
               <button
                 type="button"
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-3 py-1 transition",
+                  "inline-flex items-center rounded-lg px-2 py-1 transition",
                   view === "kanban" ? "bg-brand-500 text-white shadow" : "text-muted-foreground",
                 )}
                 onClick={() => setView("kanban")}
+                aria-label="Show Kanban view"
+                aria-pressed={view === "kanban"}
               >
                 <LayoutGrid className="h-4 w-4" />
-                Kanban
+                <span className="sr-only">Kanban</span>
               </button>
               <button
                 type="button"
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-lg px-3 py-1 transition",
+                  "inline-flex items-center rounded-lg px-2 py-1 transition",
                   view === "table" ? "bg-brand-500 text-white shadow" : "text-muted-foreground",
                 )}
                 onClick={() => setView("table")}
+                aria-label="Show Table view"
+                aria-pressed={view === "table"}
               >
                 <TableIcon className="h-4 w-4" />
-                Table
+                <span className="sr-only">Table</span>
               </button>
             </div>
           </div>
@@ -870,11 +996,7 @@ export function OpsDealsBoard({
                       </p>
                       <Badge variant={STATUS_BADGES[status]}>{columnDeals.length}</Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">{meta.description}</p>
-                    <p className="text-[11px] text-muted-foreground/80">
-                      Переход: {exitRole ? WORKFLOW_ROLE_LABELS[exitRole] : "—"} ·{" "}
-                      {formatSlaLabel(columnDeals[0], meta)}
-                    </p>
+                      {/* Transition meta */}
                   </header>
                   <div
                     ref={(element) => {
@@ -886,6 +1008,55 @@ export function OpsDealsBoard({
                     {columnDeals.map((deal) => {
                       const isTransitioning = pendingTransitionId === deal.id;
 
+                      const dealHref = `/ops/deals/${toSlug(deal.dealId)}`;
+                      const ownerRoleLabel =
+                        deal.ownerRoleLabel ??
+                        WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
+                        deal.ownerRole;
+                      const ownerDisplay = deal.ownerName ?? ownerRoleLabel;
+                      const slaCountdown = formatSlaCountdown(deal.slaDueAt ?? null);
+                      const slaDisplay = slaCountdown ?? formatSlaLabel(deal, meta);
+                      const clientIdValue = deal.clientId ?? null;
+                      const clientSuffix =
+                        deal.client && /^Client\s/i.test(deal.client)
+                          ? deal.client.split(" ").pop()?.toLowerCase() ?? null
+                          : null;
+                      const clientFromDirectory =
+                        (clientIdValue &&
+                          (clientNameMap.get(clientIdValue) ||
+                            clientNameMap.get(clientIdValue.toLowerCase()) ||
+                            clientNameMap.get(clientIdValue.slice(-4).toLowerCase()))) ??
+                        (clientSuffix ? clientNameMap.get(clientSuffix) : null);
+                      const clientLabel =
+                        deal.client && !/^Client\s/i.test(deal.client)
+                          ? deal.client
+                          : clientFromDirectory ?? deal.client;
+                      const vehicleIdValue = deal.vehicleId ?? null;
+                      const vehicleFromDirectory =
+                        (vehicleIdValue &&
+                          (vehicleNameMap.get(vehicleIdValue) ||
+                            vehicleNameMap.get(vehicleIdValue.toLowerCase()))) ??
+                        (deal.vehicle
+                          ? vehicleNameMap.get(deal.vehicle.toLowerCase())
+                          : null);
+                      const vehicleLabel =
+                        deal.vehicle && deal.vehicle !== FALLBACK_VEHICLE
+                          ? deal.vehicle
+                          : vehicleFromDirectory ?? "";
+
+                      const handleNavigate = () => {
+                        if (isTransitioning) return;
+                        router.push(dealHref);
+                      };
+
+                      const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+                        if (isTransitioning) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          router.push(dealHref);
+                        }
+                      };
+
                       return (
                         <div
                           key={deal.id}
@@ -893,11 +1064,18 @@ export function OpsDealsBoard({
                           data-deal-id={deal.id}
                           data-origin-status={deal.statusKey}
                           className={cn(
-                            "relative flex flex-col gap-3 rounded-xl border border-border bg-background/90 p-4 text-sm shadow-sm transition",
+                            "relative flex flex-col gap-3 rounded-xl border border-border bg-background/90 p-4 text-sm shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                            "cursor-pointer",
                             isTransitioning
                               ? "pointer-events-none opacity-60"
                               : "hover:border-brand-500/70 hover:shadow-lg",
                           )}
+                          role="button"
+                          tabIndex={isTransitioning ? -1 : 0}
+                          aria-disabled={isTransitioning}
+                          aria-label={`Открыть заявку ${deal.dealId}`}
+                          onClick={handleNavigate}
+                          onKeyDown={handleKeyDown}
                         >
                           {isTransitioning ? (
                             <div className="absolute inset-0 flex items-center justify-center">
@@ -906,10 +1084,11 @@ export function OpsDealsBoard({
                           ) : null}
 
                           <div className="flex items-start justify-between gap-3">
-                            <div>
+                            <div className="space-y-1">
                               <p className="font-semibold text-foreground">{deal.dealId}</p>
                               <p className="text-xs text-muted-foreground">
-                                {deal.client} · {deal.source}
+                                <span className="font-medium text-foreground">{clientLabel}</span>
+                                {vehicleLabel ? ` · ${vehicleLabel}` : null}
                               </p>
                             </div>
                             <span className="text-xs text-muted-foreground">
@@ -917,28 +1096,23 @@ export function OpsDealsBoard({
                             </span>
                           </div>
 
-                          <div className="text-xs text-muted-foreground">
-                            <p>{deal.vehicle}</p>
-                          </div>
-
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <Badge variant="outline" className="rounded-lg">
-                              {meta.title}
-                            </Badge>
                             <span className="inline-flex items-center gap-1">
                               <UserCircle2 className="h-3.5 w-3.5" />
-                              {WORKFLOW_ROLE_LABELS[deal.ownerRole] ?? deal.ownerRole}
+                              {ownerDisplay}
                             </span>
-                            <span className="inline-flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              {formatSlaLabel(deal, meta)}
-                            </span>
+                            {slaDisplay ? (
+                              <span className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 font-medium text-foreground">
+                                <Clock className="h-3.5 w-3.5" />
+                                {slaDisplay}
+                              </span>
+                            ) : null}
                           </div>
 
                           {deal.guardStatuses.length > 0 ? (
                             <div className="space-y-2">
                               <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                Guard условия
+                                Задача
                               </p>
                               <div className="space-y-1 text-xs">
                                 {deal.guardStatuses.map((guard) => (
@@ -950,7 +1124,7 @@ export function OpsDealsBoard({
                                         ? "border-emerald-500/60 bg-emerald-50 text-emerald-700"
                                         : "border-amber-500/50 bg-amber-50 text-amber-700",
                                     )}
-                                    title={guard.hint}
+                                    title={guard.hint || undefined}
                                   >
                                     <span className="flex items-center gap-2">
                                       {guard.fulfilled ? (
@@ -972,32 +1146,9 @@ export function OpsDealsBoard({
                                   </div>
                                 ))}
                               </div>
-                              <Button
-                                asChild
-                                variant="outline"
-                                size="sm"
-                                className="mt-2 rounded-lg text-[11px] uppercase tracking-[0.2em]"
-                              >
-                                <Link href={`/ops/deals/${toSlug(deal.dealId)}#tasks`}>
-                                  Управлять задачами
-                                </Link>
-                              </Button>
                             </div>
                           ) : null}
 
-                          <div className="rounded-lg bg-muted/50 p-2 text-xs leading-tight text-foreground">
-                            <span className="font-semibold">Следующий шаг:</span> {deal.nextAction}
-                          </div>
-
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>ID: {deal.id.slice(0, 8)}…</span>
-                            <Link
-                              href={`/ops/deals/${toSlug(deal.dealId)}`}
-                              className="text-brand-600 hover:underline"
-                            >
-                              Открыть
-                            </Link>
-                          </div>
                         </div>
                       );
                     })}
@@ -1046,7 +1197,12 @@ export function OpsDealsBoard({
                           {STATUS_LABELS[deal.statusKey]}
                         </Badge>
                       </TableCell>
-                      <TableCell>{WORKFLOW_ROLE_LABELS[deal.ownerRole] ?? deal.ownerRole}</TableCell>
+                      <TableCell>
+                        {deal.ownerName ??
+                          deal.ownerRoleLabel ??
+                          WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
+                          deal.ownerRole}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{deal.nextAction}</TableCell>
                       <TableCell>{formatDateLabel(deal.updatedAt)}</TableCell>
                       <TableCell>

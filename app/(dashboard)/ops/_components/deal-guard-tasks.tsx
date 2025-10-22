@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { OpsDealGuardStatus, OpsDealStatusKey } from "@/lib/data/operations/deals";
+import type { OpsDealGuardStatus, OpsDealStatusKey } from "@/lib/supabase/queries/operations";
 import { completeDealGuardAction } from "@/app/(dashboard)/ops/deals/[id]/actions";
 
 type FormState = {
@@ -104,7 +104,7 @@ function GuardTaskForm({ dealId, statusKey, guard, slug }: GuardTaskFormProps) {
         type="button"
         variant="outline"
         size="sm"
-        className="rounded-lg text-[11px] uppercase tracking-[0.2em]"
+        className="rounded-lg"
         onClick={() => setShowForm((prev) => !prev)}
       >
         {showForm ? "Отменить" : "Выполнить задачу"}

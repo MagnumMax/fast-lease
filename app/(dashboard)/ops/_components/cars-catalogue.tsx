@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { OpsCarRecord } from "@/lib/data/operations/cars";
+import type { OpsCarRecord } from "@/lib/supabase/queries/operations";
 import { createOperationsCar } from "@/app/(dashboard)/ops/cars/actions";
 
 type OpsCarsCatalogueProps = {
