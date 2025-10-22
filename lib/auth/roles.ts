@@ -1,8 +1,8 @@
-import { AppRole } from "@/lib/auth/types";
+import { AppRole } from "../auth/types";
 import {
   APP_ROLE_HOME_PATH as ROLE_HOME_PATH_DATA,
   APP_ROLE_PRIORITY as ROLE_PRIORITY_DATA,
-} from "@/lib/data/app-roles";
+} from "../data/app-roles";
 
 export const APP_ROLE_PRIORITY = ROLE_PRIORITY_DATA;
 

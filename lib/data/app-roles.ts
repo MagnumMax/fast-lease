@@ -1,4 +1,4 @@
-import type { AppRole } from "@/lib/auth/types";
+import type { AppRole } from "../auth/types";
 
 export type AppRoleDefinition = {
   role: AppRole;
