@@ -167,7 +167,7 @@ export type WorkflowTemplate = {
   workflow: WorkflowMetadata;
   roles: WorkflowRoleDefinition[];
   kanbanOrder: string[];
-  statuses: Record<string, WorkflowStatusDefinition>;
+  stages: Record<string, WorkflowStatusDefinition>;
   transitions: WorkflowTransition[];
   permissions: WorkflowPermissions;
   integrations: WorkflowIntegrationsConfig;

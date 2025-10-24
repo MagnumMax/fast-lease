@@ -71,7 +71,7 @@ describe("WorkflowStateMachine", () => {
     });
 
     expect(result.newStatus.code).toBe("RISK_REVIEW");
-    expect(executed).toHaveLength((template.statuses.RISK_REVIEW.entryActions ?? []).length);
+    expect(executed).toHaveLength((template.stages.RISK_REVIEW.entryActions ?? []).length);
     expect(executed[0]?.context.dealId).toBe("deal-123");
   });
 

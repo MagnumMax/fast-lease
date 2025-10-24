@@ -13,7 +13,8 @@
       "alwaysAllow": [
         "execute_sql",
         "list_tables",
-        "get_advisors"
+        "get_advisors",
+        "get_logs"
       ]
     }
   }

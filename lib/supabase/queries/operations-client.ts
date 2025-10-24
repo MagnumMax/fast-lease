@@ -140,7 +140,7 @@ function buildOperationsDashboardSnapshotFromData(
     },
     {
       id: "pending-invoices",
-      label: "Ожидающие инвойсы",
+      label: "Ждут оплаты",
       value: pendingInvoices.toString(),
       change: "-5%",
       trend: "down",

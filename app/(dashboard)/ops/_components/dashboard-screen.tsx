@@ -163,7 +163,7 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
         ))}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[2fr,1fr]">
+      <section className="grid gap-4 xl:grid-cols-1">
         <Card className="bg-card/60 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
@@ -190,34 +190,6 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
             />
           </CardContent>
         </Card>
-
-        <Card className="bg-card/60 backdrop-blur">
-          <CardHeader>
-            <CardDescription>Alerts</CardDescription>
-            <CardTitle>Exception Watchlist</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {snapshot.exceptionWatchlist.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-start justify-between gap-3 rounded-xl border border-border px-4 py-3"
-              >
-                <div className="flex flex-1 items-start gap-3">
-                  <span className="mt-0.5">
-                    <WatchlistIndicator tone={item.tone} />
-                  </span>
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.description}</p>
-                  </div>
-                </div>
-                <Badge variant={resolveToneBadge(item.tone)} className="shrink-0">
-                  Monitor
-                </Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[2fr,1fr]">
@@ -225,7 +197,7 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
               <CardDescription>Seven-day view</CardDescription>
-              <CardTitle>Demand vs Capacity</CardTitle>
+              <CardTitle>Submitted vs Activated</CardTitle>
             </div>
             <Badge variant="outline" className="rounded-lg">
               Last 7 days
@@ -284,7 +256,7 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
         </Card>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
+      <section className="grid gap-4 lg:grid-cols-1">
         <Card className="bg-card/60 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <div>
@@ -321,47 +293,6 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/60 backdrop-blur">
-          <CardHeader>
-            <CardDescription>Process</CardDescription>
-            <CardTitle>Bottlenecks</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {snapshot.bottlenecks.map((item) => (
-              <div key={item.id} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-foreground">{item.stage}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {item.average} avg / {item.sla} SLA
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-subtle">
-                  <div
-                    className="h-2 rounded-full bg-brand-600 transition-all"
-                    style={{ width: `${item.loadPercent}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card/60 backdrop-blur">
-          <CardHeader>
-            <CardDescription>Automation</CardDescription>
-            <CardTitle>Quality & Coverage</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {snapshot.automationMetrics.map((metric) => (
-              <div key={metric.id} className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">{metric.label}</p>
-                <p className="text-xl font-semibold text-foreground">{metric.primary}</p>
-                <p className="text-xs text-muted-foreground">{metric.helper}</p>
-              </div>
-            ))}
           </CardContent>
         </Card>
       </section>

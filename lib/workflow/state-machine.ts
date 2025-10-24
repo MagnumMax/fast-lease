@@ -107,22 +107,45 @@ function defaultGuardEvaluator(
   const actual = resolveValueByPath(context, condition.key);
   const rule = condition.rule.trim();
 
+  // Логирование для отладки
+  console.log(`[GuardEvaluator] Evaluating condition: key='${condition.key}', rule='${rule}', actual=`, actual);
+
+  // Специальная поддержка для проверки задач
+  if (condition.key === "tasks.allCompleted" && rule === "truthy") {
+    const tasks = actual as Array<{ status: string }> | undefined;
+    if (!tasks || !Array.isArray(tasks)) {
+      console.log(`[GuardEvaluator] tasks.allCompleted: tasks is not an array or undefined, returning false`);
+      return false;
+    }
+    const allCompleted = tasks.every(task => task.status === "completed");
+    console.log(`[GuardEvaluator] tasks.allCompleted: allCompleted=${allCompleted}, tasks=`, tasks);
+    return allCompleted;
+  }
+
   if (rule.startsWith("==")) {
     const expected = parseRuleExpectedValue(rule.slice(2));
-    return actual === expected;
+    const result = actual === expected;
+    console.log(`[GuardEvaluator] == comparison: actual=${actual}, expected=${expected}, result=${result}`);
+    return result;
   }
 
   if (rule.startsWith("!=")) {
     const expected = parseRuleExpectedValue(rule.slice(2));
-    return actual !== expected;
+    const result = actual !== expected;
+    console.log(`[GuardEvaluator] != comparison: actual=${actual}, expected=${expected}, result=${result}`);
+    return result;
   }
 
   if (rule === "truthy") {
-    return Boolean(actual);
+    const result = Boolean(actual);
+    console.log(`[GuardEvaluator] truthy check: actual=${actual}, result=${result}`);
+    return result;
   }
 
   if (rule === "falsy") {
-    return !actual;
+    const result = !actual;
+    console.log(`[GuardEvaluator] falsy check: actual=${actual}, result=${result}`);
+    return result;
   }
 
   throw new Error(
@@ -146,6 +169,7 @@ export class WorkflowStateMachine {
     this.guardEvaluator = options.guardEvaluator ?? defaultGuardEvaluator;
     this.actionExecutor = options.actionExecutor ?? defaultActionExecutor;
     this.transitionsByFrom = this.buildTransitionIndex(template.transitions);
+    console.log(`[StateMachine] Initialized with template stages:`, Object.keys(this.template.stages));
   }
 
   private buildTransitionIndex(
@@ -168,7 +192,8 @@ export class WorkflowStateMachine {
   }
 
   getStatus(code: string): WorkflowStatusDefinition | undefined {
-    return this.template.statuses[code];
+    console.log(`[StateMachine] Getting status for code '${code}', available stages:`, Object.keys(this.template.stages));
+    return this.template.stages[code];
   }
 
   getAvailableTransitions(
@@ -184,9 +209,12 @@ export class WorkflowStateMachine {
   async validateTransition(
     request: WorkflowTransitionRequest,
   ): Promise<WorkflowTransitionValidation> {
+    console.log(`[ValidateTransition] Starting validation for transition from '${request.from}' to '${request.to}' with actorRole '${request.actorRole}'`);
+
     const transition = this.resolveTransition(request.from, request.to);
 
     if (!transition) {
+      console.log(`[ValidateTransition] Transition not found`);
       return {
         allowed: false,
         reason: "UNKNOWN_TRANSITION",
@@ -194,6 +222,7 @@ export class WorkflowStateMachine {
     }
 
     if (!transition.byRoles.includes(request.actorRole)) {
+      console.log(`[ValidateTransition] Role '${request.actorRole}' not allowed for transition`);
       return {
         allowed: false,
         reason: "ROLE_NOT_ALLOWED",
@@ -203,6 +232,7 @@ export class WorkflowStateMachine {
 
     const guards = transition.guards ?? [];
     if (guards.length === 0) {
+      console.log(`[ValidateTransition] No guards, transition allowed`);
       return {
         allowed: true,
         transition,
@@ -210,16 +240,19 @@ export class WorkflowStateMachine {
     }
 
     const context = request.guardContext ?? {};
+    console.log(`[ValidateTransition] Evaluating ${guards.length} guards with context:`, context);
     const failedGuards: WorkflowCondition[] = [];
 
     for (const condition of guards) {
       const result = await this.guardEvaluator(condition, context);
+      console.log(`[ValidateTransition] Guard result for '${condition.key}': ${result}`);
       if (!result) {
         failedGuards.push(condition);
       }
     }
 
     if (failedGuards.length > 0) {
+      console.log(`[ValidateTransition] ${failedGuards.length} guards failed:`, failedGuards.map(g => g.key));
       return {
         allowed: false,
         reason: "GUARD_FAILED",
@@ -228,6 +261,7 @@ export class WorkflowStateMachine {
       };
     }
 
+    console.log(`[ValidateTransition] All guards passed, transition allowed`);
     return {
       allowed: true,
       transition,
@@ -246,7 +280,7 @@ export class WorkflowStateMachine {
       );
     }
 
-    const targetStatus = this.template.statuses[request.to];
+    const targetStatus = this.template.stages[request.to];
     if (!targetStatus) {
       throw new WorkflowTransitionError(
         `Target status '${request.to}' is not defined in workflow template`,

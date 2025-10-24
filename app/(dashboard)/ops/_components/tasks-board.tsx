@@ -172,17 +172,47 @@ export function OpsTasksBoard({ initialTasks }: OpsTasksBoardProps) {
     setIsCreateOpen(false);
   }
 
-  function handleTaskAction(task: OpsTask, status: OpsTaskStatus) {
-    setTasks((prev) =>
-      prev.map((item) =>
-        item.id === task.id
-          ? {
+  async function handleTaskAction(task: OpsTask, status: OpsTaskStatus) {
+    if (status === "done") {
+      try {
+        console.log("[tasks-board] Completing task", { taskId: task.id });
+        const response = await fetch(`/api/tasks/${task.id}/complete`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        });
+        if (response.ok) {
+          console.log("[tasks-board] Task completed successfully", { taskId: task.id });
+          setTasks((prev) =>
+            prev.map((item) =>
+              item.id === task.id
+                ? {
+                    ...item,
+                    status,
+                  }
+                : item,
+            ),
+          );
+        } else {
+          console.error("[tasks-board] Failed to complete task", { taskId: task.id, response });
+        }
+      } catch (error) {
+        console.error("[tasks-board] Error completing task", { taskId: task.id, error });
+      }
+    } else {
+      setTasks((prev) =>
+        prev.map((item) =>
+          item.id === task.id
+            ? {
               ...item,
               status,
             }
           : item,
       ),
     );
+    }
     setSelectedTask(null);
   }
 

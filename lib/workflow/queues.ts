@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createWorkflowService } from "./factory";
 
 type NotificationQueueRow = {
   id: string;
@@ -115,6 +116,37 @@ export class WorkflowQueueProcessor {
 
       processed += next.status === "SENT" ? 1 : 0;
       failed += next.status === "FAILED" ? 1 : 0;
+
+      // Проверяем переходы после успешной отправки webhook
+      if (next.status === "SENT" && row.transition_to && row.deal_id) {
+        try {
+          console.log("[workflow] checking transition after webhook", {
+            dealId: row.deal_id,
+            from: row.transition_from,
+            to: row.transition_to,
+          });
+
+          const workflowService = await createWorkflowService();
+          await workflowService.transitionDeal({
+            dealId: row.deal_id,
+            targetStatus: row.transition_to,
+            actorRole: "SYSTEM" as any,
+            guardContext: row.payload || {},
+          });
+
+          console.log("[workflow] transition successful after webhook", {
+            dealId: row.deal_id,
+            to: row.transition_to,
+          });
+        } catch (error) {
+          console.error("[workflow] transition failed after webhook", {
+            dealId: row.deal_id,
+            to: row.transition_to,
+            error: String(error),
+          });
+          // Не меняем статус webhook, просто логируем ошибку
+        }
+      }
     }
 
     return { processed, failed };
@@ -203,13 +235,31 @@ export class WorkflowQueueProcessor {
 
   private async dispatchWebhook(row: WebhookQueueRow) {
     try {
-      console.info("[workflow] webhook stub", {
+      console.info("[workflow] dispatching webhook", {
         endpoint: row.endpoint,
         payload: row.payload,
       });
 
+      const response = await fetch(row.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(row.payload || {}),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Webhook failed: ${response.status} ${response.statusText}`);
+      }
+
+      console.info("[workflow] webhook sent successfully", {
+        endpoint: row.endpoint,
+        status: response.status,
+      });
+
       return { status: "SENT", processed_at: new Date().toISOString(), error: null };
     } catch (error) {
+      console.error("[workflow] webhook dispatch error", error);
       const retryCount = row.retry_count + 1;
       const nextAttempt = new Date();
       nextAttempt.setMinutes(nextAttempt.getMinutes() + Math.min(30, 2 ** retryCount));

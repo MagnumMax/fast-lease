@@ -114,68 +114,105 @@ export class WorkflowService {
   async transitionDeal(
     input: WorkflowTransitionInput,
   ): Promise<WorkflowTransitionOutput> {
-    const deal = await this.dealRepository.getDealById(input.dealId);
-    if (!deal) {
-      throw new Error(`Deal '${input.dealId}' not found`);
+    const maxRetries = 3;
+    const baseDelay = 1000; // 1 секунда
+    const maxDelay = 10000; // 10 секунд
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Получаем deal для текущей попытки
+        const deal = await this.dealRepository.getDealById(input.dealId);
+        console.log(`[WorkflowService] Attempt ${attempt + 1}/${maxRetries + 1} for deal ${input.dealId} transition from ${deal.status} to ${input.targetStatus}`);
+        if (!deal) {
+          throw new Error(`Deal '${input.dealId}' not found`);
+        }
+
+        const version = await this.resolveWorkflowVersion(deal);
+
+        if (version.workflowId !== deal.workflowId) {
+          throw new Error(
+            `Deal workflow '${deal.workflowId}' does not match template workflow '${version.workflowId}'`,
+          );
+        }
+
+        const stateMachine = new WorkflowStateMachine(version.template, {
+          guardEvaluator: this.guardEvaluator,
+          actionExecutor: this.actionExecutor,
+        });
+
+        const guardContext = this.buildGuardContext(deal.payload, input.guardContext);
+
+        const transitionResult = await stateMachine.performTransition({
+          from: deal.status,
+          to: input.targetStatus,
+          actorRole: input.actorRole,
+          guardContext,
+          actionContext: this.buildActionContext({
+            dealId: deal.id,
+            actorId: input.actorId,
+            payload: input.actionPayload,
+          }),
+          executeEntryActions: input.executeEntryActions,
+        });
+
+        await this.dealRepository.updateDealStatus({
+          dealId: deal.id,
+          previousStatus: deal.status,
+          status: transitionResult.newStatus.code,
+          workflowVersionId: version.id,
+          actorId: input.actorId,
+        });
+
+        await this.auditLogger?.logTransition({
+          dealId: deal.id,
+          fromStatus: deal.status,
+          toStatus: transitionResult.newStatus.code,
+          actorRole: input.actorRole,
+          actorId: input.actorId,
+          workflowVersionId: version.id,
+          context: {
+            guardContext,
+            actionsExecuted: transitionResult.executedActions.map((action) => action.type),
+          },
+        });
+
+        console.log(`[WorkflowService] Successfully completed transition for deal ${input.dealId} on attempt ${attempt + 1}`);
+
+        return {
+          dealId: deal.id,
+          previousStatus: deal.status,
+          newStatus: transitionResult.newStatus.code,
+          workflowVersionId: version.id,
+          executedActions: transitionResult.executedActions,
+          transition: transitionResult,
+        };
+
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`[WorkflowService] Attempt ${attempt + 1} failed for deal ${input.dealId}:`, error);
+
+        // Проверяем, является ли ошибка временной и стоит ли делать retry
+        const isRetryableError = this.isRetryableError(error);
+
+        if (!isRetryableError || attempt === maxRetries) {
+          console.error(`[WorkflowService] Final failure for deal ${input.dealId} after ${attempt + 1} attempts:`, error);
+          throw error;
+        }
+
+        // Вычисляем задержку с exponential backoff
+        const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        console.log(`[WorkflowService] Retrying transition for deal ${input.dealId} in ${delay}ms (attempt ${attempt + 2}/${maxRetries + 1})`);
+
+        // Добавляем jitter для избежания thundering herd
+        const jitteredDelay = delay + Math.random() * 1000;
+        await this.sleep(jitteredDelay);
+      }
     }
 
-    const version = await this.resolveWorkflowVersion(deal);
-
-    if (version.workflowId !== deal.workflowId) {
-      throw new Error(
-        `Deal workflow '${deal.workflowId}' does not match template workflow '${version.workflowId}'`,
-      );
-    }
-
-    const stateMachine = new WorkflowStateMachine(version.template, {
-      guardEvaluator: this.guardEvaluator,
-      actionExecutor: this.actionExecutor,
-    });
-
-    const guardContext = this.buildGuardContext(deal.payload, input.guardContext);
-
-    const transitionResult = await stateMachine.performTransition({
-      from: deal.status,
-      to: input.targetStatus,
-      actorRole: input.actorRole,
-      guardContext,
-      actionContext: this.buildActionContext({
-        dealId: deal.id,
-        actorId: input.actorId,
-        payload: input.actionPayload,
-      }),
-      executeEntryActions: input.executeEntryActions,
-    });
-
-    await this.dealRepository.updateDealStatus({
-      dealId: deal.id,
-      previousStatus: deal.status,
-      status: transitionResult.newStatus.code,
-      workflowVersionId: version.id,
-      actorId: input.actorId,
-    });
-
-    await this.auditLogger?.logTransition({
-      dealId: deal.id,
-      fromStatus: deal.status,
-      toStatus: transitionResult.newStatus.code,
-      actorRole: input.actorRole,
-      actorId: input.actorId,
-      workflowVersionId: version.id,
-      context: {
-        guardContext,
-        actionsExecuted: transitionResult.executedActions.map((action) => action.type),
-      },
-    });
-
-    return {
-      dealId: deal.id,
-      previousStatus: deal.status,
-      newStatus: transitionResult.newStatus.code,
-      workflowVersionId: version.id,
-      executedActions: transitionResult.executedActions,
-      transition: transitionResult,
-    };
+    // Это не должно быть достигнуто, но на всякий случай
+    throw lastError || new Error('Unknown error occurred during transition');
   }
 
   private buildGuardContext(
@@ -230,5 +267,55 @@ export class WorkflowService {
     }
 
     return active;
+  }
+
+  /**
+   * Определяет, является ли ошибка временной и стоит ли делать retry
+   */
+  private isRetryableError(error: Error | unknown): boolean {
+    // Обрабатываем WorkflowTransitionError
+    if (error instanceof Error) {
+      // GUARD_FAILED ошибки могут быть временными (например, если задачи еще не завершились)
+      if (error.name === 'WorkflowTransitionError') {
+        const workflowError = error as any;
+        if (workflowError.validation?.reason === 'GUARD_FAILED') {
+          console.log(`[WorkflowService] GUARD_FAILED error detected, will retry`);
+          return true;
+        }
+      }
+
+      // Ошибки базы данных часто бывают временными
+      const errorMessage = error.message.toLowerCase();
+      const dbErrors = [
+        'connection',
+        'timeout',
+        'deadlock',
+        'lock wait timeout',
+        'temporary failure',
+        'service unavailable',
+        'too many connections'
+      ];
+
+      if (dbErrors.some(dbError => errorMessage.includes(dbError))) {
+        console.log(`[WorkflowService] Database error detected, will retry: ${error.message}`);
+        return true;
+      }
+
+      // Сетевые ошибки
+      if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+        console.log(`[WorkflowService] Network error detected, will retry: ${error.message}`);
+        return true;
+      }
+    }
+
+    console.log(`[WorkflowService] Non-retryable error detected: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+
+  /**
+   * Вспомогательный метод для задержки выполнения
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }

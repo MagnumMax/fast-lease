@@ -208,7 +208,7 @@
   }
 
   .dashboard-mobile-trigger {
-    @apply inline-flex items-center justify-center rounded-xl border border-border bg-card p-2 text-slate-600 transition-colors hover:border-slate-400 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white;
+    @apply inline-flex items-center justify-center rounded-xl border border-border bg-card p-2 text-foreground transition-colors hover:border-slate-400 hover:text-foreground dark:text-slate-100 dark:hover:text-white;
   }
 
   .dashboard-content {

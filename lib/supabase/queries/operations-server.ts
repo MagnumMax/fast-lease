@@ -1464,23 +1464,32 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
   const { data: userData, error: userError } = await supabase.auth.getUser();
   console.log(`[SERVER-OPS] user authenticated:`, !!userData?.user, `error:`, userError);
 
-  // Загружаем данные автомобиля
-  const { data: vehicleData, error: vehicleError } = await supabase
+  // Сначала загружаем все автомобили для поиска по комбинированному slug
+  const { data: allVehicles, error: vehicleError } = await supabase
     .from("vehicles")
     .select(`
       id, vin, make, model, year, body_type, mileage, current_value, status,
       vehicle_images(id, storage_path, label, is_primary, sort_order)
-    `)
-    .or(`vin.ilike.${slug},make.ilike.${slug},model.ilike.${slug}`)
-    .limit(1)
-    .maybeSingle();
+    `);
 
   if (vehicleError) {
-    console.error("[SERVER-OPS] failed to load vehicle detail:", vehicleError);
+    console.error("[SERVER-OPS] failed to load vehicles:", vehicleError);
     return null;
   }
 
-  console.log(`[DEBUG] Vehicle data query result:`, { vehicleData, vehicleError });
+  // Ищем автомобиль по комбинированному slug или отдельным полям
+  const vehicleData = allVehicles?.find(vehicle => {
+    // Создаем комбинированный slug из make и model
+    const combinedSlug = toSlug(`${vehicle.make || ''} ${vehicle.model || ''}`);
+    
+    // Проверяем различные варианты совпадения
+    return (
+      combinedSlug === normalizedSlug ||
+      toSlug(vehicle.vin || '') === normalizedSlug ||
+      toSlug(vehicle.make || '') === normalizedSlug ||
+      toSlug(vehicle.model || '') === normalizedSlug
+    );
+  });
 
   if (!vehicleData) {
     console.log(`[SERVER-OPS] no vehicle found for slug: "${slug}"`);

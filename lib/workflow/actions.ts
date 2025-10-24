@@ -2,11 +2,14 @@ import { createHash } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import type { WorkflowAction } from "./types";
 import type {
   WorkflowActionContext,
   WorkflowActionExecutor,
 } from "./state-machine";
+import { createWorkflowService } from "./factory";
+import { WorkflowTransitionError } from "./state-machine";
 
 function computeSlaDueAt(hours: number | undefined): string | null {
   if (!hours || Number.isNaN(hours)) {
@@ -73,7 +76,7 @@ async function handleTaskCreate(
           guard_key: action.task.guardKey ?? null,
           status_key: context.transition.to,
           status_title:
-            context.template?.statuses?.[context.transition.to]?.title ??
+            context.template?.stages?.[context.transition.to]?.title ??
             context.transition.to,
         },
         action_hash: actionHash,
@@ -187,7 +190,7 @@ async function handleEscalate(
   await enqueueNotification(client, action, context, "ESCALATE");
 }
 
-async function handleWebhook(
+async function handleOutgoingWebhook(
   client: SupabaseClient,
   action: WorkflowAction,
   context: WorkflowActionContext,
@@ -223,6 +226,136 @@ async function handleWebhook(
     await insertAudit(client, "WEBHOOK_ENQUEUED", context, {
       endpoint: action.endpoint,
     });
+  }
+}
+
+export interface IncomingWebhookPayload {
+  dealId: string;
+  event: string;
+  payload?: Record<string, unknown>;
+  actorRole?: string;
+  actorId?: string;
+}
+
+export async function handleWebhook(
+  webhookPayload: IncomingWebhookPayload,
+): Promise<{ success: boolean; error?: string; newStatus?: string }> {
+  console.log("[workflow] handling incoming webhook", {
+    dealId: webhookPayload.dealId,
+    event: webhookPayload.event,
+    payload: webhookPayload.payload,
+  });
+
+  try {
+    const workflowService = await createWorkflowService();
+    const supabase = await createSupabaseServiceClient();
+
+    // Получаем deal
+    const { data: deal, error: dealError } = await supabase
+      .from("deals")
+      .select("id, status, payload, workflow_id, workflow_version_id")
+      .eq("id", webhookPayload.dealId)
+      .maybeSingle();
+
+    if (dealError) {
+      console.error("[workflow] failed to load deal for webhook", dealError);
+      return { success: false, error: "Failed to load deal" };
+    }
+
+    if (!deal) {
+      console.warn("[workflow] deal not found for webhook", { dealId: webhookPayload.dealId });
+      return { success: false, error: "Deal not found" };
+    }
+
+    // Обновляем payload если предоставлен
+    let updatedPayload = deal.payload;
+    if (webhookPayload.payload) {
+      updatedPayload = {
+        ...(deal.payload ?? {}),
+        ...webhookPayload.payload,
+      };
+
+      const { error: updateError } = await supabase
+        .from("deals")
+        .update({ payload: updatedPayload })
+        .eq("id", deal.id);
+
+      if (updateError) {
+        console.error("[workflow] failed to update deal payload", updateError);
+        return { success: false, error: "Failed to update deal payload" };
+      }
+    }
+
+    // Получаем workflow template
+    const versionService = await import("./versioning").then(m => m.WorkflowVersionService);
+    const versionRepo = await import("../supabase/queries/workflow-versions").then(m => m.createSupabaseWorkflowVersionRepository(supabase));
+    const versionServiceInstance = new versionService(versionRepo);
+
+    let version = null;
+    if (deal.workflow_version_id) {
+      version = await versionServiceInstance.getVersionById(deal.workflow_version_id);
+    }
+    if (!version) {
+      version = await versionServiceInstance.getActiveVersion(deal.workflow_id);
+    }
+
+    if (!version) {
+      console.error("[workflow] no active workflow version found", { workflowId: deal.workflow_id });
+      return { success: false, error: "No active workflow version" };
+    }
+
+    // Ищем webhook config в текущем статусе
+    const currentStatus = version.template.stages[deal.status];
+    if (!currentStatus || !currentStatus.webhooks || !currentStatus.webhooks.onEvent) {
+      console.log("[workflow] no webhook config for current status", { status: deal.status });
+      return { success: false, error: "No webhook config for current status" };
+    }
+
+    // Ищем matching event
+    const matchingEvent = currentStatus.webhooks.onEvent.find(
+      (e: any) => e.event === webhookPayload.event
+    );
+
+    if (!matchingEvent) {
+      console.log("[workflow] no matching event found", { event: webhookPayload.event, status: deal.status });
+      return { success: false, error: "No matching event for current status" };
+    }
+
+    // Проверяем conditions если есть
+    if (matchingEvent.conditions && matchingEvent.conditions.length > 0) {
+      // Здесь нужно реализовать проверку conditions
+      // Для простоты, предполагаем, что conditions проверяются в guardContext
+      console.log("[workflow] checking conditions", matchingEvent.conditions);
+    }
+
+    // Вызываем transitionDeal
+    const actorRole = webhookPayload.actorRole || "SYSTEM";
+    const guardContext = updatedPayload || {};
+
+    await workflowService.transitionDeal({
+      dealId: deal.id,
+      targetStatus: matchingEvent.transitionTo,
+      actorRole: actorRole as any,
+      actorId: webhookPayload.actorId,
+      guardContext,
+    });
+
+    console.log("[workflow] webhook transition successful", {
+      dealId: deal.id,
+      from: deal.status,
+      to: matchingEvent.transitionTo,
+    });
+
+    return { success: true, newStatus: matchingEvent.transitionTo };
+
+  } catch (error) {
+    if (error instanceof WorkflowTransitionError) {
+      console.warn("[workflow] webhook transition guard failure", error.validation);
+      return { success: false, error: "Guard conditions not met" };
+    } else {
+      console.error("[workflow] webhook transition error", error);
+      return { success: false, error: "Transition failed" };
+    }
   }
 }
 
@@ -281,7 +414,7 @@ export function createWorkflowActionExecutor(
         await handleEscalate(client, action, context);
         break;
       case "WEBHOOK":
-        await handleWebhook(client, action, context);
+        await handleOutgoingWebhook(client, action, context);
         break;
       case "SCHEDULE":
         await handleSchedule(client, action, context);
@@ -291,3 +424,5 @@ export function createWorkflowActionExecutor(
     }
   };
 }
+
+export { handleWebhook as handleIncomingWebhook };

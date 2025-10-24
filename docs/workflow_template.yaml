@@ -51,7 +51,7 @@ kanban_order:
   - ACTIVE
   - CANCELLED
 
-statuses:
+stages:
   NEW:
     title: "Новая заявка"
     description: "Лид создан (сайт/брокер)."

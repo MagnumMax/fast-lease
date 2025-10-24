@@ -30,7 +30,7 @@ describe("workflow template parser", () => {
 
     expect(template.roles).toHaveLength(10);
 
-    const signingFunding = template.statuses.SIGNING_FUNDING;
+    const signingFunding = template.stages.SIGNING_FUNDING;
     expect(signingFunding).toBeDefined();
     expect(signingFunding.entryActions?.[0]).toEqual(
       expect.objectContaining({ type: "WEBHOOK" }),

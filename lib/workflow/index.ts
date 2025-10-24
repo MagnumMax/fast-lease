@@ -7,3 +7,4 @@ export * from "./factory";
 export * from "./http/schemas";
 export * from "./actions";
 export * from "./queues";
+export { handleIncomingWebhook } from "./actions";

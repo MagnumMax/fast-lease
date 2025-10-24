@@ -122,7 +122,7 @@ export function DashboardLayout({
           type="button"
           aria-hidden="true"
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-overlay bg-black/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
         />
       ) : null}
 
