@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Invoice INV-2025-013</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };
+  </script>
+  <link rel="stylesheet" href="../../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+      <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
+          <div id="back-to-list-container"></div>
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Invoice</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">INV-2025-013 · Rolls-Royce Cullinan</h1>
+                <p class="text-sm text-slate-500">Due by 15 Nov 2025. Auto-debit scheduled for 13 Nov.</p>
+              </div>
+              <span class="badge badge-warning">Awaiting Payment</span>
+            </div>
+
+            <div class="mt-6 grid grid-cols-2 gap-4">
+              <article class="rounded-xl bg-slate-50/80 p-4">
+                <p class="text-xs uppercase tracking-wide text-slate-400">Amount Due</p>
+                <p class="mt-2 text-lg font-semibold text-slate-900" id="invoice-amount">—</p>
+              </article>
+              <article class="rounded-xl bg-slate-50/80 p-4">
+                <p class="text-xs uppercase tracking-wide text-slate-400">Penalties</p>
+                <p class="mt-2 text-lg font-semibold text-emerald-600">0 AED</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="grid gap-6 lg:grid-cols-2">
+            <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Breakdown</h2>
+              <dl class="mt-4 space-y-3 text-sm text-slate-600">
+                <div class="flex justify-between"><dt>Payment Purpose</dt><dd id="invoice-purpose">—</dd></div>
+                <div class="flex justify-between"><dt>Base Payment</dt><dd id="invoice-base">—</dd></div>
+                <div class="flex justify-between"><dt>Insurance</dt><dd id="invoice-insurance">—</dd></div>
+                <div class="flex justify-between"><dt>Telematics</dt><dd id="invoice-iot">—</dd></div>
+                <div class="flex justify-between"><dt>VAT</dt><dd id="invoice-vat">—</dd></div>
+              </dl>
+            </article>
+
+            <article id="payment-methods" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 class="text-sm font-semibold text-slate-800">Payment Methods</h2>
+              <div class="mt-4 grid gap-3">
+                <button class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:border-slate-900">
+                  <span class="flex items-center gap-3">
+                    <i data-lucide="wallet" class="h-4 w-4"></i>
+                    Debit Card · •••• 4832
+                  </span>
+                  <span class="text-xs text-emerald-600">Auto</span>
+                </button>
+                <button class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:border-slate-900">
+                  <span class="flex items-center gap-3">
+                    <i data-lucide="banknote" class="h-4 w-4"></i>
+                    Bank Transfer
+                  </span>
+                  <span class="text-xs text-slate-400">1 business day</span>
+                </button>
+                <button class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-600 hover:border-slate-900">
+                  <span class="flex items-center gap-3">
+                    <i data-lucide="smartphone" class="h-4 w-4"></i>
+                    Apple Pay / Google Pay
+                  </span>
+                </button>
+              </div>
+                <button id="confirm-payment" class="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <i data-lucide="check-circle" class="h-4 w-4"></i>
+                Pay
+              </button>
+            </article>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-sm font-semibold text-slate-800">Notes &amp; SLA</h2>
+            <ul id="invoice-notes" class="mt-4 space-y-3"></ul>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../../assets');
+    const { mountSidebar, mountHeader, applyIcons, formatCurrency, formatDate, mountMobileBottomNav, mountBackToListButton } = shared;
+    const { clientNav } = shared;
+
+    const basePath = '../../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Client', items: clientNav, activePath: '/client/invoices/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Invoice INV-2025-013',
+      breadcrumbs: ['Client', 'Invoices', 'INV-2025-013'],
+      basePath,
+    });
+
+    // Добавить кнопку "Назад к списку"
+    mountBackToListButton({
+      containerId: 'back-to-list-container',
+      listHref: '../../invoices/index.html',
+      label: 'Все счета'
+    });
+
+    // Mount mobile bottom navigation
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: clientNav,
+      activePath: '/client/invoices/index.html',
+      basePath,
+    });
+
+    const invoice = {
+      amount: 890,
+      purpose: 'Monthly lease payment',
+      components: {
+        base: 760,
+        insurance: 80,
+        iot: 25,
+        vat: 25,
+      },
+      due: '2025-11-15',
+      notes: [
+        { date: '2025-02-01', text: 'Auto-debit scheduled for 13 Nov 2025', type: 'info' },
+        { date: '2025-01-16', text: 'January payment received, no penalties', type: 'success' },
+      ],
+    };
+
+    document.getElementById('invoice-amount').textContent = formatCurrency(invoice.amount, 'AED');
+    document.getElementById('invoice-purpose').textContent = invoice.purpose;
+    document.getElementById('invoice-base').textContent = formatCurrency(invoice.components.base, 'AED');
+    document.getElementById('invoice-insurance').textContent = formatCurrency(invoice.components.insurance, 'AED');
+    document.getElementById('invoice-iot').textContent = formatCurrency(invoice.components.iot, 'AED');
+    document.getElementById('invoice-vat').textContent = formatCurrency(invoice.components.vat, 'AED');
+
+    const notesList = document.getElementById('invoice-notes');
+    notesList.innerHTML = invoice.notes
+      .map(
+        (note) => `
+        <li class="flex items-start gap-3 rounded-xl border border-slate-200 px-4 py-3">
+          <div class="mt-1 h-8 w-8 rounded-full ${note.type === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-600'} flex items-center justify-center">
+            <i data-lucide="${note.type === 'success' ? 'check' : 'info'}" class="h-4 w-4"></i>
+          </div>
+          <div>
+            <p class="text-sm font-medium text-slate-900">${note.text}</p>
+            <p class="text-xs text-slate-500">${formatDate(note.date)}</p>
+          </div>
+        </li>
+      `
+      )
+      .join('');
+
+    document.getElementById('confirm-payment').addEventListener('click', () => {
+      const btn = document.getElementById('confirm-payment');
+      btn.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Sending confirmation</span>';
+      setTimeout(() => {
+        btn.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Confirmation sent</span>';
+        applyIcons();
+      }, 1200);
+    });
+
+    applyIcons();
+  </script>
+</body>
+</html>

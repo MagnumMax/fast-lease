@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Fast Lease — My Deals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+    <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto">
+          <section class="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Interaction History</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Applications &amp; Deals</h1>
+              </div>
+              
+            </div>
+            <div class="mt-4 hidden md:block" id="deals-table"></div>
+            <div class="mt-4 md:hidden space-y-4" id="deals-cards"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+  
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, mountMobileBottomNav } = shared;
+    const { clientNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({
+      containerId: 'sidebar',
+      role: 'Client',
+      items: clientNav,
+      activePath: '/client/deals/index.html',
+      basePath,
+    });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'My Deals',
+      breadcrumbs: ['Client', 'Applications & Deals'],
+      basePath,
+    });
+
+    // Initialize mobile bottom navigation
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: clientNav,
+      activePath: '/client/deals/index.html',
+      basePath,
+    });
+
+    const deals = [
+      {
+        id: 'FL-2025-1337',
+        car: 'Rivian R1T Adventure',
+        status: 'Active',
+        updatedAt: '2025-01-28',
+        type: 'deal',
+        link: '#',
+      },
+      {
+        id: 'FL-2025-0976',
+        car: 'Lamborghini Huracan',
+        status: 'Contract Signing',
+        updatedAt: '2025-01-17',
+        type: 'deal',
+        link: '#',
+      },
+      {
+        id: 'APP-2025-2218',
+        car: 'Rolls-Royce Ghost',
+        status: 'Document Review',
+        updatedAt: '2025-01-12',
+        type: 'application',
+        link: '#',
+      },
+      {
+        id: 'FL-2024-8841',
+        car: 'Ferrari 488 Spider',
+        status: 'Completed',
+        updatedAt: '2024-11-04',
+        type: 'completed',
+        link: '#',
+      },
+      {
+        id: 'APP-2024-7781',
+        car: 'Bentley Bentayga',
+        status: 'Rejected',
+        updatedAt: '2024-08-19',
+        type: 'application',
+        link: '#',
+      },
+    ];
+
+    const columns = [
+      {
+        key: 'id',
+        label: 'ID',
+        render: (row) => `<a href="${row.link}" class="font-medium text-slate-900 hover:underline">${row.id}</a>`,
+      },
+      { key: 'car', label: 'Vehicle' },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (row) => statusBadge(row.status),
+      },
+      {
+        key: 'updatedAt',
+        label: 'Updated',
+        render: (row) => formatDate(row.updatedAt),
+      },
+    ];
+
+    function renderCards(data) {
+      const container = document.getElementById('deals-cards');
+      container.innerHTML = data
+        .map(
+          (row) => `
+          <a href="${row.link}" class="block rounded-xl border border-slate-200 p-4 hover:bg-slate-50">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-sm font-semibold text-slate-900">${row.id}</p>
+                <p class="text-sm text-slate-500">${row.car}</p>
+              </div>
+              ${statusBadge(row.status)}
+            </div>
+            <p class="mt-3 text-xs text-slate-500">Updated: ${formatDate(row.updatedAt)}</p>
+          </a>
+        `
+        )
+        .join('');
+    }
+
+    function updateViews() {
+      renderTable({ containerId: 'deals-table', columns, data: deals });
+      renderCards(deals);
+      setTimeout(() => {
+        applyIcons();
+      }, 100);
+    }
+
+    updateViews();
+  </script>
+</body>
+</html>

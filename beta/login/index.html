@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#edf2ff',
+              500: '#2563eb',
+              600: '#1d4ed8',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans">
+  <main class="min-h-screen grid lg:grid-cols-2">
+    <section class="hidden lg:flex bg-[url('https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=900&q=80')] bg-cover bg-center relative">
+      <div class="absolute inset-0 bg-slate-900/70"></div>
+      <div class="relative z-10 flex flex-col justify-between px-12 py-12 text-white">
+        <div>
+          <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm uppercase tracking-[0.2em]">Fast Lease Ecosystem</span>
+          <h1 class="mt-6 text-4xl font-semibold leading-tight">Own a car in under 48 hours.</h1>
+          <p class="mt-4 text-lg text-slate-200">A digital platform that reduces bureaucracy and makes the path to car ownership transparent.</p>
+        </div>
+        <div class="rounded-2xl bg-white/10 p-6 backdrop-blur-md">
+          <h2 class="text-sm uppercase tracking-widest text-slate-200">Proactive notifications</h2>
+          <p class="mt-2 text-lg font-medium">We keep you ahead of the next step and potential risks before they become issues.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-16">
+      <div class="mx-auto w-full max-w-md">
+        <div class="flex items-center gap-3">
+          <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 text-xl font-semibold text-white">FL</div>
+          <div>
+            <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Fast Lease</p>
+            <p class="text-lg font-medium text-slate-900">Unified portal</p>
+          </div>
+        </div>
+
+        <div class="mt-8 rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div class="flex gap-2 border-b border-slate-200 p-2">
+            <button data-tab="sign-in" class="tab-trigger flex-1 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100">
+              Sign In
+            </button>
+            <button data-tab="sign-up" class="tab-trigger flex-1 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100">
+              Sign Up
+            </button>
+          </div>
+
+          <div class="p-8">
+            <form data-tab="sign-in" class="tab-panel space-y-6">
+              <div class="space-y-1">
+                <label for="role-select" class="text-sm font-medium text-slate-700">Quick access</label>
+                <select id="role-select" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                  <option value="">Select role</option>
+                  <option value="client">Client</option>
+                  <option value="investor">Investor</option>
+                  <option value="ops">Operations Manager</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label for="email" class="text-sm font-medium text-slate-700">Email</label>
+                <input id="email" type="email" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500" placeholder="jan.kowalski@example.com" />
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-center justify-between text-sm">
+                  <label for="password" class="font-medium text-slate-700">Password</label>
+                  <a href="#" class="text-brand-600 hover:text-brand-500">Forgot password?</a>
+                </div>
+                <div class="relative">
+                  <input id="password" type="password" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500" placeholder="••••••••" />
+                  <button type="button" data-password-toggle class="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600">
+                    <i data-lucide="eye" class="h-4 w-4"></i>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                <i data-lucide="log-in" class="h-4 w-4"></i>
+                Sign in
+              </button>
+            </form>
+
+            <form data-tab="sign-up" class="tab-panel hidden space-y-6">
+              <div class="grid grid-cols-1 gap-4">
+                <div class="space-y-1">
+                  <label for="full-name" class="text-sm font-medium text-slate-700">Full name</label>
+                  <input id="full-name" type="text" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500" placeholder="Jan Kowalski" />
+                </div>
+                <div class="space-y-1">
+                  <label for="sign-up-email" class="text-sm font-medium text-slate-700">Email</label>
+                  <input id="sign-up-email" type="email" required class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500" placeholder="jan.kowalski@example.com" />
+                </div>
+                <div class="space-y-1">
+                  <label for="sign-up-password" class="text-sm font-medium text-slate-700">Password</label>
+                  <input id="sign-up-password" type="password" required minlength="8" class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-brand-500" placeholder="At least 8 characters" />
+                  <p class="text-xs text-slate-400">At least 8 characters, one digit and one letter.</p>
+                </div>
+              </div>
+              <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">
+                <i data-lucide="user-plus" class="h-4 w-4"></i>
+                Create account
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <p class="mt-6 text-center text-sm text-slate-500">
+          Already have an account? <a href="../login/index.html" class="font-medium text-brand-600 hover:text-brand-500">Sign in</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../assets');
+    const { applyIcons, bindTabs } = shared;
+
+    const tabTriggers = document.querySelectorAll('.tab-trigger');
+
+    bindTabs({ triggersSelector: '.tab-trigger', panelsSelector: '[data-tab]' });
+
+    tabTriggers[0]?.classList.add('bg-slate-900', 'text-white');
+
+    // Open registration tab by default when coming from application
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rawTab = (params.get('tab') || '').toLowerCase();
+      const requestedTab = rawTab === 'register' ? 'sign-up' : rawTab;
+      const fromApplication = document.referrer && document.referrer.includes('/application/');
+      if (requestedTab === 'sign-up' || fromApplication) {
+        const signUpTrigger = document.querySelector('.tab-trigger[data-tab="sign-up"]');
+        signUpTrigger && signUpTrigger.click();
+      }
+    } catch {}
+
+    const rolePresets = {
+      client: {
+        email: 'client@fastlease.io',
+        password: 'client123',
+        redirect: '../client/dashboard/index.html',
+      },
+      investor: {
+        email: 'investor@fastlease.io',
+        password: 'investor123',
+        redirect: '../investor/dashboard/index.html',
+      },
+      ops: {
+        email: 'ops.manager@fastlease.io',
+        password: 'ops123',
+        redirect: '../ops/dashboard/index.html',
+      },
+      admin: {
+        email: 'admin@fastlease.io',
+        password: 'admin123',
+        redirect: '../admin/bpm/index.html',
+      },
+    };
+
+    const roleSelect = document.getElementById('role-select');
+    const signInForm = document.querySelector('form[data-tab="sign-in"]');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+
+    if (signInForm) {
+      signInForm.dataset.redirect = '';
+      signInForm.dataset.role = '';
+    }
+
+    roleSelect?.addEventListener('change', (event) => {
+      const select = event.target;
+      if (!(select instanceof HTMLSelectElement)) return;
+      const preset = rolePresets[select.value];
+      if (preset) {
+        if (emailInput) emailInput.value = preset.email;
+        if (passwordInput) passwordInput.value = preset.password;
+        if (signInForm) {
+          signInForm.dataset.redirect = preset.redirect;
+          signInForm.dataset.role = select.value;
+        }
+        emailInput?.dispatchEvent(new Event('input', { bubbles: true }));
+        passwordInput?.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (signInForm) {
+        signInForm.dataset.redirect = '';
+        signInForm.dataset.role = '';
+        if (emailInput) emailInput.value = '';
+        if (passwordInput) passwordInput.value = '';
+      }
+    });
+
+    document.querySelectorAll('form').forEach((form) => {
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const button = form.querySelector('button[type="submit"]');
+        if (!button) return;
+        button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Validating data</span>';
+        setTimeout(() => {
+          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Done</span>';
+          setTimeout(() => {
+      applyIcons();
+    }, 100);
+          if (form === signInForm) {
+            let redirect = form.dataset.redirect;
+            if (!redirect && emailInput) {
+              const emailValue = emailInput.value.trim().toLowerCase();
+              const fallback = Object.values(rolePresets).find((preset) => preset.email.toLowerCase() === emailValue);
+              if (fallback) {
+                redirect = fallback.redirect;
+              }
+            }
+
+            if (redirect) {
+              window.location.href = redirect;
+            }
+          }
+        }, 900);
+      });
+    });
+
+    document.querySelectorAll('[data-password-toggle]').forEach((toggle) => {
+      toggle.addEventListener('click', () => {
+        const input = document.getElementById('password');
+        if (!input) return;
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+    });
+
+    applyIcons();
+  </script>
+</body>
+</html>

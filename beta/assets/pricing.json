@@ -1,0 +1,32 @@
+{
+  "rolls-royce-cullinan": {
+    "monthly": 30000,
+    "buyout": 1000000,
+    "vehicleCost": 1000000
+  },
+  "lamborghini-huracan": {
+    "monthly": 25000,
+    "buyout": 750000,
+    "vehicleCost": 750000
+  },
+  "ferrari-488-spider": {
+    "monthly": 22500,
+    "buyout": 700000,
+    "vehicleCost": 700000
+  },
+  "bentley-bentayga": {
+    "monthly": 21000,
+    "buyout": 950000,
+    "vehicleCost": 950000
+  },
+  "rivian-r1t-adventure": {
+    "monthly": 3500,
+    "buyout": 225000,
+    "vehicleCost": 225000
+  },
+  "volvo-xc40-recharge": {
+    "monthly": 1750,
+    "buyout": 150000,
+    "vehicleCost": 150000
+  }
+}

@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Deals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../../assets/style.css" />
+  <link rel="stylesheet" href="../../assets/linear.css" />
+</head>
+<body class="linear light font-sans">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1 flex flex-col">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="flex-1 bg-slate-50">
+      <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div class="flex flex-wrap items-center gap-3 text-sm">
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="relative">
+                    <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4"></i>
+                    <input id="deal-search" type="text" class="w-56 rounded-xl border pl-9 pr-3 py-2 text-sm shadow-sm" placeholder="Search: client, vehicle, ID" />
+                  </div>
+                  <select id="deal-status" class="rounded-xl border px-3 py-2 text-sm shadow-sm">
+                    <option value="all">All statuses</option>
+                    <option value="applications">Applications</option>
+                    <option value="documents">Underwriting</option>
+                    <option value="handover">Vehicle Delivery</option>
+                    <option value="active">Active</option>
+                  </select>
+                  <button id="open-create-deal" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:border-slate-900 hover:text-slate-900">
+                    <i data-lucide="plus" class="h-4 w-4"></i>
+                    Create deal
+                  </button>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="segmented">
+                  <button id="view-kanban" class="segmented-btn active" title="Kanban">
+                    <i data-lucide="layout-grid" class="h-4 w-4"></i>
+                  </button>
+                  <button id="view-table" class="segmented-btn" title="Table">
+                    <i data-lucide="table" class="h-4 w-4"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="kanban" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <!-- Kanban columns will render here -->
+          </section>
+
+          <section id="deal-table" class="hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div id="table-container"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../../assets');
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, formatDate, initSortable, mountMobileBottomNav, enableGlobalSearch, bindModal } = shared;
+    const { opsNav } = shared;
+
+    const basePath = '../..';
+    mountSidebar({ containerId: 'sidebar', role: 'Operations Manager', items: opsNav, activePath: '/ops/deals/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Deals',
+      breadcrumbs: ['Operations', 'Deals'],
+      items: opsNav,
+      activePath: '/ops/deals/index.html',
+      basePath,
+    });
+
+    enableGlobalSearch({ basePath });
+
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: opsNav,
+      activePath: '/ops/deals/index.html',
+      basePath,
+    });
+
+    const pipelineOriginal = [
+      {
+        title: 'Applications',
+        key: 'applications',
+        deals: [
+          { id: 'APP-2218', client: 'Anton Schneider', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-21', stage: 'Document verification' },
+          { id: 'APP-2234', client: 'Eugenia Rossi', car: 'Bentley Bentayga', updatedAt: '2025-01-20', stage: 'AI credit scoring' },
+        ],
+      },
+      {
+        title: 'Underwriting',
+        key: 'documents',
+        deals: [
+          { id: 'APP-2199', client: 'Nicolas Blanc', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-19', stage: 'Awaiting Emirates ID' },
+          { id: 'APP-2201', client: 'Maria Novak', car: 'Ferrari 488 Spider', updatedAt: '2025-01-19', stage: 'Legal review' },
+        ],
+      },
+      {
+        title: 'Vehicle Delivery',
+        key: 'handover',
+        deals: [
+          { id: 'FL-2042', client: 'Maxime Dupont', car: 'Bentley Continental GT', updatedAt: '2025-01-18', stage: 'Delivery acceptance signing' },
+          { id: 'FL-2043', client: 'Sofia Rossi', car: 'Lamborghini Huracan', updatedAt: '2025-01-18', stage: 'Vehicle preparation' },
+        ],
+      },
+      {
+        title: 'Active',
+        key: 'active',
+        deals: [
+          { id: 'FL-1042', client: 'Jan Kowalski', car: 'Rolls-Royce Cullinan', updatedAt: '2025-01-17', stage: 'Active' },
+          { id: 'FL-1043', client: 'Anna Müller', car: 'Rolls-Royce Ghost', updatedAt: '2025-01-16', stage: 'Active' },
+        ],
+      },
+    ];
+    let searchValue = '';
+    let statusFilter = 'all';
+
+    
+
+    function getFilteredPipeline() {
+      const byStatus = statusFilter === 'all' ? pipelineOriginal : pipelineOriginal.filter(c => c.key === statusFilter);
+      if (!searchValue) return byStatus.map(c => ({...c, deals: [...c.deals]}));
+      const q = searchValue.toLowerCase();
+      return byStatus.map(c => ({
+        ...c,
+        deals: c.deals.filter(d => `${d.id} ${d.client} ${d.car}`.toLowerCase().includes(q))
+      }));
+    }
+
+    function getClientLink(client) {
+      return client === 'Maxime Dupont'
+        ? '../../ops/clients/client-104/index.html'
+        : '../../ops/clients/index.html';
+    }
+
+    function renderKanban() {
+      const pipeline = getFilteredPipeline();
+      const kanban = document.getElementById('kanban');
+      kanban.innerHTML = pipeline
+        .map(
+          (column) => `
+          <article class="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <header class="flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-slate-800">${column.title}</h2>
+              <span class="badge badge-info">${column.deals.length}</span>
+            </header>
+            <div class="mt-4 flex-1 space-y-3" data-column="${column.key}">
+              ${column.deals
+                .map(
+                  (deal) => `
+                  <a href="../../ops/deals/deal-7801/index.html" class="group block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
+                    <div class="flex items-center justify-between">
+                      <span class="font-semibold text-slate-900">${deal.id}</span>
+                      <span class="text-xs text-slate-400">${formatDate(deal.updatedAt)}</span>
+                    </div>
+                    <p class="truncate text-sm text-slate-600">${deal.client} · ${deal.car}</p>
+                    <span class="mt-2 inline-flex items-center gap-2 text-xs text-slate-500">
+                      <i data-lucide="workflow" class="h-3.5 w-3.5"></i>
+                      ${deal.stage}
+                    </span>
+                  </a>
+                `)
+                .join('')}
+            </div>
+          </article>
+        `
+        )
+        .join('');
+      // Re-init sortable for visible columns
+      pipeline.forEach((column) => {
+        initSortable(`[data-column="${column.key}"]`, {
+          group: 'deals',
+          animation: 150,
+          handle: '.group',
+        });
+      });
+      setTimeout(() => applyIcons(), 50);
+    }
+
+    function renderTableView() {
+      const pipeline = getFilteredPipeline();
+      const dealsFlat = pipeline.flatMap((column) =>
+        column.deals.map((deal) => ({ ...deal, status: column.title }))
+      );
+
+      const columnsTable = [
+        { key: 'id', label: 'Deal ID', render: (row) => `<a href="../../ops/deals/deal-7801/index.html" class="text-slate-900 hover:underline">${row.id}</a>` },
+        { key: 'client', label: 'Client', render: (row) => `<a href="${getClientLink(row.client)}" class="text-slate-900 hover:underline">${row.client}</a>` },
+        { key: 'car', label: 'Vehicle', render: (row) => `<a href="../../ops/cars/index.html" class="text-slate-900 hover:underline">${row.car}</a>` },
+        { key: 'status', label: 'Status', render: (row) => statusBadge(row.status) },
+        { key: 'updatedAt', label: 'Updated', render: (row) => formatDate(row.updatedAt) },
+        { key: 'links', label: 'Navigation', render: (row) => `
+          <div class="flex items-center gap-3">
+            <a href="${getClientLink(row.client)}" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="user" class="h-3.5 w-3.5"></i>Client</a>
+            <a href="../../ops/cars/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="car" class="h-3.5 w-3.5"></i>Vehicle</a>
+            <a href="../../client/invoices/index.html" class="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900"><i data-lucide="credit-card" class="h-3.5 w-3.5"></i>Invoices</a>
+          </div>
+        ` },
+      ];
+
+      renderTable({ containerId: 'table-container', columns: columnsTable, data: dealsFlat });
+      setTimeout(() => applyIcons(), 50);
+    }
+
+    // Initial render
+    renderKanban();
+    renderTableView();
+
+    // Bind filters
+    const searchInput = document.getElementById('deal-search');
+    const statusSelect = document.getElementById('deal-status');
+    
+
+    searchInput?.addEventListener('input', (e) => {
+      searchValue = e.target.value;
+      renderKanban();
+      renderTableView();
+    });
+
+    statusSelect?.addEventListener('change', (e) => {
+      statusFilter = e.target.value;
+      renderKanban();
+      renderTableView();
+    });
+
+    
+
+    const kanbanView = document.getElementById('kanban');
+    const tableView = document.getElementById('deal-table');
+
+    document.getElementById('view-table')?.addEventListener('click', () => {
+      kanbanView.classList.add('hidden');
+      tableView.classList.remove('hidden');
+    });
+
+    document.getElementById('view-kanban')?.addEventListener('click', () => {
+      tableView.classList.add('hidden');
+      kanbanView.classList.remove('hidden');
+    });
+
+    setTimeout(() => {
+      applyIcons();
+    }, 100);
+
+    // --- Create Deal Modal wiring ---
+    bindModal({ openSelector: '#open-create-deal', modalId: 'deal-create-modal' });
+
+    const createForm = document.getElementById('deal-create-form');
+    createForm?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const button = event.target.querySelector('button[type="submit"]');
+      button.innerHTML = '<span class="flex items-center gap-2"><svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"></circle><path d="M22 12a10 10 0 0 1-10 10"></path></svg>Creating</span>';
+
+      const id = event.target.querySelector('#create-deal-id').value || 'NEW-0001';
+      const client = event.target.querySelector('#create-deal-client').value || 'New client';
+      const car = event.target.querySelector('#create-deal-car').value || 'Vehicle';
+      const stage = event.target.querySelector('#create-deal-stage').value || 'New application';
+      const statusKey = event.target.querySelector('#create-deal-status').value || 'applications';
+
+      setTimeout(() => {
+        const column = pipelineOriginal.find(c => c.key === statusKey) || pipelineOriginal[0];
+        column.deals.push({ id, client, car, updatedAt: new Date().toISOString().slice(0,10), stage });
+        renderKanban();
+        renderTableView();
+        button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Done</span>';
+        applyIcons();
+        setTimeout(() => {
+          document.querySelector('#deal-create-modal [data-close-modal]')?.click();
+          createForm.reset();
+          button.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Create</span>';
+          applyIcons();
+        }, 800);
+      }, 800);
+    });
+  
+  
+  </script>
+  
+  <!-- Create Deal Modal -->
+  <div id="deal-create-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
+    <div class="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+      <div class="flex items-start justify-between">
+        <h2 class="text-lg font-semibold text-slate-900">Create Deal</h2>
+        <button type="button" data-close-modal class="rounded-xl border px-3 py-1 text-sm">Close</button>
+      </div>
+      <form id="deal-create-form" class="mt-4 space-y-4 text-sm">
+        <label class="space-y-1 block">
+          Deal ID
+          <input id="create-deal-id" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="E.g. APP-2301" />
+        </label>
+        <div class="grid grid-cols-2 gap-4">
+          <label class="space-y-1 block">
+            Status
+            <select id="create-deal-status" class="w-full rounded-xl border px-3 py-2 text-sm">
+              <option value="applications">Applications</option>
+              <option value="documents">Documents</option>
+              <option value="handover">Handover</option>
+              <option value="active">Active</option>
+            </select>
+          </label>
+          <label class="space-y-1 block">
+            Stage
+            <input id="create-deal-stage" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="E.g. Document Verification" />
+          </label>
+        </div>
+        <label class="space-y-1 block">
+          Client
+          <input id="create-deal-client" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Client Name" />
+        </label>
+        <label class="space-y-1 block">
+          Vehicle
+          <input id="create-deal-car" type="text" class="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Vehicle Model" />
+        </label>
+        <div class="mt-2 flex justify-end gap-2">
+          <button type="button" data-close-modal class="rounded-xl border px-4 py-2 text-sm">Cancel</button>
+          <button type="submit" class="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm">
+            <i data-lucide="check" class="h-4 w-4"></i>
+            Create
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+</body>
+</html>
