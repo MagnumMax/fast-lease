@@ -378,7 +378,7 @@ const normalizeTemplate = (result: TemplateSchemaResult): WorkflowTemplate => {
     workflow: result.workflow,
     roles: result.roles,
     kanbanOrder: result.kanban_order,
-    statuses,
+    stages: statuses,
     transitions: result.transitions,
     permissions: result.permissions,
     integrations: result.integrations,

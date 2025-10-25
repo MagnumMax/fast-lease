@@ -6,6 +6,8 @@ import {
 
 export const APP_ROLE_PRIORITY = ROLE_PRIORITY_DATA;
 
+const KNOWN_ROLES = new Set<AppRole>(APP_ROLE_PRIORITY);
+
 /**
  * ROLE TO HOME PATH MAPPING
  *
@@ -13,6 +15,57 @@ export const APP_ROLE_PRIORITY = ROLE_PRIORITY_DATA;
  * based on their primary role
  */
 export const APP_ROLE_HOME_PATH = ROLE_HOME_PATH_DATA;
+
+export function normalizeRoleCode(value: unknown): AppRole | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toUpperCase();
+  return KNOWN_ROLES.has(normalized as AppRole)
+    ? (normalized as AppRole)
+    : null;
+}
+
+function appendRolesFromSource(source: unknown, target: Set<AppRole>) {
+  if (!source) return;
+
+  if (Array.isArray(source)) {
+    for (const item of source) {
+      const role = normalizeRoleCode(item);
+      if (role) {
+        target.add(role);
+      }
+    }
+    return;
+  }
+
+  if (typeof source === "string") {
+    const role = normalizeRoleCode(source);
+    if (role) {
+      target.add(role);
+    }
+    return;
+  }
+
+  if (typeof source === "object") {
+    const record = source as Record<string, unknown>;
+    appendRolesFromSource(record.roles, target);
+    appendRolesFromSource(record.primary_role, target);
+    appendRolesFromSource(record.primaryRole, target);
+  }
+}
+
+export function extractRolesFromUserMetadata(
+  user: { app_metadata?: unknown; user_metadata?: unknown } | null,
+): AppRole[] {
+  if (!user) return [];
+
+  const roles = new Set<AppRole>();
+  appendRolesFromSource(user.app_metadata, roles);
+  appendRolesFromSource(user.user_metadata, roles);
+
+  return Array.from(roles).sort(
+    (a, b) => APP_ROLE_PRIORITY.indexOf(a) - APP_ROLE_PRIORITY.indexOf(b),
+  );
+}
 
 type AccessRule = {
   test: (pathname: string) => boolean;

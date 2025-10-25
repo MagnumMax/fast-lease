@@ -1,6 +1,10 @@
- import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { resolvePrimaryRole } from "@/lib/auth/roles";
+import {
+  extractRolesFromUserMetadata,
+  normalizeRoleCode,
+  resolvePrimaryRole,
+} from "@/lib/auth/roles";
 import type { AppRole, ProfileRecord, SessionUser } from "@/lib/auth/types";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -74,9 +78,15 @@ async function fetchRoles(
     return [];
   }
 
-  return (data ?? [])
-    .map((row) => row.role)
-    .filter(Boolean) as AppRole[];
+  const roles: AppRole[] = [];
+  for (const row of data ?? []) {
+    const role = normalizeRoleCode((row as { role: unknown }).role);
+    if (role) {
+      roles.push(role);
+    }
+  }
+
+  return roles;
 }
 
 async function fetchProfile(
@@ -123,16 +133,25 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData.session ?? null;
 
-  const [profile, roles] = await Promise.all([
+  const metadataRoles = extractRolesFromUserMetadata(user);
+
+  const [profile, rolesFromTable] = await Promise.all([
     fetchProfile(supabase, user.id),
     fetchRoles(supabase, user.id),
   ]);
+
+  const roles = (rolesFromTable.length ? rolesFromTable : metadataRoles).filter(
+    (role, index, array) => array.indexOf(role) === index,
+  );
+  const primaryRole = resolvePrimaryRole(
+    roles.length ? roles : metadataRoles,
+  );
 
   return {
     session,
     user,
     profile,
     roles,
-    primaryRole: resolvePrimaryRole(roles),
+    primaryRole,
   };
 }

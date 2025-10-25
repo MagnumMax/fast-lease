@@ -31,7 +31,7 @@ const createSupabaseMock = () => {
 
   const client = {
     from: fromMock,
-  } as SupabaseClient;
+  } as unknown as SupabaseClient;
 
   return {
     client,
@@ -107,13 +107,13 @@ describe("workflow action executor", () => {
           workflow: { id: "test", title: "Test", entity: "Deal", ownerRole: "ADMIN", timezone: "UTC" },
           roles: [{ code: "ADMIN", name: "Admin", categories: ["auth"] }],
           kanbanOrder: [],
-          statuses: {},
+          stages: {},
           transitions: [],
           permissions: {},
           integrations: {},
           metrics: { enabled: false },
           notifications: {
-            channels: {},
+            channels: [],
             templates: {
               new_deal_created: "Создана новая заявка",
             },

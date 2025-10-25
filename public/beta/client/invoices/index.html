@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Fast Lease — Payments</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };
+  </script>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+      <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
+          
+          <!-- Payment Schedule Section -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Payment Schedule</h1>
+                <p class="text-sm text-slate-500">Upcoming and completed payments for your lease</p>
+              </div>
+            </div>
+            <div class="mt-6">
+              <div id="payment-schedule"></div>
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Payment History</h1>
+              </div>
+              <button class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-900">
+                <i data-lucide="download" class="h-4 w-4"></i>
+                Download SOA
+              </button>
+            </div>
+            <div class="mt-6">
+              <div id="payment-history"></div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    // Import components
+    const { createPaymentScheduleComponent, defaultPaymentScheduleData } = await import('../../components/payment-schedule-component.js');
+    const { createInvoicesComponent, defaultInvoicesData } = await import('../../components/invoices-component.js');
+
+    const shared = await getShared('../assets');
+    const { mountSidebar, mountHeader, applyIcons, renderTable, formatCurrency, formatDate, statusBadge, mountMobileBottomNav } = shared;
+    const { clientNav } = shared;
+
+    const basePath = '..';
+    mountSidebar({ containerId: 'sidebar', role: 'Client', items: clientNav, activePath: '/client/invoices/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Payments',
+      breadcrumbs: ['Client', 'Finance'],
+      basePath,
+    });
+
+    // Initialize mobile bottom navigation
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: clientNav,
+      activePath: '/client/invoices/index.html',
+      basePath,
+    });
+
+    // Initialize components
+    createPaymentScheduleComponent({
+      containerId: 'payment-schedule',
+      data: defaultPaymentScheduleData,
+      formatCurrency,
+      formatDate
+    });
+
+    createInvoicesComponent({
+      containerId: 'payment-history',
+      data: defaultInvoicesData,
+      formatCurrency,
+      formatDate,
+      statusBadge,
+      renderTable
+    });
+
+    setTimeout(() => { applyIcons(); }, 50);
+  </script>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+</body>
+</html>

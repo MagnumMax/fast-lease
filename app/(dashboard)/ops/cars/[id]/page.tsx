@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 
 import { CarDetailView } from "@/app/(dashboard)/ops/_components/car-detail";
 import { getOperationsCarDetail } from "@/lib/supabase/queries/operations-server";
-import type { CarDetailResult } from "@/lib/supabase/queries/operations-server";
 
 type OpsCarDetailsProps = {
   params: Promise<{ id: string }>;

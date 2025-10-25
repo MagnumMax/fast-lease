@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fast Lease — Cars</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } } };</script>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1 flex flex-col">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="flex-1 bg-slate-50">
+      <div class="mx-auto w-full max-w-6xl lg:ml-0 lg:mr-auto space-y-6">
+
+          
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-4">
+              <div class="flex flex-wrap items-center gap-3 text-sm">
+                <div class="relative">
+                  <i data-lucide="search" class="absolute left-3 top-2.5 h-4 w-4 text-slate-400"></i>
+                  <input id="car-filter-search" type="text" class="w-64 rounded-xl border border-slate-200 pl-9 pr-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" placeholder="Search car (VIN/name)" />
+                </div>
+                <select id="car-filter-type" class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                  <option value="">All types</option>
+                  <option>Luxury SUV</option>
+                  <option>Luxury sedan</option>
+                  <option>Sports car</option>
+                  <option>Electric car</option>
+                </select>
+                <button id="add-car-btn" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-slate-600 hover:border-slate-900">
+                  <i data-lucide="car" class="h-4 w-4"></i>
+                  Add car
+                </button>
+                
+              </div>
+              <div class="mt-4 hidden md:block" id="cars-table"></div>
+              <div class="mt-4 md:hidden space-y-4" id="cars-cards"></div>
+              </div>
+          </section>
+          
+          <!-- Modal: Add Car -->
+          <div id="add-car-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/30 px-4">
+            <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+              <div class="flex items-center justify-between">
+                <h3 class="text-base font-semibold text-slate-900">Add car</h3>
+                <button id="add-car-close" data-close-modal class="rounded-lg border border-slate-200 p-1 text-slate-600 hover:border-slate-900">
+                  <i data-lucide="x" class="h-4 w-4"></i>
+                </button>
+              </div>
+              <div class="mt-4 space-y-3 text-sm">
+                <label class="block">
+                  <span class="text-slate-700">Name</span>
+                  <input id="add-car-name" type="text" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="Rolls-Royce Cullinan" />
+                </label>
+                <label class="block">
+                  <span class="text-slate-700">VIN</span>
+                  <input id="add-car-vin" type="text" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="ABC-123" />
+                </label>
+                <label class="block">
+                  <span class="text-slate-700">Year</span>
+                  <input id="add-car-year" type="number" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2" placeholder="2025" />
+                </label>
+                <label class="block">
+                  <span class="text-slate-700">Type</span>
+                  <select id="add-car-type" class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2">
+                    <option>Luxury SUV</option>
+                    <option>Luxury sedan</option>
+                    <option>Sports car</option>
+                    <option>Electric car</option>
+                  </select>
+                </label>
+              </div>
+              <div class="mt-6 flex items-center justify-end gap-3">
+                <button id="add-car-cancel" data-close-modal class="rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:border-slate-900">Cancel</button>
+                <button id="add-car-save" class="inline-flex items-center gap-2 rounded-xl border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white hover:bg-slate-800">
+                  <i data-lucide="check" class="h-4 w-4"></i>
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+
+    const shared = await getShared('../assets');
+    const { mountSidebar, mountHeader, applyIcons, renderTable, statusBadge, mountMobileBottomNav, formatCurrency, loadPricing, bindModal } = shared;
+    const pricing = await loadPricing('../../assets');
+    const { opsNav } = shared;
+
+    const basePath = '..';
+    mountSidebar({ containerId: 'sidebar', role: 'Operations Manager', items: opsNav, activePath: '/ops/cars/index.html', basePath });
+
+    mountHeader({
+      containerId: 'page-header',
+      title: 'Cars',
+      breadcrumbs: ['Operations', 'Cars'],
+      basePath,
+    });
+
+    mountMobileBottomNav({
+      containerId: 'mobile-bottom-nav',
+      items: opsNav,
+      activePath: '/ops/cars/index.html',
+      basePath,
+    });
+
+    const cars = [
+      { vin: 'AAX-341', name: 'Rolls-Royce Cullinan', year: 2024, type: 'Luxury SUV', price: 'AED 2,000,000', mileage: '12,800 km', battery: '97%' },
+      { vin: 'BBY-342', name: 'Bentley Continental GT', year: 2024, type: 'Luxury sedan', price: 'AED 1,800,000', mileage: '8,500 km', battery: '98%' },
+      { vin: 'LLY-343', name: 'Lamborghini Huracan', year: 2024, type: 'Sports car', price: 'AED 1,500,000', mileage: '5,200 km', battery: '96%' },
+      { vin: 'BTY-344', name: 'Bentley Bentayga', year: 2024, type: 'Luxury SUV', price: 'AED 1,900,000', mileage: '10,200 km', battery: '97%' },
+      { vin: 'TS3-345', name: 'Tesla Model 3', year: 2024, type: 'Electric car', price: 'AED 800,000', mileage: '15,000 km', battery: '95%' },
+    ];
+
+    function nameToId(name) {
+      const map = {
+        'Rolls-Royce Cullinan': 'rolls-royce-cullinan',
+        'Lamborghini Huracan': 'lamborghini-huracan',
+        'Tesla Model 3': 'tesla-model-3',
+        'Bentley Bentayga': 'bentley-bentayga',
+        'Bentley Continental GT': 'bentley-continental-gt',
+      };
+      return map[name] || '';
+    }
+
+    const columns = [
+      { key: 'vin', label: 'VIN', render: (row) => `<a href="rolls-royce-cullinan/index.html" class="text-slate-900 hover:underline">${row.vin}</a>` },
+      { key: 'name', label: 'Name' },
+      { key: 'year', label: 'Year' },
+      { key: 'type', label: 'Type' },
+      { key: 'price', label: 'Cost', render: (row) => {
+        const id = nameToId(row.name);
+        const cost = pricing[id]?.vehicleCost;
+        return typeof cost === 'number' ? formatCurrency(cost, 'AED') : row.price;
+      } },
+      { key: 'mileage', label: 'Mileage' },
+    ];
+
+    const filters = { query: '', type: '', year: '' };
+
+    function applyFilters() {
+      const q = (filters.query || '').toLowerCase();
+      const type = filters.type || '';
+      const year = String(filters.year || '');
+      const filtered = cars.filter(c =>
+        (!q || c.name.toLowerCase().includes(q) || c.vin.toLowerCase().includes(q)) &&
+        (!type || c.type === type) &&
+        (!year || String(c.year) === year)
+      );
+      renderTable({ containerId: 'cars-table', columns, data: filtered });
+      renderCarCards(filtered);
+      setTimeout(() => applyIcons(), 50);
+    }
+
+    // Initial render
+    renderTable({ containerId: 'cars-table', columns, data: cars });
+    renderCarCards(cars);
+    setTimeout(() => applyIcons(), 50);
+
+    // Bind filter controls
+    const searchInput = document.getElementById('car-filter-search');
+    const typeSelect = document.getElementById('car-filter-type');
+    const yearSelect = document.getElementById('car-filter-year');
+    
+
+    if (searchInput) {
+      searchInput.addEventListener('input', () => { filters.query = searchInput.value; applyFilters(); });
+      searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') applyFilters(); });
+    }
+    if (typeSelect) {
+      typeSelect.addEventListener('change', () => { filters.type = typeSelect.value; applyFilters(); });
+    }
+    if (yearSelect) {
+      yearSelect.addEventListener('change', () => { filters.year = yearSelect.value; applyFilters(); });
+    }
+
+    // Add Car modal interactions (unified via bindModal as on the tasks page)
+    const carModal = document.getElementById('add-car-modal');
+    const addCarSave = document.getElementById('add-car-save');
+    const addCarName = document.getElementById('add-car-name');
+    const addCarVin = document.getElementById('add-car-vin');
+    const addCarYear = document.getElementById('add-car-year');
+    const addCarType = document.getElementById('add-car-type');
+
+    bindModal({ openSelector: '#add-car-btn', modalId: 'add-car-modal' });
+
+    if (addCarSave) {
+      addCarSave.addEventListener('click', () => {
+        const name = (addCarName?.value || '').trim();
+        const vin = (addCarVin?.value || '').trim();
+        const year = Number(addCarYear?.value || 0);
+        const type = addCarType?.value || '';
+        if (!name || !vin || !year || !type) { if (carModal) carModal.classList.add('hidden'); return; }
+        const newCar = {
+          vin,
+          name,
+          year,
+          type,
+          price: '—',
+          mileage: '0 km',
+          battery: '100%'
+        };
+        cars.push(newCar);
+        applyFilters();
+        if (carModal) carModal.classList.add('hidden');
+        if (addCarName) addCarName.value = '';
+        if (addCarVin) addCarVin.value = '';
+        if (addCarYear) addCarYear.value = '';
+        if (addCarType) addCarType.value = 'Luxury SUV';
+      });
+    }
+
+    function renderCarCards(data) {
+      const container = document.getElementById('cars-cards');
+      if (!container) return;
+      container.innerHTML = data
+        .map(
+          (row) => `
+          <a href="rolls-royce-cullinan/index.html" class="block rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-700 hover:border-slate-900">
+            <div class="flex items-center justify-between">
+              <span class="font-semibold text-slate-900">${row.name}</span>
+              <span class="text-xs text-slate-400">VIN: ${row.vin}</span>
+            </div>
+            <p class="truncate text-sm text-slate-600">${row.type} · ${row.year}</p>
+            <div class="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-600">
+              <span class="inline-flex items-center gap-2"><i data-lucide="badge-dollar-sign" class="h-3.5 w-3.5"></i>Cost: ${(() => { const id = nameToId(row.name); const cost = pricing[id]?.vehicleCost; return typeof cost === 'number' ? formatCurrency(cost, 'AED') : row.price; })()}</span>
+              <span class="inline-flex items-center gap-2"><i data-lucide="gauge" class="h-3.5 w-3.5"></i>Mileage: ${row.mileage}</span>
+              <span class="inline-flex items-center gap-2"><i data-lucide="battery" class="h-3.5 w-3.5"></i>Battery: ${row.battery}</span>
+          </div>
+        </a>
+      `
+        )
+        .join('');
+    }
+
+    
+  </script>
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+</body>
+</html>

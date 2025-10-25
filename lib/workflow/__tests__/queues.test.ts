@@ -74,7 +74,7 @@ const createClientMock = (options: QueueOptions = {}) => {
 
   const client = {
     from: fromMock,
-  } as SupabaseClient;
+  } as unknown as SupabaseClient;
 
   return {
     client,

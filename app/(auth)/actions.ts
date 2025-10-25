@@ -1,13 +1,21 @@
 "use server";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { type AuthActionState } from "./action-state";
-import { APP_ROLE_PRIORITY, APP_ROLE_HOME_PATH, resolveHomePath, validateRolePath } from "@/lib/auth/roles";
+import {
+  APP_ROLE_PRIORITY,
+  normalizeRoleCode,
+  resolveHomePath,
+  resolvePrimaryRole,
+  validateRolePath,
+} from "@/lib/auth/roles";
 import { getSessionUser } from "@/lib/auth/session";
+import type { AppRole } from "@/lib/auth/types";
 import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
-import type { AppRole } from "@/lib/auth/types";
 
 type Identity =
   | { type: "email"; value: string }
@@ -82,10 +90,85 @@ function formatIdentityForDisplay(identity: Identity): string {
 
 function normalizeRole(value: FormDataEntryValue | null): AppRole | null {
   if (typeof value !== "string") return null;
-  const normalized = value.trim().toUpperCase();
-  if (!normalized) return null;
-  const match = APP_ROLE_PRIORITY.find((role) => role === normalized);
-  return match ?? null;
+  return normalizeRoleCode(value);
+}
+
+async function syncUserRolesMetadata(
+  serviceClient: SupabaseClient,
+  userId: string,
+) {
+  const { data: rolesRows, error: rolesError } = await serviceClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+
+  if (rolesError) {
+    console.error("[auth] Failed to load roles for metadata sync", {
+      userId,
+      error: rolesError,
+    });
+    return;
+  }
+
+  const uniqueRoles = new Set<AppRole>();
+  for (const row of rolesRows ?? []) {
+    const role = normalizeRoleCode((row as { role: unknown }).role);
+    if (role) {
+      uniqueRoles.add(role);
+    }
+  }
+
+  const roles = Array.from(uniqueRoles).sort(
+    (a, b) => APP_ROLE_PRIORITY.indexOf(a) - APP_ROLE_PRIORITY.indexOf(b),
+  );
+  const primaryRole = resolvePrimaryRole(roles);
+
+  if (!roles.length && !primaryRole) {
+    return;
+  }
+
+  const { data: userData, error: fetchUserError } =
+    await serviceClient.auth.admin.getUserById(userId);
+
+  if (fetchUserError || !userData?.user) {
+    console.error("[auth] Failed to load user for metadata sync", {
+      userId,
+      error: fetchUserError,
+    });
+    return;
+  }
+
+  const existingAppMetadata =
+    (userData.user.app_metadata as Record<string, unknown> | null) ?? {};
+  const existingUserMetadata =
+    (userData.user.user_metadata as Record<string, unknown> | null) ?? {};
+
+  const updatedAppMetadata = {
+    ...existingAppMetadata,
+    roles,
+    primary_role: primaryRole,
+  } satisfies Record<string, unknown>;
+
+  const updatedUserMetadata = {
+    ...existingUserMetadata,
+    roles,
+    primary_role: primaryRole,
+  } satisfies Record<string, unknown>;
+
+  const { error: updateError } = await serviceClient.auth.admin.updateUserById(
+    userId,
+    {
+      app_metadata: updatedAppMetadata,
+      user_metadata: updatedUserMetadata,
+    },
+  );
+
+  if (updateError) {
+    console.error("[auth] Failed to sync user metadata with roles", {
+      userId,
+      error: updateError,
+    });
+  }
 }
 
 async function ensureDefaultProfileAndRole(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, userId: string) {
@@ -122,13 +205,18 @@ async function ensureDefaultProfileAndRole(supabase: Awaited<ReturnType<typeof c
   if (roleError) {
     console.error("[auth] Failed to assign default role", roleError);
   }
+
+  await syncUserRolesMetadata(serviceClient, userId);
 }
 
-async function ensureRoleAssignment(supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>, userId: string, role: AppRole | null) {
-  if (!role) return;
-
-  // Используем service client для записи ролей (обходит RLS)
+async function ensureRoleAssignment(userId: string, role: AppRole | null) {
   const serviceClientForRoles = await createSupabaseServiceClient();
+
+  if (!role) {
+    await syncUserRolesMetadata(serviceClientForRoles, userId);
+    return;
+  }
+
   const { error } = await serviceClientForRoles
     .from("user_roles")
     .upsert(
@@ -142,6 +230,8 @@ async function ensureRoleAssignment(supabase: Awaited<ReturnType<typeof createSu
   if (error) {
     console.error("[auth] Failed to assign role", { userId, role, error });
   }
+
+  await syncUserRolesMetadata(serviceClientForRoles, userId);
 }
 
 async function resolveRedirectPathWithPreferredRole(
@@ -237,7 +327,7 @@ async function devMagicLinkSignIn(
   }
 
   await ensureDefaultProfileAndRole(supabase, userData.user.id);
-  await ensureRoleAssignment(supabase, userData.user.id, preferredRole);
+  await ensureRoleAssignment(userData.user.id, preferredRole);
 
   await supabase
     .from("profiles")
@@ -391,7 +481,7 @@ export async function verifyOtpAction(
   }
 
   await ensureDefaultProfileAndRole(supabase, userData.user.id);
-  await ensureRoleAssignment(supabase, userData.user.id, preferredRole);
+  await ensureRoleAssignment(userData.user.id, preferredRole);
 
   await supabase
     .from("profiles")

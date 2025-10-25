@@ -5,10 +5,7 @@ import {
   createDealRequestSchema,
   listDealsQuerySchema,
 } from "@/lib/workflow";
-import {
-  createDealWithWorkflow,
-  type DealRow,
-} from "@/lib/workflow/http/create-deal";
+import { createDealWithWorkflow } from "@/lib/workflow/http/create-deal";
 
 export async function GET(request: Request) {
   const supabase = await createSupabaseServiceClient();

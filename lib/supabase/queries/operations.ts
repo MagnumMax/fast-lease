@@ -328,36 +328,6 @@ export type SupabaseDealRow = {
   payload: Record<string, unknown> | null;
 };
 
-type DashboardProfileSummary = {
-  id: string;
-  full_name: string | null;
-};
-
-type SupabaseDashboardInvoiceRow = {
-  id: string;
-  deal_id: string | null;
-  invoice_number: string | null;
-  status: string | null;
-  due_date: string | null;
-  total_amount: number | null;
-  created_at: string | null;
-};
-
-type SupabaseDashboardPaymentRow = {
-  id: string;
-  deal_id: string | null;
-  status: string | null;
-  amount: number | null;
-  created_at: string | null;
-  received_at: string | null;
-};
-
-type WorkflowQueueRow = {
-  id: string;
-  status: string | null;
-  created_at: string | null;
-  processed_at: string | null;
-};
 
 // Типы для операций
 export type OpsClientRecord = {

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dubai Fast Lease — Referrals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="../assets/style.css" />
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+  <div class="min-h-screen lg:flex">
+    <aside id="sidebar" class="hidden w-72 border-r border-slate-200 bg-white lg:flex"></aside>
+    <div class="flex-1">
+      <header id="page-header" class="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"></header>
+      <main class="bg-slate-50">
+        <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:ml-0 lg:mr-auto">
+          <!-- Share Link -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Referral Program</p>
+                <h1 class="mt-1 text-2xl font-semibold text-slate-900">Invite friends and earn 1% of financing amount</h1>
+                <p class="text-sm text-slate-600">Share your link. When a friend finalizes a deal, you get a reward.</p>
+              </div>
+            </div>
+            <div class="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+              <div class="relative">
+                <label class="text-xs text-slate-500">Your referral link</label>
+                <input id="ref-link" type="text" readonly class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-900 focus:ring-slate-900" />
+                <p id="copy-hint" class="mt-2 text-xs text-slate-500">This link contains your referral code. Copy and share it.</p>
+              </div>
+              <button id="copy-btn" class="mt-6 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
+                <i data-lucide="copy" class="h-4 w-4"></i>
+                Copy link
+              </button>
+            </div>
+          </section>
+
+          <!-- Metrics -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-slate-900">Overview</h2>
+            <div class="mt-4 grid gap-3 grid-cols-2 md:grid-cols-4">
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Clicks</p>
+                <p id="m-clicks" class="mt-1 text-sm font-semibold text-slate-900">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Applications</p>
+                <p id="m-apps" class="mt-1 text-sm font-semibold text-slate-900">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Deals</p>
+                <p id="m-deals" class="mt-1 text-sm font-semibold text-slate-900">—</p>
+              </div>
+              <div class="rounded-xl bg-slate-50/80 p-3">
+                <p class="text-[11px] uppercase tracking-wide text-slate-400">Conversion</p>
+                <p id="m-conv" class="mt-1 text-sm font-semibold text-slate-900">—</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Deals by referrals -->
+          <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-slate-900">Deals created with your code</h2>
+            </div>
+            <div id="ref-deals" class="mt-4 space-y-3"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <nav id="mobile-bottom-nav" class="mobile-bottom-nav"></nav>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module">
+    async function getShared(basePath) {
+      const sharedMod = await import(`${basePath}/shared.js`);
+      return { ...sharedMod };
+    }
+    const shared = await getShared('../assets');
+    const { mountSidebar, mountHeader, mountMobileBottomNav, renderList, statusBadge, applyIcons, clientNav, formatCurrency } = shared;
+
+    const basePath = '..';
+    // Mount nav
+    mountSidebar({ containerId: 'sidebar', role: 'Client', items: clientNav, activePath: '/client/referrals/index.html', basePath });
+    mountHeader({ containerId: 'page-header', title: 'Referrals', breadcrumbs: ['Client', 'Referrals'], basePath });
+    mountMobileBottomNav({ containerId: 'mobile-bottom-nav', items: clientNav, activePath: '/client/referrals/index.html', basePath });
+
+    // Mock: user referral code (short readable)
+    const userRefCode = 'ABC123';
+    const shareUrl = `${window.location.origin}/application/new/index.html?ref=${userRefCode}`;
+    const refInput = document.getElementById('ref-link');
+    if (refInput) refInput.value = shareUrl;
+
+    // Copy link
+    document.getElementById('copy-btn')?.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        const btn = document.getElementById('copy-btn');
+        btn.innerHTML = '<span class="flex items-center gap-2"><i data-lucide="check" class="h-4 w-4"></i>Copied</span>';
+        setTimeout(() => { btn.innerHTML = '<i data-lucide="copy" class="h-4 w-4"></i>Copy link'; applyIcons(); }, 1000);
+        applyIcons();
+      } catch (e) {
+        alert('Failed to copy. Please select and copy manually.');
+      }
+    });
+
+    // Mock metrics
+    const clicks = 24;
+    const apps = 5;
+    const deals = 2;
+    const conv = deals && clicks ? Math.round((deals / clicks) * 100) : 0;
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = String(v); };
+    setText('m-clicks', clicks);
+    setText('m-apps', apps);
+    setText('m-deals', deals);
+    setText('m-conv', conv + '%');
+
+    // Mock deals created by referrals
+    const refDeals = [
+      { id: 'FL-2025-2011', friend: 'Ivan Petrov', car: 'Volvo XC40 Recharge', status: 'Active', monthly: 2260 },
+      { id: 'FL-2025-1980', friend: 'Olga Sidorova', car: 'Rivian R1T Adventure', status: 'Pending', monthly: 3460 },
+    ];
+
+    const list = document.getElementById('ref-deals');
+    if (list) {
+      list.innerHTML = refDeals.map((d) => `
+        <div class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+          <div>
+            <p class="text-sm font-medium text-slate-900">${d.id} · ${d.car}</p>
+            <p class="text-xs text-slate-500">Friend: ${d.friend}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            ${statusBadge(d.status)}
+            <span class="text-xs text-slate-500">${formatCurrency(d.monthly, 'AED')}/mo</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Accessibility + icons
+    setTimeout(() => { applyIcons(); }, 50);
+  </script>
+</body>
+</html>

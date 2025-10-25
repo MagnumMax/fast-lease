@@ -15,7 +15,6 @@ import {
   type WorkflowVersionRepository,
 } from "../versioning";
 import { WorkflowTransitionError } from "../state-machine";
-import type { WorkflowTemplate } from "../types";
 
 const TEMPLATE_PATH = resolve(
   __dirname,

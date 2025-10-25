@@ -9,7 +9,7 @@ import {
   WorkflowTransitionError,
   type WorkflowActionContext,
 } from "../state-machine";
-import type { WorkflowAction, WorkflowTemplate } from "../types";
+import type { WorkflowAction } from "../types";
 
 const TEMPLATE_PATH = resolve(
   __dirname,

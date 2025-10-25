@@ -86,7 +86,7 @@ async function ensureBucketExists(bucketId: string): Promise<void> {
     return;
   }
 
-  if (getError && (getError.status === 404 || /not found/i.test(getError.message ?? ""))) {
+  if (getError && (/not found/i.test(getError.message ?? ""))) {
     console.log(`[storage] Bucket '${bucketId}' not found, attempting to create...`);
     const { error: createError } = await supabase.storage.createBucket(bucketId, {
       public: true,
@@ -205,6 +205,7 @@ async function syncVehicleImages() {
       console.log(`[done] Stored image for ${displayName}`);
     } catch (err) {
       console.error(`[error] Failed processing vehicle ${displayName}:`, err);
+      console.log('[DEBUG] error object:', err);
     }
   }
 }

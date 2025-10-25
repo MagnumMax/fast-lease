@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 
-import { AlertTriangle, Check, Loader2, Paperclip, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Loader2, Paperclip, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

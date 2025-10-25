@@ -12,10 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { validateRolePath } from "@/lib/auth/roles";
+import { normalizeRoleCode, validateRolePath } from "@/lib/auth/roles";
 import type { AppRole } from "@/lib/auth/types";
 import {
-  APP_ROLE_CODES,
   APP_ROLE_DEFAULT_PHONES,
   APP_ROLE_LOGIN_PRESETS,
   type AppRoleLoginPreset,
@@ -77,9 +76,7 @@ type PendingIdentity = {
 
 function normalizeRole(value: string | undefined): AppRole | null {
   if (!value) return null;
-  const normalized = value.trim().toUpperCase();
-  const roles: AppRole[] = APP_ROLE_CODES;
-  return (roles.find((role) => role === normalized) ?? null) as AppRole | null;
+  return normalizeRoleCode(value);
 }
 
 export function AuthCard() {

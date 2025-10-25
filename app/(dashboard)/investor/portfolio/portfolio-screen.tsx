@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Filter, RefreshCw } from "lucide-react";
 
 import type { InvestorPortfolioAssetRecord } from "@/lib/data/investor/portfolio";
-import type { InvestorStatusSummary } from "@/lib/data/investor/dashboard";
 import type { InvestorPortfolioSnapshot } from "@/lib/supabase/queries/investor";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";

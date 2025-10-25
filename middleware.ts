@@ -3,7 +3,13 @@ import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { isAccessAllowed, resolveHomePath, allowedRolesForPath } from "./lib/auth/roles";
+import {
+  allowedRolesForPath,
+  extractRolesFromUserMetadata,
+  isAccessAllowed,
+  normalizeRoleCode,
+  resolveHomePath,
+} from "./lib/auth/roles";
 import type { AppRole } from "./lib/auth/types";
 const AUTH_ROUTES = ["/login", "/register", "/auth/callback"];
 
@@ -16,6 +22,7 @@ const PROTECTED_PREFIXES = ["/client", "/ops", "/admin", "/investor"];
 async function loadUserRoles(
   supabase: SupabaseClient,
   userId: string,
+  fallbackUser?: { app_metadata?: unknown; user_metadata?: unknown },
 ): Promise<AppRole[]> {
   console.log("[middleware] Loading roles for user:", userId);
   const { data: rolesData, error } = await supabase
@@ -23,15 +30,30 @@ async function loadUserRoles(
     .select("role")
     .eq("user_id", userId);
 
+  const metadataFallback = extractRolesFromUserMetadata(fallbackUser ?? null);
+
   if (error) {
     console.error("[middleware] Failed to load user roles", error);
-    return [];
+    if (metadataFallback.length) {
+      console.log("[middleware] Using metadata roles fallback", metadataFallback);
+    }
+    return metadataFallback;
   }
 
   console.log("[middleware] Raw roles data:", rolesData);
-  const roles = (rolesData ?? [])
-    .map((row) => row.role)
-    .filter(Boolean) as AppRole[];
+  const roles: AppRole[] = [];
+  for (const row of rolesData ?? []) {
+    const role = normalizeRoleCode((row as { role: unknown }).role);
+    if (role) {
+      roles.push(role);
+    }
+  }
+
+  if (!roles.length && metadataFallback.length) {
+    console.log("[middleware] Roles empty, using metadata fallback", metadataFallback);
+    return metadataFallback;
+  }
+
   console.log("[middleware] Processed roles:", roles);
   return roles;
 }
@@ -83,6 +105,9 @@ export async function middleware(req: NextRequest) {
   console.log("[middleware] Is auth route:", isAuthRoute(pathname));
   console.log("[middleware] Needs protection:", needsProtection(pathname));
 
+  if (pathname.startsWith("/beta/assets/")) {
+    console.log("[middleware] Serving beta asset:", pathname);
+  }
 
   if (
     pathname.startsWith("/_next") ||
@@ -122,7 +147,7 @@ export async function middleware(req: NextRequest) {
     }
 
     console.log("[middleware] Loading user roles for user:", userData.user.id);
-    const roles = await loadUserRoles(supabase, userData.user.id);
+    const roles = await loadUserRoles(supabase, userData.user.id, userData.user);
     console.log("[middleware] User roles:", roles);
 
     console.log("[middleware] Checking access for path:", pathname, "with roles:", roles);

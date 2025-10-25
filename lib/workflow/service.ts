@@ -124,10 +124,10 @@ export class WorkflowService {
       try {
         // Получаем deal для текущей попытки
         const deal = await this.dealRepository.getDealById(input.dealId);
-        console.log(`[WorkflowService] Attempt ${attempt + 1}/${maxRetries + 1} for deal ${input.dealId} transition from ${deal.status} to ${input.targetStatus}`);
         if (!deal) {
           throw new Error(`Deal '${input.dealId}' not found`);
         }
+        console.log(`[WorkflowService] Attempt ${attempt + 1}/${maxRetries + 1} for deal ${input.dealId} transition from ${deal.status} to ${input.targetStatus}`);
 
         const version = await this.resolveWorkflowVersion(deal);
 
