@@ -4,12 +4,16 @@ import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
-  allowedRolesForPath,
   extractRolesFromUserMetadata,
   isAccessAllowed,
   normalizeRoleCode,
   resolveHomePath,
 } from "./lib/auth/roles";
+import {
+  getDefaultRolesForSection,
+  resolveSectionForPath,
+  type AccessSection,
+} from "./lib/auth/role-access";
 import type { AppRole } from "./lib/auth/types";
 const AUTH_ROUTES = ["/login", "/register", "/auth/callback"];
 
@@ -17,7 +21,59 @@ const AUTH_ROUTES = ["/login", "/register", "/auth/callback"];
  * ЗАЩИЩЕННЫЕ ПРЕФИКСЫ ПУТЕЙ
  * Доступ к этим разделам контролируется на основе ролей пользователя
  */
-const PROTECTED_PREFIXES = ["/client", "/ops", "/admin", "/investor"];
+const PROTECTED_PREFIXES = [
+  "/client",
+  "/ops",
+  "/admin",
+  "/investor",
+  "/finance",
+  "/support",
+  "/tech",
+  "/risk",
+  "/legal",
+  "/accounting",
+  "/workspace",
+  "/settings",
+];
+
+type SectionOverrideResult = {
+  roles: AppRole[];
+  hasOverride: boolean;
+};
+
+async function loadSectionOverride(
+  supabase: SupabaseClient,
+  section: AccessSection,
+): Promise<SectionOverrideResult> {
+  const defaultRoles = getDefaultRolesForSection(section);
+  const allowedRoles = new Set(defaultRoles);
+  const { data, error } = await supabase
+    .from("role_access_rules")
+    .select("role, allowed")
+    .eq("section", section);
+
+  if (error) {
+    console.error("[middleware] Failed to load role access overrides", { section, error });
+    return { roles: defaultRoles, hasOverride: false };
+  }
+
+  if (!data || data.length === 0) {
+    return { roles: defaultRoles, hasOverride: false };
+  }
+
+  for (const row of data as { role: unknown; allowed: boolean }[]) {
+    const normalizedRole = normalizeRoleCode(row.role);
+    if (normalizedRole) {
+      if (row.allowed) {
+        allowedRoles.add(normalizedRole);
+      } else {
+        allowedRoles.delete(normalizedRole);
+      }
+    }
+  }
+
+  return { roles: Array.from(allowedRoles), hasOverride: true };
+}
 
 async function loadUserRoles(
   supabase: SupabaseClient,
@@ -150,8 +206,18 @@ export async function middleware(req: NextRequest) {
     const roles = await loadUserRoles(supabase, userData.user.id, userData.user);
     console.log("[middleware] User roles:", roles);
 
+    const section = resolveSectionForPath(pathname);
+    let customAllowed: AppRole[] | null = null;
+    if (section) {
+      const override = await loadSectionOverride(supabase, section);
+      if (override.hasOverride) {
+        customAllowed = override.roles;
+        console.log("[middleware] Using override access for section", section, override.roles);
+      }
+    }
+
     console.log("[middleware] Checking access for path:", pathname, "with roles:", roles);
-    if (!isAccessAllowed(pathname, roles)) {
+    if (!isAccessAllowed(pathname, roles, customAllowed)) {
       console.log("[middleware] Access denied, redirecting to home path");
       const redirectUrl = req.nextUrl.clone();
       redirectUrl.pathname = resolveHomePath(roles, "/");

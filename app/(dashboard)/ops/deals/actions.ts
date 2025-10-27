@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createDealWithWorkflow } from "@/lib/workflow/http/create-deal";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
 import type { CreateDealWithEntitiesRequest } from "@/lib/workflow";
+import { getWorkspacePaths } from "@/lib/workspace/routes";
 
 const inputSchema = z.object({
   source: z.string().min(1),
@@ -75,7 +76,9 @@ export async function createOperationsDeal(
 
   console.log(`[DEBUG] deal created successfully:`, result.deal.id, `deal_number:`, result.deal.deal_number);
 
-  revalidatePath("/ops/deals");
+  for (const path of getWorkspacePaths("deals")) {
+    revalidatePath(path);
+  }
 
   return { data: result.deal };
 }

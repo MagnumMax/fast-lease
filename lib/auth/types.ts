@@ -3,9 +3,9 @@ import type { Session, User } from "@supabase/supabase-js";
 export type AppRole =
   | "ADMIN"
   | "OP_MANAGER"
-  | "OPERATOR"
   | "SUPPORT"
   | "FINANCE"
+  | "TECH_SPECIALIST"
   | "RISK_MANAGER"
   | "INVESTOR"
   | "LEGAL"

@@ -3,6 +3,7 @@ import {
   APP_ROLE_HOME_PATH as ROLE_HOME_PATH_DATA,
   APP_ROLE_PRIORITY as ROLE_PRIORITY_DATA,
 } from "../data/app-roles";
+import { getDefaultRolesForPath } from "@/lib/auth/role-access";
 
 export const APP_ROLE_PRIORITY = ROLE_PRIORITY_DATA;
 
@@ -67,35 +68,7 @@ export function extractRolesFromUserMetadata(
   );
 }
 
-type AccessRule = {
-  test: (pathname: string) => boolean;
-  allowed: AppRole[];
-};
-
 const ADMIN_OVERRIDES: AppRole[] = ["ADMIN"];
-
-const accessRules: AccessRule[] = [
-  {
-    test: (pathname) => pathname.startsWith("/client"),
-    allowed: ["CLIENT"],
-  },
-  {
-    test: (pathname) => pathname.startsWith("/ops"),
-    allowed: ["OP_MANAGER", "OPERATOR", "SUPPORT", "FINANCE", "ADMIN"],
-  },
-  {
-    test: (pathname) => pathname.startsWith("/admin"),
-    allowed: ["ADMIN"],
-  },
-  {
-    test: (pathname) => pathname.startsWith("/investor"),
-    allowed: ["INVESTOR", "ADMIN"],
-  },
-  {
-    test: (pathname) => pathname.startsWith("/settings"),
-    allowed: ["CLIENT", "OP_MANAGER", "OPERATOR", "SUPPORT", "FINANCE"],
-  },
-];
 
 export function resolvePrimaryRole(roles: AppRole[]): AppRole | null {
   for (const role of APP_ROLE_PRIORITY) {
@@ -118,19 +91,20 @@ export function resolveHomePath(
 }
 
 export function allowedRolesForPath(pathname: string): AppRole[] | null {
-  const normalized = pathname.toLowerCase();
-  const match = accessRules.find((rule) => rule.test(normalized));
-  if (!match) return null;
-  return match.allowed;
+  return getDefaultRolesForPath(pathname);
 }
 
-export function isAccessAllowed(pathname: string, roles: AppRole[]): boolean {
+export function isAccessAllowed(
+  pathname: string,
+  roles: AppRole[],
+  customAllowed?: AppRole[] | null,
+): boolean {
   if (!roles.length) return false;
   if (roles.some((role) => ADMIN_OVERRIDES.includes(role))) {
     return true;
   }
 
-  const allowed = allowedRolesForPath(pathname);
+  const allowed = customAllowed ?? allowedRolesForPath(pathname);
   if (!allowed) {
     return true;
   }

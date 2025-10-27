@@ -230,8 +230,8 @@ FOR EACH ROW EXECUTE PROCEDURE set_updated_at();
 INSERT INTO roles (code, name) VALUES
   ('ADMIN',        'Администратор процесса'),
   ('OP_MANAGER',   'Операционный менеджер'),
-  ('OPERATOR',     'Оператор процесса'),
   ('SUPPORT',      'Поддержка операций'),
+  ('TECH_SPECIALIST', 'Технический специалист'),
   ('FINANCE',      'Финансовый отдел'),
   ('RISK_MANAGER', 'Менеджер по управлению рисками'),
   ('INVESTOR',     'Инвестор / ЛПР'),
@@ -259,25 +259,25 @@ ON CONFLICT (code) DO NOTHING;
 -- ---------- Сиды: разрешённые переходы ----------
 INSERT INTO deal_transitions (from_status, to_status, role_required) VALUES
   ('NEW',              'OFFER_PREP',       'OP_MANAGER'),
-  ('OFFER_PREP',       'VEHICLE_CHECK',    'OP_MANAGER'),
-  ('VEHICLE_CHECK',    'DOCS_COLLECT',     'OP_MANAGER'),
+  ('OFFER_PREP',       'VEHICLE_CHECK',    'TECH_SPECIALIST'),
+  ('VEHICLE_CHECK',    'DOCS_COLLECT',     'TECH_SPECIALIST'),
   ('DOCS_COLLECT',     'RISK_REVIEW',      'OP_MANAGER'),
   ('RISK_REVIEW',      'FINANCE_REVIEW',   'RISK_MANAGER'),
   ('FINANCE_REVIEW',   'INVESTOR_PENDING', 'FINANCE'),
   ('INVESTOR_PENDING', 'CONTRACT_PREP',    'INVESTOR'),
   ('CONTRACT_PREP',    'SIGNING_FUNDING',  'LEGAL'),
-  ('SIGNING_FUNDING',  'VEHICLE_DELIVERY', 'FINANCE'),
-  ('VEHICLE_DELIVERY', 'ACTIVE',           'OP_MANAGER'),
+  ('SIGNING_FUNDING',  'VEHICLE_DELIVERY', 'TECH_SPECIALIST'),
+  ('VEHICLE_DELIVERY', 'ACTIVE',           'TECH_SPECIALIST'),
   ('NEW',              'CANCELLED',        'OP_MANAGER'),
   ('OFFER_PREP',       'CANCELLED',        'OP_MANAGER'),
-  ('VEHICLE_CHECK',    'CANCELLED',        'OP_MANAGER'),
+  ('VEHICLE_CHECK',    'CANCELLED',        'TECH_SPECIALIST'),
   ('DOCS_COLLECT',     'CANCELLED',        'OP_MANAGER'),
   ('RISK_REVIEW',      'CANCELLED',        'OP_MANAGER'),
   ('FINANCE_REVIEW',   'CANCELLED',        'FINANCE'),
   ('INVESTOR_PENDING', 'CANCELLED',        'INVESTOR'),
   ('CONTRACT_PREP',    'CANCELLED',        'LEGAL'),
   ('SIGNING_FUNDING',  'CANCELLED',        'FINANCE'),
-  ('VEHICLE_DELIVERY', 'CANCELLED',        'OP_MANAGER')
+  ('VEHICLE_DELIVERY', 'CANCELLED',        'TECH_SPECIALIST')
 ON CONFLICT DO NOTHING;
 
 -- ---------- Полезные представления ----------

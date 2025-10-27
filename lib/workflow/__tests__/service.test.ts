@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 
 import {
   WorkflowService,
@@ -212,6 +212,10 @@ describe("WorkflowService", () => {
   });
 
   it("throws when guard conditions fail", async () => {
+    const sleepSpy = vi
+      .spyOn(WorkflowService.prototype as unknown as { sleep(ms: number): Promise<void> }, "sleep")
+      .mockResolvedValue();
+
     await expect(
       workflowService.transitionDeal({
         dealId: "deal-guard",
@@ -219,5 +223,7 @@ describe("WorkflowService", () => {
         actorRole: "OP_MANAGER",
       }),
     ).rejects.toBeInstanceOf(WorkflowTransitionError);
+
+    sleepSpy.mockRestore();
   });
 });

@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/supabase/queries/operations";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { getWorkspacePaths } from "@/lib/workspace/routes";
 
 const inputSchema = z.object({
   dealId: z.string().uuid(),
@@ -138,7 +139,9 @@ export async function completeDealGuardAction(
       return { error: "Не удалось обновить задачу", success: false };
     }
 
-    revalidatePath("/ops/deals");
+    for (const path of getWorkspacePaths("deals")) {
+      revalidatePath(path);
+    }
     revalidatePath(`/ops/deals/${slug}`);
 
     return { success: true, error: undefined };

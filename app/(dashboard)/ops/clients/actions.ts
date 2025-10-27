@@ -9,6 +9,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
+import { getWorkspacePaths } from "@/lib/workspace/routes";
 
 const inputSchema = z.object({
   name: z.string().min(1),
@@ -261,7 +262,9 @@ export async function createOperationsClient(
       console.error("[operations] failed to ensure client role", roleError);
     }
 
-    revalidatePath("/ops/clients");
+    for (const path of getWorkspacePaths("clients")) {
+      revalidatePath(path);
+    }
 
     const profileMetadata =
       (profile?.metadata as ProfileMetadata | null) ?? null;

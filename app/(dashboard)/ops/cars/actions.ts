@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { OpsCarRecord } from "@/lib/supabase/queries/operations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getWorkspacePaths } from "@/lib/workspace/routes";
 
 const inputSchema = z.object({
   name: z.string().min(1),
@@ -90,7 +91,9 @@ export async function createOperationsCar(
       return { error: "Не удалось сохранить автомобиль." };
     }
 
-    revalidatePath("/ops/cars");
+    for (const path of getWorkspacePaths("cars")) {
+      revalidatePath(path);
+    }
 
     const formatted: OpsCarRecord = {
       vin: data.vin ?? normalizedVin,

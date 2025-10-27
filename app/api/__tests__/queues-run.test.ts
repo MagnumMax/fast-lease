@@ -1,13 +1,24 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Mock } from "vitest";
 
+const queueProcessorFactory = vi.hoisted(() => ({
+  create: vi.fn(),
+}));
+
 vi.mock("@/lib/workflow", async () => {
   const actual = await vi.importActual<typeof import("@/lib/workflow")>(
     "@/lib/workflow",
   );
+
+  class WorkflowQueueProcessorMock {
+    constructor(...args: unknown[]) {
+      return queueProcessorFactory.create(...args);
+    }
+  }
+
   return {
     ...actual,
-    WorkflowQueueProcessor: vi.fn(),
+    WorkflowQueueProcessor: WorkflowQueueProcessorMock,
   };
 });
 
@@ -15,8 +26,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createSupabaseServiceClient: vi.fn(),
 }));
 
-const mockedWorkflowModule = await import("@/lib/workflow");
-const mockedQueueProcessor = mockedWorkflowModule.WorkflowQueueProcessor as unknown as Mock;
+const mockedQueueProcessor = queueProcessorFactory.create as unknown as Mock;
 const mockedCreateSupabaseServiceClient = vi.mocked(
   (await import("@/lib/supabase/server")).createSupabaseServiceClient,
 );

@@ -11,24 +11,30 @@
 type AppRole =
   | "CLIENT"        // Клиент (базовая роль)
   | "INVESTOR"      // Инвестор
-  | "OPERATOR"      // Оператор
   | "OP_MANAGER"    // Операционный менеджер
+  | "TECH_SPECIALIST" // Технический специалист
   | "FINANCE"       // Финансовый специалист
   | "SUPPORT"       // Специалист поддержки
+  | "RISK_MANAGER"  // Менеджер по управлению рисками
+  | "LEGAL"         // Юридический отдел
+  | "ACCOUNTING"    // Бухгалтерия
   | "ADMIN"         // Администратор
 ```
 
 #### 2. Иерархия ролей по приоритету
 ```
-ADMIN > OP_MANAGER > OPERATOR > FINANCE > SUPPORT > INVESTOR > CLIENT
+ADMIN > OP_MANAGER > FINANCE > SUPPORT > TECH_SPECIALIST > RISK_MANAGER > LEGAL > ACCOUNTING > INVESTOR > CLIENT
 ```
 
 #### 3. Домашние пути по ролям
 - `ADMIN` → `/admin/bpm`
 - `OP_MANAGER` → `/ops/dashboard`
-- `OPERATOR` → `/ops/dashboard`
 - `FINANCE` → `/ops/deals`
 - `SUPPORT` → `/ops/tasks`
+- `TECH_SPECIALIST` → `/ops/tasks`
+- `RISK_MANAGER` → `/ops/deals`
+- `LEGAL` → `/ops/deals`
+- `ACCOUNTING` → `/ops/deals`
 - `INVESTOR` → `/investor/dashboard`
 - `CLIENT` → `/client/dashboard`
 
@@ -42,6 +48,7 @@ ADMIN > OP_MANAGER > OPERATOR > FINANCE > SUPPORT > INVESTOR > CLIENT
   - `client@fastlease.io`
   - `investor@fastlease.io`
   - `ops.manager@fastlease.io`
+  - `tech.specialist@fastlease.io`
   - `admin@fastlease.io`
 - **Magic Link Bypass** - автоматическая аутентификация без реальных OTP
 
@@ -71,7 +78,7 @@ ADMIN > OP_MANAGER > OPERATOR > FINANCE > SUPPORT > INVESTOR > CLIENT
 
 #### Защищенные префиксы:
 - `/client` - только для клиентов
-- `/ops` - для операционных ролей (OP_MANAGER, OPERATOR, FINANCE, SUPPORT)
+- `/ops` - для операционных ролей (OP_MANAGER, SUPPORT, FINANCE, TECH_SPECIALIST)
 - `/admin` - только для администраторов
 - `/investor` - для инвесторов и администраторов
 

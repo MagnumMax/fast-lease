@@ -52,10 +52,6 @@ describe("POST /api/deals/{id}/transition", () => {
       "@/lib/workflow/state-machine"
     );
 
-    type MockWorkflowService = {
-      transitionDeal: ReturnType<typeof vi.fn>;
-    };
-
     mockedCreateWorkflowService.mockResolvedValueOnce({
       transitionDeal: vi.fn().mockRejectedValue(
         new WorkflowTransitionError("blocked", {

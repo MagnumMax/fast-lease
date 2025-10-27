@@ -171,6 +171,14 @@ describe("WorkflowQueueProcessor", () => {
   });
 
   it("ставит вебхук в SENT при успехе", async () => {
+    const originalFetch = global.fetch;
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
     const webhookRow = {
       id: "webhook-1",
       deal_id: "deal-1",
@@ -194,6 +202,8 @@ describe("WorkflowQueueProcessor", () => {
       expect.objectContaining({ status: "SENT" }),
     );
     expect(webhookUpdate.eq).toHaveBeenCalledWith("id", webhookRow.id);
+
+    global.fetch = originalFetch;
   });
 
   it("планирует повтор вебхука при ошибке", async () => {

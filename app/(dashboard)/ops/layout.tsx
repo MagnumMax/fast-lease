@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { getSessionUser } from "@/lib/auth/session";
 import { opsNav } from "@/lib/navigation";
+import { filterNavItemsForRoles } from "@/lib/navigation/access";
 
 export default async function OpsLayout({
   children,
@@ -25,10 +26,11 @@ export default async function OpsLayout({
   const fullName: string | null = profileFullName ?? metadataFullName ?? null;
 
   const email: string | null = sessionUser.user.email ?? null;
+  const navItems = await filterNavItemsForRoles(opsNav, sessionUser.roles);
 
   return (
     <DashboardLayout
-      navItems={opsNav}
+      navItems={navItems}
       brand={{ title: "Operations", subtitle: "Fast Lease" }}
       user={{
         fullName,

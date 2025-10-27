@@ -4,8 +4,8 @@
 // Константы workflow ролей и статусов
 export const WORKFLOW_ROLES = [
   { code: "OP_MANAGER", name: "Операционный менеджер" },
-  { code: "OPERATOR", name: "Оператор процесса" },
   { code: "SUPPORT", name: "Поддержка операций" },
+  { code: "TECH_SPECIALIST", name: "Технический специалист" },
   { code: "RISK_MANAGER", name: "Менеджер по управлению рисками" },
   { code: "FINANCE", name: "Финансовый отдел" },
   { code: "INVESTOR", name: "Инвестор / ЛПР" },
@@ -73,7 +73,7 @@ export const OPS_WORKFLOW_STATUSES = [
     key: "VEHICLE_CHECK",
     title: "Проверка авто",
     description: "Проверка VIN, комплектации и цены поставщика.",
-    ownerRole: "OP_MANAGER",
+    ownerRole: "TECH_SPECIALIST",
     slaLabel: "SLA 8h",
     entryActions: ["Проверить VIN/комплектацию/цену"],
     exitGuards: [
@@ -175,7 +175,7 @@ export const OPS_WORKFLOW_STATUSES = [
     key: "VEHICLE_DELIVERY",
     title: "Выдача автомобиля",
     description: "Подготовка и фактическая выдача авто клиенту.",
-    ownerRole: "OP_MANAGER",
+    ownerRole: "TECH_SPECIALIST",
     entryActions: ["Подготовить акт выдачи и слот доставки"],
     exitGuards: [
       {

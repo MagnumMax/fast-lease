@@ -5,6 +5,7 @@ DO $$
 DECLARE
   client_user_id UUID;
   ops_user_id UUID;
+  tech_user_id UUID;
   admin_user_id UUID;
   support_user_id UUID;
   investor_user_id UUID;
@@ -70,7 +71,7 @@ BEGIN
 
   RAISE NOTICE 'Клиенты созданы: 50 пользователей';
 
-  -- Создаем операторов (5 человек)
+  -- Создаем операционных менеджеров (5 человек)
   FOR i IN 1..5 LOOP
     INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
@@ -111,11 +112,56 @@ BEGIN
 
     INSERT INTO public.user_roles (user_id, role, assigned_at)
     VALUES
-      (ops_user_id, 'OP_MANAGER', now() - (random() * interval '365 days')),
-      (ops_user_id, 'OPERATOR', now() - (random() * interval '365 days'));
+      (ops_user_id, 'OP_MANAGER', now() - (random() * interval '365 days'));
   END LOOP;
 
-  RAISE NOTICE 'Операторы созданы: 5 пользователей';
+  RAISE NOTICE 'Операционные менеджеры созданы: 5 пользователей';
+
+  -- Создаем технических специалистов (3 человека)
+  FOR i IN 1..3 LOOP
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    VALUES (
+      gen_random_uuid(),
+      '00000000-0000-0000-0000-000000000000',
+      'tech' || i || '@fastlease.dev',
+      crypt('Passw0rd!', gen_salt('bf', 10)),
+      now() - (random() * interval '365 days'),
+      '+97150' || LPAD((2500000 + (random() * 999999)::int)::text, 7, '0'),
+      jsonb_build_object('full_name', 'Тех специалист ' || i),
+      'authenticated',
+      'authenticated',
+      now() - (random() * interval '365 days'),
+      now() - (random() * interval '30 days')
+    )
+    RETURNING id INTO tech_user_id;
+
+    INSERT INTO public.profiles (
+      user_id, status, full_name, phone, nationality, residency_status,
+      employment_info, marketing_opt_in, timezone, created_at, updated_at
+    ) VALUES (
+      tech_user_id,
+      'active',
+      'Тех специалист ' || i,
+      '+97150' || LPAD((2500000 + (random() * 999999)::int)::text, 7, '0'),
+      'UAE',
+      'resident',
+      jsonb_build_object(
+        'department', 'Fleet Operations',
+        'position', 'Technical Specialist',
+        'employee_id', 'TECH-' || LPAD(i::text, 3, '0')
+      ),
+      false,
+      'Asia/Dubai',
+      now() - (random() * interval '365 days'),
+      now() - (random() * interval '30 days')
+    );
+
+    INSERT INTO public.user_roles (user_id, role, assigned_at)
+    VALUES
+      (tech_user_id, 'TECH_SPECIALIST', now() - (random() * interval '365 days'));
+  END LOOP;
+
+  RAISE NOTICE 'Технические специалисты созданы: 3 пользователя';
 
   -- Создаем администраторов (3 человека)
   FOR i IN 1..3 LOOP

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { getSessionUser } from "@/lib/auth/session";
 import { investorNav } from "@/lib/navigation";
+import { filterNavItemsForRoles } from "@/lib/navigation/access";
 
 export default async function InvestorLayout({
   children,
@@ -25,10 +26,11 @@ export default async function InvestorLayout({
   const fullName: string | null = profileFullName ?? metadataFullName ?? null;
 
   const email: string | null = sessionUser.user.email ?? null;
+  const navItems = await filterNavItemsForRoles(investorNav, sessionUser.roles);
 
   return (
     <DashboardLayout
-      navItems={investorNav}
+      navItems={navItems}
       brand={{ title: "Investor", subtitle: "Fast Lease" }}
       user={{
         fullName,

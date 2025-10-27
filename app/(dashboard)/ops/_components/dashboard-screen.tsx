@@ -2,8 +2,6 @@
 
 import { useMemo } from "react";
 import type { ChartOptions } from "chart.js";
-import { AlertTriangle, MonitorDot, OctagonAlert } from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
 import {
   Card,

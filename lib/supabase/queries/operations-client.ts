@@ -1,3 +1,5 @@
+import { getSessionUser } from "@/lib/auth/session";
+import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   OPS_WORKFLOW_STATUS_MAP,
@@ -54,6 +56,33 @@ type DashboardDataSource = {
   scheduleQueue: WorkflowQueueRow[];
   managerProfiles: Map<string, { id: string; full_name: string | null }>;
 };
+
+const OPS_DASHBOARD_ALLOWED_ROLES: AppRole[] = [
+  "OP_MANAGER",
+  "SUPPORT",
+  "FINANCE",
+  "TECH_SPECIALIST",
+  "ADMIN",
+];
+
+function hasOpsDashboardAccess(roles: AppRole[] | undefined | null): boolean {
+  if (!roles?.length) {
+    return false;
+  }
+  return roles.some((role) => OPS_DASHBOARD_ALLOWED_ROLES.includes(role));
+}
+
+function createEmptyDashboardData(): DashboardDataSource {
+  return {
+    deals: [],
+    invoices: [],
+    payments: [],
+    notificationQueue: [],
+    webhookQueue: [],
+    scheduleQueue: [],
+    managerProfiles: new Map(),
+  };
+}
 
 // Вспомогательная функция для проверки объектов (используется в других местах)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -246,8 +275,20 @@ function buildOperationsDashboardSnapshotFromData(
 }
 
 export async function getOperationsDashboardSnapshotClient(): Promise<OpsDashboardSnapshot> {
-  const supabase = await createSupabaseServerClient();
   const now = new Date();
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    console.warn("[operations] dashboard requested without active session; returning fallback snapshot");
+    return buildOperationsDashboardSnapshotFromData(createEmptyDashboardData(), now);
+  }
+
+  if (!hasOpsDashboardAccess(sessionUser.roles)) {
+    console.warn("[operations] dashboard requested by user without operations role; returning fallback snapshot");
+    return buildOperationsDashboardSnapshotFromData(createEmptyDashboardData(), now);
+  }
+
+  const supabase = await createSupabaseServerClient();
   const thirtyDaysAgoIso = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const sixtyDaysAgoIso = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString();
 

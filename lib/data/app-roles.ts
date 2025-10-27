@@ -19,7 +19,7 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     role: "ADMIN",
     label: "Administrator",
     description: "Полный доступ к настройкам, пользователям и интеграциям.",
-    homePath: "/admin/bpm",
+    homePath: "/admin/dashboard",
     priority: 0,
     defaultIdentity: "admin@fastlease.io",
     loginPreset: {
@@ -30,7 +30,8 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
   {
     role: "OP_MANAGER",
     label: "Operations Manager",
-    description: "Управление сделками, задачами и статусами процессов.",
+    description:
+      "Управление и исполнение операционного процесса: сделки, задачи, статусы.",
     homePath: "/ops/dashboard",
     priority: 1,
     defaultIdentity: "ops.manager@fastlease.io",
@@ -40,23 +41,11 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     },
   },
   {
-    role: "OPERATOR",
-    label: "Operator",
-    description: "Исполнение задач и ведение сделок в рамках операций.",
-    homePath: "/ops/dashboard",
-    priority: 2,
-    defaultIdentity: "operator@fastlease.io",
-    loginPreset: {
-      label: "Оператор",
-      identity: "operator@fastlease.io",
-    },
-  },
-  {
     role: "FINANCE",
     label: "Finance",
     description: "Финансовый контроль, платежи и биллинг поставщиков.",
-    homePath: "/ops/deals",
-    priority: 3,
+    homePath: "/finance/dashboard",
+    priority: 2,
     defaultIdentity: "finance@fastlease.io",
     loginPreset: {
       label: "Финансы",
@@ -67,12 +56,24 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     role: "SUPPORT",
     label: "Support",
     description: "Поддержка клиентов и сопровождение сделок.",
-    homePath: "/ops/tasks",
-    priority: 4,
+    homePath: "/support/dashboard",
+    priority: 3,
     defaultIdentity: "support@fastlease.io",
     loginPreset: {
       label: "Поддержка",
       identity: "support@fastlease.io",
+    },
+  },
+  {
+    role: "TECH_SPECIALIST",
+    label: "Technical Specialist",
+    description: "Техническая проверка автомобиля и взаимодействие с сервисами.",
+    homePath: "/tech/dashboard",
+    priority: 4,
+    defaultIdentity: "tech.specialist@fastlease.io",
+    loginPreset: {
+      label: "Технический специалист",
+      identity: "tech.specialist@fastlease.io",
     },
   },
   {
@@ -104,21 +105,21 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     role: "RISK_MANAGER",
     label: "Risk Manager",
     description: "Оценка кредитного риска и скоринг клиентов.",
-    homePath: "/ops/deals",
+    homePath: "/risk/dashboard",
     priority: 7,
   },
   {
     role: "LEGAL",
     label: "Legal",
     description: "Юридическое сопровождение сделок и договоров.",
-    homePath: "/ops/deals",
+    homePath: "/legal/dashboard",
     priority: 8,
   },
   {
     role: "ACCOUNTING",
     label: "Accounting",
     description: "Пост-учёт и контроль финансовых документов.",
-    homePath: "/ops/deals",
+    homePath: "/accounting/dashboard",
     priority: 9,
   },
 ];

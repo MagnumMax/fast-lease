@@ -12,12 +12,12 @@ roles:
   - code: OP_MANAGER
     name: Операционный менеджер
     categories: [auth, workflow]
-  - code: OPERATOR
-    name: Оператор процесса
-    categories: [auth]
   - code: SUPPORT
     name: Поддержка операций
     categories: [auth]
+  - code: TECH_SPECIALIST
+    name: Технический специалист
+    categories: [auth, workflow]
   - code: FINANCE
     name: Финансовый отдел
     categories: [auth, workflow]
@@ -93,7 +93,7 @@ statuses:
         task:
           type: VERIFY_VEHICLE
           title: "Проверить VIN/комплектацию/цену"
-          assignee_role: OP_MANAGER
+          assignee_role: TECH_SPECIALIST
           guard_key: "vehicle.verified"
           sla: { hours: 8 }
     exit_requirements:
@@ -246,7 +246,7 @@ statuses:
         task:
           type: ARRANGE_DELIVERY
           title: "Организовать выдачу авто клиенту"
-          assignee_role: OP_MANAGER
+          assignee_role: TECH_SPECIALIST
           guard_key: "delivery.confirmed"
           sla: { hours: 24 }
     exit_requirements:
@@ -284,14 +284,14 @@ transitions:
 
   - from: OFFER_PREP
     to: VEHICLE_CHECK
-    by_roles: [OP_MANAGER]
+    by_roles: [TECH_SPECIALIST]
     guards:
       - key: quotationPrepared
         rule: "== true"
 
   - from: VEHICLE_CHECK
     to: DOCS_COLLECT
-    by_roles: [OP_MANAGER]
+    by_roles: [TECH_SPECIALIST]
     guards:
       - key: vehicle.verified
         rule: "== true"
@@ -333,7 +333,7 @@ transitions:
 
   - from: SIGNING_FUNDING
     to: VEHICLE_DELIVERY
-    by_roles: [FINANCE]
+    by_roles: [TECH_SPECIALIST]
     guards:
       - key: esign.allSigned
         rule: "== true"
@@ -344,7 +344,7 @@ transitions:
 
   - from: VEHICLE_DELIVERY
     to: ACTIVE
-    by_roles: [OP_MANAGER]
+    by_roles: [TECH_SPECIALIST]
     guards:
       - key: delivery.confirmed
         rule: "== true"
@@ -358,7 +358,7 @@ transitions:
     by_roles: [OP_MANAGER]
   - from: VEHICLE_CHECK
     to: CANCELLED
-    by_roles: [OP_MANAGER]
+    by_roles: [TECH_SPECIALIST]
   - from: DOCS_COLLECT
     to: CANCELLED
     by_roles: [OP_MANAGER]
@@ -379,18 +379,20 @@ transitions:
     by_roles: [OP_MANAGER]
   - from: VEHICLE_DELIVERY
     to: CANCELLED
-    by_roles: [OP_MANAGER]
+    by_roles: [TECH_SPECIALIST]
 
 permissions:
   # Пример матрицы доступа: кто может менять что
   DEAL_VIEW:
-    roles: [OP_MANAGER, RISK_MANAGER, FINANCE, INVESTOR, LEGAL, ACCOUNTING, ADMIN]
+    roles: [OP_MANAGER, TECH_SPECIALIST, RISK_MANAGER, FINANCE, INVESTOR, LEGAL, ACCOUNTING, ADMIN]
   DEAL_EDIT:
     roles: [OP_MANAGER, ADMIN]
   STATUS_TRANSITION:
     rules:
       - role: OP_MANAGER
-        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, VEHICLE_DELIVERY]
+        allowed_from: [NEW, OFFER_PREP, DOCS_COLLECT]
+      - role: TECH_SPECIALIST
+        allowed_from: [VEHICLE_CHECK, VEHICLE_DELIVERY]
       - role: RISK_MANAGER
         allowed_from: [RISK_REVIEW]
       - role: FINANCE

@@ -5,12 +5,7 @@ import {
   OPS_CLIENT_PROFILE,
 } from "@/lib/supabase/queries/operations";
 
-type OpsClientDetailsProps = {
-  params: Promise<{ id: string }>;
-};
-
-export default async function OpsClientDetailsPage({ params }: OpsClientDetailsProps) {
-  const { id: _id } = await params;
+export default async function OpsClientDetailsPage() {
   const profile = OPS_CLIENT_PROFILE;
   const deals = OPS_CLIENT_DEALS;
   const documents = OPS_CLIENT_DOCUMENTS;
