@@ -76,7 +76,7 @@ export function AuthLayout({
               <p className="text-xs uppercase tracking-[0.32em] text-muted">
                 Fast Lease
               </p>
-              <p className="text-sm font-semibold">Unified Portal</p>
+              <p className="text-sm font-semibold">Portal</p>
             </div>
           </Link>
           <div className="flex items-center gap-2">
