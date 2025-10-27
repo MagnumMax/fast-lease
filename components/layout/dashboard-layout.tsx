@@ -7,12 +7,15 @@ import { ChevronDown, Menu } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
 import type { AppRole } from "@/lib/auth/types";
+import {
+  APP_ROLE_LABELS,
+  APP_ROLE_LOGIN_PRESETS,
+} from "@/lib/data/app-roles";
 import { clientNav } from "@/lib/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/system/theme-toggle";
-import { MobileNav } from "@/components/navigation/mobile-nav";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
 
 type DashboardLayoutProps = {
@@ -33,6 +36,17 @@ const DEFAULT_BRAND = {
   title: "Fast Lease",
   subtitle: "Operations Center",
 };
+
+const ROLE_DISPLAY_LABELS: Record<AppRole, string> = {
+  ...APP_ROLE_LABELS,
+  ...APP_ROLE_LOGIN_PRESETS.reduce(
+    (acc, preset) => {
+      acc[preset.role] = preset.label;
+      return acc;
+    },
+    {} as Partial<Record<AppRole, string>>,
+  ),
+} as Record<AppRole, string>;
 
 export function DashboardLayout({
   navItems,
@@ -83,6 +97,14 @@ export function DashboardLayout({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [profileMenuOpen]);
+
+  const normalizedFullName = user?.fullName?.trim() || null;
+  const dropdownName = normalizedFullName ?? user?.email ?? "No name";
+  const showEmailInMenu = Boolean(user?.email && normalizedFullName);
+  const primaryRole = user?.primaryRole ?? null;
+  const roleLabel = primaryRole
+    ? ROLE_DISPLAY_LABELS[primaryRole] ?? primaryRole
+    : "Guest";
 
   return (
     <div className="dashboard-shell">
@@ -159,16 +181,8 @@ export function DashboardLayout({
                 aria-expanded={profileMenuOpen}
                 aria-controls={profileMenuId}
               >
-                <div className="hidden text-left md:block">
-                  <p className="font-semibold leading-tight">
-                    {user?.fullName ?? "Profile"}
-                  </p>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {user?.primaryRole ?? "guest"}
-                  </p>
-                </div>
-                <span className="text-sm font-semibold md:hidden">
-                  {user?.fullName?.split(" ")[0] ?? "Profile"}
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {roleLabel}
                 </span>
                 <ChevronDown className="h-4 w-4" aria-hidden="true" />
               </Button>
@@ -181,13 +195,13 @@ export function DashboardLayout({
                 >
                   <div className="border-b border-border pb-3">
                     <p className="font-semibold leading-tight">
-                      {user?.fullName ?? user?.email ?? "No name"}
+                      {dropdownName}
                     </p>
-                    {user?.email ? (
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    {showEmailInMenu ? (
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
                     ) : null}
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {user?.primaryRole ?? "guest"}
+                      {roleLabel}
                     </p>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3">
@@ -214,8 +228,6 @@ export function DashboardLayout({
           <div className="dashboard-content__inner">{children}</div>
         </main>
       </div>
-
-      <MobileNav items={navItems} />
     </div>
   );
 }
