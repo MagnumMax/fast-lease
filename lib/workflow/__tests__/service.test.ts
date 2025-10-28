@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
@@ -16,6 +17,7 @@ import {
 } from "../versioning";
 import { WorkflowTransitionError } from "../state-machine";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = resolve(
   __dirname,
   "../../../docs/workflow_template.yaml",

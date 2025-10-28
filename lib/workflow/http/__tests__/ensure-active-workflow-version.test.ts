@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -11,6 +12,7 @@ import {
 } from "@/lib/workflow/versioning";
 import { ensureActiveWorkflowVersion } from "@/lib/workflow/http/create-deal";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = resolve(__dirname, "../../../../docs/workflow_template.yaml");
 const TEMPLATE_SOURCE = readFileSync(TEMPLATE_PATH, "utf-8");
 const TEMPLATE_CHECKSUM = getWorkflowVersionChecksum(TEMPLATE_SOURCE);
