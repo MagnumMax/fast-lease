@@ -3,16 +3,6 @@ import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-const globalWithDirname = globalThis as typeof globalThis & Record<string, unknown>;
-
-if (typeof globalWithDirname.__dirname === "undefined") {
-  Object.defineProperty(globalWithDirname, "__dirname", {
-    value: "/",
-    configurable: true,
-    writable: false,
-  });
-}
-
 import {
   extractRolesFromUserMetadata,
   isAccessAllowed,
