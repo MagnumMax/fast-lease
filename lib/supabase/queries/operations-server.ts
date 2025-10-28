@@ -325,6 +325,8 @@ export type SupabaseDealDocument = {
   document_type: string | null;
   title: string | null;
   storage_path: string | null;
+  status?: string | null;
+  signed_at?: string | null;
   created_at: string | null;
 };
 
@@ -1254,7 +1256,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     term_months, contract_start_date, contract_end_date, first_payment_date, source, customer_id,
     vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, current_value, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
     customer_contact:customer_id(id, full_name, email, phone, emirates_id),
-    deal_documents(id, document_type, title, storage_path, created_at)
+    deal_documents(id, document_type, title, storage_path, status, signed_at, created_at)
   `;
 
   type SupabaseDealDetailRow = {
@@ -1402,17 +1404,46 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   // Загружаем email из auth.users (если есть клиент)
   let authUser: Awaited<ReturnType<typeof supabase.auth.admin.getUserById>>["data"] | null = null;
   if (dealRow.client_id) {
-    const { data: fetchedAuthUser, error: authUserError } = await supabase.auth.admin.getUserById(
-      dealRow.client_id,
-    );
-    if (authUserError) {
-      console.error("[SERVER-OPS] failed to load auth user for deal client", {
+    try {
+      const { data: fetchedAuthUser, error: authUserError } = await supabase.auth.admin.getUserById(
+        dealRow.client_id,
+      );
+
+      if (authUserError) {
+        const status = (authUserError as { status?: number | null } | null)?.status ?? null;
+        const message = (authUserError as { message?: string } | null)?.message ?? "";
+        const normalizedMessage = message.toLowerCase();
+        const isMissing = status === 404;
+        const isForbidden =
+          status === 401 ||
+          status === 403 ||
+          normalizedMessage.includes("service role") ||
+          normalizedMessage.includes("not authorized");
+
+        if (!isMissing && !isForbidden) {
+          console.warn("[SERVER-OPS] unexpected failure while loading auth user for deal client", {
+            dealId: dealRow.id,
+            clientId: dealRow.client_id,
+            status,
+            message,
+          });
+        } else {
+          console.debug("[SERVER-OPS] auth user lookup skipped", {
+            dealId: dealRow.id,
+            clientId: dealRow.client_id,
+            status,
+            message,
+          });
+        }
+      } else {
+        authUser = fetchedAuthUser;
+      }
+    } catch (error) {
+      console.warn("[SERVER-OPS] auth user lookup threw", {
         dealId: dealRow.id,
         clientId: dealRow.client_id,
-        error: authUserError,
+        error,
       });
-    } else {
-      authUser = fetchedAuthUser;
     }
   }
 
@@ -1518,19 +1549,78 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         signaturesRequired = 2;
       }
 
+      const createdAtIso = doc.created_at ?? null;
+      const signedAtIso = doc.signed_at ?? null;
+      const statusRaw = typeof doc.status === "string" ? doc.status.trim() : null;
+
+      const formatRuDate = (iso: string | null) => {
+        if (!iso) return null;
+        const date = new Date(iso);
+        if (Number.isNaN(date.getTime())) {
+          return null;
+        }
+        return date.toLocaleDateString("ru-RU", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      };
+
+      const signedDate = formatRuDate(signedAtIso);
+      const uploadedDate = formatRuDate(createdAtIso);
+      const normalizeStatus = (value: string) =>
+        value
+          .split(/[_\s]+/)
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+          .join(" ");
+
+      const statusDictionary: Record<string, string> = {
+        signed: "Подписано",
+        pending_signature: "Ожидает подписи",
+        pending: "В ожидании",
+        recorded: "Зафиксировано",
+        active: "Активно",
+        uploaded: "Загружено",
+        archived: "В архиве",
+      };
+
+      const statusLabel = (() => {
+        if (!statusRaw) return null;
+        const key = statusRaw.toLowerCase();
+        if (statusDictionary[key]) {
+          return statusDictionary[key];
+        }
+        return normalizeStatus(statusRaw);
+      })();
+
+      const timelineDate = signedDate ?? uploadedDate ?? null;
+
+      let statusDisplay: string;
+      if (statusLabel && timelineDate) {
+        statusDisplay = `${statusLabel} • ${timelineDate}`;
+      } else if (statusLabel) {
+        statusDisplay = statusLabel;
+      } else if (signedDate) {
+        statusDisplay = `Подписано • ${signedDate}`;
+      } else if (uploadedDate) {
+        statusDisplay = `Загружено • ${uploadedDate}`;
+      } else {
+        statusDisplay = "Загружено";
+      }
+
       return {
         id: doc.id,
         title,
-        status: `Uploaded ${new Date(doc.created_at || new Date()).toLocaleDateString("ru-RU", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric"
-        })}`,
+        status: statusDisplay,
+        rawStatus: statusRaw,
         url: signedUrl,
         documentType,
         category,
         signaturesCollected,
         signaturesRequired,
+        uploadedAt: createdAtIso,
+        signedAt: signedAtIso,
       };
     })
   );

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 
 import {
   AlertTriangle,
@@ -65,6 +65,27 @@ function getInvoiceStatusMeta(status: string): { icon: LucideIcon; variant: Invo
   }
 
   return { icon: CheckCircle2, variant: "success" };
+}
+
+const DOCUMENT_STATUS_VARIANT_MAP: Record<string, ComponentProps<typeof Badge>["variant"]> = {
+  signed: "success",
+  "подписано": "success",
+  pending_signature: "info",
+  "ожидает подписи": "info",
+  pending: "warning",
+  recorded: "secondary",
+  active: "success",
+  archived: "outline",
+  uploaded: "secondary",
+  "в архиве": "outline",
+};
+
+function resolveDocumentStatusVariant(rawStatus?: string | null): ComponentProps<typeof Badge>["variant"] {
+  if (!rawStatus) {
+    return "outline";
+  }
+  const normalized = rawStatus.toLowerCase();
+  return DOCUMENT_STATUS_VARIANT_MAP[normalized] ?? "outline";
 }
 
 function getVehicleInfoIcon(label: string): LucideIcon {
@@ -553,14 +574,35 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 doc.signaturesRequired != null && doc.signaturesCollected != null
                   ? `${doc.signaturesCollected}/${doc.signaturesRequired} подписей`
                   : null;
+              const statusParts = doc.status
+                ? doc.status.split("•").map((part) => part.trim()).filter(Boolean)
+                : [];
+              const [statusLabelText, ...statusExtraParts] = statusParts;
+              const statusDetailText = statusExtraParts.join(" • ");
+              const statusBadgeVariant = resolveDocumentStatusVariant(doc.rawStatus);
               return (
                 <li
                   key={doc.id}
                   className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <p className="text-sm font-medium text-foreground">{doc.title}</p>
-                    <p className="text-xs text-muted-foreground">{doc.status}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {statusLabelText ? (
+                        <Badge
+                          variant={statusBadgeVariant}
+                          className="rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
+                        >
+                          {statusLabelText}
+                        </Badge>
+                      ) : null}
+                      {statusDetailText ? (
+                        <span className="text-xs text-muted-foreground">{statusDetailText}</span>
+                      ) : null}
+                      {!statusLabelText && !statusDetailText ? (
+                        <span className="text-xs text-muted-foreground">{doc.status}</span>
+                      ) : null}
+                    </div>
                     {signatureMeta ? (
                       <p className="text-xs text-muted-foreground">{signatureMeta}</p>
                     ) : null}

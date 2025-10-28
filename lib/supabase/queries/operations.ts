@@ -297,6 +297,8 @@ export type SupabaseDealDocument = {
   document_type: string | null;
   title: string | null;
   storage_path: string | null;
+  status?: string | null;
+  signed_at?: string | null;
   created_at: string | null;
 };
 
@@ -416,6 +418,9 @@ export type OpsDealDocument = {
   category: "required" | "signature" | "archived" | "other";
   signaturesCollected?: number | null;
   signaturesRequired?: number | null;
+  uploadedAt?: string | null;
+  signedAt?: string | null;
+  rawStatus?: string | null;
 };
 
 export type OpsDealInvoice = {

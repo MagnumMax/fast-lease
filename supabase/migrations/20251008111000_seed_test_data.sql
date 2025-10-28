@@ -59,6 +59,15 @@ declare
   lambo_id uuid;
   volvo_id uuid;
   application_id uuid;
+  application_id_secondary uuid;
+  application_id_third uuid;
+  contact_michael_id uuid;
+  contact_aisha_id uuid;
+  contact_noah_id uuid;
+  rolls_deal_id uuid;
+  lambo_deal_id uuid;
+  volvo_deal_id uuid;
+  workflow_version_id uuid;
   support_ticket_id uuid;
   referral_id uuid;
 begin
@@ -188,17 +197,111 @@ begin
     (lambo_id, 'Performance', 'Power', '631', 'hp', 1),
     (volvo_id, 'Battery', 'Capacity', '78', 'kWh', 1);
 
+  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot, marketing_opt_in)
+  values
+    (
+      'APP-2025-0002',
+      client_id,
+      lambo_id,
+      'in_review',
+      now() - interval '28 days',
+      now() - interval '32 days',
+      now() - interval '3 days',
+      'Broker',
+      jsonb_build_object('budget', 42000, 'usage', 'business'),
+      jsonb_build_object('creditScore', 705, 'income', 52000),
+      true
+    )
+  returning id into application_id_secondary;
+
+  insert into public.application_documents (application_id, document_type, document_category, original_filename, stored_filename, storage_path, mime_type, file_size, status, verification_data, uploaded_at, verified_at, verified_by)
+  values
+    (
+      application_id_secondary,
+      'residency_permit',
+      'identity',
+      'residency-permit.pdf',
+      'residency-permit.pdf',
+      'applications/a0000001/residency-permit.pdf',
+      'application/pdf',
+      436912,
+      'pending_review',
+      jsonb_build_object('notes', 'Awaiting verification'),
+      now() - interval '30 days',
+      null,
+      null
+    );
+
+  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot, marketing_opt_in)
+  values
+    (
+      'APP-2025-0003',
+      client_id,
+      volvo_id,
+      'approved',
+      now() - interval '18 days',
+      now() - interval '20 days',
+      now() - interval '2 days',
+      'Referral',
+      jsonb_build_object('budget', 15000, 'usage', 'family'),
+      jsonb_build_object('creditScore', 742, 'income', 38000),
+      true
+    )
+  returning id into application_id_third;
+
+  insert into public.application_documents (application_id, document_type, document_category, original_filename, stored_filename, storage_path, mime_type, file_size, status, verification_data, uploaded_at, verified_at, verified_by)
+  values
+    (
+      application_id_third,
+      'bank_statement',
+      'financial',
+      'bank-statement.pdf',
+      'bank-statement.pdf',
+      'applications/a0000002/bank-statement.pdf',
+      'application/pdf',
+      512004,
+      'verified',
+      jsonb_build_object('notes', 'Validated by operations'),
+      now() - interval '19 days',
+      now() - interval '18 days',
+      ops_id
+    );
+
   insert into public.workflow_contacts (full_name, email, phone, emirates_id)
   values
     ('Michael Adams', 'michael.adams@fastlease.dev', '+971 50 111 2233', '784-1987-2233445-1'),
     ('Aisha Khan', 'aisha.khan@fastlease.dev', '+971 50 555 7890', '784-1990-9876543-2'),
     ('Noah Lee', 'noah.lee@fastlease.dev', '+971 52 333 4477', '784-1992-4455667-3');
 
+  select id
+    into contact_michael_id
+  from public.workflow_contacts
+  where full_name = 'Michael Adams'
+  limit 1;
+
+  select id
+    into contact_aisha_id
+  from public.workflow_contacts
+  where full_name = 'Aisha Khan'
+  limit 1;
+
+  select id
+    into contact_noah_id
+  from public.workflow_contacts
+  where full_name = 'Noah Lee'
+  limit 1;
+
   insert into public.workflow_assets (type, vin, make, model, trim, year, supplier, price, meta)
   values
     ('VEHICLE', 'WF-ROLLS-001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'DXB Motors', 985000, jsonb_build_object('color', 'Obsidian', 'battery', 'N/A')),
     ('VEHICLE', 'WF-LAMBO-002', 'Lamborghini', 'Huracán', 'EVO AWD', 2023, 'Elite Motors', 720000, jsonb_build_object('color', 'Verde Mantis', 'feature', 'Launch control')),
     ('VEHICLE', 'WF-VOLVO-003', 'Volvo', 'XC40 Recharge', 'Twin Motor', 2024, 'Nordic Auto', 149000, jsonb_build_object('color', 'Cloud Blue', 'batteryRange', '450 km'));
+
+  select id
+    into workflow_version_id
+  from public.workflow_versions
+  order by created_at desc
+  limit 1;
 
   insert into public.vehicle_telematics (vehicle_id, odometer, battery_health, fuel_level, tire_pressure, location, last_reported_at)
   values (
@@ -261,6 +364,291 @@ begin
       jsonb_build_array(),
       now() - interval '2 days',
       now() - interval '1 days'
+    );
+
+  insert into public.deals (
+    deal_number,
+    application_id,
+    vehicle_id,
+    client_id,
+    status,
+    principal_amount,
+    total_amount,
+    monthly_payment,
+    term_months,
+    interest_rate,
+    down_payment_amount,
+    security_deposit,
+    processing_fee,
+    contract_start_date,
+    contract_end_date,
+    first_payment_date,
+    contract_terms,
+    insurance_details,
+    assigned_account_manager,
+    activated_at,
+    created_at,
+    updated_at,
+    workflow_id,
+    workflow_version_id,
+    customer_id,
+    asset_id,
+    source,
+    payload,
+    op_manager_id
+  )
+  values (
+    'DEAL-2025-0001',
+    application_id,
+    rolls_id,
+    client_id,
+    'CONTRACT_PREP',
+    865000,
+    1025000,
+    29800,
+    36,
+    0.045,
+    195000,
+    85000,
+    5500,
+    current_date - interval '15 days',
+    current_date + interval '26 months',
+    current_date + interval '12 days',
+    jsonb_build_object('grace_days', 5, 'late_fee', 250, 'auto_debit', true),
+    jsonb_build_object('provider', 'AXA', 'policy_number', 'AXA-ROLLS-2025'),
+    ops_id,
+    null,
+    now() - interval '30 days',
+    now() - interval '1 days',
+    'fast-lease-v1',
+    workflow_version_id,
+    contact_michael_id,
+    (select id from public.workflow_assets where vin = 'WF-ROLLS-001' limit 1),
+    'Website',
+    jsonb_build_object(
+      'source_label', 'Website',
+      'guard_tasks', jsonb_build_object(
+        'legal.contractReady', jsonb_build_object('fulfilled', true, 'completed_at', now() - interval '2 days')
+      )
+    ),
+    ops_id
+  )
+  returning id into rolls_deal_id;
+
+  insert into public.deals (
+    deal_number,
+    application_id,
+    vehicle_id,
+    client_id,
+    status,
+    principal_amount,
+    total_amount,
+    monthly_payment,
+    term_months,
+    interest_rate,
+    down_payment_amount,
+    security_deposit,
+    processing_fee,
+    contract_start_date,
+    contract_end_date,
+    first_payment_date,
+    contract_terms,
+    insurance_details,
+    assigned_account_manager,
+    activated_at,
+    created_at,
+    updated_at,
+    workflow_id,
+    workflow_version_id,
+    customer_id,
+    asset_id,
+    source,
+    payload,
+    op_manager_id
+  )
+  values (
+    'DEAL-2025-0002',
+    application_id_secondary,
+    lambo_id,
+    client_id,
+    'SIGNING_FUNDING',
+    540000,
+    690000,
+    24500,
+    30,
+    0.052,
+    120000,
+    62000,
+    4800,
+    current_date - interval '22 days',
+    current_date + interval '24 months',
+    current_date + interval '7 days',
+    jsonb_build_object('grace_days', 3, 'late_fee', 220, 'auto_debit', true),
+    jsonb_build_object('provider', 'RSA', 'policy_number', 'RSA-LAMBO-2025'),
+    ops_id,
+    now() - interval '14 days',
+    now() - interval '40 days',
+    now() - interval '3 days',
+    'fast-lease-v1',
+    workflow_version_id,
+    contact_aisha_id,
+    (select id from public.workflow_assets where vin = 'WF-LAMBO-002' limit 1),
+    'Broker',
+    jsonb_build_object(
+      'source_label', 'Broker',
+      'guard_tasks', jsonb_build_object(
+        'esign.allSigned', jsonb_build_object('fulfilled', false),
+        'payments.advanceReceived', jsonb_build_object('fulfilled', true, 'completed_at', now() - interval '1 days'),
+        'payments.supplierPaid', jsonb_build_object('fulfilled', false)
+      )
+    ),
+    ops_id
+  )
+  returning id into lambo_deal_id;
+
+  insert into public.deals (
+    deal_number,
+    application_id,
+    vehicle_id,
+    client_id,
+    status,
+    principal_amount,
+    total_amount,
+    monthly_payment,
+    term_months,
+    interest_rate,
+    down_payment_amount,
+    security_deposit,
+    processing_fee,
+    contract_start_date,
+    contract_end_date,
+    first_payment_date,
+    contract_terms,
+    insurance_details,
+    assigned_account_manager,
+    activated_at,
+    created_at,
+    updated_at,
+    workflow_id,
+    workflow_version_id,
+    customer_id,
+    asset_id,
+    source,
+    payload,
+    op_manager_id
+  )
+  values (
+    'DEAL-2025-0003',
+    application_id_third,
+    volvo_id,
+    client_id,
+    'DOCS_COLLECT',
+    185000,
+    225000,
+    3250,
+    24,
+    0.038,
+    35000,
+    18000,
+    2500,
+    current_date - interval '12 days',
+    current_date + interval '18 months',
+    current_date + interval '5 days',
+    jsonb_build_object('grace_days', 4, 'late_fee', 150, 'auto_debit', true),
+    jsonb_build_object('provider', 'Zurich', 'policy_number', 'ZUR-VOLVO-2025'),
+    ops_id,
+    null,
+    now() - interval '18 days',
+    now() - interval '4 days',
+    'fast-lease-v1',
+    workflow_version_id,
+    contact_noah_id,
+    (select id from public.workflow_assets where vin = 'WF-VOLVO-003' limit 1),
+    'Referral',
+    jsonb_build_object(
+      'source_label', 'Referral',
+      'guard_tasks', jsonb_build_object(
+        'docs.required.allUploaded', jsonb_build_object('fulfilled', false),
+        'risk.approved', jsonb_build_object('fulfilled', false)
+      )
+    ),
+    ops_id
+  )
+  returning id into volvo_deal_id;
+
+  insert into public.deal_documents (deal_id, title, document_type, status, storage_path, signed_at, created_at)
+  values
+    (
+      rolls_deal_id,
+      'Lease Agreement (Signed 2/2)',
+      'legal.contractReady',
+      'signed',
+      format('%s/lease-agreement.pdf', rolls_deal_id),
+      now() - interval '1 days',
+      now() - interval '2 days'
+    ),
+    (
+      rolls_deal_id,
+      'Insurance Policy - AXA',
+      'insurance.policy',
+      'active',
+      format('%s/insurance-policy.pdf', rolls_deal_id),
+      now() - interval '2 days',
+      now() - interval '3 days'
+    ),
+    (
+      rolls_deal_id,
+      'Vehicle Delivery Checklist',
+      'delivery.confirmed',
+      'pending_signature',
+      format('%s/delivery-checklist.pdf', rolls_deal_id),
+      null,
+      now() - interval '1 days'
+    ),
+    (
+      lambo_deal_id,
+      'E-sign Envelope',
+      'esign.allSigned',
+      'pending_signature',
+      format('%s/esign-envelope.pdf', lambo_deal_id),
+      null,
+      now() - interval '2 days'
+    ),
+    (
+      lambo_deal_id,
+      'Advance Payment Receipt',
+      'payments.advanceReceived',
+      'recorded',
+      format('%s/advance-payment.pdf', lambo_deal_id),
+      now() - interval '1 days',
+      now() - interval '2 days'
+    ),
+    (
+      lambo_deal_id,
+      'Supplier Invoice',
+      'payments.supplierPaid',
+      'pending',
+      format('%s/supplier-invoice.pdf', lambo_deal_id),
+      null,
+      now() - interval '1 days'
+    ),
+    (
+      volvo_deal_id,
+      'KYC Passport Upload',
+      'docs.required.allUploaded',
+      'uploaded',
+      format('%s/passport.pdf', volvo_deal_id),
+      null,
+      now() - interval '5 days'
+    ),
+    (
+      volvo_deal_id,
+      'Proof of Address (DEWA)',
+      'kyc.proofOfAddress',
+      'uploaded',
+      format('%s/proof-of-address.pdf', volvo_deal_id),
+      null,
+      now() - interval '4 days'
     );
 
   insert into public.client_notifications (client_id, title, message, icon, severity, created_at)
