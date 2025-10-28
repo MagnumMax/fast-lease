@@ -10,16 +10,7 @@ import type {
 } from "./state-machine";
 import { createWorkflowService } from "./factory";
 import { WorkflowTransitionError } from "./state-machine";
-
-function computeSlaDueAt(hours: number | undefined): string | null {
-  if (!hours || Number.isNaN(hours)) {
-    return null;
-  }
-
-  const due = new Date();
-  due.setHours(due.getHours() + hours);
-  return due.toISOString();
-}
+import { resolveTaskAssigneeUserId } from "./task-assignees";
 
 function computeActionHash(
   action: WorkflowAction,
@@ -48,6 +39,122 @@ function shouldLogAction(result: { data: unknown; error: { code?: string } | nul
   return Boolean(result.data);
 }
 
+function computeSlaDueAt(hours: number | undefined): string | null {
+  if (!hours || Number.isNaN(hours)) {
+    return null;
+  }
+
+  const due = new Date();
+  due.setHours(due.getHours() + hours);
+  return due.toISOString();
+}
+
+type DealSnapshot = {
+  id: string;
+  payload: Record<string, unknown> | null;
+  customer_id: string | null;
+  asset_id: string | null;
+  source: string | null;
+  op_manager_id: string | null;
+};
+
+async function loadDealSnapshot(client: SupabaseClient, dealId: string): Promise<DealSnapshot | null> {
+  const { data, error } = await client
+    .from("deals")
+    .select(
+      "id, payload, customer_id, asset_id, source, op_manager_id",
+    )
+    .eq("id", dealId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[workflow] failed to load deal snapshot for task create", error);
+    return null;
+  }
+
+  return (data as DealSnapshot) ?? null;
+}
+
+function resolvePath(context: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce<unknown>((acc, key) => {
+    if (acc === null || acc === undefined) {
+      return undefined;
+    }
+    if (typeof acc !== "object") {
+      return undefined;
+    }
+    return (acc as Record<string, unknown>)[key];
+  }, context);
+}
+
+function evaluateBindings(
+  bindings: Record<string, string> | undefined,
+  bindingContext: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!bindings) {
+    return {};
+  }
+
+  return Object.entries(bindings).reduce<Record<string, unknown>>((acc, [key, expression]) => {
+    const trimmed = expression.trim();
+    const match = trimmed.match(/^{{\s*(.+?)\s*}}$/);
+    if (!match) {
+      acc[key] = expression;
+      return acc;
+    }
+    const path = match[1];
+    acc[key] = resolvePath(bindingContext, path);
+    return acc;
+  }, {});
+}
+
+function buildTaskPayload(
+  definition: {
+    templateId: string;
+    type: string;
+    title: string;
+    schema: TaskCreateAction["task"]["schema"] | null;
+    defaults: Record<string, unknown> | null;
+    guardKey: string | null;
+  },
+  options: {
+    deal: DealSnapshot | null;
+    contextPayload: Record<string, unknown>;
+    status: { key: string; title: string };
+    workflow: { id: string; title: string };
+  },
+  bindings: Record<string, string> | undefined,
+): Record<string, unknown> {
+  const bindingContext = {
+    deal: options.deal,
+    payload: (options.deal?.payload as Record<string, unknown> | null) ?? {},
+    context: options.contextPayload,
+    status: options.status,
+    workflow: options.workflow,
+    now: new Date().toISOString(),
+  };
+
+  const evaluatedBindings = evaluateBindings(bindings, bindingContext);
+
+  return {
+    template_id: definition.templateId,
+    title: definition.title,
+    type: definition.type,
+    schema_version: definition.schema?.version ?? "1.0",
+    schema: definition.schema ?? null,
+    guard_key: definition.guardKey ?? null,
+    defaults: definition.defaults ?? null,
+    fields: {
+      ...(definition.defaults ?? {}),
+      ...evaluatedBindings,
+    },
+    status: options.status,
+    status_key: options.status.key,
+    status_title: options.status.title,
+    workflow: options.workflow,
+  };
+}
+
 async function handleTaskCreate(
   client: SupabaseClient,
   action: WorkflowAction,
@@ -57,8 +164,56 @@ async function handleTaskCreate(
     return;
   }
 
+  console.log("[workflow] handleTaskCreate invoked", {
+    dealId: context.dealId,
+    taskType: action.task.type,
+    assigneeRole: action.task.assigneeRole,
+  });
   const slaDueAt = computeSlaDueAt(action.task.sla?.hours);
   const actionHash = computeActionHash(action, context);
+  const statusMeta = context.template.stages?.[context.transition.to];
+
+  const dealSnapshot = await loadDealSnapshot(client, context.dealId);
+  if (!dealSnapshot) {
+    console.warn("[workflow] task create skipped — deal snapshot not available", {
+      dealId: context.dealId,
+    });
+    return;
+  }
+  console.log("[workflow] deal snapshot loaded");
+
+  const dealPayload =
+    (dealSnapshot.payload as Record<string, unknown> | null | undefined) ?? null;
+  const assigneeUserId = resolveTaskAssigneeUserId({
+    role: action.task.assigneeRole,
+    deal: dealSnapshot,
+    payloadSources: [context.payload ?? null, dealPayload],
+    actor: { role: context.actorRole, id: context.actorId },
+  });
+
+  const payload = buildTaskPayload(
+    {
+      templateId: action.task.templateId,
+      type: action.task.type,
+      title: action.task.title,
+      schema: action.task.schema ?? null,
+      defaults: action.task.defaults ?? null,
+      guardKey: action.task.guardKey ?? null,
+    },
+    {
+      deal: dealSnapshot,
+      contextPayload: context.payload ?? {},
+      status: {
+        key: context.transition.to,
+        title: statusMeta?.title ?? context.transition.to,
+      },
+      workflow: {
+        id: context.template.workflow.id,
+        title: context.template.workflow.title,
+      },
+    },
+    action.task.bindings ?? undefined,
+  );
 
   const result = await client
     .from("tasks")
@@ -66,28 +221,31 @@ async function handleTaskCreate(
       {
         deal_id: context.dealId,
         type: action.task.type,
+        title: action.task.title,
         status: "OPEN",
         assignee_role: action.task.assigneeRole,
+        assignee_user_id: assigneeUserId,
         sla_due_at: slaDueAt,
-        payload: {
-          title: action.task.title,
-          checklist: action.task.checklist ?? [],
-          created_by_role: context.actorRole,
-          guard_key: action.task.guardKey ?? null,
-          status_key: context.transition.to,
-          status_title:
-            context.template?.stages?.[context.transition.to]?.title ??
-            context.transition.to,
-        },
+        sla_status: slaDueAt ? "ON_TRACK" : null,
+        payload,
         action_hash: actionHash,
       },
-      { onConflict: "action_hash", ignoreDuplicates: true },
+      { onConflict: "action_hash" },
     )
     .select("id")
     .maybeSingle();
+  if (result.error) {
+    console.error("[workflow] task upsert error", result.error);
+  } else {
+    console.log("[workflow] task upsert success", {
+      id: result.data?.id,
+      assigneeRole: action.task.assigneeRole,
+      assigneeUserId,
+    });
+  }
 
   if (result.error && !isUniqueViolation(result.error)) {
-    console.error("[workflow] failed to create task", result.error);
+    console.error("[workflow] failed to create workflow task", result.error);
     return;
   }
 
@@ -95,6 +253,7 @@ async function handleTaskCreate(
     await insertAudit(client, "TASK_CREATE", context, {
       taskType: action.task.type,
       assigneeRole: action.task.assigneeRole,
+      templateId: action.task.templateId,
       slaDueAt,
     });
   }
@@ -426,3 +585,4 @@ export function createWorkflowActionExecutor(
 }
 
 export { handleWebhook as handleIncomingWebhook };
+type TaskCreateAction = Extract<WorkflowAction, { type: "TASK_CREATE" }>;

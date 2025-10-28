@@ -2,7 +2,10 @@ import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
-import type { OpsDealGuardStatus } from "@/lib/supabase/queries/operations";
+import type { OpsDealGuardStatus, OpsDealWorkflowTask } from "@/lib/supabase/queries/operations";
+import { mapTaskRow, TASK_SELECT } from "@/lib/supabase/queries/tasks";
+import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
+import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 
 // Константы workflow ролей и статусов
 export const WORKFLOW_ROLES = [
@@ -287,11 +290,16 @@ export type SupabaseVehicleData = {
   vin: string | null;
   make: string | null;
   model: string | null;
+  variant?: string | null;
   year: number | null;
   body_type: string | null;
   mileage: number | null;
   current_value: number | null;
   status: string | null;
+  fuel_type?: string | null;
+  transmission?: string | null;
+  color_exterior?: string | null;
+  color_interior?: string | null;
   image?: string | null;
   vehicle_images?: Array<{
     id: string;
@@ -345,6 +353,94 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function getString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function formatDate(
+  value: string | null | undefined,
+  options: Intl.DateTimeFormatOptions = {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  },
+): string {
+  if (!value) {
+    return "—";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  return new Intl.DateTimeFormat("ru-RU", options).format(date);
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) {
+    return "—";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+  const datePart = new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+  return `${datePart} ${timePart}`;
+}
+
+function formatCurrency(value: number | null | undefined): string {
+  if (value == null) {
+    return "—";
+  }
+  return `AED ${Number(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatShortDate(value: string | null | undefined): string {
+  return formatDate(value, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function resolveScore(payload: unknown): number | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const searchKeys = ["score", "overall_score", "total", "value"];
+  for (const key of searchKeys) {
+    const raw = (payload as Record<string, unknown>)[key];
+    if (typeof raw === "number") {
+      return raw;
+    }
+    if (typeof raw === "string") {
+      const parsed = Number(raw);
+      if (!Number.isNaN(parsed)) {
+        return parsed;
+      }
+    }
+  }
+  if ("summary" in payload && payload.summary && typeof payload.summary === "object") {
+    const summaryScore = resolveScore(payload.summary);
+    if (summaryScore != null) {
+      return summaryScore;
+    }
+  }
+  if ("scorecard" in payload && payload.scorecard && typeof payload.scorecard === "object") {
+    const scorecardScore = resolveScore(payload.scorecard);
+    if (scorecardScore != null) {
+      return scorecardScore;
+    }
+  }
+  return null;
 }
 
 
@@ -602,6 +698,47 @@ function computeFallbackDealNumber(id: string) {
   return `DEAL-${id.slice(-6).toUpperCase()}`;
 }
 
+function buildDealWorkflowTasks(options: {
+  statusKey: OpsDealStatusKey;
+  tasks: WorkspaceTask[];
+  guardStatuses: OpsDealGuardStatus[];
+}): OpsDealWorkflowTask[] {
+  const { statusKey, tasks, guardStatuses } = options;
+  const guardMap = guardStatuses.reduce<Record<string, OpsDealGuardStatus>>((acc, guard) => {
+    acc[guard.key] = guard;
+    return acc;
+  }, {});
+  const guardMetaMap = OPS_WORKFLOW_STATUS_MAP[statusKey].exitGuards.reduce<
+    Record<string, { label: string; requiresDocument?: boolean }>
+  >((acc, guard) => {
+    acc[guard.key] = { label: guard.label, requiresDocument: guard.requiresDocument };
+    return acc;
+  }, {});
+
+  return tasks.map<OpsDealWorkflowTask>((task) => {
+    const guardKey = resolveTaskGuardKey(task);
+    const guardState = guardKey ? guardMap[guardKey] : null;
+    const guardMeta = guardKey ? guardMetaMap[guardKey] : null;
+
+    return {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      guardKey: guardKey ?? null,
+      guardLabel: guardMeta?.label ?? null,
+      requiresDocument: Boolean(guardMeta?.requiresDocument),
+      fulfilled: guardState ? guardState.fulfilled : task.status === "DONE",
+      slaDueAt: task.slaDueAt,
+      completedAt: task.completedAt,
+      assigneeRole: task.assigneeRole,
+      assigneeUserId: task.assigneeUserId,
+      note: guardState?.note ?? null,
+      attachmentPath: guardState?.attachmentPath ?? null,
+      attachmentUrl: guardState?.attachmentUrl ?? null,
+    };
+  });
+}
+
 type DealRow = {
   id: string;
   deal_number: string | null;
@@ -652,6 +789,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       created_at,
       updated_at,
       client_id,
+      customer_id,
       vehicle_id,
       total_amount,
       payload,
@@ -685,6 +823,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
 
   // Загружаем уникальные client_id для запроса данных клиентов
   const uniqueClientIds = [...new Set(data.map(deal => deal.client_id).filter(Boolean))];
+  const uniqueCustomerIds = [...new Set(data.map(deal => deal.customer_id).filter(Boolean))];
 
   // Загружаем данные клиентов отдельным запросом
   console.log(`[DEBUG] Loading clients for IDs:`, uniqueClientIds.slice(0, 5), `... (total: ${uniqueClientIds.length})`);
@@ -713,6 +852,30 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   (clientsData || []).forEach(client => {
     clientsMap.set(client.user_id, client);
   });
+
+  type ContactData = {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+
+  const contactsMap = new Map<string, ContactData>();
+
+  if (uniqueCustomerIds.length > 0) {
+    const { data: contactsData, error: contactsError } = await supabase
+      .from("workflow_contacts")
+      .select("id, full_name, email, phone")
+      .in("id", uniqueCustomerIds);
+
+    if (contactsError) {
+      console.error("[SERVER-OPS] failed to load workflow contacts:", contactsError);
+    } else {
+      (contactsData || []).forEach((contact) => {
+        contactsMap.set(contact.id, contact as ContactData);
+      });
+    }
+  }
 
   console.log(`[DEBUG] Clients loaded: ${clientsData?.length || 0}`);
   console.log(`[DEBUG] Unique client IDs from deals: ${uniqueClientIds.length}`);
@@ -839,9 +1002,22 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
 
     // Получаем данные клиента из карты
     const clientData = clientsMap.get(row.client_id as string);
+    const contactData = contactsMap.get(row.customer_id as string);
 
     // Формируем название клиента
-    const clientName = clientData?.full_name || `Client ${(row.client_id as string)?.slice(-4) ?? "0000"}`;
+    const resolvedClientId =
+      typeof row.client_id === "string" && row.client_id.trim().length > 0
+        ? (row.client_id as string)
+        : typeof row.customer_id === "string" && row.customer_id.trim().length > 0
+          ? (row.customer_id as string)
+          : null;
+
+    const clientIdentifier = resolvedClientId ?? "";
+
+    const clientName =
+      clientData?.full_name ||
+      contactData?.full_name ||
+      `Client ${clientIdentifier.slice(-4) || "0000"}`;
 
     // Формируем название автомобиля
     const vehicleName = vehicleData?.make && vehicleData?.model
@@ -875,7 +1051,8 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
     const result = {
       id: row.id as string,
       dealId: dealNumber,
-      clientId: row.client_id as string,
+      clientId: resolvedClientId,
+      customerId: typeof row.customer_id === "string" ? (row.customer_id as string) : null,
       client: clientName,
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,
@@ -904,6 +1081,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
 }
 
 type OperationsClient = {
+  userId: string;
   id: string;
   name: string;
   email: string;
@@ -941,6 +1119,7 @@ export async function getOperationsClients(): Promise<OperationsClient[]> {
     const emailFromMetadata = typeof metadata?.ops_email === "string" ? metadata.ops_email : null;
 
     return {
+      userId: (profile.user_id as string) ?? "",
       id: `CL-${(101 + index).toString().padStart(4, "0")}`,
       name: (profile.full_name as string) ?? "Client",
       email: emailFromMetadata ?? "",
@@ -1000,6 +1179,9 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
   const { data, error } = await supabase
     .from("vehicles")
     .select("vin, make, model, year, body_type, mileage, current_value, status")
+    .not("vin", "is", null)
+    .not("vin", "eq", "")
+    .neq("vin", "—")
     .order("make", { ascending: true });
 
   if (error) {
@@ -1091,7 +1273,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   // Загружаем данные сделки с связанными таблицами
   const fetchFields = `
     id, deal_number, status, created_at, updated_at, monthly_payment, total_amount, principal_amount, payload, client_id,
-    vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, current_value, status, vehicle_images(id, storage_path, label, is_primary, sort_order)),
+    term_months, contract_start_date, contract_end_date, first_payment_date, source, customer_id,
+    vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, current_value, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
+    customer_contact:customer_id(id, full_name, email, phone, emirates_id),
     deal_documents(id, document_type, title, storage_path, created_at)
   `;
 
@@ -1106,24 +1290,26 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     principal_amount: number | null;
     payload: Record<string, unknown> | null;
     client_id: string;
-    vehicles?: Array<{
+    term_months: number | null;
+    contract_start_date: string | null;
+    contract_end_date: string | null;
+    first_payment_date: string | null;
+    source: string | null;
+    customer_id: string | null;
+    vehicles?: SupabaseVehicleData[] | SupabaseVehicleData | null;
+    customer_contact?: {
       id: string;
-      vin: string | null;
-      make: string | null;
-      model: string | null;
-      year: number | null;
-      body_type: string | null;
-      mileage: number | null;
-      current_value: number | null;
-      status: string | null;
-      vehicle_images?: Array<{
-        id: string;
-        storage_path: string | null;
-        label: string | null;
-        is_primary: boolean | null;
-        sort_order: number | null;
-      }>;
-    }>;
+      full_name: string | null;
+      email: string | null;
+      phone: string | null;
+      emirates_id: string | null;
+    } | Array<{
+      id: string;
+      full_name: string | null;
+      email: string | null;
+      phone: string | null;
+      emirates_id: string | null;
+    }> | null;
     deal_documents?: SupabaseDealDocument[];
   };
 
@@ -1231,8 +1417,26 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     .eq("user_id", dealRow.client_id)
     .maybeSingle();
 
-  // Загружаем email из auth.users
-  const { data: authUser } = await supabase.auth.admin.getUserById(dealRow.client_id);
+  const contactRecord = Array.isArray(dealRow.customer_contact)
+    ? (dealRow.customer_contact[0] ?? null)
+    : (dealRow.customer_contact ?? null);
+
+  // Загружаем email из auth.users (если есть клиент)
+  let authUser: Awaited<ReturnType<typeof supabase.auth.admin.getUserById>>["data"] | null = null;
+  if (dealRow.client_id) {
+    const { data: fetchedAuthUser, error: authUserError } = await supabase.auth.admin.getUserById(
+      dealRow.client_id,
+    );
+    if (authUserError) {
+      console.error("[SERVER-OPS] failed to load auth user for deal client", {
+        dealId: dealRow.id,
+        clientId: dealRow.client_id,
+        error: authUserError,
+      });
+    } else {
+      authUser = fetchedAuthUser;
+    }
+  }
 
   // Загружаем scoring из applications
   const { data: applicationData } = await supabase
@@ -1243,6 +1447,21 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     .limit(1)
     .maybeSingle();
 
+  // Загружаем график платежей
+  type SupabasePaymentScheduleRow = { due_date: string | null; amount: number | null; status: string | null };
+  const { data: paymentSchedules, error: paymentSchedulesError } = await supabase
+    .from("payment_schedules")
+    .select("due_date, amount, status")
+    .eq("deal_id", dealRow.id)
+    .order("due_date", { ascending: true });
+
+  if (paymentSchedulesError) {
+    console.error("[SERVER-OPS] failed to load payment schedules", {
+      dealId: dealRow.id,
+      error: paymentSchedulesError,
+    });
+  }
+
   console.log(`[DEBUG] Client data query result:`, { clientData, clientError, clientId: dealRow.client_id });
   console.log(`[DEBUG] Client full_name: "${clientData?.full_name}"`);
   console.log(`[DEBUG] Client phone: "${clientData?.phone}"`);
@@ -1250,22 +1469,90 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   console.log(`[DEBUG] Client metadata:`, clientData?.metadata);
   console.log(`[DEBUG] Application scoring results:`, applicationData?.scoring_results);
 
+  const paymentScheduleRows = (paymentSchedules ?? []) as SupabasePaymentScheduleRow[];
+  const pendingStatuses = new Set(["pending", "overdue", "draft"]);
+
+  const nextScheduleEntry = paymentScheduleRows.find((row) =>
+    pendingStatuses.has((row.status ?? "").toLowerCase()),
+  );
+
+  const outstandingAmount = paymentScheduleRows
+    .filter((row) => pendingStatuses.has((row.status ?? "").toLowerCase()))
+    .reduce((acc, row) => acc + Number(row.amount ?? 0), 0);
+
+  const nextPaymentDisplay = (() => {
+    if (nextScheduleEntry) {
+      const parts: string[] = [];
+      const datePart = formatShortDate(nextScheduleEntry.due_date);
+      if (datePart !== "—") {
+        parts.push(datePart);
+      }
+      if (nextScheduleEntry.amount != null) {
+        parts.push(formatCurrency(nextScheduleEntry.amount));
+      }
+      return parts.length > 0 ? parts.join(" • ") : "—";
+    }
+    if (dealRow.first_payment_date) {
+      return formatShortDate(dealRow.first_payment_date);
+    }
+    return "—";
+  })();
+
+  const outstandingAmountDisplay =
+    outstandingAmount > 0
+      ? formatCurrency(outstandingAmount)
+      : formatCurrency(dealRow.principal_amount ?? dealRow.total_amount ?? null);
+
   // Загружаем реальные документы с подписанными URL
   const documents = await Promise.all(
     (dealRow.deal_documents || []).map(async (doc: SupabaseDealDocument) => {
       const signedUrl = doc.storage_path
         ? await createSignedStorageUrl({ bucket: "deal-documents", path: doc.storage_path })
         : null;
+      const documentType = doc.document_type ?? null;
+      const normalizedType = documentType?.toLowerCase() ?? "";
+      const title = doc.title || `${doc.document_type ?? "Document"}`.trim();
+      const normalizedTitle = title.toLowerCase();
+      let category: "required" | "signature" | "archived" | "other" = "required";
+      if (
+        normalizedType.includes("sign") ||
+        normalizedTitle.includes("signature") ||
+        normalizedTitle.includes("подпис")
+      ) {
+        category = "signature";
+      } else if (
+        normalizedType.includes("archive") ||
+        normalizedTitle.includes("archive") ||
+        normalizedTitle.includes("архив")
+      ) {
+        category = "archived";
+      }
+
+      const signaturePattern = /(\d+)\s*\/*\s*(из|from)?\s*(\d+)/i;
+      let signaturesCollected: number | null = null;
+      let signaturesRequired: number | null = null;
+      const signatureMatch = title.match(signaturePattern);
+      if (signatureMatch) {
+        signaturesCollected = Number(signatureMatch[1]);
+        signaturesRequired = Number(signatureMatch[3]);
+      } else if (category === "signature") {
+        signaturesCollected = normalizedTitle.includes("signed") ? 2 : 0;
+        signaturesRequired = 2;
+      }
 
       return {
         id: doc.id,
-        title: doc.title || `${doc.document_type} document`,
+        title,
         status: `Uploaded ${new Date(doc.created_at || new Date()).toLocaleDateString("ru-RU", {
           day: "2-digit",
           month: "short",
           year: "numeric"
         })}`,
         url: signedUrl,
+        documentType,
+        category,
+        signaturesCollected,
+        signaturesRequired,
       };
     })
   );
@@ -1290,7 +1577,30 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     status: invoice.status || "Pending",
   }));
 
-  const guardStatuses = await buildDetailGuardStatuses(statusKey, dealRow.payload, dealRow.deal_documents ?? []);
+  const guardStatuses = await buildDetailGuardStatuses(
+    statusKey,
+    dealRow.payload,
+    dealRow.deal_documents ?? [],
+  );
+
+  const { data: tasksData, error: tasksError } = await supabase
+    .from("tasks")
+    .select(TASK_SELECT)
+    .eq("deal_id", dealRow.id)
+    .order("created_at", { ascending: true });
+
+  if (tasksError) {
+    console.error("[SERVER-OPS] failed to load deal tasks", tasksError);
+  }
+
+  const allDealTasks = (tasksData ?? []).map(mapTaskRow);
+  const stageTasks = allDealTasks.filter((task) => task.workflowStageKey === statusKey);
+  const workflowTasks = buildDealWorkflowTasks({
+    statusKey,
+    tasks: stageTasks,
+    guardStatuses,
+  });
+
   const timeline = buildTimelineEvents({
     createdAt: dealRow.created_at,
     updatedAt: dealRow.updated_at,
@@ -1299,50 +1609,64 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     statusKey,
   });
 
-  // Обрабатываем данные из Supabase (они приходят как массивы)
-  const vehicleArray = dealRow.vehicles || [];
-  const vehicle = Array.isArray(vehicleArray) && vehicleArray.length > 0 ? vehicleArray[0] : {};
-  const vehicleData = vehicle as SupabaseVehicleData;
-  const vehicleName = vehicleData?.make && vehicleData?.model
-    ? `${vehicleData.make} ${vehicleData.model}`
-    : "Vehicle TBD";
+  const vehicleRelation = dealRow.vehicles;
+  const vehicleArray: SupabaseVehicleData[] = Array.isArray(vehicleRelation)
+    ? (vehicleRelation as SupabaseVehicleData[])
+    : vehicleRelation && typeof vehicleRelation === "object"
+      ? [(vehicleRelation as SupabaseVehicleData)]
+      : [];
+  const vehicleData = vehicleArray[0] ?? null;
+  const vehicleName = (() => {
+    const parts = [vehicleData?.make, vehicleData?.model, vehicleData?.variant]
+      .map((part) => (typeof part === "string" ? part.trim() : ""))
+      .filter((part) => part.length > 0);
+    return parts.length > 0 ? parts.join(" ") : null;
+  })();
 
-  // Загружаем изображения
-  const images = vehicleData.vehicle_images || [];
-  const primaryImage = images.find((img: typeof images[0]) => img.is_primary) || images[0];
+  const images = vehicleData?.vehicle_images ?? [];
+  const primaryImage = images.find((img) => img.is_primary) ?? images[0];
   const signedUrl = primaryImage?.storage_path
     ? await createSignedStorageUrl({ bucket: "vehicle-images", path: primaryImage.storage_path })
     : null;
   const imageUrl = signedUrl || "/assets/vehicle-placeholder.svg";
 
-  const profile: DealDetailResult['profile'] = {
-    dealId: (dealRow.deal_number as string) ?? dealRow.id,
-    vehicleName,
-    status: statusKey,
-    description: `Client — ${clientData?.full_name || "Unknown client"}.`,
-    image: imageUrl,
-    monthlyPayment:
-      dealRow.monthly_payment != null
-        ? `AED ${Number(dealRow.monthly_payment).toLocaleString("en-US")}`
-        : "AED 0",
-    nextPayment: "15 Feb 2025",
-    dueAmount:
-      dealRow.total_amount != null
-        ? `AED ${Number(dealRow.total_amount).toLocaleString("en-US")}`
-        : "AED 0",
-  };
+  const profileMetadata = (clientData?.metadata as Record<string, unknown> | null) ?? null;
+  const metadataEmailCandidates = ["ops_email", "work_email", "email"];
+  const metadataEmail =
+    metadataEmailCandidates
+      .map((key) => profileMetadata?.[key])
+      .find((value): value is string => typeof value === "string" && value.includes("@")) ?? null;
 
-  // Формируем профиль клиента с реальными данными
-  const client = clientData || {} as SupabaseClientData;
-  const scoringResults = applicationData?.scoring_results as { score?: number } | null;
-  const realScoring = scoringResults?.score ? `${scoringResults.score}/100` : "90/100"; // Фоллбек если нет данных
+  const resolvedClientName =
+    clientData?.full_name ??
+    contactRecord?.full_name ??
+    (typeof authUser?.user?.user_metadata?.full_name === "string"
+      ? authUser.user.user_metadata.full_name
+      : null);
+  const resolvedClientPhone = clientData?.phone ?? contactRecord?.phone ?? null;
+  const resolvedClientEmail = metadataEmail ?? contactRecord?.email ?? authUser?.user?.email ?? "—";
 
-  const clientProfile: DealDetailResult['client'] = {
-    name: client.full_name || "Unknown Client",
-    phone: client.phone || "+971 50 000 0000",
-    email: (client.metadata as { ops_email?: string } | null)?.ops_email || authUser?.user?.email || "—",
-    scoring: realScoring,
-    notes: "Client profile loaded from database",
+  const clientNotesParts: string[] = [];
+  if (clientData?.status) {
+    clientNotesParts.push(`Статус: ${clientData.status}`);
+  }
+  if (clientData?.nationality) {
+    clientNotesParts.push(`Гражданство: ${clientData.nationality}`);
+  }
+  if (contactRecord?.emirates_id) {
+    clientNotesParts.push(`Emirates ID: ${contactRecord.emirates_id}`);
+  }
+
+  const scoringValue = resolveScore(applicationData?.scoring_results);
+  const scoringDisplay =
+    scoringValue != null ? `${Math.round(scoringValue)}/100` : "—";
+
+  const clientProfile: DealDetailResult["client"] = {
+    name: resolvedClientName ?? "—",
+    phone: resolvedClientPhone ?? "—",
+    email: resolvedClientEmail,
+    scoring: scoringDisplay,
+    notes: clientNotesParts.length > 0 ? clientNotesParts.join(" • ") : "—",
   };
 
   console.log(`[DEBUG] Final client profile:`, {
@@ -1353,82 +1677,105 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     notes: clientProfile.notes,
   });
 
+  const profileDescription = resolvedClientName
+    ? `Клиент: ${resolvedClientName}`
+    : contactRecord?.full_name
+      ? `Контакт: ${contactRecord.full_name}`
+      : "Клиент не указан";
+
+  const profile: DealDetailResult["profile"] = {
+    dealId: dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id),
+    vehicleName: vehicleName ?? "Автомобиль не выбран",
+    status: statusKey,
+    description: profileDescription,
+    image: imageUrl,
+    monthlyPayment: formatCurrency(dealRow.monthly_payment),
+    nextPayment: nextPaymentDisplay,
+    dueAmount: outstandingAmountDisplay,
+  };
+
   // Формируем ключевую информацию об автомобиле
-  const keyInformation: DealDetailResult['keyInformation'] = [];
+  const rawKeyInformation: DealDetailResult["keyInformation"] = [
+    { label: "VIN", value: vehicleData?.vin ?? "—" },
+    {
+      label: "Год выпуска",
+      value: vehicleData?.year != null ? vehicleData.year.toString() : "—",
+    },
+    {
+      label: "Пробег",
+      value:
+        vehicleData?.mileage != null
+          ? `${Number(vehicleData.mileage).toLocaleString("en-US")} км`
+          : "—",
+    },
+    {
+      label: "Кузов",
+      value: vehicleData?.body_type ?? "—",
+    },
+    {
+      label: "Топливо",
+      value: vehicleData?.fuel_type ?? "—",
+    },
+    {
+      label: "Трансмиссия",
+      value: vehicleData?.transmission ?? "—",
+    },
+    {
+      label: "Цвет (экст.)",
+      value: vehicleData?.color_exterior ?? "—",
+    },
+    {
+      label: "Цвет (инт.)",
+      value: vehicleData?.color_interior ?? "—",
+    },
+    {
+      label: "Статус авто",
+      value: vehicleData?.status ?? "—",
+    },
+    {
+      label: "Стоимость",
+      value: formatCurrency(vehicleData?.current_value ?? null),
+    },
+    {
+      label: "Срок договора",
+      value: dealRow.term_months != null ? `${dealRow.term_months} мес.` : "—",
+    },
+    {
+      label: "Первая оплата",
+      value: formatShortDate(dealRow.first_payment_date),
+    },
+    {
+      label: "Старт договора",
+      value: formatDate(dealRow.contract_start_date),
+    },
+    {
+      label: "Окончание договора",
+      value: formatDate(dealRow.contract_end_date),
+    },
+  ];
 
-  if (vehicleData?.vin) {
-    keyInformation.push({ label: "VIN", value: vehicleData.vin });
-  }
-
-  if (vehicleData?.year) {
-    keyInformation.push({ label: "Year", value: vehicleData.year.toString() });
-  }
-
-  if (vehicleData?.mileage) {
-    keyInformation.push({
-      label: "Mileage",
-      value: `${Number(vehicleData.mileage).toLocaleString("en-US")} km`
-    });
-  }
-
-  if (vehicleData?.body_type) {
-    keyInformation.push({ label: "Body Type", value: vehicleData.body_type });
-  }
-
-  if (vehicleData?.current_value) {
-    keyInformation.push({
-      label: "Value",
-      value: `AED ${Number(vehicleData.current_value).toLocaleString("en-US")}`
-    });
-  }
-
-  // Добавляем дефолтные данные если нет реальных
-  if (keyInformation.length === 0) {
-    keyInformation.push(
-      { label: "VIN", value: "TBD" },
-      { label: "Program Term", value: "36 months" },
-      { label: "Issue Date", value: new Date().toLocaleDateString("ru-RU") },
-      { label: "Mileage", value: "0 km" },
-      { label: "Last Service", value: "Not scheduled" },
-      { label: "Odoo Card", value: "Not linked" }
-    );
-  }
+  const keyInformation = rawKeyInformation.filter((entry) => entry.value && entry.value !== "—");
 
   // Формируем обзор сделки
-  const overview: DealDetailResult['overview'] = [
+  const overview: DealDetailResult["overview"] = [
     {
       label: "Source",
-      value: getString(dealRow.payload?.source) || "Website"
+      value:
+        getString(dealRow.source) ??
+        getString(dealRow.payload?.source) ??
+        "—",
     },
     {
       label: "Created at",
-      value: dealRow.created_at
-        ? new Date(dealRow.created_at).toLocaleDateString("ru-RU", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric"
-          }) + " " + new Date(dealRow.created_at).toLocaleTimeString("ru-RU", {
-            hour: "2-digit",
-            minute: "2-digit"
-          })
-        : "—"
+      value: formatDateTime(dealRow.created_at),
     },
     {
       label: "Deal Number",
-      value: dealRow.deal_number || computeFallbackDealNumber(dealRow.id)
+      value: dealRow.deal_number || computeFallbackDealNumber(dealRow.id),
     },
     {
       label: "Last status update",
-      value: dealRow.updated_at
-        ? new Date(dealRow.updated_at).toLocaleDateString("ru-RU", {
-            day: "2-digit",
-            month: "long",
-            year: "numeric"
-          }) + " " + new Date(dealRow.updated_at).toLocaleTimeString("ru-RU", {
-            hour: "2-digit",
-            minute: "2-digit"
-          })
-        : "—"
+      value: formatDateTime(dealRow.updated_at),
     },
   ];
 
@@ -1441,6 +1788,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     dealUuid: dealRow.id,
     statusKey,
     guardStatuses,
+    workflowTasks,
     profile,
     client: clientProfile,
     keyInformation,

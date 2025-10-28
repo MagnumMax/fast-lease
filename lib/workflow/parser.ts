@@ -41,7 +41,31 @@ const conditionSchema = z.object({
   rule: z.string().min(1),
 });
 
+const rawTaskFieldSchema = z.object({
+  id: z.string().min(1),
+  type: z.string().min(1),
+  label: z.string().optional(),
+  description: z.string().optional(),
+  required: z.boolean().optional(),
+  options: z
+    .array(
+      z.object({
+        value: z.string().min(1),
+        label: z.string().optional(),
+        description: z.string().optional(),
+      }),
+    )
+    .optional(),
+  ui: z.record(z.any()).optional(),
+});
+
+const rawTaskSchemaSchema = z.object({
+  version: z.string().min(1).optional(),
+  fields: z.array(rawTaskFieldSchema).min(1),
+});
+
 const rawTaskDefinitionSchema = z.object({
+  template_id: z.string().min(1),
   type: z.string().min(1),
   title: z.string().min(1),
   assignee_role: appRoleEnum,
@@ -50,7 +74,9 @@ const rawTaskDefinitionSchema = z.object({
       hours: z.number().int().positive(),
     })
     .optional(),
-  checklist: z.array(z.string().min(1)).optional(),
+  schema: rawTaskSchemaSchema.optional(),
+  bindings: z.record(z.string().min(1)).optional(),
+  defaults: z.record(z.any()).optional(),
   guard_key: z.string().min(1).optional(),
 });
 
@@ -99,11 +125,19 @@ type RawStatusWebhook = z.infer<typeof rawStatusWebhookSchema>;
 type RawStatusSLA = z.infer<typeof rawStatusSLASchema>;
 
 const mapTaskDefinition = (task: RawTaskDefinition): WorkflowTaskDefinition => ({
+  templateId: task.template_id,
   type: task.type,
   title: task.title,
   assigneeRole: task.assignee_role,
   sla: task.sla,
-  checklist: task.checklist,
+  schema: task.schema
+    ? {
+        version: task.schema.version ?? "1.0",
+        fields: task.schema.fields,
+      }
+    : undefined,
+  bindings: task.bindings,
+  defaults: task.defaults,
   guardKey: task.guard_key,
 });
 

@@ -20,12 +20,36 @@ export type WorkflowTaskSLA = {
   hours: number;
 };
 
+export type WorkflowTaskFieldOption = {
+  value: string;
+  label?: string;
+  description?: string;
+};
+
+export type WorkflowTaskFieldSchema = {
+  id: string;
+  type: string;
+  label?: string;
+  description?: string;
+  required?: boolean;
+  options?: WorkflowTaskFieldOption[];
+  ui?: Record<string, unknown>;
+};
+
+export type WorkflowTaskSchema = {
+  version: string;
+  fields: WorkflowTaskFieldSchema[];
+};
+
 export type WorkflowTaskDefinition = {
+  templateId: string;
   type: string;
   title: string;
   assigneeRole: AppRole;
   sla?: WorkflowTaskSLA;
-  checklist?: string[];
+  schema?: WorkflowTaskSchema;
+  bindings?: Record<string, string>;
+  defaults?: Record<string, unknown>;
   guardKey?: string;
 };
 

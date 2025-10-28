@@ -78,6 +78,8 @@ type OpsDealsBoardProps = {
   vehicleDirectory: OpsCarRecord[];
 };
 
+type VehicleOption = OpsCarRecord & { optionValue: string };
+
 type SortableInstance = Sortable | null;
 
 type Feedback =
@@ -116,6 +118,24 @@ function extractSourceOptions(deals: OpsDealSummary[]) {
   if (sources.length === 0) sources.push(FALLBACK_SOURCE);
 
   return sources;
+}
+
+function resolveVehicleOptionValue(vehicle: OpsCarRecord, index: number): string {
+  if (vehicle.vin && vehicle.vin.trim() && vehicle.vin !== "—") {
+    return vehicle.vin;
+  }
+  if (vehicle.detailHref && vehicle.detailHref.trim()) {
+    return vehicle.detailHref;
+  }
+  return `vehicle-${index}`;
+}
+
+function parseNumericString(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const cleaned = value.replace(/[^0-9.,]/g, "").replace(/,/g, "");
+  if (!cleaned) return undefined;
+  const parsed = Number.parseFloat(cleaned);
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 function createColumnSeed(): Record<OpsDealStatusKey, HTMLDivElement | null> {
@@ -307,6 +327,7 @@ function mapDealRowToSummary(
     id: row.id,
     dealId: dealIdentifier,
     clientId: row.customer_id,
+    customerId: row.customer_id ?? null,
     client: clientName ?? `Client ${row.customer_id?.slice(-4) ?? "0000"}`,
     vehicleId: row.asset_id,
     vehicle: vehicleLabel ?? FALLBACK_VEHICLE,
@@ -365,18 +386,49 @@ export function OpsDealsBoard({
     clientDirectory.forEach((client) => {
       map.set(client.id, client.name);
       map.set(client.id.toLowerCase(), client.name);
+      if (client.userId) {
+        map.set(client.userId, client.name);
+        map.set(client.userId.toLowerCase(), client.name);
+        const userIdSuffix = client.userId.slice(-4).toLowerCase();
+        if (userIdSuffix) {
+          map.set(userIdSuffix, client.name);
+        }
+      }
       const suffix = client.id.slice(-4).toLowerCase();
       if (suffix) {
         map.set(suffix, client.name);
       }
     });
+    deals.forEach((deal) => {
+      if (deal.client && !/^Client\s/i.test(deal.client)) {
+        const identifiers = [deal.clientId, deal.customerId].filter(
+          (value): value is string => typeof value === "string" && value.length > 0,
+        );
+        identifiers.forEach((identifier) => {
+          map.set(identifier, deal.client);
+          map.set(identifier.toLowerCase(), deal.client);
+          const suffix = identifier.slice(-4).toLowerCase();
+          if (suffix) {
+            map.set(suffix, deal.client);
+          }
+        });
+      }
+    });
     return map;
-  }, [clientDirectory]);
+  }, [clientDirectory, deals]);
+  const vehicleOptions = useMemo<VehicleOption[]>(() => {
+    return vehicleDirectory.map((vehicle, index) => ({
+      ...vehicle,
+      optionValue: resolveVehicleOptionValue(vehicle, index),
+    }));
+  }, [vehicleDirectory]);
   const vehicleNameMap = useMemo(() => {
     const map = new Map<string, string>();
-    vehicleDirectory.forEach((vehicle) => {
-      map.set(vehicle.vin, vehicle.name);
-      map.set(vehicle.vin.toLowerCase(), vehicle.name);
+    vehicleOptions.forEach((vehicle) => {
+      if (vehicle.vin && vehicle.vin !== "—") {
+        map.set(vehicle.vin, vehicle.name);
+        map.set(vehicle.vin.toLowerCase(), vehicle.name);
+      }
       if (vehicle.name) {
         map.set(vehicle.name.toLowerCase(), vehicle.name);
       }
@@ -385,11 +437,11 @@ export function OpsDealsBoard({
       }
     });
     return map;
-  }, [vehicleDirectory]);
+  }, [vehicleOptions]);
   const [formState, setFormState] = useState<DealFormState>(() => ({
     reference: "",
     clientId: clientDirectory[0]?.id ?? "",
-    vehicleVin: vehicleDirectory[0]?.vin ?? "",
+    vehicleVin: vehicleOptions[0]?.optionValue ?? "",
     source: defaultSource,
   }));
   const [showCustomSource, setShowCustomSource] = useState(false);
@@ -410,19 +462,22 @@ export function OpsDealsBoard({
   }, [clientDirectory, formState.clientId]);
 
   useEffect(() => {
-    if (formState.vehicleVin && vehicleDirectory.some((vehicle) => vehicle.vin === formState.vehicleVin)) {
+    if (
+      formState.vehicleVin &&
+      vehicleOptions.some((vehicle) => vehicle.optionValue === formState.vehicleVin)
+    ) {
       return;
     }
 
-    if (vehicleDirectory.length === 0 && !formState.vehicleVin) {
+    if (vehicleOptions.length === 0 && !formState.vehicleVin) {
       return;
     }
 
     setFormState((prev) => ({
       ...prev,
-      vehicleVin: vehicleDirectory[0]?.vin ?? "",
+      vehicleVin: vehicleOptions[0]?.optionValue ?? "",
     }));
-  }, [vehicleDirectory, formState.vehicleVin]);
+  }, [vehicleOptions, formState.vehicleVin]);
 
   useEffect(() => {
     if (formState.source) {
@@ -441,8 +496,8 @@ export function OpsDealsBoard({
   );
 
   const selectedVehicle = useMemo(
-    () => vehicleDirectory.find((vehicle) => vehicle.vin === formState.vehicleVin),
-    [vehicleDirectory, formState.vehicleVin],
+    () => vehicleOptions.find((vehicle) => vehicle.optionValue === formState.vehicleVin),
+    [vehicleOptions, formState.vehicleVin],
   );
 
   useEffect(() => {
@@ -662,6 +717,8 @@ export function OpsDealsBoard({
     const vehicleMake = vehicleNameParts[0] ?? selectedVehicle.name;
     const vehicleModel =
       vehicleNameParts.length > 1 ? vehicleNameParts.slice(1).join(" ") : selectedVehicle.name;
+    const vehiclePrice = parseNumericString(selectedVehicle.price);
+    const vehicleMileage = parseNumericString(selectedVehicle.mileage);
 
     try {
       console.log(`[DEBUG] calling createOperationsDeal with:`, {
@@ -676,6 +733,18 @@ export function OpsDealsBoard({
           type: "VEHICLE",
           make: vehicleMake,
           model: vehicleModel,
+          vin: selectedVehicle.vin !== "—" ? selectedVehicle.vin : undefined,
+          year: selectedVehicle.year,
+          price: vehiclePrice,
+          mileage: vehicleMileage,
+          meta: {
+            price_label: selectedVehicle.price,
+            price_value: vehiclePrice,
+            mileage_label: selectedVehicle.mileage,
+            mileage_value: vehicleMileage,
+            detail_href: selectedVehicle.detailHref,
+            type_label: selectedVehicle.type,
+          },
         },
       });
 
@@ -691,6 +760,16 @@ export function OpsDealsBoard({
           type: "VEHICLE",
           make: vehicleMake,
           model: vehicleModel,
+          vin: selectedVehicle.vin !== "—" ? selectedVehicle.vin : undefined,
+          year: selectedVehicle.year,
+          price: vehiclePrice,
+          mileage: vehicleMileage,
+          meta: {
+            price_label: selectedVehicle.price,
+            mileage_label: selectedVehicle.mileage,
+            detail_href: selectedVehicle.detailHref,
+            type_label: selectedVehicle.type,
+          },
         },
       });
 
@@ -725,7 +804,7 @@ export function OpsDealsBoard({
       setFormState({
         reference: "",
         clientId: clientDirectory[0]?.id ?? "",
-        vehicleVin: vehicleDirectory[0]?.vin ?? "",
+        vehicleVin: vehicleOptions[0]?.optionValue ?? "",
         source: resetSource,
       });
       setIsCreateOpen(false);
@@ -861,10 +940,10 @@ export function OpsDealsBoard({
                         setFormState((prev) => ({ ...prev, vehicleVin: event.target.value }))
                       }
                       className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60"
-                      disabled={vehicleDirectory.length === 0}
+                      disabled={vehicleOptions.length === 0}
                     >
-                      {vehicleDirectory.map((vehicle) => (
-                        <option key={vehicle.vin} value={vehicle.vin}>
+                      {vehicleOptions.map((vehicle) => (
+                        <option key={vehicle.optionValue} value={vehicle.optionValue}>
                           {vehicle.name}
                         </option>
                       ))}

@@ -21,6 +21,11 @@ const inputSchema = z.object({
     make: z.string().min(1),
     model: z.string().min(1),
     type: z.string().optional(),
+    vin: z.string().min(1).optional(),
+    year: z.number().int().min(1900).max(2100).optional(),
+    price: z.number().nonnegative().optional(),
+    mileage: z.number().nonnegative().optional(),
+    meta: z.record(z.unknown()).optional(),
   }),
 });
 
@@ -56,6 +61,10 @@ export async function createOperationsDeal(
       type: parsed.data.asset.type ?? "VEHICLE",
       make: parsed.data.asset.make,
       model: parsed.data.asset.model,
+      vin: parsed.data.asset.vin,
+      year: parsed.data.asset.year,
+      price: parsed.data.asset.price,
+      meta: parsed.data.asset.meta,
     },
     payload: parsed.data.reference
       ? {

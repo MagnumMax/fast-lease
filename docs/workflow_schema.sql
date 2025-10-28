@@ -91,24 +91,66 @@ CREATE INDEX deals_status_idx ON deals(status);
 CREATE INDEX deals_opmgr_idx  ON deals(op_manager_id);
 CREATE INDEX deals_workflow_version_id_idx ON deals(workflow_version_id);
 
--- Задания по сделке
+CREATE TYPE task_sla_status AS ENUM ('ON_TRACK','WARNING','BREACHED');
+
 CREATE TABLE tasks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,                      -- CONFIRM_CAR / PREPARE_QUOTE / COLLECT_DOCS / ...
+  deal_id UUID REFERENCES deals(id) ON DELETE CASCADE, -- NULL = ручная задача без сделки
+  type TEXT NOT NULL,                      -- CONFIRM_CAR / PREPARE_QUOTE / MANUAL / ...
+  title TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'OPEN',     -- OPEN / IN_PROGRESS / DONE / BLOCKED
-  assignee_role TEXT REFERENCES roles(code),
-  assignee_user_id UUID,
+  assignee_role TEXT,
+  assignee_user_id UUID REFERENCES auth.users(id),
   sla_due_at TIMESTAMPTZ,
-  payload JSONB,
+  completed_at TIMESTAMPTZ,
+  sla_status task_sla_status,
+  payload JSONB NOT NULL DEFAULT '{}'::JSONB,
   action_hash TEXT,                        -- идемпотентность entry actions (уникальный хэш)
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX tasks_action_hash_key
+  ON tasks(action_hash)
+  WHERE action_hash IS NOT NULL;
+
 CREATE INDEX tasks_deal_idx ON tasks(deal_id);
 CREATE INDEX tasks_status_idx ON tasks(status);
+CREATE INDEX tasks_assignee_idx ON tasks(assignee_user_id);
 CREATE INDEX tasks_sla_idx ON tasks(sla_due_at);
+
+-- Кэш шаблонов задач для UI
+CREATE TABLE workflow_task_templates (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workflow_version_id UUID NOT NULL REFERENCES workflow_versions(id) ON DELETE CASCADE,
+  template_id TEXT NOT NULL,
+  task_type TEXT NOT NULL,
+  schema JSONB NOT NULL,
+  default_payload JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX workflow_task_templates_version_template_idx
+  ON workflow_task_templates(workflow_version_id, template_id);
+
+-- Очередь генерации задач (TASK_CREATE actions)
+CREATE TABLE workflow_task_queue (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  deal_id UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  transition_from TEXT,
+  transition_to TEXT,
+  template_id TEXT,
+  task_definition JSONB NOT NULL,
+  context JSONB,
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  attempts INT NOT NULL DEFAULT 0,
+  action_hash TEXT NOT NULL UNIQUE,
+  error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  processed_at TIMESTAMPTZ
+);
+
+CREATE INDEX workflow_task_queue_status_idx ON workflow_task_queue(status);
 
 -- Очередь уведомлений/эскалаций
 CREATE TABLE workflow_notification_queue (

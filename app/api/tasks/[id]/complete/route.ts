@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { completeTaskRequestSchema } from "@/lib/workflow";
 import { handleTaskCompletion, type TaskCompletionContext } from "@/lib/workflow/task-completion";
+import { getSessionUser } from "@/lib/auth/session";
 
 type RouteContext = {
   params: Promise<{
@@ -25,12 +26,20 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   const supabase = await createSupabaseServiceClient();
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 },
+    );
+  }
 
   // Загружаем существующую задачу
   const existing = await supabase
     .from("tasks")
     .select(
-      "id, deal_id, type, status, assignee_role, assignee_user_id, sla_due_at, payload, created_at, updated_at",
+      "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, sla_status, payload, created_at, updated_at",
     )
     .eq("id", id)
     .maybeSingle();
@@ -47,12 +56,53 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
+  if (
+    existing.data.assignee_user_id &&
+    existing.data.assignee_user_id !== sessionUser.user.id
+  ) {
+    return NextResponse.json(
+      { error: "Task reserved for another user" },
+      { status: 403 },
+    );
+  }
+
   if (existing.data.status === "DONE") {
     return NextResponse.json(existing.data);
   }
 
   // Объединяем payload задачи
   const newPayload = { ...(existing.data.payload ?? {}), ...parsed.data.payload };
+
+  let effectiveAssigneeUserId = existing.data.assignee_user_id ?? sessionUser.user.id;
+
+  if (!existing.data.assignee_user_id) {
+    const claimResult = await supabase
+      .from("tasks")
+      .update({ assignee_user_id: sessionUser.user.id })
+      .eq("id", id)
+      .eq("status", existing.data.status)
+      .is("assignee_user_id", null)
+      .select("assignee_user_id")
+      .maybeSingle();
+
+    if (claimResult.error) {
+      console.error("[workflow] failed to claim task before completion", claimResult.error);
+      return NextResponse.json(
+        { error: "Failed to claim task" },
+        { status: 500 },
+      );
+    }
+
+    if (!claimResult.data) {
+      return NextResponse.json(
+        { error: "Task has been claimed or updated by another user" },
+        { status: 409 },
+      );
+    }
+
+    effectiveAssigneeUserId = sessionUser.user.id;
+    existing.data.assignee_user_id = sessionUser.user.id;
+  }
 
   // Загружаем информацию о сделке для контекста
   const dealId = existing.data.deal_id;
@@ -87,8 +137,9 @@ export async function POST(request: Request, context: RouteContext) {
     dealId,
     taskType: existing.data.type,
     assigneeRole: existing.data.assignee_role,
-    assigneeUserId: existing.data.assignee_user_id,
+    assigneeUserId: effectiveAssigneeUserId,
     taskPayload: newPayload,
+    slaDueAt: existing.data.sla_due_at,
     currentDealStatus: dealRow.status,
     dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
   };
@@ -106,7 +157,7 @@ export async function POST(request: Request, context: RouteContext) {
   const { data: updatedTask } = await supabase
     .from("tasks")
     .select(
-      "id, deal_id, type, status, assignee_role, assignee_user_id, sla_due_at, payload, created_at, updated_at",
+      "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, sla_status, payload, created_at, updated_at",
     )
     .eq("id", id)
     .single();

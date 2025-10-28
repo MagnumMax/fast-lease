@@ -63,8 +63,10 @@ function formatClientRecord(
   profile: { phone: string | null; status: string },
   name: string,
   email: string | null,
+  userId: string,
 ): OpsClientRecord {
   return {
+    userId,
     id: `CL-${Math.floor(Date.now() / 1000).toString().slice(-4).padStart(4, "0")}`,
     name,
     email: email ?? "",
@@ -275,6 +277,7 @@ export async function createOperationsClient(
       { phone: profile.phone, status: profile.status },
       fullName,
       emailFromProfile,
+      userId,
     );
 
     return { data: record };

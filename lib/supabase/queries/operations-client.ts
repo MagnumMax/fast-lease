@@ -443,6 +443,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
         created_at,
         updated_at,
         client_id,
+        customer_id,
         vehicle_id,
         payload,
         vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, current_value, status)
@@ -504,7 +505,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
 
     // Формируем название клиента
     const clientName = clientData?.full_name ||
-      `Client ${(row.client_id as string)?.slice(-4) ?? "0000"}`;
+      `Client ${((row.customer_id as string) ?? (row.client_id as string) ?? "").slice(-4) || "0000"}`;
 
     // Формируем название автомобиля
     const vehicleName = vehicleData?.make && vehicleData?.model
@@ -520,6 +521,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       id: row.id as string,
       dealId: dealNumber,
       clientId: row.client_id as string,
+      customerId: (row.customer_id as string | null) ?? null,
       client: clientName,
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,
@@ -543,6 +545,9 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
   const { data, error } = await supabase
     .from("vehicles")
     .select("vin, make, model, year, body_type, mileage, current_value, status")
+    .not("vin", "is", null)
+    .not("vin", "eq", "")
+    .neq("vin", "—")
     .order("make", { ascending: true });
 
   if (error) {
@@ -594,6 +599,7 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
       typeof metadata?.ops_email === "string" ? metadata.ops_email : null;
 
     return {
+      userId: (profile.user_id as string) ?? "",
       id: `CL-${(101 + index).toString().padStart(4, "0")}`,
       name: (profile.full_name as string) ?? "Client",
       email: emailFromMetadata ?? "",

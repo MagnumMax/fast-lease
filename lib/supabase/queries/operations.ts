@@ -317,6 +317,7 @@ export type SupabaseDealRow = {
   updated_at: string | null;
   created_at: string | null;
   client_id: string;
+  customer_id?: string | null;
   application_id: string;
   vehicle_id: string;
   activated_at?: string | null;
@@ -331,6 +332,7 @@ export type SupabaseDealRow = {
 
 // Типы для операций
 export type OpsClientRecord = {
+  userId: string;
   id: string;
   name: string;
   email: string;
@@ -357,6 +359,7 @@ export type OpsDealSummary = {
   id: string;
   dealId: string;
   clientId?: string | null;
+  customerId?: string | null;
   client: string;
   vehicleId?: string | null;
   vehicle: string;
@@ -387,11 +390,32 @@ export type OpsDealGuardStatus = {
   completedAt?: string | null;
 };
 
+export type OpsDealWorkflowTask = {
+  id: string;
+  title: string;
+  status: string;
+  guardKey: string | null;
+  guardLabel: string | null;
+  requiresDocument: boolean;
+  fulfilled: boolean;
+  slaDueAt?: string | null;
+  completedAt?: string | null;
+  assigneeRole?: string | null;
+  assigneeUserId?: string | null;
+  note?: string | null;
+  attachmentPath?: string | null;
+  attachmentUrl?: string | null;
+};
+
 export type OpsDealDocument = {
   id: string;
   title: string;
   status: string;
   url?: string | null;
+  documentType?: string | null;
+  category: "required" | "signature" | "archived" | "other";
+  signaturesCollected?: number | null;
+  signaturesRequired?: number | null;
 };
 
 export type OpsDealInvoice = {
@@ -561,22 +585,6 @@ export type OpsAutomationMetric = {
   helper?: string;
 };
 
-export type OpsTaskStatus = "new" | "in-progress" | "done" | "cancelled";
-
-export type OpsTask = {
-  id: string;
-  title: string;
-  description?: string;
-  owner: string;
-  due: string;
-  priority: "normal" | "high";
-  source: string;
-  status: OpsTaskStatus;
-  createdBy: string;
-};
-
-export const OPS_TASKS: OpsTask[] = [];
-
 // Константы для дашборда
 export const OPS_DASHBOARD_KPIS = [
   {
@@ -681,6 +689,7 @@ export type OpsDealDetail = {
   dealUuid: string;
   statusKey: OpsDealStatusKey;
   guardStatuses: OpsDealGuardStatus[];
+  workflowTasks: OpsDealWorkflowTask[];
   profile: OpsDealProfile;
   client: OpsDealClientProfile;
   keyInformation: OpsDealKeyInfoEntry[];

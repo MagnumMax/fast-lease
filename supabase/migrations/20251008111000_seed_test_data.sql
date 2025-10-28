@@ -59,14 +59,8 @@ declare
   lambo_id uuid;
   volvo_id uuid;
   application_id uuid;
-  deal_id uuid;
-  invoice_overdue_id uuid;
-  invoice_pending_id uuid;
-  payment_id uuid;
   support_ticket_id uuid;
   referral_id uuid;
-  status_codes text[];
-  source_options text[];
 begin
   insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values
@@ -206,196 +200,6 @@ begin
     ('VEHICLE', 'WF-LAMBO-002', 'Lamborghini', 'Huracán', 'EVO AWD', 2023, 'Elite Motors', 720000, jsonb_build_object('color', 'Verde Mantis', 'feature', 'Launch control')),
     ('VEHICLE', 'WF-VOLVO-003', 'Volvo', 'XC40 Recharge', 'Twin Motor', 2024, 'Nordic Auto', 149000, jsonb_build_object('color', 'Cloud Blue', 'batteryRange', '450 km'));
 
-  insert into public.deals (deal_number, application_id, vehicle_id, client_id, status, principal_amount, total_amount, monthly_payment, term_months, interest_rate, down_payment_amount, security_deposit, processing_fee, contract_start_date, contract_end_date, first_payment_date, contract_terms, insurance_details, assigned_account_manager, activated_at, created_at, updated_at)
-  values
-    (
-      'DEAL-2025-0001',
-      application_id,
-      rolls_id,
-      client_id,
-      'ACTIVE',
-      855000,
-      1440000,
-      30000,
-      48,
-      0.045,
-      95000,
-      50000,
-      5000,
-      current_date - 14,
-      current_date + interval '34 months',
-      current_date - 14 + interval '30 days',
-      jsonb_build_object('lateFee', 250, 'gracePeriodDays', 5),
-      jsonb_build_object('provider', 'AXA', 'policyNumber', 'POL-AXA-889123'),
-      ops_id,
-      now() - interval '12 days',
-      now() - interval '40 days',
-      now() - interval '2 days'
-    )
-  returning id into deal_id;
-
-  insert into public.deal_events (deal_id, event_type, payload, created_by, created_at)
-  values
-    (
-      deal_id,
-      'status_change',
-      jsonb_build_object('from', 'SIGNING_FUNDING', 'to', 'ACTIVE'),
-      ops_id,
-      now() - interval '12 days'
-    );
-
-  status_codes := array[
-    'NEW',
-    'OFFER_PREP',
-    'VEHICLE_CHECK',
-    'DOCS_COLLECT',
-    'RISK_REVIEW',
-    'FINANCE_REVIEW',
-    'INVESTOR_PENDING',
-    'CONTRACT_PREP',
-    'SIGNING_FUNDING',
-    'VEHICLE_DELIVERY',
-    'ACTIVE',
-    'CANCELLED'
-  ];
-
-  source_options := array['Website', 'Broker', 'Referral'];
-
-  for idx in array_lower(status_codes, 1)..array_upper(status_codes, 1) loop
-    insert into public.deals (
-      deal_number,
-      application_id,
-      vehicle_id,
-      client_id,
-      status,
-      customer_id,
-      asset_id,
-      source,
-      payload,
-      created_at,
-      updated_at
-    )
-    values (
-      format('DEAL-STAGE-%s', replace(status_codes[idx], '_', '-')),
-      application_id,
-      case mod(idx, 3)
-        when 1 then rolls_id
-        when 2 then lambo_id
-        else volvo_id
-      end,
-      client_id,
-      status_codes[idx],
-      (select id from public.workflow_contacts order by random() limit 1),
-      (select id from public.workflow_assets order by random() limit 1),
-      source_options[(mod(idx - 1, array_length(source_options, 1)) + 1)],
-      jsonb_build_object(
-        'reference', format('WF-SEED-%s', status_codes[idx]),
-        'generated', true
-      ),
-      now() - (idx || ' days')::interval,
-      now() - (idx || ' days')::interval
-    );
-  end loop;
-
-  insert into public.invoices (invoice_number, deal_id, invoice_type, amount, tax_amount, total_amount, currency, due_date, issue_date, status, line_items, tax_breakdown, payment_terms, paid_at, created_at, updated_at, pdf_storage_path)
-  values
-    (
-      'INV-2025-0001',
-      deal_id,
-      'monthly_payment',
-      30000,
-      1500,
-      31500,
-      'AED',
-      current_date - interval '2 days',
-      current_date - interval '27 days',
-      'overdue',
-      jsonb_build_array(jsonb_build_object('description', 'Monthly lease payment', 'amount', 30000)),
-      jsonb_build_array(jsonb_build_object('name', 'VAT', 'amount', 1500)),
-      'Payment due within 5 days of issue',
-      null,
-      now() - interval '27 days',
-      now() - interval '2 days',
-      'invoices/INV-2025-0001.pdf'
-    )
-  returning id into invoice_overdue_id;
-
-  insert into public.invoices (invoice_number, deal_id, invoice_type, amount, tax_amount, total_amount, currency, due_date, issue_date, status, line_items, tax_breakdown, payment_terms, paid_at, created_at, updated_at, pdf_storage_path)
-  values
-    (
-      'INV-2025-0002',
-      deal_id,
-      'monthly_payment',
-      30000,
-      1500,
-      31500,
-      'AED',
-      current_date + interval '28 days',
-      current_date - interval '2 days',
-      'issued',
-      jsonb_build_array(jsonb_build_object('description', 'Monthly lease payment', 'amount', 30000)),
-      jsonb_build_array(jsonb_build_object('name', 'VAT', 'amount', 1500)),
-      'Payment due within 5 days of issue',
-      null,
-      now() - interval '2 days',
-      now(),
-      'invoices/INV-2025-0002.pdf'
-    )
-  returning id into invoice_pending_id;
-
-  insert into public.payments (deal_id, invoice_id, amount, currency, status, method, received_at, metadata, created_at, updated_at)
-  values
-    (
-      deal_id,
-      invoice_overdue_id,
-      31500,
-      'AED',
-      'succeeded',
-      'card',
-      now() - interval '20 days',
-      jsonb_build_object('note', 'Auto-collected via Stripe'),
-      now() - interval '20 days',
-      now() - interval '20 days'
-    )
-  returning id into payment_id;
-
-  insert into public.payment_transactions (payment_id, provider, transaction_reference, amount, currency, status, payload, processed_at, created_at)
-  values
-    (
-      payment_id,
-      'stripe',
-      'stripe_tx_123456',
-      31500,
-      'AED',
-      'succeeded',
-      jsonb_build_object('receipt_url', 'https://payments.example/stripe_tx_123456'),
-      now() - interval '20 days',
-      now() - interval '20 days'
-    );
-
-  insert into public.payment_schedules (deal_id, sequence, due_date, amount, status, metadata, created_at, updated_at)
-  values
-    (
-      deal_id,
-      1,
-      current_date - interval '2 days',
-      31500,
-      'paid',
-      jsonb_build_object('source', 'seed'),
-      now() - interval '40 days',
-      now() - interval '20 days'
-    ),
-    (
-      deal_id,
-      2,
-      current_date + interval '28 days',
-      31500,
-      'pending',
-      jsonb_build_object('source', 'seed'),
-      now(),
-      now()
-    );
-
   insert into public.vehicle_telematics (vehicle_id, odometer, battery_health, fuel_level, tire_pressure, location, last_reported_at)
   values (
     rolls_id,
@@ -418,7 +222,7 @@ begin
   values
     (
       rolls_id,
-      deal_id,
+      null,
       'inspection',
       'Initial inspection',
       'Delivery inspection completed by Aurora Service Center.',
@@ -432,7 +236,7 @@ begin
     ),
     (
       rolls_id,
-      deal_id,
+      null,
       'maintenance',
       'Scheduled maintenance',
       'Routine maintenance visit with oil change and diagnostics.',
@@ -446,7 +250,7 @@ begin
     ),
     (
       rolls_id,
-      deal_id,
+      null,
       'telemetry',
       'Upload service photos',
       'Provide updated vehicle photos before maintenance visit.',
@@ -457,45 +261,6 @@ begin
       jsonb_build_array(),
       now() - interval '2 days',
       now() - interval '1 days'
-    );
-
-  insert into public.deal_documents (deal_id, title, document_type, status, storage_path, signed_at, created_at)
-  values
-    (
-      deal_id,
-      'Lease agreement',
-      'contract',
-      'signed on ' || to_char(current_date - interval '12 days', 'DD Mon YYYY'),
-      'deals/deal-2025-0001/lease-agreement.pdf',
-      current_date - interval '12 days',
-      now() - interval '12 days'
-    ),
-    (
-      deal_id,
-      'Payment schedule (v02/2025)',
-      'FINANCE',
-      'active',
-      'deals/deal-2025-0001/payment-schedule-v02.pdf',
-      null,
-      now() - interval '5 days'
-    ),
-    (
-      deal_id,
-      'Delivery acceptance form',
-      'delivery',
-      'signature pending',
-      'deals/deal-2025-0001/delivery-acceptance.pdf',
-      null,
-      now() - interval '3 days'
-    ),
-    (
-      deal_id,
-      'Insurance policy',
-      'insurance',
-      'valid until ' || to_char(current_date + interval '11 months', 'Mon YYYY'),
-      'deals/deal-2025-0001/insurance-policy.pdf',
-      current_date - interval '12 days',
-      now() - interval '12 days'
     );
 
   insert into public.client_notifications (client_id, title, message, icon, severity, created_at)
@@ -529,7 +294,7 @@ begin
   values (
     'SUP-3051',
     client_id,
-    deal_id,
+    null,
     'Payment question',
     'high',
     'in_progress',

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
+  WorkflowTaskTemplateCacheEntry,
   WorkflowVersionRecord,
   WorkflowVersionRepository,
 } from "@/lib/workflow/versioning";
@@ -146,6 +147,39 @@ export function createSupabaseWorkflowVersionRepository(
 
       if (activate.error) {
         throw activate.error;
+      }
+    },
+
+    async syncTaskTemplates(versionId, templates) {
+      const { error: deleteError } = await client
+        .from("workflow_task_templates")
+        .delete()
+        .eq("workflow_version_id", versionId);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      if (!templates.length) {
+        return;
+      }
+
+      const payload = templates.map(
+        (template: WorkflowTaskTemplateCacheEntry) => ({
+          workflow_version_id: versionId,
+          template_id: template.templateId,
+          task_type: template.taskType,
+          schema: template.schema ?? {},
+          default_payload: template.defaults ?? {},
+        }),
+      );
+
+      const { error: insertError } = await client
+        .from("workflow_task_templates")
+        .insert(payload);
+
+      if (insertError) {
+        throw insertError;
       }
     },
   };

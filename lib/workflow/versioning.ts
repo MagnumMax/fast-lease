@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { parseWorkflowTemplate } from "./parser";
-import type { WorkflowTemplate } from "./types";
+import type { WorkflowAction, WorkflowTemplate } from "./types";
 
 export type WorkflowVersionRecord = {
   id: string;
@@ -59,7 +59,19 @@ export interface WorkflowVersionRepository {
   findById(id: string): Promise<WorkflowVersionRecord | null>;
 
   markActive(workflowId: string, versionId: string): Promise<void>;
+
+  syncTaskTemplates?(
+    versionId: string,
+    templates: WorkflowTaskTemplateCacheEntry[],
+  ): Promise<void>;
 }
+
+export type WorkflowTaskTemplateCacheEntry = {
+  templateId: string;
+  taskType: string;
+  schema: Record<string, unknown> | null;
+  defaults: Record<string, unknown> | null;
+};
 
 function computeChecksum(source: string): string {
   return createHash("sha256").update(source, "utf8").digest("hex");
@@ -97,6 +109,8 @@ export class WorkflowVersionService {
       );
     }
 
+    const shouldActivate = Boolean(input.activate);
+
     const record = await this.repository.insert({
       workflowId,
       version,
@@ -106,10 +120,18 @@ export class WorkflowVersionService {
       template: parsed,
       checksum,
       createdBy: input.createdBy ?? null,
-      isActive: Boolean(input.activate),
+      // Insert as inactive and flip via markActive() to avoid unique constraint
+      // violations on workflow_versions_active_unique when another version is
+      // already marked active.
+      isActive: false,
     });
 
-    if (input.activate) {
+    if (this.repository.syncTaskTemplates) {
+      const taskTemplates = collectTaskTemplates(parsed);
+      await this.repository.syncTaskTemplates(record.id, taskTemplates);
+    }
+
+    if (shouldActivate) {
       await this.repository.markActive(workflowId, record.id);
       return { ...record, isActive: true };
     }
@@ -152,4 +174,28 @@ export class WorkflowVersionService {
 
 export function getWorkflowVersionChecksum(sourceYaml: string): string {
   return computeChecksum(sourceYaml);
+}
+
+function collectTaskTemplates(
+  template: WorkflowTemplate,
+): WorkflowTaskTemplateCacheEntry[] {
+  const seen = new Map<string, WorkflowTaskTemplateCacheEntry>();
+
+  Object.values(template.stages ?? {}).forEach((stage) => {
+    stage.entryActions?.forEach((action: WorkflowAction) => {
+      if (action.type !== "TASK_CREATE") {
+        return;
+      }
+
+      const definition = action.task;
+      seen.set(definition.templateId, {
+        templateId: definition.templateId,
+        taskType: definition.type,
+        schema: definition.schema ? (definition.schema as Record<string, unknown>) : null,
+        defaults: definition.defaults ?? null,
+      });
+    });
+  });
+
+  return Array.from(seen.values());
 }

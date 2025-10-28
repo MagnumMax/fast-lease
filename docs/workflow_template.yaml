@@ -58,11 +58,29 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: confirm_car_v1
           type: CONFIRM_CAR
           title: "Подтвердить авто у дилера/брокера"
           assignee_role: OP_MANAGER
           guard_key: "tasks.confirmCar.completed"
           sla: { hours: 8 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: deal_id
+                type: badge
+                label: "ID сделки"
+              - id: current_status
+                type: badge
+                label: "Текущий этап"
+              - id: instructions
+                type: text
+                label: "Инструкции"
+          bindings:
+            deal_id: "{{deal.id}}"
+            current_status: "{{deal.status}}"
+          defaults:
+            instructions: "Свяжитесь с дилером/брокером и подтвердите доступность выбранного авто."
       - type: NOTIFY
         to_roles: [OP_MANAGER]
         template: "new_deal_created"
@@ -76,11 +94,25 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: prepare_quote_v1
           type: PREPARE_QUOTE
           title: "Подготовить коммерческое предложение"
           assignee_role: OP_MANAGER
           guard_key: "quotationPrepared"
           sla: { hours: 8 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: deal_id
+                type: badge
+                label: "ID сделки"
+              - id: pricing_notes
+                type: textarea
+                label: "Расчётные допущения"
+          bindings:
+            deal_id: "{{deal.id}}"
+          defaults:
+            pricing_notes: "Соберите входные параметры (стоимость авто, срок, аванс) и зафиксируйте расчёты маржи."
     exit_requirements:
       - key: quotationPrepared
         rule: "== true"
@@ -91,11 +123,28 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: verify_vehicle_v1
           type: VERIFY_VEHICLE
           title: "Проверить VIN/комплектацию/цену"
           assignee_role: TECH_SPECIALIST
           guard_key: "vehicle.verified"
           sla: { hours: 8 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: deal_id
+                type: badge
+                label: "ID сделки"
+              - id: vin
+                type: text
+                label: "VIN"
+              - id: supplier
+                type: text
+                label: "Поставщик"
+          bindings:
+            deal_id: "{{deal.id}}"
+            vin: "{{payload.vehicle.vin}}"
+            supplier: "{{payload.vehicle.supplier_name}}"
     exit_requirements:
       - key: vehicle.verified
         rule: "== true"
@@ -106,17 +155,30 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: collect_docs_v1
           type: COLLECT_DOCS
           title: "Собрать пакет документов от клиента"
           assignee_role: OP_MANAGER
           guard_key: "docs.required.allUploaded"
-          checklist:
-            - passport
-            - emirates_id
-            - driver_license
-            - bank_statements
-            - proof_of_income
           sla: { hours: 48 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: customer_name
+                type: text
+                label: "Клиент"
+              - id: checklist
+                type: checklist
+                label: "Обязательные документы"
+          bindings:
+            customer_name: "{{payload.customer.full_name}}"
+          defaults:
+            checklist:
+              - passport
+              - emirates_id
+              - driver_license
+              - bank_statements
+              - proof_of_income
     exit_requirements:
       - key: docs.required.allUploaded
         rule: "== true"
@@ -127,11 +189,28 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: aecb_check_v1
           type: AECB_CHECK
           title: "AECB и скоринг"
           assignee_role: RISK_MANAGER
           guard_key: "risk.approved"
           sla: { hours: 24 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: customer_name
+                type: text
+                label: "Клиент"
+              - id: score_target
+                type: number
+                label: "Минимальный скоринговый балл"
+              - id: notes
+                type: textarea
+                label: "Комментарии"
+          bindings:
+            customer_name: "{{payload.customer.full_name}}"
+          defaults:
+            score_target: 720
       - type: WEBHOOK
         endpoint: "aecb.request"
         payload: { dealId: "{{deal.id}}", customerId: "{{deal.customer_id}}" }
@@ -152,11 +231,28 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: finance_review_v1
           type: FIN_CALC
           title: "Проверить график/взнос/остаток/маржу"
           assignee_role: FINANCE
           guard_key: "finance.approved"
           sla: { hours: 48 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: deal_id
+                type: badge
+                label: "Сделка"
+              - id: monthly_payment
+                type: currency
+                label: "Платёж"
+              - id: residual_value
+                type: currency
+                label: "Остаток"
+          bindings:
+            deal_id: "{{deal.id}}"
+            monthly_payment: "{{payload.finance.monthly_payment}}"
+            residual_value: "{{payload.finance.residual_value}}"
     exit_requirements:
       - key: finance.approved
         rule: "== true"
@@ -167,11 +263,28 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: investor_approval_v1
           type: INVESTOR_APPROVAL
           title: "Согласование сделки инвестором"
           assignee_role: INVESTOR
           guard_key: "investor.approved"
           sla: { hours: 48 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: investor_name
+                type: text
+                label: "Инвестор"
+              - id: deal_size
+                type: currency
+                label: "Объём сделки"
+              - id: irr
+                type: percent
+                label: "IRR"
+          bindings:
+            investor_name: "{{payload.investor.full_name}}"
+            deal_size: "{{payload.finance.total_amount}}"
+            irr: "{{payload.finance.irr}}"
       - type: NOTIFY
         to_roles: [INVESTOR]
         template: "need_investor_approval"
@@ -185,11 +298,28 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: prepare_contract_v1
           type: PREPARE_CONTRACT
           title: "Сформировать договор/график/акт"
           assignee_role: LEGAL
           guard_key: "legal.contractReady"
           sla: { hours: 24 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: contract_number
+                type: text
+                label: "Номер договора"
+              - id: deliverables
+                type: checklist
+                label: "Файлы"
+          bindings:
+            contract_number: "{{payload.contract.number}}"
+          defaults:
+            deliverables:
+              - lease_agreement
+              - payment_schedule
+              - delivery_act
     exit_requirements:
       - key: legal.contractReady
         rule: "== true"
@@ -207,18 +337,44 @@ statuses:
             investor: "{{investor.email}}"
       - type: TASK_CREATE
         task:
+          template_id: receive_advance_v1
           type: RECEIVE_ADVANCE
           title: "Получить аванс от клиента"
           assignee_role: FINANCE
           guard_key: "payments.advanceReceived"
           sla: { hours: 24 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: amount
+                type: currency
+                label: "Сумма"
+              - id: due_date
+                type: date
+                label: "Крайний срок"
+          bindings:
+            amount: "{{payload.finance.down_payment}}"
+            due_date: "{{payload.finance.down_payment_due_at}}"
       - type: TASK_CREATE
         task:
+          template_id: pay_supplier_v1
           type: PAY_SUPPLIER
           title: "Оплата поставщику (дилеру)"
           assignee_role: FINANCE
           guard_key: "payments.supplierPaid"
           sla: { hours: 12 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: supplier
+                type: text
+                label: "Поставщик"
+              - id: amount
+                type: currency
+                label: "Сумма"
+          bindings:
+            supplier: "{{payload.vehicle.supplier_name}}"
+            amount: "{{payload.finance.purchase_price}}"
     webhooks:
       on_event:
         - event: esign.completed
@@ -244,11 +400,24 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          template_id: arrange_delivery_v1
           type: ARRANGE_DELIVERY
           title: "Организовать выдачу авто клиенту"
           assignee_role: TECH_SPECIALIST
           guard_key: "delivery.confirmed"
           sla: { hours: 24 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: delivery_slot
+                type: datetime
+                label: "Слот доставки"
+              - id: location
+                type: text
+                label: "Локация"
+          bindings:
+            delivery_slot: "{{payload.delivery.slot}}"
+            location: "{{payload.delivery.location}}"
     exit_requirements:
       - key: delivery.confirmed
         rule: "== true"

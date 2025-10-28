@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createWorkflowService } from "./factory";
+import { resolveTaskAssigneeUserId } from "./task-assignees";
+import type { WorkflowTaskDefinition } from "./types";
 
 type NotificationQueueRow = {
   id: string;
@@ -36,6 +38,19 @@ type ScheduleQueueRow = {
   cron: string | null;
   payload: Record<string, unknown> | null;
   status: string;
+  action_hash: string;
+};
+
+type TaskQueueRow = {
+  id: string;
+  deal_id: string;
+  transition_from: string | null;
+  transition_to: string | null;
+  template_id: string | null;
+  task_definition: WorkflowTaskDefinition;
+  context: Record<string, unknown> | null;
+  status: string;
+  attempts: number;
   action_hash: string;
 };
 
@@ -188,6 +203,55 @@ export class WorkflowQueueProcessor {
     return { processed, failed };
   }
 
+  async processTasks(limit = 10): Promise<QueueProcessResult> {
+    const { data, error } = await this.client
+      .from("workflow_task_queue")
+      .select("*")
+      .eq("status", "PENDING")
+      .order("created_at", { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      console.error("[workflow] failed to load task queue", error);
+      return { processed: 0, failed: 0 };
+    }
+
+    let processed = 0;
+    let failed = 0;
+
+    for (const row of data as TaskQueueRow[]) {
+      const result = await this.instantiateTask(row);
+      const { error: updateError } = await this.client
+        .from("workflow_task_queue")
+        .update(result.update)
+        .eq("id", row.id);
+
+      if (updateError) {
+        console.error("[workflow] failed to update task queue status", updateError);
+        failed += 1;
+        continue;
+      }
+
+      if (result.success) {
+        processed += 1;
+      } else {
+        failed += 1;
+      }
+    }
+
+    return { processed, failed };
+  }
+
+  async monitorTaskSla(): Promise<{ updated: number }> {
+    const { data, error } = await this.client.rpc("monitor_task_sla_status");
+    if (error) {
+      console.error("[workflow] failed to monitor task SLA", error);
+      return { updated: 0 };
+    }
+
+    return { updated: Number(data) || 0 };
+  }
+
   private async sendNotification(row: NotificationQueueRow) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
@@ -286,5 +350,177 @@ export class WorkflowQueueProcessor {
     } catch (error) {
       return { status: "FAILED", processed_at: new Date().toISOString(), error: String(error) };
     }
+  }
+
+  private computeSlaDueAt(hours: number | undefined): string | null {
+    if (!hours || Number.isNaN(hours)) {
+      return null;
+    }
+
+    const due = new Date();
+    due.setHours(due.getHours() + hours);
+    return due.toISOString();
+  }
+
+  private async instantiateTask(
+    row: TaskQueueRow,
+  ): Promise<{ success: boolean; update: Record<string, unknown> }> {
+    try {
+      const definition = row.task_definition;
+      const slaDueAt = this.computeSlaDueAt(definition.sla?.hours);
+      const deal = await this.loadDealSnapshot(row.deal_id);
+      const dealPayload =
+        (deal?.payload as Record<string, unknown> | null | undefined) ?? null;
+      const assigneeUserId = resolveTaskAssigneeUserId({
+        role: definition.assigneeRole,
+        deal: (deal ?? {}) as { op_manager_id?: string | null },
+        payloadSources: [dealPayload, row.context ?? null],
+      });
+      const payload = this.buildTaskPayload(row, deal);
+
+      const result = await this.client
+        .from("tasks")
+        .upsert(
+          {
+            deal_id: row.deal_id,
+            type: definition.type,
+            title: definition.title,
+            status: "OPEN",
+            assignee_role: definition.assigneeRole,
+            assignee_user_id: assigneeUserId,
+            sla_due_at: slaDueAt,
+            sla_status: slaDueAt ? "ON_TRACK" : null,
+            payload,
+            action_hash: row.action_hash,
+          },
+          { onConflict: "action_hash" },
+        )
+        .select("id")
+        .maybeSingle();
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      return {
+        success: true,
+        update: {
+          status: "PROCESSED",
+          processed_at: new Date().toISOString(),
+          error: null,
+        },
+      };
+    } catch (error) {
+      console.error("[workflow] failed to instantiate task", error);
+      return {
+        success: false,
+        update: {
+          status: "FAILED",
+          attempts: row.attempts + 1,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      };
+    }
+  }
+
+  private async loadDealSnapshot(
+    dealId: string,
+  ): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.client
+      .from("deals")
+      .select(
+        "id, workflow_id, workflow_version_id, status, payload, customer_id, asset_id, source, op_manager_id",
+      )
+      .eq("id", dealId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[workflow] failed to load deal snapshot", error);
+      return null;
+    }
+
+    return data as Record<string, unknown> | null;
+  }
+
+  private buildTaskPayload(
+    row: TaskQueueRow,
+    deal: Record<string, unknown> | null,
+  ): Record<string, unknown> {
+    const definition = row.task_definition;
+    const context = {
+      deal,
+      payload: (deal?.payload as Record<string, unknown> | undefined) ?? {},
+      queue: row.context ?? {},
+      now: new Date().toISOString(),
+    };
+
+    const resolvedBindings = this.evaluateBindings(definition.bindings, context);
+
+    return {
+      template_id: definition.templateId,
+      title: definition.title,
+      type: definition.type,
+      schema_version: definition.schema?.version ?? "1.0",
+      schema: definition.schema ?? null,
+      guard_key: definition.guardKey ?? null,
+      defaults: definition.defaults ?? null,
+      fields: {
+        ...(definition.defaults ?? {}),
+        ...resolvedBindings,
+      },
+      status: row.context?.status ?? null,
+      status_key: (row.context?.status as { key?: unknown } | undefined)?.key ?? null,
+      status_title:
+        (row.context?.status as { title?: unknown } | undefined)?.title ?? null,
+      workflow: row.context?.workflow ?? null,
+    };
+  }
+
+  private evaluateBindings(
+    bindings: Record<string, string> | undefined,
+    context: Record<string, unknown>,
+  ): Record<string, unknown> {
+    if (!bindings) {
+      return {};
+    }
+
+    return Object.entries(bindings).reduce<Record<string, unknown>>(
+      (acc, [key, expression]) => {
+        acc[key] = this.resolveBindingExpression(expression, context);
+        return acc;
+      },
+      {},
+    );
+  }
+
+  private resolveBindingExpression(
+    expression: string,
+    context: Record<string, unknown>,
+  ): unknown {
+    const trimmed = expression.trim();
+    const mustache = trimmed.match(/^{{\s*(.+?)\s*}}$/);
+    if (!mustache) {
+      return expression;
+    }
+
+    const path = mustache[1];
+    return this.resolvePath(context, path);
+  }
+
+  private resolvePath(
+    context: Record<string, unknown>,
+    path: string,
+  ): unknown {
+    return path.split(".").reduce<unknown>((acc, key) => {
+      if (acc === null || acc === undefined) {
+        return undefined;
+      }
+
+      if (typeof acc !== "object") {
+        return undefined;
+      }
+
+      return (acc as Record<string, unknown>)[key];
+    }, context);
   }
 }

@@ -11,6 +11,7 @@ const config: Config = {
     "./ui/**/*.{ts,tsx}",
     "./content/**/*.{md,mdx}",
   ],
+  blocklist: [/^\[-:T\.Z\]$/],
   theme: {
     container: {
       center: true,

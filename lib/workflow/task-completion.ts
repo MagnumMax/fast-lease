@@ -2,20 +2,7 @@ import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createWorkflowService } from "@/lib/workflow";
 import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
-
-const TASK_GUARD_FALLBACK: Record<string, string> = {
-  CONFIRM_CAR: "tasks.confirmCar.completed",
-  PREPARE_QUOTE: "quotationPrepared",
-  VERIFY_VEHICLE: "vehicle.verified",
-  COLLECT_DOCS: "docs.required.allUploaded",
-  AECB_CHECK: "risk.approved",
-  FIN_CALC: "finance.approved",
-  INVESTOR_APPROVAL: "investor.approved",
-  PREPARE_CONTRACT: "legal.contractReady",
-  RECEIVE_ADVANCE: "payments.advanceReceived",
-  PAY_SUPPLIER: "payments.supplierPaid",
-  ARRANGE_DELIVERY: "delivery.confirmed",
-};
+import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 
 type WorkflowPayloadWithGuards = Record<string, unknown> & {
   tasks: Record<string, unknown>;
@@ -50,19 +37,10 @@ function resolveGuardKey(
   taskType: string | null | undefined,
   taskPayload: Record<string, unknown> | null | undefined,
 ): string | null {
-  const payloadGuard =
-    taskPayload && typeof taskPayload.guard_key === "string"
-      ? (taskPayload.guard_key as string)
-      : null;
-  if (payloadGuard) {
-    return payloadGuard;
-  }
-
-  if (!taskType || typeof taskType !== "string") {
-    return null;
-  }
-
-  return TASK_GUARD_FALLBACK[taskType] ?? null;
+  return resolveTaskGuardKey({
+    type: taskType ?? undefined,
+    payload: (taskPayload ?? undefined) as Record<string, unknown> | undefined,
+  });
 }
 
 function setNestedGuardFlag(target: Record<string, unknown>, guardKey: string): void {
@@ -93,6 +71,24 @@ function deriveTaskStorageKey(guardKey: string): string {
   return guardKey.replace(/[^a-zA-Z0-9]/g, "_");
 }
 
+function deriveCompletionSlaStatus(
+  slaDueAt: string | null | undefined,
+  completedAtIso: string,
+): "ON_TRACK" | "BREACHED" | null {
+  if (!slaDueAt) {
+    return null;
+  }
+
+  const completedAt = new Date(completedAtIso);
+  const due = new Date(slaDueAt);
+
+  if (Number.isNaN(completedAt.getTime()) || Number.isNaN(due.getTime())) {
+    return null;
+  }
+
+  return completedAt <= due ? "ON_TRACK" : "BREACHED";
+}
+
 export interface TaskCompletionContext {
   taskId: string;
   dealId: string;
@@ -100,6 +96,7 @@ export interface TaskCompletionContext {
   assigneeRole: string | null;
   assigneeUserId: string | null;
   taskPayload: Record<string, unknown> | null;
+  slaDueAt?: string | null;
   currentDealStatus: string | null;
   dealPayload: Record<string, unknown> | null;
 }
@@ -120,14 +117,23 @@ export async function handleTaskCompletion(
   context: TaskCompletionContext,
 ): Promise<TaskCompletionResult> {
   const supabase = await createSupabaseServiceClient();
+  const completedAt = new Date().toISOString();
+  const slaStatus = deriveCompletionSlaStatus(context.slaDueAt, completedAt);
 
   try {
     // Обновляем статус задачи на DONE
     const { data: updatedTask, error: taskUpdateError } = await supabase
       .from("tasks")
-      .update({ status: "DONE" })
+      .update({
+        status: "DONE",
+        payload: context.taskPayload,
+        completed_at: completedAt,
+        sla_status: slaStatus,
+      })
       .eq("id", context.taskId)
-      .select("id, deal_id, type, status, assignee_role, assignee_user_id, payload")
+      .select(
+        "id, deal_id, type, status, assignee_role, assignee_user_id, payload, sla_due_at, completed_at, sla_status",
+      )
       .single();
 
     if (taskUpdateError) {
@@ -161,8 +167,6 @@ export async function handleTaskCompletion(
     // Строим guard context
     const dealPayload = ensureWorkflowPayloadBranches(context.dealPayload);
     const taskStorageKey = deriveTaskStorageKey(guardKey);
-    const completedAt = new Date().toISOString();
-
     // Обновляем guard флаги в payload
     setNestedGuardFlag(dealPayload, guardKey);
 
@@ -188,6 +192,17 @@ export async function handleTaskCompletion(
       guardCurrent && typeof guardCurrent === "object" && !Array.isArray(guardCurrent)
         ? (guardCurrent as Record<string, unknown>)
         : {};
+    const guardNote =
+      typeof context.taskPayload?.guard_note === "string"
+        ? (context.taskPayload.guard_note as string)
+        : (typeof guardBase.note === "string" ? (guardBase.note as string) : null);
+    const guardAttachmentPathCandidate =
+      typeof context.taskPayload?.guard_attachment_path === "string"
+        ? (context.taskPayload.guard_attachment_path as string)
+        : null;
+    const guardAttachmentPath =
+      guardAttachmentPathCandidate ??
+      (typeof guardBase.attachment_path === "string" ? (guardBase.attachment_path as string) : null);
 
     dealPayload.guard_tasks[guardKey] = {
       ...guardBase,
@@ -196,6 +211,8 @@ export async function handleTaskCompletion(
       task_type: context.taskType,
       task_id: context.taskId,
       status_key: context.taskPayload?.status_key,
+      note: guardNote,
+      attachment_path: guardAttachmentPath,
     };
 
     // Обновляем payload сделки в базе данных

@@ -26,6 +26,7 @@ const createDealWithEntitiesSchema = createDealBaseSchema.extend({
     vin: z.string().optional(),
     supplier: z.string().optional(),
     price: z.number().nonnegative().optional(),
+    mileage: z.number().nonnegative().optional(),
     meta: z.record(z.unknown()).optional(),
   }),
 });

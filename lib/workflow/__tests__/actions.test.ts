@@ -11,15 +11,32 @@ const createUpsertChain = (data: unknown) => {
   return { upsert, select, maybeSingle };
 };
 
+const createSelectChain = (data: unknown) => {
+  const maybeSingle = vi.fn().mockResolvedValue({ data, error: null });
+  const eq = vi.fn().mockReturnValue({ maybeSingle });
+  const select = vi.fn().mockReturnValue({ eq });
+  return { select, eq, maybeSingle };
+};
+
 const createSupabaseMock = () => {
-  const taskChain = createUpsertChain({ id: "task-1" });
+  const tasksChain = createUpsertChain({ id: "task-1" });
+  const dealsChain = createSelectChain({
+    id: "deal-1",
+    payload: { finance: { monthly_payment: 1200 } },
+    customer_id: "customer-1",
+    asset_id: "asset-1",
+    source: "web",
+    op_manager_id: "user-ops",
+  });
   const notificationChain = createUpsertChain({ id: "notif-1" });
   const auditInsert = vi.fn().mockResolvedValue({ error: null });
 
   const fromMock = vi.fn((table: string) => {
     switch (table) {
       case "tasks":
-        return { upsert: taskChain.upsert };
+        return { upsert: tasksChain.upsert };
+      case "deals":
+        return { select: dealsChain.select };
       case "workflow_notification_queue":
         return { upsert: notificationChain.upsert };
       case "audit_log":
@@ -36,7 +53,8 @@ const createSupabaseMock = () => {
   return {
     client,
     fromMock,
-    taskChain,
+    tasksChain,
+    dealsChain,
     notificationChain,
     auditInsert,
   };
@@ -44,13 +62,14 @@ const createSupabaseMock = () => {
 
 describe("workflow action executor", () => {
   it("создает задачу при TASK_CREATE", async () => {
-    const { client, fromMock, taskChain, auditInsert } = createSupabaseMock();
+    const { client, fromMock, tasksChain, dealsChain, auditInsert } = createSupabaseMock();
     const executor = createWorkflowActionExecutor(client);
 
     await executor(
       {
         type: "TASK_CREATE",
         task: {
+          templateId: "prepare_quote_v1",
           type: "PREPARE_QUOTE",
           title: "Подготовить КП",
           assigneeRole: "OP_MANAGER",
@@ -60,30 +79,54 @@ describe("workflow action executor", () => {
       {
         actorRole: "OP_MANAGER",
         transition: { from: "NEW", to: "OFFER_PREP" },
-        template: {} as WorkflowTemplate,
+        template: {
+          workflow: {
+            id: "fast-lease-v1",
+            title: "Fast Lease",
+            entity: "Deal",
+            ownerRole: "OP_MANAGER",
+            timezone: "Asia/Dubai",
+          },
+          roles: [],
+          kanbanOrder: [],
+          stages: {
+            OFFER_PREP: { code: "OFFER_PREP", title: "Подготовка предложения" },
+          },
+          transitions: [],
+          permissions: {},
+          integrations: {},
+          metrics: { enabled: false },
+          notifications: { channels: [], templates: {} },
+        } as WorkflowTemplate,
         dealId: "deal-1",
+        payload: { finance: { residual_value: 15000 } },
       },
     );
 
+    expect(fromMock).toHaveBeenCalledWith("deals");
+    expect(dealsChain.select).toHaveBeenCalled();
     expect(fromMock).toHaveBeenCalledWith("tasks");
-    const [taskPayload, taskOptions] = taskChain.upsert.mock.calls[0];
+    const [taskPayload, taskOptions] = tasksChain.upsert.mock.calls[0];
     expect(taskPayload).toMatchObject({
       deal_id: "deal-1",
-      type: "PREPARE_QUOTE",
-      assignee_role: "OP_MANAGER",
-      status: "OPEN",
       action_hash: expect.any(String),
+      type: "PREPARE_QUOTE",
+      title: "Подготовить КП",
+      status: "OPEN",
+      assignee_role: "OP_MANAGER",
+      assignee_user_id: "user-ops",
       payload: expect.objectContaining({
-        title: "Подготовить КП",
+        template_id: "prepare_quote_v1",
         status_key: "OFFER_PREP",
-        status_title: "OFFER_PREP",
+        status_title: "Подготовка предложения",
+        workflow: expect.objectContaining({ id: "fast-lease-v1" }),
       }),
+      sla_status: "ON_TRACK",
     });
     expect(taskOptions).toMatchObject({
       onConflict: "action_hash",
-      ignoreDuplicates: true,
     });
-    expect(taskChain.select).toHaveBeenCalledWith("id");
+    expect(tasksChain.select).toHaveBeenCalledWith("id");
     expect(auditInsert).toHaveBeenCalledWith(
       expect.objectContaining({ action: "TASK_CREATE" }),
     );

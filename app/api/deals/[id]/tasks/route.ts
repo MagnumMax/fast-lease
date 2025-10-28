@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { TASK_SELECT, mapTaskRow } from "@/lib/supabase/queries/tasks";
 import { listDealTasksQuerySchema } from "@/lib/workflow";
 
 type RouteContext = {
@@ -26,9 +27,7 @@ export async function GET(request: Request, context: RouteContext) {
 
   let query = supabase
     .from("tasks")
-    .select(
-      "id, deal_id, type, status, assignee_role, assignee_user_id, sla_due_at, payload, created_at, updated_at",
-    )
+    .select(TASK_SELECT)
     .eq("deal_id", id)
     .order("created_at", { ascending: true });
 
@@ -46,5 +45,6 @@ export async function GET(request: Request, context: RouteContext) {
     );
   }
 
-  return NextResponse.json({ items: data ?? [] });
+  const items = (data ?? []).map(mapTaskRow);
+  return NextResponse.json({ items });
 }
