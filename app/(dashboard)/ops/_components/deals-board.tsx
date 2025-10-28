@@ -5,12 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ComponentProps,
   type KeyboardEvent,
 } from "react";
-import Sortable, { type SortableEvent } from "sortablejs";
 import {
   AlertTriangle,
   Check,
@@ -80,13 +78,7 @@ type OpsDealsBoardProps = {
 
 type VehicleOption = OpsCarRecord & { optionValue: string };
 
-type SortableInstance = Sortable | null;
-
-type Feedback =
-  | { type: "role"; message: string }
-  | { type: "guard"; message: string }
-  | { type: "order"; message: string }
-  | { type: "error"; message: string };
+type Feedback = { type: "error"; message: string };
 
 const STATUS_ORDER = OPS_DEAL_STATUS_ORDER;
 const STATUS_LABELS = OPS_DEAL_STATUS_LABELS;
@@ -136,20 +128,6 @@ function parseNumericString(value: string | undefined): number | undefined {
   if (!cleaned) return undefined;
   const parsed = Number.parseFloat(cleaned);
   return Number.isNaN(parsed) ? undefined : parsed;
-}
-
-function createColumnSeed(): Record<OpsDealStatusKey, HTMLDivElement | null> {
-  return STATUS_ORDER.reduce((acc, status) => {
-    acc[status] = null;
-    return acc;
-  }, {} as Record<OpsDealStatusKey, HTMLDivElement | null>);
-}
-
-function createSortableSeed(): Record<OpsDealStatusKey, SortableInstance> {
-  return STATUS_ORDER.reduce((acc, status) => {
-    acc[status] = null;
-    return acc;
-  }, {} as Record<OpsDealStatusKey, SortableInstance>);
 }
 
 function toSlug(value: string) {
@@ -211,13 +189,6 @@ type DealFormState = {
   source: string;
 };
 
-function cloneDealsState(list: OpsDealSummary[]): OpsDealSummary[] {
-  return list.map((deal) => ({
-    ...deal,
-    guardStatuses: deal.guardStatuses.map((guard) => ({ ...guard })),
-  }));
-}
-
 function getPayloadValue(
   payload: Record<string, unknown> | null,
   key: string,
@@ -246,37 +217,6 @@ function createGuardStatusesFromMeta(
     hint: guard.hint || null,
     fulfilled: Boolean(getPayloadValue(payload, guard.key)),
   }));
-}
-
-function buildGuardContextFromStatuses(
-  statuses: OpsDealGuardStatus[],
-): Record<string, unknown> {
-  const context: Record<string, unknown> = {};
-
-  for (const guard of statuses) {
-    const segments = guard.key.split(".");
-    let cursor: Record<string, unknown> = context;
-
-    segments.forEach((segment, index) => {
-      if (index === segments.length - 1) {
-        cursor[segment] = guard.fulfilled;
-        return;
-      }
-
-      const next = cursor[segment];
-      if (
-        !next ||
-        typeof next !== "object" ||
-        Array.isArray(next)
-      ) {
-        cursor[segment] = {};
-      }
-
-      cursor = cursor[segment] as Record<string, unknown>;
-    });
-  }
-
-  return context;
 }
 
 function mapDealRowToSummary(
@@ -362,10 +302,6 @@ export function OpsDealsBoard({
   });
 
   const [deals, setDeals] = useState<OpsDealSummary[]>(() => initialDeals);
-  const dealsRef = useRef<OpsDealSummary[]>(initialDeals);
-  useEffect(() => {
-    dealsRef.current = deals;
-  }, [deals]);
 
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [searchQuery, setSearchQuery] = useState("");
@@ -373,7 +309,6 @@ export function OpsDealsBoard({
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingTransitionId, setPendingTransitionId] = useState<string | null>(null);
 
   const sourceOptions = useMemo(() => {
     const merged = new Set<string>(BASE_SOURCE_OPTIONS);
@@ -506,9 +441,6 @@ export function OpsDealsBoard({
     return () => window.clearTimeout(timer);
   }, [feedback]);
 
-  const columnRefs = useRef<Record<OpsDealStatusKey, HTMLDivElement | null>>(createColumnSeed());
-  const sortableInstances = useRef<Record<OpsDealStatusKey, SortableInstance>>(createSortableSeed());
-
   const filteredDeals = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return deals.filter((deal) => {
@@ -537,154 +469,6 @@ export function OpsDealsBoard({
 
     return seed;
   }, [filteredDeals]);
-
-  const columnSignature = useMemo(
-    () => STATUS_ORDER.map((status) => groupedDeals[status]?.length ?? 0).join("-"),
-    [groupedDeals],
-  );
-
-  useEffect(() => {
-    STATUS_ORDER.forEach((status) => {
-      const element = columnRefs.current[status];
-      if (!element) {
-        if (sortableInstances.current[status]) {
-          sortableInstances.current[status]?.destroy();
-          sortableInstances.current[status] = null;
-        }
-        return;
-      }
-
-      if (sortableInstances.current[status]) {
-        sortableInstances.current[status]?.destroy();
-        sortableInstances.current[status] = null;
-      }
-
-      sortableInstances.current[status] = Sortable.create(element, {
-        group: "ops-deals",
-        animation: 150,
-        handle: "[data-deal-card]",
-        onEnd: async (event: SortableEvent) => {
-          const dealId = event.item.getAttribute("data-deal-id");
-          const originalStatus = event.item.getAttribute("data-origin-status") as OpsDealStatusKey | null;
-          const newStatus = event.to.getAttribute("data-status") as OpsDealStatusKey | null;
-
-          if (!dealId || !originalStatus || !newStatus || originalStatus === newStatus) {
-            return;
-          }
-
-          const fromIndex = STATUS_ORDER.indexOf(originalStatus);
-          const toIndex = STATUS_ORDER.indexOf(newStatus);
-          if (toIndex !== fromIndex + 1) {
-            setFeedback({
-              type: "order",
-              message: "Можно перейти только на следующий этап по регламенту.",
-            });
-            setDeals(cloneDealsState(dealsRef.current));
-            return;
-          }
-
-          const requiredRole = OPS_WORKFLOW_STATUS_EXIT_ROLE[originalStatus];
-          if (requiredRole && requiredRole !== CURRENT_USER_ROLE) {
-            setFeedback({
-              type: "role",
-              message: `Переход должен инициировать ${WORKFLOW_ROLE_LABELS[requiredRole]}.`,
-            });
-            setDeals(cloneDealsState(dealsRef.current));
-            return;
-          }
-
-          const currentDeals = dealsRef.current;
-          const targetDeal = currentDeals.find((deal) => deal.id === dealId);
-          if (!targetDeal) {
-            return;
-          }
-
-          const unmetGuard = targetDeal.guardStatuses.find((guard) => !guard.fulfilled);
-          if (unmetGuard) {
-            setFeedback({
-              type: "guard",
-              message: `Нужно выполнить условие: ${unmetGuard.label}.`,
-            });
-            setDeals(cloneDealsState(dealsRef.current));
-            return;
-          }
-
-          const previousState = cloneDealsState(dealsRef.current);
-          setPendingTransitionId(dealId);
-
-          try {
-            const response = await fetch(`/api/deals/${dealId}/transition`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                to_status: newStatus,
-                actor_role: requiredRole ?? CURRENT_USER_ROLE,
-                guard_context: buildGuardContextFromStatuses(targetDeal.guardStatuses),
-              }),
-            });
-
-      const json = (await response.json().catch(() => null)) as
-        | DealRow
-              | { error?: string; reason?: string }
-              | null;
-
-            if (
-              !response.ok ||
-              !json ||
-              typeof json !== "object" ||
-              !("id" in json)
-            ) {
-              const message =
-                (json as { error?: string; reason?: string } | null)?.error ??
-                (json as { error?: string; reason?: string } | null)?.reason ??
-                "Не удалось выполнить переход.";
-              setFeedback({ type: "error", message });
-              setDeals(previousState);
-              return;
-            }
-
-            const updatedRow = json as DealRowWithDealNumber;
-            const nextMeta = OPS_WORKFLOW_STATUS_MAP[newStatus];
-            setDeals((prev) =>
-              prev.map((deal) =>
-                deal.id === dealId
-                  ? {
-                      ...deal,
-                      statusKey: newStatus,
-                      stage: nextMeta.description,
-                      ownerRole: nextMeta.ownerRole,
-                      nextAction: nextMeta.entryActions[0] ?? deal.nextAction,
-                      guardStatuses: createGuardStatusesFromMeta(
-                        newStatus,
-                        updatedRow.payload,
-                      ),
-                      updatedAt: updatedRow.updated_at ?? new Date().toISOString(),
-                    }
-                  : deal,
-              ),
-            );
-            router.refresh();
-          } catch (error) {
-            console.error("[workflow] transition failed", error);
-            setFeedback({
-              type: "error",
-              message: "Не удалось выполнить переход. Попробуйте позже.",
-            });
-            setDeals(previousState);
-          } finally {
-            setPendingTransitionId(null);
-          }
-        },
-      });
-    });
-
-    return () => {
-      Object.values(sortableInstances.current).forEach((instance) => instance?.destroy());
-      sortableInstances.current = createSortableSeed();
-    };
-  }, [columnSignature, columnRefs, sortableInstances, router]);
 
   async function handleCreateDeal() {
     if (isSubmitting) {
@@ -827,18 +611,18 @@ export function OpsDealsBoard({
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
             <CardTitle>Deals</CardTitle>
-            {feedback ? (
-              <p
-                className={cn(
-                  "text-sm",
-                  feedback.type === "error"
-                    ? "text-rose-600"
-                    : "text-amber-600 dark:text-amber-400",
-                )}
-              >
-                {feedback.message}
-              </p>
-            ) : null}
+            <p
+              className={cn(
+                "text-sm",
+                feedback
+                  ? "text-rose-600"
+                  : "text-muted-foreground",
+              )}
+            >
+              {feedback
+                ? feedback.message
+                : "Этап сделки меняется автоматически после закрытия соответствующих задач."}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative">
@@ -1078,18 +862,9 @@ export function OpsDealsBoard({
                       </p>
                       <Badge variant={STATUS_BADGES[status]}>{columnDeals.length}</Badge>
                     </div>
-                      {/* Transition meta */}
                   </header>
-                  <div
-                    ref={(element) => {
-                      columnRefs.current[status] = element;
-                    }}
-                    data-status={status}
-                    className="flex flex-1 flex-col gap-3"
-                  >
+                  <div className="flex flex-1 flex-col gap-3">
                     {columnDeals.map((deal) => {
-                      const isTransitioning = pendingTransitionId === deal.id;
-
                       const dealHref = `/ops/deals/${toSlug(deal.dealId)}`;
                       const ownerRoleLabel =
                         deal.ownerRoleLabel ??
@@ -1129,12 +904,10 @@ export function OpsDealsBoard({
                           : vehicleFromDirectory ?? "";
 
                       const handleNavigate = () => {
-                        if (isTransitioning) return;
                         router.push(dealHref);
                       };
 
                       const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-                        if (isTransitioning) return;
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
                           router.push(dealHref);
@@ -1144,29 +917,17 @@ export function OpsDealsBoard({
                       return (
                         <div
                           key={deal.id}
-                          data-deal-card
-                          data-deal-id={deal.id}
-                          data-origin-status={deal.statusKey}
                           className={cn(
                             "relative flex flex-col gap-3 rounded-xl border border-border bg-background/90 p-4 text-sm shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                             "cursor-pointer",
-                            isTransitioning
-                              ? "pointer-events-none opacity-60"
-                              : "hover:border-brand-500/70 hover:shadow-lg",
+                            "hover:border-brand-500/70 hover:shadow-lg",
                           )}
                           role="button"
-                          tabIndex={isTransitioning ? -1 : 0}
-                          aria-disabled={isTransitioning}
+                          tabIndex={0}
                           aria-label={`Открыть заявку ${deal.dealId}`}
                           onClick={handleNavigate}
                           onKeyDown={handleKeyDown}
                         >
-                          {isTransitioning ? (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <Loader2 className="h-4 w-4 animate-spin text-brand-500" />
-                            </div>
-                          ) : null}
-
                           <div className="flex items-start justify-between gap-3">
                             <div className="space-y-1">
                               <p className="font-semibold text-foreground">{deal.dealId}</p>
