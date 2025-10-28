@@ -2,7 +2,17 @@ import { z } from "zod";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
-import type { OpsDealGuardStatus, OpsDealWorkflowTask } from "@/lib/supabase/queries/operations";
+import type {
+  OpsDealClientProfile,
+  OpsDealDetailsEntry,
+  OpsDealDocument,
+  OpsDealGuardStatus,
+  OpsDealInvoice,
+  OpsDealKeyInfoEntry,
+  OpsDealProfile,
+  OpsDealTimelineEvent,
+  OpsDealWorkflowTask,
+} from "@/lib/supabase/queries/operations";
 import { mapTaskRow, TASK_SELECT } from "@/lib/supabase/queries/tasks";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
@@ -1215,46 +1225,14 @@ type DealDetailResult = {
   dealUuid: string;
   statusKey: OpsDealStatusKey;
   guardStatuses: OpsDealGuardStatus[];
-  profile: {
-    dealId: string;
-    vehicleName: string;
-    status: OpsDealStatusKey;
-    description: string;
-    image: string;
-    monthlyPayment: string;
-    nextPayment: string;
-    dueAmount: string;
-  };
-  client: {
-    name: string;
-    phone: string;
-    email: string;
-    scoring: string;
-    notes: string;
-  };
-  keyInformation: Array<{
-    label: string;
-    value: string;
-  }>;
-  overview: Array<{
-    label: string;
-    value: string;
-  }>;
-  documents: Array<{
-    id: string;
-    title: string;
-    status: string;
-    url: string | null;
-  }>;
-  invoices: Array<{
-    id: string;
-    invoiceNumber: string;
-    type: string;
-    totalAmount: string;
-    dueDate: string;
-    status: string;
-  }>;
-  timeline: TimelineEvent[];
+  workflowTasks: OpsDealWorkflowTask[];
+  profile: OpsDealProfile;
+  client: OpsDealClientProfile;
+  keyInformation: OpsDealKeyInfoEntry[];
+  overview: OpsDealDetailsEntry[];
+  documents: OpsDealDocument[];
+  invoices: OpsDealInvoice[];
+  timeline: OpsDealTimelineEvent[];
 };
 
 // Серверные функции для операций

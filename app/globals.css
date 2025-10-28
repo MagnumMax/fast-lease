@@ -29,6 +29,8 @@
   --danger-soft-foreground: #b91c1c;
   --info-soft: rgba(59, 130, 246, 0.12);
   --info-soft-foreground: #1d4ed8;
+  --font-geist-sans: "Inter";
+  --font-geist-mono: "Menlo";
   --radius-lg: 0.75rem;
   --brand-25: #f8faff;
   --brand-50: #f5f7ff;
@@ -85,6 +87,8 @@
   --info-soft: rgba(96, 165, 250, 0.2);
   --info-soft-foreground: #bfdbfe;
   --linear-surface: radial-gradient(circle at top left, rgba(37, 99, 235, 0.25) 0%, rgba(11, 15, 26, 0) 55%);
+  --font-geist-sans: "Inter";
+  --font-geist-mono: "Menlo";
   --brand-50: #122044;
   --brand-100: #143059;
   --brand-200: #173b6d;

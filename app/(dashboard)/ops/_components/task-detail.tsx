@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, type JSX } from "react";
 
 import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Paperclip } from "lucide-react";
 

@@ -321,7 +321,7 @@ export async function completeTaskFormAction(
     };
   }
 
-  const originHeader = headers().get("origin");
+  const originHeader = (await headers()).get("origin");
   console.log("[workflow] task completed via form action", {
     taskId,
     dealId,
