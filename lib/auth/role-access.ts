@@ -1,5 +1,5 @@
-import type { AppRole } from "@/lib/auth/types";
-import { WORKSPACE_SECTIONS, getWorkspacePaths } from "@/lib/workspace/routes";
+import type { AppRole } from "./types";
+import { WORKSPACE_SECTIONS, getWorkspacePaths } from "../workspace/routes";
 
 type AccessSectionBase = {
   id: string;

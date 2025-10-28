@@ -3,7 +3,7 @@ import {
   APP_ROLE_HOME_PATH as ROLE_HOME_PATH_DATA,
   APP_ROLE_PRIORITY as ROLE_PRIORITY_DATA,
 } from "../data/app-roles";
-import { getDefaultRolesForPath } from "@/lib/auth/role-access";
+import { getDefaultRolesForPath } from "./role-access";
 
 export const APP_ROLE_PRIORITY = ROLE_PRIORITY_DATA;
 
