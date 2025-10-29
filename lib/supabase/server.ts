@@ -9,6 +9,11 @@ type SupabaseServerClientOptions = {
 // Лог для диагностики проблемы с клиентским/серверным контекстом
 const LOG_PREFIX = "[SERVER-CLIENT]";
 
+type ResolvedEnvVar = {
+  key: string;
+  value: string;
+};
+
 async function resolveCookieStore(
   provided?: SupabaseServerClientOptions["cookieStore"],
 ) {
@@ -19,24 +24,47 @@ async function resolveCookieStore(
   return cookies();
 }
 
+function resolveEnvVariable(...keys: string[]): ResolvedEnvVar | null {
+  for (const key of keys) {
+    const value = process.env[key];
+    if (typeof value === "string" && value.length > 0) {
+      return { key, value };
+    }
+  }
+
+  return null;
+}
+
 export async function createSupabaseServerClient(
   options: SupabaseServerClientOptions = {},
 ) {
   const cookieStore = await resolveCookieStore(options.cookieStore);
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrlVar = resolveEnvVariable(
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_URL",
+  );
+  const supabaseAnonKeyVar = resolveEnvVariable(
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_ANON_KEY",
+  );
 
-  console.log(`${LOG_PREFIX} Creating server client with URL:`, supabaseUrl ? "present" : "missing");
-  console.log(`${LOG_PREFIX} Anon key present:`, supabaseAnonKey ? "yes" : "no");
+  console.log(
+    `${LOG_PREFIX} Server client URL env key:`,
+    supabaseUrlVar?.key ?? "missing",
+  );
+  console.log(
+    `${LOG_PREFIX} Server client anon key env key:`,
+    supabaseAnonKeyVar?.key ?? "missing",
+  );
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrlVar || !supabaseAnonKeyVar) {
     throw new Error(
-      "Supabase server client is missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "Supabase server client is missing Supabase environment variables. Set NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL, and NEXT_PUBLIC_SUPABASE_ANON_KEY or SUPABASE_ANON_KEY.",
     );
   }
 
-  return createServerClient(supabaseUrl, supabaseAnonKey, {
+  return createServerClient(supabaseUrlVar.value, supabaseAnonKeyVar.value, {
     cookies: {
       getAll() {
         return cookieStore
@@ -57,19 +85,31 @@ export async function createSupabaseServerClient(
 }
 
 export async function createSupabaseServiceClient(): Promise<SupabaseClient> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrlVar = resolveEnvVariable(
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "SUPABASE_URL",
+  );
+  const serviceRoleKeyVar = resolveEnvVariable(
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_SECRET",
+  );
 
-  console.log(`${LOG_PREFIX} Creating service client with URL:`, supabaseUrl ? "present" : "missing");
-  console.log(`${LOG_PREFIX} Service key present:`, serviceRoleKey ? "yes" : "no");
+  console.log(
+    `${LOG_PREFIX} Service client URL env key:`,
+    supabaseUrlVar?.key ?? "missing",
+  );
+  console.log(
+    `${LOG_PREFIX} Service client key env key:`,
+    serviceRoleKeyVar?.key ?? "missing",
+  );
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrlVar || !serviceRoleKeyVar) {
     throw new Error(
-      "Supabase service client is missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+      "Supabase service client is missing Supabase environment variables. Set NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET).",
     );
   }
 
-  return createServerClient(supabaseUrl, serviceRoleKey, {
+  return createServerClient(supabaseUrlVar.value, serviceRoleKeyVar.value, {
     cookies: {
       getAll() {
         return [];
