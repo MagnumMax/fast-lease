@@ -516,6 +516,37 @@ export type OpsDealDetailsEntry = {
   value: string;
 };
 
+export type OpsDealDetailJsonBlock = {
+  label: string;
+  json: string;
+  isEmpty: boolean;
+};
+
+export type OpsDealRelatedSection = {
+  label: string;
+  entries: OpsDealDetailsEntry[];
+};
+
+export type OpsDealEditDefaults = {
+  dealNumber: string;
+  source: string;
+  statusKey: OpsDealStatusKey;
+  principalAmount: number | null;
+  totalAmount: number | null;
+  monthlyPayment: number | null;
+  monthlyLeaseRate: number | null;
+  interestRate: number | null;
+  downPaymentAmount: number | null;
+  securityDeposit: number | null;
+  processingFee: number | null;
+  termMonths: number | null;
+  contractStartDate: string | null;
+  contractEndDate: string | null;
+  firstPaymentDate: string | null;
+  activatedAt: string | null;
+  completedAt: string | null;
+};
+
 export type OpsDealTimelineEvent = {
   id: string;
   timestamp: string;
@@ -826,74 +857,6 @@ export const OPS_BOTTLENECKS = [];
 export const OPS_AUTOMATION_METRICS = [];
 
 // Константы для документов и профилей
-export const OPS_DEAL_DOCUMENTS = [];
-export const OPS_DEAL_TIMELINE = [];
-export const OPS_CLIENT_PROFILE: OpsClientProfile = {
-  userId: "00000000-0000-0000-0000-000000000000",
-  fullName: "Client",
-  status: "pending",
-  segment: null,
-  memberSince: null,
-  email: "client@example.com",
-  phone: "+971 50 000 0000",
-  emiratesId: null,
-  passportNumber: null,
-  nationality: null,
-  residencyStatus: null,
-  dateOfBirth: null,
-  address: {
-    street: null,
-    city: "Dubai",
-    community: null,
-    country: "UAE",
-    raw: null,
-  },
-  employment: {
-    employer: null,
-    position: null,
-    years: null,
-    raw: null,
-  },
-  financial: {
-    monthlyIncome: null,
-    existingLoans: null,
-    creditScore: null,
-    riskGrade: null,
-    raw: null,
-  },
-  lastLoginAt: null,
-  createdAt: null,
-  metrics: {
-    scoring: "—",
-    overdue: "—",
-    overdueCount: 0,
-    limit: "—",
-    totalExposure: "—",
-    activeDeals: 0,
-  },
-  tags: [],
-};
-
-export const OPS_CLIENT_DEALS = [];
-export const OPS_CLIENT_DOCUMENTS = [];
-export const OPS_VEHICLE_DOCUMENTS = [];
-export const OPS_VEHICLE_SERVICE_LOG = [];
-export const OPS_VEHICLE_PROFILE = {
-  heading: "Vehicle Profile",
-  subtitle: "Vehicle information",
-  image: "/assets/vehicle-placeholder.svg",
-  specs: [
-    { label: "Engine Type", value: "V8" },
-    { label: "Range", value: "500 km" },
-    { label: "Mileage", value: "0 km" },
-    { label: "Battery Condition", value: "100%" },
-  ],
-};
-
-// Временные фоллбеки для отладки
-console.log("[DEBUG] Using fallback vehicle profile:", OPS_VEHICLE_PROFILE);
-
-
 export type OpsPipelineDataset = Array<{
   label: string;
   value: number;
@@ -926,6 +889,13 @@ export type OpsDealDetail = {
   client: OpsDealClientProfile;
   keyInformation: OpsDealKeyInfoEntry[];
   overview: OpsDealDetailsEntry[];
+  financials: OpsDealDetailsEntry[];
+  contract: OpsDealDetailsEntry[];
+  workflowMeta: OpsDealDetailsEntry[];
+  relatedEntities: OpsDealRelatedSection[];
+  structuredData: OpsDealDetailJsonBlock[];
+  paymentSchedule: OpsDealDetailsEntry[];
+  editDefaults: OpsDealEditDefaults;
   documents: OpsDealDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];

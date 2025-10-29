@@ -36,6 +36,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/supabase/queries/operations";
 import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
 import { DealStageTasks } from "@/app/(dashboard)/ops/_components/deal-stage-tasks";
+import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dialog";
 
 type DealDetailProps = {
   detail: OpsDealDetail;
@@ -179,7 +180,10 @@ export function DealDetailView({ detail }: DealDetailProps) {
     profile,
     client,
     keyInformation,
-    overview,
+    overview = [],
+    financials = [],
+    contract = [],
+    paymentSchedule = [],
     documents,
     invoices,
     timeline,
@@ -644,9 +648,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
         <Button variant="ghost" size="sm" asChild className="rounded-xl border border-border">
           <Link href="/ops/deals">← Назад к сделкам</Link>
         </Button>
-        <Badge variant="outline" className="rounded-lg px-3 py-1 text-xs uppercase tracking-[0.2em]">
-          {statusMeta?.title ?? "Статус не определён"}
-        </Badge>
+        <DealEditDialog detail={detail} triggerVariant="outline" triggerSize="sm" triggerClassName="rounded-xl" />
       </div>
 
       <Card className="bg-card/60 backdrop-blur">
@@ -673,7 +675,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
               <CardDescription className="text-sm text-muted-foreground">
                 {clientVehicleLine}
               </CardDescription>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <dl className="grid gap-3 sm:grid-cols-3">
                 {summaryCards.map((item) => {
                   const toneClass =
                     item.tone === "danger"
@@ -682,13 +684,13 @@ export function DealDetailView({ detail }: DealDetailProps) {
                         ? "text-emerald-600"
                         : "text-foreground";
                   return (
-                    <div key={item.id} className="rounded-xl border border-border/50 bg-card/60 p-3">
-                      <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</p>
-                      <p className={`mt-2 text-sm font-semibold ${toneClass}`}>{item.value}</p>
+                    <div key={item.id} className="space-y-1">
+                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
+                      <dd className={`text-sm font-semibold ${toneClass}`}>{item.value}</dd>
                     </div>
                   );
                 })}
-              </div>
+              </dl>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" asChild className="rounded-lg">
                   <Link href={briefHref}>
@@ -750,6 +752,25 @@ export function DealDetailView({ detail }: DealDetailProps) {
                     </li>
                   ))}
                 </ul>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {overview.length ? (
+            <Card className="bg-card/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle>Сведения о сделке</CardTitle>
+                <CardDescription>Ключевые поля из таблицы deals</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-3 md:grid-cols-2">
+                  {overview.map((entry, index) => (
+                    <div key={`${entry.label}-${index}`}>
+                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
+                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
+                    </div>
+                  ))}
+                </dl>
               </CardContent>
             </Card>
           ) : null}
@@ -910,8 +931,62 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   <Link href={statementHref}>Скачать Statement of Account</Link>
                 </Button>
               </div>
+              {paymentSchedule.length ? (
+                <div className="space-y-2">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">График платежей</p>
+                  <ul className="space-y-2 text-sm">
+                    {paymentSchedule.map((entry, index) => (
+                      <li
+                        key={`${entry.label}-${index}`}
+                        className="rounded-lg border border-border/60 bg-card/60 px-3 py-2"
+                      >
+                        <p className="font-medium text-foreground">{entry.label}</p>
+                        <p className="text-xs text-muted-foreground">{entry.value}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
+
+          {financials.length ? (
+            <Card className="bg-card/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle>Финансовые параметры</CardTitle>
+                <CardDescription>Полный набор сумм и ставок по сделке</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-3 md:grid-cols-2">
+                  {financials.map((entry, index) => (
+                    <div key={`${entry.label}-${index}`}>
+                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
+                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {contract.length ? (
+            <Card className="bg-card/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle>Договор</CardTitle>
+                <CardDescription>Сроки, даты и статус исполнения</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-3 md:grid-cols-2">
+                  {contract.map((entry, index) => (
+                    <div key={`${entry.label}-${index}`}>
+                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
+                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card className="bg-card/60 backdrop-blur" id="documents">
             <CardHeader>
@@ -925,6 +1000,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
               {renderDocumentSection("other", "Дополнительные файлы", documentBuckets.other, "default")}
             </CardContent>
           </Card>
+
         </div>
 
         <aside className="space-y-6 xl:sticky xl:top-24">

@@ -16,11 +16,14 @@ import type {
   OpsClientReferralSummary,
   OpsClientSupportTicket,
   OpsDealClientProfile,
+  OpsDealDetailJsonBlock,
   OpsDealDetailsEntry,
   OpsDealDocument,
   OpsDealGuardStatus,
   OpsDealInvoice,
   OpsDealKeyInfoEntry,
+  OpsDealRelatedSection,
+  OpsDealEditDefaults,
   OpsDealProfile,
   OpsDealTimelineEvent,
   OpsDealWorkflowTask,
@@ -448,6 +451,56 @@ function formatCurrency(value: number | null | undefined): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function formatRate(value: number | null | undefined): string {
+  if (value == null) {
+    return "—";
+  }
+
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return "—";
+  }
+
+  const isFractional = Math.abs(numeric) <= 1;
+  const percentValue = isFractional ? numeric * 100 : numeric;
+  const percentText = `${percentValue.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}%`;
+
+  if (isFractional) {
+    const rawText = numeric.toLocaleString("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 4,
+    });
+    return `${percentText} (raw ${rawText})`;
+  }
+
+  return percentText;
+}
+
+function formatJsonObject(value: Record<string, unknown> | null | undefined): {
+  formatted: string;
+  isEmpty: boolean;
+} {
+  if (!value || Object.keys(value).length === 0) {
+    return { formatted: "{}", isEmpty: true };
+  }
+
+  try {
+    return {
+      formatted: JSON.stringify(value, null, 2),
+      isEmpty: false,
+    };
+  } catch (error) {
+    console.warn("[SERVER-OPS] failed to stringify json object", { value, error });
+    return {
+      formatted: JSON.stringify({ error: "Failed to render JSON" }),
+      isEmpty: false,
+    };
+  }
 }
 
 function normalizeClientStatus(raw: unknown): { display: string; filter: "Active" | "Blocked" } {
@@ -2028,6 +2081,13 @@ type DealDetailResult = {
   client: OpsDealClientProfile;
   keyInformation: OpsDealKeyInfoEntry[];
   overview: OpsDealDetailsEntry[];
+  financials: OpsDealDetailsEntry[];
+  contract: OpsDealDetailsEntry[];
+  workflowMeta: OpsDealDetailsEntry[];
+  relatedEntities: OpsDealRelatedSection[];
+  structuredData: OpsDealDetailJsonBlock[];
+  paymentSchedule: OpsDealDetailsEntry[];
+  editDefaults: OpsDealEditDefaults;
   documents: OpsDealDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];
@@ -2048,8 +2108,37 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   // Загружаем данные сделки с связанными таблицами
   const fetchFields = `
-    id, deal_number, status, created_at, updated_at, monthly_payment, total_amount, principal_amount, payload, client_id,
-    term_months, contract_start_date, contract_end_date, first_payment_date, source, customer_id,
+    id,
+    deal_number,
+    application_id,
+    status,
+    created_at,
+    updated_at,
+    activated_at,
+    completed_at,
+    monthly_payment,
+    monthly_lease_rate,
+    total_amount,
+    principal_amount,
+    interest_rate,
+    down_payment_amount,
+    security_deposit,
+    processing_fee,
+    payload,
+    contract_terms,
+    insurance_details,
+    client_id,
+    term_months,
+    contract_start_date,
+    contract_end_date,
+    first_payment_date,
+    source,
+    workflow_id,
+    workflow_version_id,
+    op_manager_id,
+    assigned_account_manager,
+    customer_id,
+    asset_id,
     vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, current_value, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
     customer_contact:customer_id(id, full_name, email, phone, emirates_id),
     deal_documents(id, document_type, title, storage_path, status, signed_at, created_at)
@@ -2058,20 +2147,35 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   type SupabaseDealDetailRow = {
     id: string;
     deal_number: string | null;
+    application_id: string | null;
     status: string;
     created_at: string | null;
     updated_at: string | null;
+    activated_at: string | null;
+    completed_at: string | null;
     monthly_payment: number | null;
+    monthly_lease_rate: number | null;
     total_amount: number | null;
     principal_amount: number | null;
+    interest_rate: number | null;
+    down_payment_amount: number | null;
+    security_deposit: number | null;
+    processing_fee: number | null;
     payload: Record<string, unknown> | null;
+    contract_terms: Record<string, unknown> | null;
+    insurance_details: Record<string, unknown> | null;
     client_id: string;
     term_months: number | null;
     contract_start_date: string | null;
     contract_end_date: string | null;
     first_payment_date: string | null;
     source: string | null;
+    workflow_id: string | null;
+    workflow_version_id: string | null;
+    op_manager_id: string | null;
+    assigned_account_manager: string | null;
     customer_id: string | null;
+    asset_id: string | null;
     vehicles?: SupabaseVehicleData[] | SupabaseVehicleData | null;
     customer_contact?: {
       id: string;
@@ -2244,7 +2348,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   }
 
   // Загружаем scoring из applications
-  const { data: applicationData } = await supabase
+  const { data: applicationScoringData } = await supabase
     .from("applications")
     .select("scoring_results")
     .eq("user_id", dealRow.client_id)
@@ -2267,12 +2371,145 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     });
   }
 
+  const managerIds = [dealRow.assigned_account_manager, dealRow.op_manager_id].filter(
+    (value): value is string => Boolean(value),
+  );
+
+  let managerProfiles: Array<{ user_id: string; full_name: string | null; status: string | null }> = [];
+  if (managerIds.length > 0) {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, status")
+      .in("user_id", managerIds);
+
+    if (profilesError) {
+      console.error("[SERVER-OPS] failed to load manager profiles", {
+        dealId: dealRow.id,
+        managerIds,
+        error: profilesError,
+      });
+    } else {
+      managerProfiles = profilesData ?? [];
+    }
+  }
+
+  type WorkflowContactRecord = {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    emirates_id: string | null;
+    created_at: string | null;
+  };
+
+  type WorkflowAssetRecord = {
+    id: string;
+    type: string | null;
+    vin: string | null;
+    make: string | null;
+    model: string | null;
+    trim: string | null;
+    year: number | null;
+    supplier: string | null;
+    price: number | null;
+    meta: Record<string, unknown> | null;
+    created_at: string | null;
+  };
+
+  type WorkflowVersionRecord = {
+    id: string;
+    workflow_id: string | null;
+    version: string | null;
+    title: string | null;
+    description: string | null;
+    is_active: boolean | null;
+    created_at: string | null;
+  };
+
+  type ApplicationRecord = {
+    id: string;
+    application_number: string | null;
+    status: string | null;
+    submitted_at: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+  };
+
+  const [workflowContactResult, workflowAssetResult, workflowVersionResult, applicationRecordResult] =
+    await Promise.all([
+      dealRow.customer_id
+        ? supabase
+            .from("workflow_contacts")
+            .select("id, full_name, email, phone, emirates_id, created_at")
+            .eq("id", dealRow.customer_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      dealRow.asset_id
+        ? supabase
+            .from("workflow_assets")
+            .select("id, type, vin, make, model, trim, year, supplier, price, meta, created_at")
+            .eq("id", dealRow.asset_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      dealRow.workflow_version_id
+        ? supabase
+            .from("workflow_versions")
+            .select("id, workflow_id, version, title, description, is_active, created_at")
+            .eq("id", dealRow.workflow_version_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      dealRow.application_id
+        ? supabase
+            .from("applications")
+            .select("id, application_number, status, submitted_at, created_at, updated_at")
+            .eq("id", dealRow.application_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+    ]);
+
+  const workflowContact = (workflowContactResult as { data: WorkflowContactRecord | null }).data ?? null;
+  const workflowAsset = (workflowAssetResult as { data: WorkflowAssetRecord | null }).data ?? null;
+  const workflowVersion = (workflowVersionResult as { data: WorkflowVersionRecord | null }).data ?? null;
+  const applicationRecord = (applicationRecordResult as { data: ApplicationRecord | null }).data ?? null;
+
+  if ((workflowContactResult as { error?: unknown }).error) {
+    console.error("[SERVER-OPS] failed to load workflow contact", {
+      dealId: dealRow.id,
+      customerId: dealRow.customer_id,
+      error: (workflowContactResult as { error?: unknown }).error,
+    });
+  }
+
+  if ((workflowAssetResult as { error?: unknown }).error) {
+    console.error("[SERVER-OPS] failed to load workflow asset", {
+      dealId: dealRow.id,
+      assetId: dealRow.asset_id,
+      error: (workflowAssetResult as { error?: unknown }).error,
+    });
+  }
+
+  if ((workflowVersionResult as { error?: unknown }).error) {
+    console.error("[SERVER-OPS] failed to load workflow version", {
+      dealId: dealRow.id,
+      workflowVersionId: dealRow.workflow_version_id,
+      error: (workflowVersionResult as { error?: unknown }).error,
+    });
+  }
+
+  if ((applicationRecordResult as { error?: unknown }).error) {
+    console.error("[SERVER-OPS] failed to load application record", {
+      dealId: dealRow.id,
+      applicationId: dealRow.application_id,
+      error: (applicationRecordResult as { error?: unknown }).error,
+    });
+  }
+
   console.log(`[DEBUG] Client data query result:`, { clientData, clientError, clientId: dealRow.client_id });
   console.log(`[DEBUG] Client full_name: "${clientData?.full_name}"`);
   console.log(`[DEBUG] Client phone: "${clientData?.phone}"`);
   console.log(`[DEBUG] Auth user email: "${authUser?.user?.email}"`);
   console.log(`[DEBUG] Client metadata:`, clientData?.metadata);
-  console.log(`[DEBUG] Application scoring results:`, applicationData?.scoring_results);
+  console.log(`[DEBUG] Application scoring results:`, applicationScoringData?.scoring_results);
 
   const paymentScheduleRows = (paymentSchedules ?? []) as SupabasePaymentScheduleRow[];
   const pendingStatuses = new Set(["pending", "overdue", "draft"]);
@@ -2521,7 +2758,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     clientNotesParts.push(`Emirates ID: ${contactRecord.emirates_id}`);
   }
 
-  const scoringValue = resolveScore(applicationData?.scoring_results);
+  const scoringValue = resolveScore(applicationScoringData?.scoring_results);
   const scoringDisplay =
     scoringValue != null ? `${Math.round(scoringValue)}/100` : "—";
 
@@ -2645,6 +2882,281 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     },
   ];
 
+  const accountManagerProfileEntry = dealRow.assigned_account_manager
+    ? managerProfiles.find((profile) => profile.user_id === dealRow.assigned_account_manager) ?? null
+    : null;
+  const operationsManagerProfileEntry = dealRow.op_manager_id
+    ? managerProfiles.find((profile) => profile.user_id === dealRow.op_manager_id) ?? null
+    : null;
+
+  const formatProfileValue = (
+    id: string | null,
+    profile: { full_name: string | null; status: string | null } | null,
+  ): string => {
+    if (!id) {
+      return "—";
+    }
+    const parts: string[] = [];
+    if (profile?.full_name && profile.full_name.trim().length > 0) {
+      parts.push(profile.full_name.trim());
+    }
+    parts.push(id);
+    if (profile?.status) {
+      parts.push(`статус: ${profile.status}`);
+    }
+    return parts.join(" • ");
+  };
+
+  const financials: OpsDealDetailsEntry[] = [
+    { label: "Principal amount", value: formatCurrency(dealRow.principal_amount) },
+    { label: "Total amount", value: formatCurrency(dealRow.total_amount) },
+    { label: "Monthly payment", value: formatCurrency(dealRow.monthly_payment) },
+    { label: "Monthly lease rate", value: formatRate(dealRow.monthly_lease_rate) },
+    { label: "Interest rate", value: formatRate(dealRow.interest_rate) },
+    { label: "Down payment", value: formatCurrency(dealRow.down_payment_amount) },
+    { label: "Security deposit", value: formatCurrency(dealRow.security_deposit) },
+    { label: "Processing fee", value: formatCurrency(dealRow.processing_fee) },
+    { label: "Outstanding amount", value: outstandingAmountDisplay },
+  ];
+
+  const contractDetails: OpsDealDetailsEntry[] = [
+    {
+      label: "Term (months)",
+      value: dealRow.term_months != null ? `${dealRow.term_months}` : "—",
+    },
+    {
+      label: "Contract start",
+      value: formatDate(dealRow.contract_start_date),
+    },
+    {
+      label: "Contract end",
+      value: formatDate(dealRow.contract_end_date),
+    },
+    {
+      label: "First payment date",
+      value: formatDate(dealRow.first_payment_date),
+    },
+    {
+      label: "Activated at",
+      value: formatDateTime(dealRow.activated_at),
+    },
+    {
+      label: "Completed at",
+      value: formatDateTime(dealRow.completed_at),
+    },
+    {
+      label: "Created at",
+      value: formatDateTime(dealRow.created_at),
+    },
+    {
+      label: "Updated at",
+      value: formatDateTime(dealRow.updated_at),
+    },
+  ];
+
+  const workflowMeta: OpsDealDetailsEntry[] = [
+    { label: "Application ID", value: dealRow.application_id ?? "—" },
+    { label: "Workflow ID", value: dealRow.workflow_id ?? "—" },
+    { label: "Workflow version ID", value: dealRow.workflow_version_id ?? "—" },
+    {
+      label: "Account manager",
+      value: formatProfileValue(dealRow.assigned_account_manager, accountManagerProfileEntry),
+    },
+    {
+      label: "Operations manager",
+      value: formatProfileValue(dealRow.op_manager_id, operationsManagerProfileEntry),
+    },
+    { label: "Customer record ID", value: dealRow.customer_id ?? "—" },
+    { label: "Workflow asset ID", value: dealRow.asset_id ?? "—" },
+    { label: "Source (payload)", value: getString(dealRow.payload?.source) ?? "—" },
+  ];
+
+  const paymentScheduleEntries: OpsDealDetailsEntry[] = paymentScheduleRows.map((row, index) => {
+    const parts: string[] = [];
+    const dueDate = formatShortDate(row.due_date);
+    if (dueDate !== "—") {
+      parts.push(dueDate);
+    }
+    const amount = formatCurrency(row.amount ?? null);
+    if (amount !== "—") {
+      parts.push(amount);
+    }
+    const status = row.status ? row.status.toString() : null;
+    if (status) {
+      parts.push(status);
+    }
+    return {
+      label: `Платёж #${index + 1}`,
+      value: parts.length > 0 ? parts.join(" • ") : "—",
+    };
+  });
+
+  const relatedEntities: OpsDealRelatedSection[] = [];
+
+  if (applicationRecord) {
+    relatedEntities.push({
+      label: "Заявка",
+      entries: [
+        { label: "ID", value: applicationRecord.id },
+        { label: "Номер заявки", value: applicationRecord.application_number ?? "—" },
+        { label: "Статус", value: applicationRecord.status ?? "—" },
+        { label: "Подана", value: formatDateTime(applicationRecord.submitted_at) },
+        { label: "Создана", value: formatDateTime(applicationRecord.created_at) },
+        { label: "Обновлена", value: formatDateTime(applicationRecord.updated_at) },
+      ],
+    });
+  }
+
+  if (workflowVersion) {
+    relatedEntities.push({
+      label: "Workflow версия",
+      entries: [
+        { label: "ID", value: workflowVersion.id },
+        { label: "Workflow", value: workflowVersion.workflow_id ?? "—" },
+        { label: "Версия", value: workflowVersion.version ?? "—" },
+        { label: "Название", value: workflowVersion.title ?? "—" },
+        { label: "Описание", value: workflowVersion.description ?? "—" },
+        {
+          label: "Активна",
+          value:
+            workflowVersion.is_active == null
+              ? "—"
+              : workflowVersion.is_active
+                ? "Да"
+                : "Нет",
+        },
+        { label: "Создана", value: formatDateTime(workflowVersion.created_at) },
+      ],
+    });
+  }
+
+  if (workflowContact) {
+    relatedEntities.push({
+      label: "Workflow контакт",
+      entries: [
+        { label: "ID", value: workflowContact.id },
+        { label: "ФИО", value: workflowContact.full_name ?? "—" },
+        { label: "Email", value: workflowContact.email ?? "—" },
+        { label: "Телефон", value: workflowContact.phone ?? "—" },
+        { label: "Emirates ID", value: workflowContact.emirates_id ?? "—" },
+        { label: "Создан", value: formatDateTime(workflowContact.created_at) },
+      ],
+    });
+  }
+
+  if (contactRecord) {
+    relatedEntities.push({
+      label: "Customer contact (deals)",
+      entries: [
+        { label: "ID", value: contactRecord.id },
+        { label: "ФИО", value: contactRecord.full_name ?? "—" },
+        { label: "Email", value: contactRecord.email ?? "—" },
+        { label: "Телефон", value: contactRecord.phone ?? "—" },
+        { label: "Emirates ID", value: contactRecord.emirates_id ?? "—" },
+      ],
+    });
+  }
+
+  if (workflowAsset) {
+    relatedEntities.push({
+      label: "Workflow актив",
+      entries: [
+        { label: "ID", value: workflowAsset.id },
+        { label: "Тип", value: workflowAsset.type ?? "—" },
+        { label: "VIN", value: workflowAsset.vin ?? "—" },
+        { label: "Марка", value: workflowAsset.make ?? "—" },
+        { label: "Модель", value: workflowAsset.model ?? "—" },
+        { label: "Комплектация", value: workflowAsset.trim ?? "—" },
+        {
+          label: "Год",
+          value: workflowAsset.year != null ? workflowAsset.year.toString() : "—",
+        },
+        { label: "Поставщик", value: workflowAsset.supplier ?? "—" },
+        { label: "Цена", value: formatCurrency(workflowAsset.price ?? null) },
+        { label: "Создан", value: formatDateTime(workflowAsset.created_at) },
+      ],
+    });
+  }
+
+  if (accountManagerProfileEntry || operationsManagerProfileEntry) {
+    relatedEntities.push({
+      label: "Команда сделки",
+      entries: [
+        {
+          label: "Аккаунт-менеджер",
+          value: formatProfileValue(dealRow.assigned_account_manager, accountManagerProfileEntry),
+        },
+        {
+          label: "Операционный менеджер",
+          value: formatProfileValue(dealRow.op_manager_id, operationsManagerProfileEntry),
+        },
+      ],
+    });
+  }
+
+  const structuredData: OpsDealDetailJsonBlock[] = [];
+
+  const contractTermsData = formatJsonObject(dealRow.contract_terms);
+  structuredData.push({
+    label: "Contract terms",
+    json: contractTermsData.formatted,
+    isEmpty: contractTermsData.isEmpty,
+  });
+
+  const insuranceDetailsData = formatJsonObject(dealRow.insurance_details);
+  structuredData.push({
+    label: "Insurance details",
+    json: insuranceDetailsData.formatted,
+    isEmpty: insuranceDetailsData.isEmpty,
+  });
+
+  const payloadData = formatJsonObject(dealRow.payload);
+  structuredData.push({
+    label: "Deal payload",
+    json: payloadData.formatted,
+    isEmpty: payloadData.isEmpty,
+  });
+
+  const workflowAssetMetaData = formatJsonObject((workflowAsset?.meta as Record<string, unknown> | null) ?? null);
+  structuredData.push({
+    label: "Workflow asset meta",
+    json: workflowAssetMetaData.formatted,
+    isEmpty: workflowAssetMetaData.isEmpty,
+  });
+
+  const clientMetadataData = formatJsonObject(profileMetadata);
+  structuredData.push({
+    label: "Client metadata",
+    json: clientMetadataData.formatted,
+    isEmpty: clientMetadataData.isEmpty,
+  });
+
+  const editDefaults: OpsDealEditDefaults = {
+    dealNumber: dealRow.deal_number ?? "",
+    source:
+      getString(dealRow.source) ??
+      getString(dealRow.payload?.source) ??
+      "",
+    statusKey,
+    principalAmount: getNumber(dealRow.principal_amount),
+    totalAmount: getNumber(dealRow.total_amount),
+    monthlyPayment: getNumber(dealRow.monthly_payment),
+    monthlyLeaseRate: getNumber(dealRow.monthly_lease_rate),
+    interestRate: getNumber(dealRow.interest_rate),
+    downPaymentAmount: getNumber(dealRow.down_payment_amount),
+    securityDeposit: getNumber(dealRow.security_deposit),
+    processingFee: getNumber(dealRow.processing_fee),
+    termMonths:
+      typeof dealRow.term_months === "number"
+        ? dealRow.term_months
+        : getNumber(dealRow.term_months) ?? null,
+    contractStartDate: getString(dealRow.contract_start_date),
+    contractEndDate: getString(dealRow.contract_end_date),
+    firstPaymentDate: getString(dealRow.first_payment_date),
+    activatedAt: getString(dealRow.activated_at),
+    completedAt: getString(dealRow.completed_at),
+  };
+
   const outboundSlug = matchesDealSlug(dealRow, normalizedSlug)
     ? normalizedSlug
     : toSlug(dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id));
@@ -2659,6 +3171,13 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     client: clientProfile,
     keyInformation,
     overview,
+    financials,
+    contract: contractDetails,
+    workflowMeta,
+    relatedEntities,
+    structuredData,
+    paymentSchedule: paymentScheduleEntries,
+    editDefaults,
     documents,
     invoices,
     timeline,

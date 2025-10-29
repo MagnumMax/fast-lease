@@ -36,6 +36,80 @@ function ensureGuardPayload(base: Record<string, unknown> | null | undefined) {
   return clone as Record<string, unknown> & { guard_tasks: Record<string, unknown> };
 }
 
+const updateDealSchema = z.object({
+  dealId: z.string().uuid(),
+  slug: z.string().min(1),
+  dealNumber: z.string().optional(),
+  source: z.string().optional(),
+  statusKey: z.string().optional(),
+  principalAmount: z.string().optional(),
+  totalAmount: z.string().optional(),
+  monthlyPayment: z.string().optional(),
+  monthlyLeaseRate: z.string().optional(),
+  interestRate: z.string().optional(),
+  downPaymentAmount: z.string().optional(),
+  securityDeposit: z.string().optional(),
+  processingFee: z.string().optional(),
+  termMonths: z.string().optional(),
+  contractStartDate: z.string().optional(),
+  contractEndDate: z.string().optional(),
+  firstPaymentDate: z.string().optional(),
+  activatedAt: z.string().optional(),
+  completedAt: z.string().optional(),
+});
+
+function normalizeText(value?: string | null) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  return trimmed;
+}
+
+function parseDecimalInput(value?: string | null): number | null {
+  if (!value) return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const cleaned = normalized.replace(/[^0-9,\.\-]/g, "").replace(/,/g, ".");
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
+function parseIntegerInput(value?: string | null): number | null {
+  if (!value) return null;
+  const cleaned = value.trim();
+  if (!cleaned) return null;
+  const parsed = Number.parseInt(cleaned, 10);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
+function normalizeDateInput(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return trimmed;
+}
+
+function normalizeDateTimeLocal(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
+}
+
 export async function completeDealGuardAction(
   prevState: { error?: string; success?: boolean },
   formData: FormData,
@@ -148,5 +222,99 @@ export async function completeDealGuardAction(
   } catch (error) {
     console.error("[workflow] unexpected error while completing guard", error);
     return { error: "Произошла ошибка при выполнении задачи", success: false };
+  }
+}
+
+export type UpdateOperationsDealInput = z.infer<typeof updateDealSchema>;
+
+export type UpdateOperationsDealResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function updateOperationsDeal(
+  input: UpdateOperationsDealInput,
+): Promise<UpdateOperationsDealResult> {
+  const parsed = updateDealSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid deal update payload", parsed.error.flatten());
+    return { success: false, error: "Проверьте введённые данные и попробуйте снова." };
+  }
+
+  const {
+    dealId,
+    slug,
+    dealNumber,
+    source,
+    statusKey,
+    principalAmount,
+    totalAmount,
+    monthlyPayment,
+    monthlyLeaseRate,
+    interestRate,
+    downPaymentAmount,
+    securityDeposit,
+    processingFee,
+    termMonths,
+    contractStartDate,
+    contractEndDate,
+    firstPaymentDate,
+    activatedAt,
+    completedAt,
+  } = parsed.data;
+
+  const nextDealNumber = normalizeText(dealNumber);
+  const nextSource = normalizeText(source);
+  const nextStatusKey = statusKey ? statusKey.trim().toUpperCase() : null;
+
+  if (nextStatusKey && !OPS_WORKFLOW_STATUS_MAP[nextStatusKey]) {
+    return { success: false, error: "Указан неизвестный статус сделки." };
+  }
+
+  const payload: Record<string, unknown> = {
+    deal_number: nextDealNumber.length > 0 ? nextDealNumber : null,
+    source: nextSource.length > 0 ? nextSource : null,
+    principal_amount: parseDecimalInput(principalAmount),
+    total_amount: parseDecimalInput(totalAmount),
+    monthly_payment: parseDecimalInput(monthlyPayment),
+    monthly_lease_rate: parseDecimalInput(monthlyLeaseRate),
+    interest_rate: parseDecimalInput(interestRate),
+    down_payment_amount: parseDecimalInput(downPaymentAmount),
+    security_deposit: parseDecimalInput(securityDeposit),
+    processing_fee: parseDecimalInput(processingFee),
+    term_months: parseIntegerInput(termMonths),
+    contract_start_date: normalizeDateInput(contractStartDate),
+    contract_end_date: normalizeDateInput(contractEndDate),
+    first_payment_date: normalizeDateInput(firstPaymentDate),
+    activated_at: normalizeDateTimeLocal(activatedAt),
+    completed_at: normalizeDateTimeLocal(completedAt),
+  };
+
+  if (nextStatusKey) {
+    payload.status = nextStatusKey;
+  }
+
+  try {
+    const supabase = await createSupabaseServiceClient();
+
+    const { error } = await supabase
+      .from("deals")
+      .update(payload)
+      .eq("id", dealId);
+
+    if (error) {
+      console.error("[operations] failed to update deal", { dealId, error });
+      return { success: false, error: "Не удалось сохранить сделку." };
+    }
+
+    for (const path of getWorkspacePaths("deals")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/deals/${slug}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while updating deal", error);
+    return { success: false, error: "Произошла ошибка при сохранении сделки." };
   }
 }
