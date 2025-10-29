@@ -226,7 +226,7 @@ begin
   )
   returning id into user_id;
 
-  insert into public.profiles (user_id, status, full_name, first_name, last_name, phone, emirates_id, nationality, residency_status, employment_info, metadata, last_login_at, marketing_opt_in)
+  insert into public.profiles (user_id, status, full_name, first_name, last_name, phone, emirates_id, nationality, residency_status, employment_info, metadata, last_login_at)
   values (
     user_id,
     'active',
@@ -239,8 +239,7 @@ begin
     'resident',
     jsonb_build_object('company','Fast Lease','position','Head of Operations'),
     jsonb_build_object('time_zone','Asia/Dubai'),
-    now() - interval '1 hour',
-    true
+    now() - interval '1 hour'
   );
 
   insert into public.user_roles (user_id, role, assigned_by, metadata)
@@ -449,7 +448,7 @@ begin
     )
     returning id into user_id;
 
-    insert into public.profiles (user_id, status, full_name, first_name, last_name, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth, address, employment_info, financial_profile, marketing_opt_in, last_login_at)
+    insert into public.profiles (user_id, status, full_name, first_name, last_name, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth, address, employment_info, financial_profile, last_login_at)
     values (
       user_id,
       'active',
@@ -465,7 +464,6 @@ begin
       jsonb_build_object('city','Dubai','community', case when idx % 3 = 0 then 'Dubai Hills' else 'Business Bay' end, 'country','UAE'),
       jsonb_build_object('employer', case when idx % 4 = 0 then 'Global Logistics LLC' else 'Emirates NBD' end, 'position','Senior Manager','years', 5 + idx % 6),
       jsonb_build_object('monthly_income', 30000 + idx * 1500, 'existing_loans', idx % 3),
-      idx % 2 = 0,
       now() - interval '2 hours'
     );
 

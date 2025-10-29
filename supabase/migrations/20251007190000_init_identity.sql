@@ -63,7 +63,6 @@ create table if not exists public.profiles (
   employment_info jsonb default '{}'::jsonb,
   financial_profile jsonb default '{}'::jsonb,
   metadata jsonb default '{}'::jsonb,
-  marketing_opt_in boolean not null default false,
   timezone text default 'Asia/Dubai',
   avatar_url text,
   last_login_at timestamptz,

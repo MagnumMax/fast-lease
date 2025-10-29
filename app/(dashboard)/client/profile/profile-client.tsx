@@ -45,7 +45,6 @@ type ProfileClientProps = {
     email: string;
     phone: string;
     timezone: string;
-    marketingOptIn: boolean;
   };
   role: AppRole | null;
   autopayEnabled: boolean;
@@ -222,16 +221,6 @@ export function ProfileClient({
                     </span>
                   </div>
                 </div>
-                <label className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm">
-                  <input
-                    type="checkbox"
-                    name="marketing"
-                    defaultChecked={profile.marketingOptIn}
-                    disabled={profilePending}
-                    className="h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
-                  />
-                  Получать обновления и чек-листы от Fast Lease
-                </label>
               </div>
 
               <Banner state={profileState} />

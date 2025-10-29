@@ -102,7 +102,6 @@ export default async function ClientProfilePage() {
         email: sessionUser.user.email ?? "",
         phone: currentProfile?.phone ?? "",
         timezone: currentProfile?.timezone ?? "Asia/Dubai",
-        marketingOptIn: Boolean(currentProfile?.marketing_opt_in),
       }}
       role={sessionUser.primaryRole}
       autopayEnabled={autopayEnabled}

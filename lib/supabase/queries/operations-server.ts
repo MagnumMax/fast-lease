@@ -1140,7 +1140,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "user_id, full_name, status, phone, nationality, residency_status, marketing_opt_in, created_at, metadata",
+      "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata",
     )
     .order("full_name", { ascending: true });
 
@@ -1220,7 +1220,6 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       : null;
     const memberSince = rawMemberSince && rawMemberSince !== "—" ? rawMemberSince : null;
 
-    const marketingOptIn = Boolean(profile.marketing_opt_in);
     const overdueCount = index % 3 === 0 ? 1 : 0;
     const overdueSummary = overdueCount > 0 ? `${overdueCount} проср.` : "Нет просрочек";
 
@@ -1258,7 +1257,6 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       detailHref: `/ops/clients/${profile.user_id}`,
       memberSince,
       segment,
-      marketingOptIn,
       tags,
       metricsSummary: {
         scoring: "90/100",
@@ -1340,7 +1338,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     .from("profiles")
     .select(
       `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
-       address, employment_info, financial_profile, metadata, marketing_opt_in, created_at, last_login_at`
+       address, employment_info, financial_profile, metadata, created_at, last_login_at`
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -1456,7 +1454,6 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     address,
     employment,
     financial,
-    marketingOptIn: Boolean(profileRow.marketing_opt_in),
     lastLoginAt: profileRow.last_login_at ?? null,
     createdAt: profileRow.created_at ?? null,
     metrics: {
@@ -1789,6 +1786,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
           bucket: "application-documents",
           path: document.storage_path,
         });
+        if (!url) return null;
         return {
           id: document.id,
           name: getString(document.original_filename) ?? getString(document.document_type) ?? "Документ",
@@ -1808,6 +1806,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
           bucket: "deal-documents",
           path: document.storage_path,
         });
+        if (!url) return null;
         return {
           id: document.id,
           name: getString(document.title) ?? getString(document.document_type) ?? "Документ",
@@ -1880,7 +1879,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   }
 
   const clientDocuments = documentDescriptors
-    .filter(Boolean)
+    .filter((descriptor): descriptor is OpsClientDocument => Boolean(descriptor))
     .sort((a, b) => {
       const left = a.uploadedAt ?? "";
       const right = b.uploadedAt ?? "";

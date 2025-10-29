@@ -13,7 +13,6 @@ export async function updateProfileAction(
   const fullName = typeof formData.get("fullName") === "string" ? (formData.get("fullName") as string).trim() : "";
   const phone = typeof formData.get("phone") === "string" ? (formData.get("phone") as string).trim() : "";
   const timezone = typeof formData.get("timezone") === "string" ? (formData.get("timezone") as string).trim() : "Asia/Dubai";
-  const marketingOptIn = formData.get("marketing") === "on";
 
   if (!fullName) {
     return {
@@ -43,7 +42,6 @@ export async function updateProfileAction(
       full_name: fullName,
       phone: phone || null,
       timezone,
-      marketing_opt_in: marketingOptIn,
     })
     .eq("user_id", session.user.id)
     .select("id")

@@ -32,7 +32,7 @@ BEGIN
     INSERT INTO public.profiles (
       user_id, status, full_name, first_name, last_name, phone, emirates_id, nationality,
       residency_status, date_of_birth, address, employment_info, financial_profile,
-      marketing_opt_in, timezone, created_at, updated_at
+      timezone, created_at, updated_at
     ) VALUES (
       client_user_id,
       CASE WHEN random() > 0.1 THEN 'active' ELSE 'pending' END,
@@ -59,7 +59,6 @@ BEGIN
         'monthly_expenses', 5000 + (random() * 15000)::int,
         'assets_value', 50000 + (random() * 500000)::int
       ),
-      random() > 0.3,
       'Asia/Dubai',
       now() - (random() * interval '365 days'),
       now() - (random() * interval '30 days')
@@ -91,7 +90,7 @@ BEGIN
 
     INSERT INTO public.profiles (
       user_id, status, full_name, phone, nationality, residency_status,
-      employment_info, marketing_opt_in, timezone, created_at, updated_at
+      employment_info, timezone, created_at, updated_at
     ) VALUES (
       ops_user_id,
       'active',
@@ -104,7 +103,6 @@ BEGIN
         'position', 'Operations Manager',
         'employee_id', 'OPS-' || LPAD(i::text, 3, '0')
       ),
-      false,
       'Asia/Dubai',
       now() - (random() * interval '365 days'),
       now() - (random() * interval '30 days')
@@ -137,7 +135,7 @@ BEGIN
 
     INSERT INTO public.profiles (
       user_id, status, full_name, phone, nationality, residency_status,
-      employment_info, marketing_opt_in, timezone, created_at, updated_at
+      employment_info, timezone, created_at, updated_at
     ) VALUES (
       tech_user_id,
       'active',
@@ -150,7 +148,6 @@ BEGIN
         'position', 'Technical Specialist',
         'employee_id', 'TECH-' || LPAD(i::text, 3, '0')
       ),
-      false,
       'Asia/Dubai',
       now() - (random() * interval '365 days'),
       now() - (random() * interval '30 days')
@@ -183,7 +180,7 @@ BEGIN
 
     INSERT INTO public.profiles (
       user_id, status, full_name, phone, nationality, residency_status,
-      employment_info, marketing_opt_in, timezone, created_at, updated_at
+      employment_info, timezone, created_at, updated_at
     ) VALUES (
       admin_user_id,
       'active',
@@ -196,7 +193,6 @@ BEGIN
         'position', 'System Administrator',
         'employee_id', 'ADM-' || LPAD(i::text, 3, '0')
       ),
-      false,
       'Asia/Dubai',
       now() - (random() * interval '365 days'),
       now() - (random() * interval '30 days')
@@ -228,7 +224,7 @@ BEGIN
 
     INSERT INTO public.profiles (
       user_id, status, full_name, phone, nationality, residency_status,
-      employment_info, marketing_opt_in, timezone, created_at, updated_at
+      employment_info, timezone, created_at, updated_at
     ) VALUES (
       support_user_id,
       'active',
@@ -241,7 +237,6 @@ BEGIN
         'position', 'Support Specialist',
         'employee_id', 'SUP-' || LPAD(i::text, 3, '0')
       ),
-      false,
       'Asia/Dubai',
       now() - (random() * interval '365 days'),
       now() - (random() * interval '30 days')
@@ -273,7 +268,7 @@ BEGIN
 
     INSERT INTO public.profiles (
       user_id, status, full_name, phone, nationality, residency_status,
-      employment_info, marketing_opt_in, timezone, created_at, updated_at
+      employment_info, timezone, created_at, updated_at
     ) VALUES (
       investor_user_id,
       'active',
@@ -285,7 +280,6 @@ BEGIN
         'investor_type', (ARRAY['Individual', 'Family Office', 'Institution'])[(random() * 3 + 1)::int],
         'experience_years', (random() * 20 + 1)::int
       ),
-      false,
       'Asia/Dubai',
       now() - (random() * interval '365 days'),
       now() - (random() * interval '30 days')
@@ -336,7 +330,7 @@ BEGIN
 
     INSERT INTO public.profiles (
       user_id, status, full_name, phone, nationality, residency_status,
-      employment_info, marketing_opt_in, timezone, created_at, updated_at
+      employment_info, timezone, created_at, updated_at
     ) VALUES (
       finance_user_id,
       'active',
@@ -349,7 +343,6 @@ BEGIN
         'position', 'Finance Manager',
         'employee_id', 'FIN-' || LPAD(i::text, 3, '0')
       ),
-      false,
       'Asia/Dubai',
       now() - (random() * interval '365 days'),
       now() - (random() * interval '30 days')

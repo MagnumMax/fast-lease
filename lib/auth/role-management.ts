@@ -94,7 +94,6 @@ export async function ensureDefaultProfileAndRole(
       {
         user_id: userId,
         full_name: null,
-        marketing_opt_in: false,
         status: "pending",
       },
       { onConflict: "user_id" },

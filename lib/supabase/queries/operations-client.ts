@@ -594,7 +594,7 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "user_id, full_name, status, phone, nationality, residency_status, marketing_opt_in, created_at, metadata",
+      "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata",
     )
     .order("full_name", { ascending: true });
 
@@ -627,7 +627,6 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
           new Date(profile.created_at as string),
         )
       : null;
-    const marketingOptIn = Boolean(profile.marketing_opt_in);
     const overdueCount = index % 3 === 0 ? 1 : 0;
     const overdueSummary = overdueCount > 0 ? `${overdueCount} проср.` : "Нет просрочек";
 
@@ -658,7 +657,6 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
       detailHref: `/ops/clients/${profile.user_id}`,
       memberSince,
       segment,
-      marketingOptIn,
       tags,
       metricsSummary: {
         scoring: "90/100",

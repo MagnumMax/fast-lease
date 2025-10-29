@@ -140,8 +140,6 @@ export function ClientDetailView({
     .filter((value) => value.length > 0);
   const addressDisplay = addressParts.length ? addressParts.join(", ") : "—";
 
-  const marketingStatus = profile.marketingOptIn ? "Подписан на рассылку" : "Не подписан";
-
   const financialHighlights = [
     { label: "Скоринг", value: profile.metrics.scoring },
     { label: "Просрочки", value: profile.metrics.overdue },
@@ -217,7 +215,6 @@ export function ClientDetailView({
             )}
           </InfoCell>
           <InfoCell label="Адрес проживания">{addressDisplay}</InfoCell>
-          <InfoCell label="Маркетинговые рассылки">{marketingStatus}</InfoCell>
           <InfoCell label="Последний вход">{formatDateDisplay(profile.lastLoginAt, true)}</InfoCell>
         </div>
       </SectionCard>
@@ -231,12 +228,10 @@ export function ClientDetailView({
           <InfoCell label="Дата рождения">{formatDateDisplay(profile.dateOfBirth)}</InfoCell>
         </div>
 
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-foreground">Документы клиента</p>
-          {documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Документы ещё не загружены.</p>
-          ) : (
-            documents.map((doc) => (
+        {documents.length ? (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-foreground">Документы клиента</p>
+            {documents.map((doc) => (
               <div
                 key={doc.id}
                 className="flex flex-col gap-2 rounded-xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -268,9 +263,9 @@ export function ClientDetailView({
                   ) : null}
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        ) : null}
       </SectionCard>
 
       <SectionCard title="Финансовая информация">

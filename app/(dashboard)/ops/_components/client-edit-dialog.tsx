@@ -39,7 +39,6 @@ type FormState = {
   status: "Active" | "Blocked";
   email: string;
   phone: string;
-  marketingOptIn: boolean;
   emiratesId: string;
   passportNumber: string;
   nationality: string;
@@ -86,7 +85,6 @@ function buildInitialState(profile: OpsClientProfile): FormState {
     status: profile.status === "Blocked" ? "Blocked" : "Active",
     email: profile.email ?? "",
     phone: profile.phone ?? "",
-    marketingOptIn: Boolean(profile.marketingOptIn),
     emiratesId: profile.emiratesId ?? "",
     passportNumber: profile.passportNumber ?? "",
     nationality: profile.nationality ?? "",
@@ -135,14 +133,6 @@ export function ClientEditDialog({ profile, onSubmit }: ClientEditDialogProps) {
     };
   }
 
-  function handleCheckboxChange(key: keyof FormState) {
-    return (event: ChangeEvent<HTMLInputElement>) => {
-      const element = event.currentTarget ?? (event.target instanceof HTMLInputElement ? event.target : null);
-      if (!element) return;
-      setForm((prev) => ({ ...prev, [key]: element.checked }));
-    };
-  }
-
   async function submit() {
     setErrorMessage(null);
     const payload: UpdateOperationsClientInput = {
@@ -151,7 +141,6 @@ export function ClientEditDialog({ profile, onSubmit }: ClientEditDialogProps) {
       status: form.status,
       email: form.email,
       phone: form.phone,
-      marketingOptIn: form.marketingOptIn,
       emiratesId: form.emiratesId,
       passportNumber: form.passportNumber,
       nationality: form.nationality,
@@ -231,18 +220,6 @@ export function ClientEditDialog({ profile, onSubmit }: ClientEditDialogProps) {
                 <option value="Active">Active</option>
                 <option value="Blocked">Blocked</option>
               </select>
-            </div>
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                id="client-marketing"
-                type="checkbox"
-                checked={form.marketingOptIn}
-                onChange={handleCheckboxChange("marketingOptIn")}
-                className="h-4 w-4 rounded border-border text-brand-600 focus-visible:ring-brand-500"
-              />
-              <Label htmlFor="client-marketing" className="text-sm">
-                Подписка на рассылку
-              </Label>
             </div>
           </FormSection>
 

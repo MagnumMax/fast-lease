@@ -101,9 +101,9 @@ begin
     (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'ilias.investor@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000005', jsonb_build_object('full_name', 'Ilias Investor'), 'authenticated', 'authenticated', now(), now())
   returning id into investor_user_id;
 
-  insert into public.profiles (user_id, status, full_name, phone, emirates_id, nationality, residency_status, marketing_opt_in)
+  insert into public.profiles (user_id, status, full_name, phone, emirates_id, nationality, residency_status)
   values
-    (client_id, 'active', 'Amira Client', '+971500000001', '784-1987-1234567-1', 'UAE', 'resident', true);
+    (client_id, 'active', 'Amira Client', '+971500000001', '784-1987-1234567-1', 'UAE', 'resident');
 
   insert into public.profiles (user_id, status, full_name, phone, nationality, residency_status)
   values
@@ -134,7 +134,7 @@ begin
     (support_id, 'SUPPORT'),
     (investor_user_id, 'INVESTOR');
 
-  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot, marketing_opt_in)
+  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot)
   values
     (
       'APP-2025-0001',
@@ -146,8 +146,7 @@ begin
       now() - interval '5 days',
       'Website',
       jsonb_build_object('budget', 30000, 'usage', 'personal'),
-      jsonb_build_object('creditScore', 725, 'income', 45000),
-      true
+      jsonb_build_object('creditScore', 725, 'income', 45000)
     )
   returning id into application_id;
 
@@ -197,7 +196,7 @@ begin
     (lambo_id, 'Performance', 'Power', '631', 'hp', 1),
     (volvo_id, 'Battery', 'Capacity', '78', 'kWh', 1);
 
-  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot, marketing_opt_in)
+  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot)
   values
     (
       'APP-2025-0002',
@@ -209,8 +208,7 @@ begin
       now() - interval '3 days',
       'Broker',
       jsonb_build_object('budget', 42000, 'usage', 'business'),
-      jsonb_build_object('creditScore', 705, 'income', 52000),
-      true
+      jsonb_build_object('creditScore', 705, 'income', 52000)
     )
   returning id into application_id_secondary;
 
@@ -232,7 +230,7 @@ begin
       null
     );
 
-  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot, marketing_opt_in)
+  insert into public.applications (application_number, client_id, vehicle_id, status, submitted_at, created_at, updated_at, source, car_preferences, financial_snapshot)
   values
     (
       'APP-2025-0003',
@@ -244,8 +242,7 @@ begin
       now() - interval '2 days',
       'Referral',
       jsonb_build_object('budget', 15000, 'usage', 'family'),
-      jsonb_build_object('creditScore', 742, 'income', 38000),
-      true
+      jsonb_build_object('creditScore', 742, 'income', 38000)
     )
   returning id into application_id_third;
 

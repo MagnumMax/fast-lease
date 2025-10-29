@@ -66,8 +66,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
     const total = clients.length;
     const active = clients.filter((client) => client.status === "Active").length;
     const blocked = total - active;
-    const marketing = clients.filter((client) => client.marketingOptIn).length;
-    return { total, active, blocked, marketing };
+    return { total, active, blocked };
   }, [clients]);
 
   const filteredClients = useMemo(() => {
@@ -234,7 +233,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-foreground">Клиенты</h1>
           <p className="text-sm text-muted-foreground">
-            Всего: {summary.total} · Активных: {summary.active} · Заблокированы: {summary.blocked} · Подписка на рассылку: {summary.marketing}
+            Всего: {summary.total} · Активных: {summary.active} · Заблокированы: {summary.blocked}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
