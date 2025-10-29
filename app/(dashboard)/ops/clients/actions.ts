@@ -10,6 +10,7 @@ import {
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 const inputSchema = z.object({
   name: z.string().min(1),
@@ -82,6 +83,7 @@ function formatClientRecord(
       : "Active";
 
   const memberSince = formatMonthYear(profile.created_at);
+  const detailSlug = buildSlugWithId(name, userId) || userId;
 
   return {
     userId,
@@ -94,7 +96,7 @@ function formatClientRecord(
     scoring: "—",
     overdue: 0,
     limit: "—",
-    detailHref: `/ops/clients/${userId}`,
+    detailHref: `/ops/clients/${detailSlug}`,
     memberSince,
     segment: null,
     tags: statusLabel === "Blocked" ? ["Blocked"] : ["Active"],
@@ -402,6 +404,7 @@ export async function updateOperationsClient(
   const normalizedEmail = normalizeEmail(email || undefined);
   const sanitizedPhone = sanitizePhone(phone);
   const profileStatus = status === "Blocked" ? "suspended" : "active";
+  const detailSlug = buildSlugWithId(fullName, userId) || userId;
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -508,7 +511,10 @@ export async function updateOperationsClient(
     for (const path of getWorkspacePaths("clients")) {
       revalidatePath(path);
     }
-    revalidatePath(`/ops/clients/${userId}`);
+    revalidatePath(`/ops/clients/${detailSlug}`);
+    if (detailSlug !== userId) {
+      revalidatePath(`/ops/clients/${userId}`);
+    }
 
     return { success: true };
   } catch (error) {

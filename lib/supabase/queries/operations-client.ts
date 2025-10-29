@@ -21,6 +21,7 @@ import {
   type OpsBottleneckItem,
   type OpsAutomationMetric,
 } from "./operations";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 // Локальные типы для данных дашборда
 type SupabaseInvoiceRow = {
@@ -41,15 +42,6 @@ type SupabasePaymentRow = {
   created_at: string | null;
   received_at: string | null;
 };
-
-function toSlug(value: string | null | undefined): string {
-  if (!value) return "";
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 type WorkflowQueueRow = {
   id: string;
@@ -619,11 +611,8 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
     const statusRaw = typeof vehicle.status === "string" ? vehicle.status : "draft";
     const statusMeta = OPS_VEHICLE_STATUS_META[statusRaw] ?? { label: statusRaw, tone: "muted" as const };
 
-    const detailSlug = (() => {
-      const candidate = `${make} ${model}`.trim();
-      const slugSource = candidate.length > 0 ? candidate : vin || id;
-      return toSlug(slugSource);
-    })();
+    const detailSlug =
+      buildSlugWithId(`${make} ${model}`.trim() || vin, id) || id;
 
     const dealsData = Array.isArray(vehicle.deals) ? vehicle.deals : [];
     const activeDeal = dealsData.find((deal) => ["pending_activation", "active"].includes(String(deal.status ?? "").toLowerCase()));
@@ -633,7 +622,10 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
       ? OPS_DEAL_STATUS_META[activeDealStatus] ?? { label: activeDealStatus, tone: "muted" as const }
       : null;
     const activeDealSlug = activeDeal
-      ? toSlug((activeDeal.deal_number as string) || (activeDeal.id as string) || "")
+      ? buildSlugWithId(
+          (activeDeal.deal_number as string) ?? null,
+          (activeDeal.id as string) ?? null,
+        ) || (activeDeal.id as string) || null
       : null;
 
     return {
@@ -718,10 +710,14 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
       ),
     );
 
+    const userId = (profile.user_id as string) ?? "";
+    const clientName = (profile.full_name as string) ?? "Client";
+    const detailSlug = buildSlugWithId(clientName, userId) || userId;
+
     return {
-      userId: (profile.user_id as string) ?? "",
+      userId,
       id: `CL-${(101 + index).toString().padStart(4, "0")}`,
-      name: (profile.full_name as string) ?? "Client",
+      name: clientName,
       email: emailFromMetadata ?? "",
       phone: phoneFromMetadata ?? (profile.phone as string) ?? "+971 50 000 0000",
       status: statusInfo.filter,
@@ -729,7 +725,7 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
       scoring: "90/100",
       overdue: overdueCount,
       limit: "AED 350,000",
-      detailHref: `/ops/clients/${profile.user_id}`,
+      detailHref: `/ops/clients/${detailSlug}`,
       memberSince,
       segment,
       tags,

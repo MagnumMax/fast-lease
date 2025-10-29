@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { cn } from "@/lib/utils";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 type WorkspaceTasksBoardProps = {
   initialTasks: WorkspaceTask[];
@@ -755,6 +756,9 @@ export function OpsTasksBoard({
                   const roleLabel = task.assigneeRole ?? "Роль не назначена";
                   const clientName = resolveClientName(task);
                   const vehicleName = resolveVehicleName(task);
+                  const dealSlug = task.dealId
+                    ? buildSlugWithId(task.dealNumber ?? null, task.dealId) || task.dealId
+                    : null;
 
                   return (
                     <TableRow key={task.id} className="align-top">
@@ -789,7 +793,7 @@ export function OpsTasksBoard({
                         {task.dealId ? (
                           <div className="flex flex-col gap-1 text-sm">
                             <Link
-                              href={`/ops/deals/${task.dealId}`}
+                              href={dealSlug ? `/ops/deals/${dealSlug}` : `/ops/deals/${task.dealId}`}
                               className="font-medium text-primary hover:underline"
                             >
                               {task.dealNumber ?? task.dealId.slice(0, 8)}

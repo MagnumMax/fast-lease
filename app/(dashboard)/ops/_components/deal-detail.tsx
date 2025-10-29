@@ -37,6 +37,7 @@ import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/supabase/queries/operations";
 import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
 import { DealStageTasks } from "@/app/(dashboard)/ops/_components/deal-stage-tasks";
 import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dialog";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 type DealDetailProps = {
   detail: OpsDealDetail;
@@ -199,16 +200,28 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const dealTitle = slug.startsWith("deal-")
     ? `Deal-${slug.slice("deal-".length)}`
     : profile.dealId ?? slug;
+  const computedClientSlug = client.userId
+    ? buildSlugWithId(client.name ?? null, client.userId) || client.userId
+    : null;
   const clientHref = client.detailHref
     ? client.detailHref
-    : client.userId
-      ? `/ops/clients/${client.userId}`
-      : client.name
-        ? `/ops/clients/${slugifyRouteSegment(client.name)}`
-        : "/ops/clients";
-  const vehicleHref = profile.vehicleName
-    ? `/ops/cars/${slugifyRouteSegment(profile.vehicleName)}`
-    : "/ops/cars";
+    : computedClientSlug
+      ? `/ops/clients/${computedClientSlug}`
+      : client.userId
+        ? `/ops/clients/${client.userId}`
+        : client.name
+          ? `/ops/clients/${slugifyRouteSegment(client.name)}`
+          : "/ops/clients";
+  const computedVehicleSlug = profile.vehicleId
+    ? buildSlugWithId(profile.vehicleName ?? null, profile.vehicleId) || profile.vehicleId
+    : null;
+  const vehicleHref = profile.vehicleHref
+    ? profile.vehicleHref
+    : computedVehicleSlug
+      ? `/ops/cars/${computedVehicleSlug}`
+      : profile.vehicleName
+        ? `/ops/cars/${slugifyRouteSegment(profile.vehicleName)}`
+        : "/ops/cars";
   const normalizedPhone = client.phone?.replace(/[^+\d]/g, "") ?? "";
   const telHref = normalizedPhone ? `tel:${normalizedPhone}` : null;
   const whatsappHref = normalizedPhone ? `https://wa.me/${normalizedPhone.replace(/^\+/, "")}` : null;

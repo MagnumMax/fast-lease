@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
+import { buildSlugWithId, extractIdFromSlug, slugify } from "@/lib/utils/slugs";
 import {
   OPS_DEAL_STATUS_META,
   OPS_VEHICLE_STATUS_META,
@@ -722,13 +723,7 @@ function buildTimelineEvents(params: {
 }
 
 function toSlug(value: string | null | undefined): string {
-  if (!value) return "";
-  return value
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  return slugify(value);
 }
 
 function mapStatusToWorkflow(status: string | null | undefined): OpsDealStatusKey {
@@ -1307,10 +1302,14 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       : "—";
     const leasingVehicle = leasing?.vehicle_name ?? "—";
 
+    const userId = (profile.user_id as string) ?? "";
+    const clientName = (profile.full_name as string) ?? "";
+    const detailSlug = buildSlugWithId(clientName, userId) || userId;
+
     return {
-      userId: (profile.user_id as string) ?? "",
+      userId,
       id: `CL-${(101 + index).toString().padStart(4, "0")}`,
-      name: (profile.full_name as string) ?? "Client",
+      name: clientName || "Client",
       email: emailFromMetadata ?? "",
       phone: phoneFromMetadata ?? (profile.phone as string) ?? "+971 50 000 0000",
       status: statusInfo.filter,
@@ -1318,7 +1317,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       scoring: "90/100",
       overdue: overdueCount,
       limit: "AED 350,000",
-      detailHref: `/ops/clients/${profile.user_id}`,
+      detailHref: `/ops/clients/${detailSlug}`,
       memberSince,
       segment,
       tags,
@@ -1349,15 +1348,24 @@ function formatPaymentsLabel(count: number): string {
 }
 
 export async function getOperationsClientDetail(identifier: string): Promise<OpsClientDetail | null> {
-  const normalizedIdentifier = (identifier ?? "").trim();
-  if (!normalizedIdentifier) {
+  const trimmedInput = (identifier ?? "").trim();
+  if (!trimmedInput) {
     console.warn("[SERVER-OPS] getOperationsClientDetail called with empty identifier");
     return null;
   }
 
   const supabase = await createSupabaseServerClient();
 
-  let userId: string | null = isUuid(normalizedIdentifier) ? normalizedIdentifier : null;
+  const { id: extractedUuid, slug: slugRemainder } = extractIdFromSlug(trimmedInput);
+  const normalizedIdentifier = slugRemainder || trimmedInput;
+
+  let userId: string | null = null;
+
+  if (extractedUuid && isUuid(extractedUuid)) {
+    userId = extractedUuid;
+  } else if (isUuid(trimmedInput)) {
+    userId = trimmedInput;
+  }
 
   if (!userId) {
     const slugCandidate = toSlug(normalizedIdentifier);
@@ -2027,11 +2035,17 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
     const statusRaw = typeof vehicle.status === "string" ? vehicle.status : "draft";
     const statusMeta = OPS_VEHICLE_STATUS_META[statusRaw] ?? { label: statusRaw, tone: "muted" as OpsTone };
 
-    const detailSlug = (() => {
-      const candidate = `${make} ${model}`.trim();
-      const slugSource = candidate.length > 0 ? candidate : vin || id;
-      return toSlug(slugSource);
+    const baseSlugSource = (() => {
+      const combined = `${make} ${model}`.trim();
+      if (combined.length > 0) {
+        return combined;
+      }
+      if (vin && vin.trim().length > 0 && vin !== id) {
+        return vin;
+      }
+      return null;
     })();
+    const detailSlug = buildSlugWithId(baseSlugSource, id) || id;
 
     const dealsData = Array.isArray(vehicle.deals) ? vehicle.deals : [];
     const activeDeal = dealsData.find((deal) => ACTIVE_DEAL_STATUSES.has(String(deal.status ?? "").toLowerCase()));
@@ -2041,7 +2055,10 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
       ? OPS_DEAL_STATUS_META[activeDealStatus] ?? { label: activeDealStatus, tone: "muted" as OpsTone }
       : null;
     const activeDealSlug = activeDeal
-      ? toSlug((activeDeal.deal_number as string) || (activeDeal.id as string) || "")
+      ? buildSlugWithId(
+          (activeDeal.deal_number as string) ?? null,
+          (activeDeal.id as string) ?? null,
+        ) || (activeDeal.id as string) || null
       : null;
 
     return {
@@ -2097,7 +2114,9 @@ type DealDetailResult = {
 export async function getOperationsDealDetail(slug: string): Promise<DealDetailResult | null> {
   console.log(`[SERVER-OPS] getOperationsDealDetail called with slug: "${slug}"`);
 
-  const normalizedSlug = toSlug(slug);
+  const trimmedSlug = (slug ?? "").trim();
+  const { id: extractedUuid, slug: slugWithoutId } = extractIdFromSlug(trimmedSlug);
+  const normalizedSlug = toSlug(slugWithoutId || trimmedSlug);
   console.log(`[SERVER-OPS] normalized slug: "${normalizedSlug}"`);
 
   const supabase = await createSupabaseServerClient();
@@ -2195,30 +2214,96 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   let dealRow: SupabaseDealDetailRow | null = null;
 
-  console.log(`[SERVER-OPS] searching by exact deal_number: "${slug}"`);
-  const byNumber = await supabase
-    .from("deals")
-    .select(fetchFields)
-    .eq("deal_number", slug)
-    .maybeSingle();
+  const uuidCandidate =
+    extractedUuid && z.string().uuid().safeParse(extractedUuid).success ? extractedUuid : null;
+  const slugIsUuidOnly =
+    !uuidCandidate && z.string().uuid().safeParse(trimmedSlug).success ? trimmedSlug : null;
+  const dealNumberCandidate = slugWithoutId || (!uuidCandidate ? trimmedSlug : "");
 
-  if (byNumber.error) {
-    console.error("[SERVER-OPS] failed to load deal detail by number:", byNumber.error);
-  } else {
-    console.log(`[SERVER-OPS] search by number result:`, !!byNumber.data);
+  if (uuidCandidate) {
+    console.log(`[SERVER-OPS] searching by extracted UUID: "${uuidCandidate}"`);
+    const byId = await supabase.from("deals").select(fetchFields).eq("id", uuidCandidate).maybeSingle();
+
+    if (byId.error) {
+      console.error("[SERVER-OPS] failed to load deal detail by extracted id:", byId.error);
+    } else {
+      console.log(`[SERVER-OPS] extracted UUID search result:`, !!byId.data);
+    }
+
+    if (byId.data) {
+      console.log(`[SERVER-OPS] found deal by extracted UUID:`, byId.data.id);
+      dealRow = byId.data;
+    }
   }
 
-  if (byNumber.data) {
-    console.log(`[SERVER-OPS] found deal by number:`, byNumber.data.id);
-    dealRow = byNumber.data;
+  if (!dealRow && slugIsUuidOnly) {
+    console.log(`[SERVER-OPS] slug itself is UUID, searching by id: "${slugIsUuidOnly}"`);
+    const byId = await supabase.from("deals").select(fetchFields).eq("id", slugIsUuidOnly).maybeSingle();
+
+    if (byId.error) {
+      console.error("[SERVER-OPS] failed to load deal detail by slug UUID:", byId.error);
+    } else {
+      console.log(`[SERVER-OPS] slug UUID search result:`, !!byId.data);
+    }
+
+    if (byId.data) {
+      console.log(`[SERVER-OPS] found deal by slug UUID:`, byId.data.id);
+      dealRow = byId.data;
+    }
   }
 
-  if (!dealRow) {
-    console.log(`[SERVER-OPS] searching by case-insensitive deal_number: "${slug}"`);
+  if (!dealRow && dealNumberCandidate) {
+    console.log(`[SERVER-OPS] searching by exact deal_number: "${dealNumberCandidate}"`);
+    const byNumber = await supabase
+      .from("deals")
+      .select(fetchFields)
+      .eq("deal_number", dealNumberCandidate)
+      .maybeSingle();
+
+    if (byNumber.error) {
+      console.error("[SERVER-OPS] failed to load deal detail by number:", byNumber.error);
+    } else {
+      console.log(`[SERVER-OPS] search by number result:`, !!byNumber.data);
+    }
+
+    if (byNumber.data) {
+      console.log(`[SERVER-OPS] found deal by number:`, byNumber.data.id);
+      dealRow = byNumber.data;
+    }
+  }
+
+  if (
+    !dealRow &&
+    dealNumberCandidate &&
+    dealNumberCandidate.toUpperCase() !== dealNumberCandidate
+  ) {
+    console.log(
+      `[SERVER-OPS] retrying exact deal_number search with uppercase: "${dealNumberCandidate.toUpperCase()}"`,
+    );
+    const byNumberUpper = await supabase
+      .from("deals")
+      .select(fetchFields)
+      .eq("deal_number", dealNumberCandidate.toUpperCase())
+      .maybeSingle();
+
+    if (byNumberUpper.error) {
+      console.error("[SERVER-OPS] failed to load deal detail by uppercase number:", byNumberUpper.error);
+    } else {
+      console.log(`[SERVER-OPS] uppercase number search result:`, !!byNumberUpper.data);
+    }
+
+    if (byNumberUpper.data) {
+      console.log(`[SERVER-OPS] found deal by uppercase number:`, byNumberUpper.data.id);
+      dealRow = byNumberUpper.data;
+    }
+  }
+
+  if (!dealRow && dealNumberCandidate) {
+    console.log(`[SERVER-OPS] searching by case-insensitive deal_number: "${dealNumberCandidate}"`);
     const { data: insensitiveMatch, error: insensitiveError } = await supabase
       .from("deals")
       .select(fetchFields)
-      .ilike("deal_number", slug)
+      .ilike("deal_number", dealNumberCandidate)
       .maybeSingle();
 
     if (insensitiveError) {
@@ -2231,28 +2316,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       console.log(`[SERVER-OPS] found deal by insensitive number:`, insensitiveMatch.id);
       dealRow = insensitiveMatch;
     }
-  }
-
-  if (!dealRow && z.string().uuid().safeParse(slug).success) {
-    console.log(`[SERVER-OPS] searching by UUID: "${slug}"`);
-    const byId = await supabase
-      .from("deals")
-      .select(fetchFields)
-      .eq("id", slug)
-      .maybeSingle();
-
-    if (byId.error) {
-      console.error("[SERVER-OPS] failed to load deal detail by id:", byId.error);
-    } else {
-      console.log(`[SERVER-OPS] UUID search result:`, !!byId.data);
-    }
-
-    if (byId.data) {
-      console.log(`[SERVER-OPS] found deal by UUID:`, byId.data.id);
-      dealRow = byId.data;
-    }
-  } else if (!dealRow) {
-    console.log(`[SERVER-OPS] slug is not a valid UUID, skipping UUID search`);
   }
 
   if (!dealRow) {
@@ -2762,6 +2825,17 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const scoringDisplay =
     scoringValue != null ? `${Math.round(scoringValue)}/100` : "—";
 
+  const clientSlug = dealRow.client_id
+    ? buildSlugWithId(resolvedClientName ?? null, dealRow.client_id)
+    : null;
+
+  const clientDetailHref =
+    clientSlug && clientSlug.length
+      ? `/ops/clients/${clientSlug}`
+      : dealRow.client_id
+        ? `/ops/clients/${dealRow.client_id}`
+        : null;
+
   const clientProfile: DealDetailResult["client"] = {
     name: resolvedClientName ?? "—",
     phone: resolvedClientPhone ?? "—",
@@ -2769,7 +2843,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     scoring: scoringDisplay,
     notes: clientNotesParts.length > 0 ? clientNotesParts.join(" • ") : "—",
     userId: dealRow.client_id ?? null,
-    detailHref: dealRow.client_id ? `/ops/clients/${dealRow.client_id}` : null,
+    detailHref: clientDetailHref,
   };
 
   console.log(`[DEBUG] Final client profile:`, {
@@ -2785,6 +2859,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     : contactRecord?.full_name
       ? `Контакт: ${contactRecord.full_name}`
       : "Клиент не указан";
+  const vehicleId = vehicleData?.id ?? null;
+  const vehicleDetailSlug = vehicleId ? buildSlugWithId(vehicleName, vehicleId) || vehicleId : null;
 
   const profile: DealDetailResult["profile"] = {
     dealId: dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id),
@@ -2795,6 +2871,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     monthlyPayment: formatCurrency(dealRow.monthly_payment),
     nextPayment: nextPaymentDisplay,
     dueAmount: outstandingAmountDisplay,
+    vehicleId,
+    vehicleHref: vehicleDetailSlug ? `/ops/cars/${vehicleDetailSlug}` : null,
   };
 
   // Формируем ключевую информацию об автомобиле
@@ -3157,9 +3235,12 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     completedAt: getString(dealRow.completed_at),
   };
 
-  const outboundSlug = matchesDealSlug(dealRow, normalizedSlug)
-    ? normalizedSlug
-    : toSlug(dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id));
+  const canonicalDealSlug = buildSlugWithId(
+    dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id),
+    dealRow.id,
+  ) || dealRow.id;
+
+  const outboundSlug = canonicalDealSlug;
 
   return {
     slug: outboundSlug,
@@ -3188,7 +3269,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 export async function getOperationsCarDetail(slug: string): Promise<CarDetailResult | null> {
   console.log(`[SERVER-OPS] getOperationsCarDetail called with slug: "${slug}"`);
 
-  const normalizedSlug = toSlug(slug);
+  const trimmedSlug = (slug ?? "").trim();
+  const { id: extractedUuid, slug: slugWithoutId } = extractIdFromSlug(trimmedSlug);
+  const normalizedSlug = toSlug(slugWithoutId || trimmedSlug);
   console.log(`[SERVER-OPS] normalized slug: "${normalizedSlug}"`);
 
   const supabase = await createSupabaseServerClient();
@@ -3205,15 +3288,31 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     return null;
   }
 
-  const matchedVehicle = vehiclesLookup?.find((vehicle) => {
-    const combinedSlug = toSlug(`${vehicle.make || ""} ${vehicle.model || ""}`);
-    return (
-      combinedSlug === normalizedSlug ||
-      toSlug(vehicle.vin || "") === normalizedSlug ||
-      toSlug(vehicle.make || "") === normalizedSlug ||
-      toSlug(vehicle.model || "") === normalizedSlug
-    );
-  });
+  const uuidCandidate =
+    extractedUuid && z.string().uuid().safeParse(extractedUuid).success ? extractedUuid : null;
+
+  let matchedVehicle =
+    uuidCandidate && vehiclesLookup?.find((vehicle) => vehicle.id === uuidCandidate);
+
+  if (!matchedVehicle) {
+    matchedVehicle = vehiclesLookup?.find((vehicle) => {
+      if (uuidCandidate && vehicle.id === uuidCandidate) {
+        return true;
+      }
+
+      const combinedSlug = toSlug(`${vehicle.make || ""} ${vehicle.model || ""}`);
+      const vinSlug = toSlug(vehicle.vin || "");
+      const makeSlug = toSlug(vehicle.make || "");
+      const modelSlug = toSlug(vehicle.model || "");
+
+      return (
+        (normalizedSlug.length > 0 && combinedSlug === normalizedSlug) ||
+        (normalizedSlug.length > 0 && vinSlug === normalizedSlug) ||
+        (normalizedSlug.length > 0 && makeSlug === normalizedSlug) ||
+        (normalizedSlug.length > 0 && modelSlug === normalizedSlug)
+      );
+    });
+  }
 
   if (!matchedVehicle) {
     console.log(`[SERVER-OPS] no vehicle found for slug: "${slug}"`);
@@ -3311,6 +3410,8 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
         return status.charAt(0).toUpperCase() + status.slice(1);
     }
   })();
+
+  const vehicleDisplayName = `${vehicleDetail.make ?? ""} ${vehicleDetail.model ?? ""}`.trim() || null;
 
   const formatNumber = (value: number | null | undefined, options?: Intl.NumberFormatOptions): string => {
     if (value == null || Number.isNaN(Number(value))) {
@@ -3848,8 +3949,12 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     features: featureList.length > 0 ? featureList : undefined,
   };
 
+  const canonicalVehicleSlug = buildSlugWithId(vehicleDisplayName, vehicleDetail.id) ||
+    buildSlugWithId(vehicleDetail.vin ?? null, vehicleDetail.id) ||
+    vehicleDetail.id;
+
   return {
-    slug: normalizedSlug,
+    slug: canonicalVehicleSlug,
     vehicleUuid: vehicleDetail.id,
     activeDeal,
     vehicle: vehicleRecord,

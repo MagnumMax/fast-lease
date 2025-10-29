@@ -29,14 +29,7 @@ import type {
 } from "@/lib/supabase/queries/operations";
 import { ClientEditDialog } from "./client-edit-dialog";
 import { updateOperationsClient } from "@/app/(dashboard)/ops/clients/actions";
-
-function toSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 function formatDateDisplay(value: string | null | undefined, withTime = false): string {
   if (!value) return "—";
@@ -352,7 +345,7 @@ export function ClientDetailView({
                 </TableRow>
               ) : (
                 deals.map((deal) => {
-                  const slug = deal.dealNumber ? toSlug(deal.dealNumber) : deal.id;
+                  const slug = buildSlugWithId(deal.dealNumber, deal.id) || deal.id;
                   return (
                     <TableRow key={deal.id}>
                       <TableCell className="font-medium">

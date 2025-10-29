@@ -6,6 +6,7 @@ import { z } from "zod";
 import { OPS_VEHICLE_STATUS_META, type OpsCarRecord } from "@/lib/supabase/queries/operations";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 const inputSchema = z.object({
   name: z.string().min(1),
@@ -65,14 +66,6 @@ type CreateOperationsCarInput = z.infer<typeof inputSchema>;
 export type CreateOperationsCarResult =
   | { data: OpsCarRecord; error?: undefined }
   | { data?: undefined; error: string };
-
-function toSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function parseYear(value?: string) {
   if (!value) return null;
@@ -173,12 +166,13 @@ export async function createOperationsCar(
       revalidatePath(path);
     }
 
-    const detailSlug = toSlug(normalizedName) || toSlug(normalizedVin) || "vehicle";
+    const vehicleId = data.id ?? normalizedVin;
+    const detailSlug = buildSlugWithId(normalizedName, vehicleId) || buildSlugWithId(normalizedVin, vehicleId) || vehicleId;
     const statusMeta = OPS_VEHICLE_STATUS_META.available;
     const priceValue = data.current_value != null ? Number(data.current_value) : null;
     const mileageValue = data.mileage != null ? Number(data.mileage) : null;
     const formatted: OpsCarRecord = {
-      id: data.id ?? `${normalizedVin}`,
+      id: vehicleId,
       vin: data.vin ?? normalizedVin,
       name: `${data.make ?? make} ${data.model ?? model}`.trim(),
       make: data.make ?? make,
@@ -255,7 +249,8 @@ export async function updateOperationsCar(
   const normalizedVin = vin.trim().toUpperCase();
   const normalizedMake = make.trim();
   const normalizedModel = model.trim();
-  const vehicleSlug = toSlug(`${normalizedMake} ${normalizedModel}`) || slug;
+  const slugSource = `${normalizedMake} ${normalizedModel}`.trim() || normalizedVin;
+  const vehicleSlug = buildSlugWithId(slugSource, vehicleId) || slug;
 
   const telematicsLocationPayload = buildKeyValue(telematics?.location);
   const telematicsTirePayload = buildKeyValue(telematics?.tirePressure);

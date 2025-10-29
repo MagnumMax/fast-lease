@@ -63,6 +63,7 @@ import {
 
 import { type OpsCarRecord, type OpsClientRecord } from "@/lib/supabase/queries/operations";
 import { cn } from "@/lib/utils";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
 
 // Обновляем тип для включения deal_number
@@ -128,14 +129,6 @@ function parseNumericString(value: string | undefined): number | undefined {
   if (!cleaned) return undefined;
   const parsed = Number.parseFloat(cleaned);
   return Number.isNaN(parsed) ? undefined : parsed;
-}
-
-function toSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function formatDateLabel(value: string) {
@@ -865,7 +858,8 @@ export function OpsDealsBoard({
                   </header>
                   <div className="flex flex-1 flex-col gap-3">
                     {columnDeals.map((deal) => {
-                      const dealHref = `/ops/deals/${toSlug(deal.dealId)}`;
+                      const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
+                      const dealHref = `/ops/deals/${dealSlug}`;
                       const ownerRoleLabel =
                         deal.ownerRoleLabel ??
                         WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
@@ -1024,13 +1018,16 @@ export function OpsDealsBoard({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDeals.map((deal) => (
-                  <TableRow key={deal.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/ops/deals/${toSlug(deal.dealId)}`}
-                        className="text-foreground underline-offset-2 hover:underline"
-                      >
+                {filteredDeals.map((deal) => {
+                  const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
+
+                  return (
+                    <TableRow key={deal.id}>
+                      <TableCell className="font-medium">
+                        <Link
+                          className="text-foreground underline-offset-2 hover:underline"
+                          href={`/ops/deals/${dealSlug}`}
+                        >
                           {deal.dealId}
                         </Link>
                       </TableCell>
@@ -1070,7 +1067,8 @@ export function OpsDealsBoard({
                         </div>
                       </TableCell>
                     </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

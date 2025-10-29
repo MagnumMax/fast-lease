@@ -494,6 +494,8 @@ export type OpsDealProfile = {
   monthlyPayment: string;
   nextPayment: string;
   dueAmount: string;
+  vehicleId?: string | null;
+  vehicleHref?: string | null;
 };
 
 export type OpsDealClientProfile = {

@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 import { Textarea } from "@/components/ui/textarea";
 
 import type { FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
@@ -104,6 +105,13 @@ export function TaskDetailView({
   const mustUploadAttachment = requiresDocument && !hasExistingAttachment;
   const hasForm = task.status !== "DONE";
   const isCompletedWorkflow = !hasForm && task.isWorkflow;
+  const dealSlug = deal ? buildSlugWithId(deal.dealNumber ?? null, deal.id) || deal.id : null;
+  const clientSlug = deal?.clientId
+    ? buildSlugWithId(task.dealClientName ?? null, deal.clientId) || deal.clientId
+    : null;
+  const vehicleSlug = deal?.vehicleId
+    ? buildSlugWithId(task.dealVehicleName ?? null, deal.vehicleId) || deal.vehicleId
+    : null;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -134,7 +142,7 @@ export function TaskDetailView({
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-foreground/80">Сделка:</span>
               <Link
-                href={`/ops/deals/${deal.id}`}
+                href={dealSlug ? `/ops/deals/${dealSlug}` : `/ops/deals/${deal.id}`}
                 className="text-xs font-semibold uppercase tracking-wide text-brand-600 underline underline-offset-2"
               >
                 {deal.dealNumber ?? deal.id.slice(0, 8)}
@@ -147,7 +155,9 @@ export function TaskDetailView({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-foreground/80">Клиент:</span>
                   <Link
-                    href={`/ops/clients/${deal.clientId}`}
+                    href={
+                      clientSlug ? `/ops/clients/${clientSlug}` : `/ops/clients/${deal.clientId}`
+                    }
                     className="text-xs font-semibold uppercase tracking-wide text-brand-600 underline underline-offset-2"
                   >
                     {task.dealClientName ?? deal.clientId.slice(0, 8)}
@@ -158,7 +168,9 @@ export function TaskDetailView({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-foreground/80">Авто:</span>
                   <Link
-                    href={`/ops/cars/${deal.vehicleId}`}
+                    href={
+                      vehicleSlug ? `/ops/cars/${vehicleSlug}` : `/ops/cars/${deal.vehicleId}`
+                    }
                     className="text-xs font-semibold uppercase tracking-wide text-brand-600 underline underline-offset-2"
                   >
                     {task.dealVehicleName ?? deal.vehicleId.slice(0, 8)}
