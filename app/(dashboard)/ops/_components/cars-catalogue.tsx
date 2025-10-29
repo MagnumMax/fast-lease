@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -31,7 +32,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { OpsCarRecord } from "@/lib/supabase/queries/operations";
+import { OPS_VEHICLE_STATUS_META, type OpsCarRecord, type OpsTone } from "@/lib/supabase/queries/operations";
 import { createOperationsCar } from "@/app/(dashboard)/ops/cars/actions";
 
 type OpsCarsCatalogueProps = {
@@ -39,6 +40,21 @@ type OpsCarsCatalogueProps = {
 };
 
 const BODY_TYPES = ["Luxury SUV", "Luxury sedan", "Sports car", "Electric car"];
+
+const STATUS_TONE_CLASS: Record<OpsTone, string> = {
+  success: "border-emerald-400/80 bg-emerald-500/10 text-emerald-700",
+  warning: "border-amber-400/80 bg-amber-500/10 text-amber-700",
+  info: "border-sky-400/80 bg-sky-500/10 text-sky-700",
+  danger: "border-rose-400/80 bg-rose-500/10 text-rose-700",
+  muted: "border-border bg-background/60 text-muted-foreground",
+};
+
+function resolveStatusToneClass(tone: OpsTone | undefined | null) {
+  if (!tone) {
+    return STATUS_TONE_CLASS.muted;
+  }
+  return STATUS_TONE_CLASS[tone] ?? STATUS_TONE_CLASS.muted;
+}
 
 type CarFormState = {
   name: string;
@@ -60,18 +76,13 @@ function createDefaultCarFormState(): CarFormState {
   };
 }
 
-function toSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   const [cars, setCars] = useState(initialCars);
   const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [bodyTypeFilter, setBodyTypeFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [page, setPage] = useState(0);
+  const pageSize = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -79,16 +90,36 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
     createDefaultCarFormState(),
   );
 
+  const bodyTypeOptions = useMemo(() => {
+    const set = new Set<string>(BODY_TYPES);
+    cars.forEach((car) => {
+      if (car.bodyType) {
+        set.add(car.bodyType);
+      }
+    });
+    return Array.from(set.values()).sort((a, b) => a.localeCompare(b, "ru"));
+  }, [cars]);
+
   const filteredCars = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return cars.filter((car) => {
       const matchesQuery =
         !query ||
-        `${car.name} ${car.vin}`.toLowerCase().includes(query);
-      const matchesType = !typeFilter || car.type === typeFilter;
-      return matchesQuery && matchesType;
+        `${car.name} ${car.vin} ${car.variant ?? ""}`.toLowerCase().includes(query);
+      const matchesBodyType = !bodyTypeFilter || (car.bodyType ?? "").toLowerCase() === bodyTypeFilter.toLowerCase();
+      const matchesStatus = !statusFilter || car.status === statusFilter;
+      return matchesQuery && matchesBodyType && matchesStatus;
     });
-  }, [cars, searchQuery, typeFilter]);
+  }, [cars, searchQuery, bodyTypeFilter, statusFilter]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredCars.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageSliceStart = currentPage * pageSize;
+  const currentCars = filteredCars.slice(pageSliceStart, pageSliceStart + pageSize);
+
+  useEffect(() => {
+    setPage(0);
+  }, [searchQuery, bodyTypeFilter, statusFilter, cars]);
 
   function handleCreateCar() {
     if (!formState.name.trim() || !formState.vin.trim()) {
@@ -114,7 +145,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
 
       if (result.data) {
         setCars((prev) => {
-          const filtered = prev.filter((car) => car.vin !== result.data.vin);
+          const filtered = prev.filter((car) => car.id !== result.data.id);
           return [result.data, ...filtered];
         });
 
@@ -133,27 +164,41 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
             <CardTitle>Vehicles</CardTitle>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search car (VIN/name)"
-                className="h-10 w-64 rounded-xl pl-9 pr-3"
-              />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Поиск (VIN, марка, модель)"
+                  className="h-10 w-64 rounded-xl pl-9 pr-3"
+                />
+              </div>
+              <select
+                value={bodyTypeFilter}
+                onChange={(event) => setBodyTypeFilter(event.target.value)}
+                className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+              >
+                <option value="">Все типы</option>
+                {bodyTypeOptions.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+              >
+                <option value="">Все статусы</option>
+                {Object.entries(OPS_VEHICLE_STATUS_META).map(([status, meta]) => (
+                  <option key={status} value={status}>
+                    {meta.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <select
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
-              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              <option value="">All types</option>
-              {BODY_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
             <Dialog
               open={isModalOpen}
               onOpenChange={(open) => {
@@ -290,65 +335,173 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
         </CardHeader>
       </Card>
 
-      <div className="hidden rounded-2xl border border-border bg-card/60 backdrop-blur md:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>VIN</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Year</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Cost</TableHead>
-              <TableHead>Mileage</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCars.map((car) => (
-              <TableRow key={car.vin}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/ops/cars/${toSlug(car.name)}`}
-                    className="text-foreground underline-offset-2 hover:underline"
-                  >
-                    {car.vin}
-                  </Link>
-                </TableCell>
-                <TableCell>{car.name}</TableCell>
-                <TableCell>{car.year}</TableCell>
-                <TableCell>{car.type}</TableCell>
-                <TableCell>{car.price}</TableCell>
-                <TableCell>{car.mileage}</TableCell>
+      <Card className="hidden border border-border bg-card/60 backdrop-blur md:block">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Автомобиль</TableHead>
+                <TableHead>Статус</TableHead>
+                <TableHead>Тип</TableHead>
+                <TableHead>Год</TableHead>
+                <TableHead>Пробег</TableHead>
+                <TableHead>Стоимость</TableHead>
+                <TableHead>Активная сделка</TableHead>
+                <TableHead></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {currentCars.length ? (
+                currentCars.map((car) => (
+                  <TableRow key={car.id}>
+                    <TableCell className="space-y-1">
+                      <div className="text-sm font-semibold text-foreground">{car.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        VIN: {car.vin}
+                        {car.variant ? ` • ${car.variant}` : ""}
+                        {car.year ? ` • ${car.year}` : ""}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.statusTone)}`}>
+                        {car.statusLabel}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{car.bodyType ?? "—"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{car.year ?? "—"}</TableCell>
+                    <TableCell className="text-sm text-foreground">{car.mileage}</TableCell>
+                    <TableCell className="text-sm text-foreground">{car.price}</TableCell>
+                    <TableCell className="text-sm">
+                      {car.activeDealNumber ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-medium text-foreground">{car.activeDealNumber}</span>
+                          {car.activeDealStatusLabel ? (
+                            <Badge
+                              variant="outline"
+                              className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.activeDealStatusTone ?? "muted")}`}
+                            >
+                              {car.activeDealStatusLabel}
+                            </Badge>
+                          ) : null}
+                          {car.activeDealHref ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              asChild
+                              className="h-auto rounded-lg px-2 py-1 text-xs text-primary hover:text-primary/80"
+                            >
+                              <Link href={car.activeDealHref}>Открыть сделку</Link>
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Нет активной сделки</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" asChild className="rounded-lg border border-border">
+                        <Link href={car.detailHref}>Открыть</Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                    Автомобили не найдены. Измените фильтры или добавьте новый автомобиль.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+        {pageCount > 1 ? (
+          <CardFooter className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              Показаны записи {filteredCars.length ? pageSliceStart + 1 : 0}–
+              {Math.min(pageSliceStart + pageSize, filteredCars.length)} из {filteredCars.length}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+                disabled={currentPage === 0}
+                className="rounded-xl"
+              >
+                Назад
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Страница {currentPage + 1} из {pageCount}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setPage((prev) => Math.min(prev + 1, pageCount - 1))}
+                disabled={currentPage >= pageCount - 1}
+                className="rounded-xl"
+              >
+                Далее
+              </Button>
+            </div>
+          </CardFooter>
+        ) : null}
+      </Card>
 
       <div className="grid gap-4 md:hidden">
-        {filteredCars.map((car) => (
+        {currentCars.length ? currentCars.map((car) => (
           <Card key={car.vin} className="bg-card/60 backdrop-blur">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="space-y-1">
                   <p className="text-sm font-semibold text-foreground">{car.name}</p>
                   <p className="text-xs text-muted-foreground">VIN: {car.vin}</p>
                 </div>
-                <Badge variant="outline" className="rounded-lg">
-                  {car.type}
+                <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.statusTone)}`}>
+                  {car.statusLabel}
                 </Badge>
               </div>
               <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
-                <span>Year: {car.year}</span>
-                <span>Mileage: {car.mileage}</span>
-                <span>Cost: {car.price}</span>
-                <span>Battery: {car.battery}</span>
+                <span>Тип: {car.bodyType ?? "—"}</span>
+                <span>Год: {car.year ?? "—"}</span>
+                <span>Пробег: {car.mileage}</span>
+                <span>Стоимость: {car.price}</span>
+                <span className="col-span-2">
+                  {car.activeDealNumber ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium text-foreground">{car.activeDealNumber}</span>
+                      {car.activeDealStatusLabel ? (
+                        <Badge
+                          variant="outline"
+                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.activeDealStatusTone ?? "muted")}`}
+                        >
+                          {car.activeDealStatusLabel}
+                        </Badge>
+                      ) : null}
+                      {car.activeDealHref ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className="h-auto rounded-lg px-2 py-1 text-xs text-primary hover:text-primary/80"
+                        >
+                          <Link href={car.activeDealHref}>Открыть сделку</Link>
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">Нет активной сделки</span>
+                  )}
+                </span>
               </div>
               <Button variant="ghost" size="sm" asChild className="rounded-xl border border-border">
-                <Link href={`/ops/cars/${toSlug(car.name)}`}>Open profile</Link>
+                <Link href={car.detailHref}>Открыть профиль</Link>
               </Button>
             </CardContent>
           </Card>
-        ))}
+        )) : (
+          <p className="text-sm text-muted-foreground">Автомобили не найдены.</p>
+        )}
       </div>
     </div>
   );

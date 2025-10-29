@@ -2,6 +2,10 @@ import { z } from "zod";
 
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
+import {
+  OPS_DEAL_STATUS_META,
+  OPS_VEHICLE_STATUS_META,
+} from "@/lib/supabase/queries/operations";
 import type {
   OpsClientRecord,
   OpsClientDeal,
@@ -20,6 +24,13 @@ import type {
   OpsDealProfile,
   OpsDealTimelineEvent,
   OpsDealWorkflowTask,
+  CarDetailResult,
+  OpsCarRecord,
+  OpsTone,
+  OpsVehicleData,
+  OpsVehicleDocument,
+  OpsVehicleProfile,
+  OpsVehicleServiceLogEntry,
 } from "@/lib/supabase/queries/operations";
 import { mapTaskRow, TASK_SELECT } from "@/lib/supabase/queries/tasks";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
@@ -1779,7 +1790,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   const applicationDocuments = (applicationDocumentsResult?.data ?? []) as SupabaseApplicationDocumentRow[];
   const dealDocuments = (dealDocumentsResult?.data ?? []) as SupabaseDealDocumentRow[];
 
-  const documentDescriptors = await Promise.all(
+  const documentDescriptors = (await Promise.all(
     [
       ...applicationDocuments.map(async (document) => {
         const url = await createSignedStorageUrl({
@@ -1822,7 +1833,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
         } satisfies OpsClientDocument;
       }),
     ],
-  );
+  )) as Array<OpsClientDocument | null>;
 
   const notifications: OpsClientNotification[] = (notificationsData ?? []).map((row) => ({
     id: row.id,
@@ -1879,7 +1890,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   }
 
   const clientDocuments = documentDescriptors
-    .filter((descriptor): descriptor is OpsClientDocument => Boolean(descriptor))
+    .filter((descriptor): descriptor is OpsClientDocument => descriptor !== null)
     .sort((a, b) => {
       const left = a.uploadedAt ?? "";
       const right = b.uploadedAt ?? "";
@@ -1898,40 +1909,9 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   return detail;
 }
 
-type OperationsCar = {
-  vin: string;
-  name: string;
-  year: number;
-  type: string;
-  price: string;
-  mileage: string;
-  battery: string;
-  detailHref: string;
-};
+type OperationsCar = OpsCarRecord;
 
-export type CarDetailResult = {
-  slug: string;
-  vehicleUuid: string;
-  profile: {
-    heading: string;
-    subtitle: string;
-    image: string;
-    specs: Array<{ label: string; value: string }>;
-  };
-  documents: Array<{
-    id: string;
-    title: string;
-    status: string;
-    url: string | null;
-  }>;
-  serviceLog: Array<{
-    id: string;
-    date: string;
-    description: string;
-    note?: string;
-    icon: string;
-  }>;
-};
+type VehicleHighlight = NonNullable<OpsVehicleProfile["highlights"]>[number];
 
 export async function getOperationsCars(): Promise<OperationsCar[]> {
   console.log("[SERVER-OPS] getOperationsCars called");
@@ -1940,7 +1920,22 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
 
   const { data, error } = await supabase
     .from("vehicles")
-    .select("vin, make, model, year, body_type, mileage, current_value, status")
+    .select(
+      `
+        id,
+        vin,
+        make,
+        model,
+        variant,
+        year,
+        body_type,
+        mileage,
+        current_value,
+        status,
+        updated_at,
+        deals:deals!deals_vehicle_id_fkey (id, deal_number, status)
+      `,
+    )
     .not("vin", "is", null)
     .not("vin", "eq", "")
     .neq("vin", "—")
@@ -1957,19 +1952,70 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
     return [];
   }
 
-  return data.map((vehicle) => ({
-    vin: (vehicle.vin as string) ?? "—",
-    name: `${vehicle.make ?? "Vehicle"} ${vehicle.model ?? ""}`.trim(),
-    year: (vehicle.year as number) ?? new Date().getFullYear(),
-    type: (vehicle.body_type as string) ?? "Luxury SUV",
-    price: vehicle.current_value ? `AED ${Number(vehicle.current_value).toLocaleString("en-US")}` : "—",
-    mileage: vehicle.mileage != null ? `${Number(vehicle.mileage).toLocaleString("en-US")} km` : "—",
-    battery: "97%",
-    detailHref: `/ops/cars/${`${vehicle.make ?? "vehicle"}-${vehicle.model ?? ""}`
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")}`,
-  }));
+  const ACTIVE_DEAL_STATUSES = new Set(["pending_activation", "active"]);
+
+  return data.map((vehicle) => {
+    const id = (vehicle.id as string) ?? `${vehicle.vin ?? "vehicle"}`;
+    const vin = ((vehicle.vin as string) ?? "—").toUpperCase();
+    const make = String(vehicle.make ?? "").trim() || "Vehicle";
+    const model = String(vehicle.model ?? "").trim();
+    const name = `${make} ${model}`.trim();
+    const variant = vehicle.variant ? String(vehicle.variant) : null;
+    const yearValue = vehicle.year != null ? Number(vehicle.year) : null;
+    const bodyType = vehicle.body_type ? String(vehicle.body_type) : null;
+    const priceValue = vehicle.current_value != null ? Number(vehicle.current_value) : null;
+    const mileageValue = vehicle.mileage != null ? Number(vehicle.mileage) : null;
+    const price = priceValue != null
+      ? `AED ${priceValue.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
+      : "—";
+    const mileage = mileageValue != null
+      ? `${mileageValue.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`
+      : "—";
+    const statusRaw = typeof vehicle.status === "string" ? vehicle.status : "draft";
+    const statusMeta = OPS_VEHICLE_STATUS_META[statusRaw] ?? { label: statusRaw, tone: "muted" as OpsTone };
+
+    const detailSlug = (() => {
+      const candidate = `${make} ${model}`.trim();
+      const slugSource = candidate.length > 0 ? candidate : vin || id;
+      return toSlug(slugSource);
+    })();
+
+    const dealsData = Array.isArray(vehicle.deals) ? vehicle.deals : [];
+    const activeDeal = dealsData.find((deal) => ACTIVE_DEAL_STATUSES.has(String(deal.status ?? "").toLowerCase()));
+    const activeDealNumber = activeDeal?.deal_number ?? null;
+    const activeDealStatus = activeDeal?.status ? String(activeDeal.status) : null;
+    const activeDealStatusMeta = activeDealStatus
+      ? OPS_DEAL_STATUS_META[activeDealStatus] ?? { label: activeDealStatus, tone: "muted" as OpsTone }
+      : null;
+    const activeDealSlug = activeDeal
+      ? toSlug((activeDeal.deal_number as string) || (activeDeal.id as string) || "")
+      : null;
+
+    return {
+      id,
+      vin,
+      name,
+      make,
+      model: model || make,
+      variant,
+      year: yearValue,
+      bodyType,
+      status: statusRaw,
+      statusLabel: statusMeta.label,
+      statusTone: statusMeta.tone,
+      price,
+      priceValue,
+      mileage,
+      mileageValue,
+      activeDealNumber,
+      activeDealStatus,
+      activeDealStatusLabel: activeDealStatusMeta?.label ?? null,
+      activeDealStatusTone: activeDealStatusMeta?.tone ?? null,
+      activeDealHref: activeDealSlug ? `/ops/deals/${activeDealSlug}` : null,
+      detailHref: `/ops/cars/${detailSlug}`,
+      type: bodyType ?? "—",
+    } satisfies OperationsCar;
+  });
 }
 
 type DealDetailResult = {
@@ -2628,87 +2674,666 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
 
   const supabase = await createSupabaseServerClient();
 
-  // Check authentication
   const { data: userData, error: userError } = await supabase.auth.getUser();
   console.log(`[SERVER-OPS] user authenticated:`, !!userData?.user, `error:`, userError);
 
-  // Сначала загружаем все автомобили для поиска по комбинированному slug
-  const { data: allVehicles, error: vehicleError } = await supabase
+  const { data: vehiclesLookup, error: lookupError } = await supabase
     .from("vehicles")
-    .select(`
-      id, vin, make, model, year, body_type, mileage, current_value, status,
-      vehicle_images(id, storage_path, label, is_primary, sort_order)
-    `);
+    .select("id, vin, make, model");
 
-  if (vehicleError) {
-    console.error("[SERVER-OPS] failed to load vehicles:", vehicleError);
+  if (lookupError) {
+    console.error("[SERVER-OPS] failed to load vehicle list for slug matching", lookupError);
     return null;
   }
 
-  // Ищем автомобиль по комбинированному slug или отдельным полям
-  const vehicleData = allVehicles?.find(vehicle => {
-    // Создаем комбинированный slug из make и model
-    const combinedSlug = toSlug(`${vehicle.make || ''} ${vehicle.model || ''}`);
-    
-    // Проверяем различные варианты совпадения
+  const matchedVehicle = vehiclesLookup?.find((vehicle) => {
+    const combinedSlug = toSlug(`${vehicle.make || ""} ${vehicle.model || ""}`);
     return (
       combinedSlug === normalizedSlug ||
-      toSlug(vehicle.vin || '') === normalizedSlug ||
-      toSlug(vehicle.make || '') === normalizedSlug ||
-      toSlug(vehicle.model || '') === normalizedSlug
+      toSlug(vehicle.vin || "") === normalizedSlug ||
+      toSlug(vehicle.make || "") === normalizedSlug ||
+      toSlug(vehicle.model || "") === normalizedSlug
     );
   });
 
-  if (!vehicleData) {
+  if (!matchedVehicle) {
     console.log(`[SERVER-OPS] no vehicle found for slug: "${slug}"`);
     return null;
   }
 
-  console.log(`[SERVER-OPS] successfully found vehicle:`, vehicleData.id);
+  console.log(`[SERVER-OPS] matched vehicle id:`, matchedVehicle.id);
 
-  // Загружаем изображения
-  const images = vehicleData.vehicle_images || [];
-  const primaryImage = images.find(img => img.is_primary) || images[0];
-  const imageUrl = primaryImage?.storage_path
-    ? await createSignedStorageUrl({ bucket: "vehicle-images", path: primaryImage.storage_path })
-    : "/assets/vehicle-placeholder.svg";
+  const { data: vehicleDetail, error: detailError } = await supabase
+    .from("vehicles")
+    .select(
+      `
+        id,
+        vin,
+        make,
+        model,
+        variant,
+        year,
+        body_type,
+        fuel_type,
+        transmission,
+        engine_capacity,
+        mileage,
+        color_exterior,
+        color_interior,
+        purchase_price,
+        current_value,
+        residual_value,
+        status,
+        features,
+        created_at,
+        updated_at,
+        vehicle_images(id, storage_path, label, is_primary, sort_order),
+        vehicle_specifications(id, category, spec_key, spec_value, unit, sort_order),
+        vehicle_telematics(id, odometer, battery_health, fuel_level, tire_pressure, location, last_reported_at),
+        vehicle_services(id, deal_id, service_type, title, description, due_date, mileage_target, status, completed_at, attachments, created_at, updated_at),
+        deals:deals!deals_vehicle_id_fkey (
+          id,
+          deal_number,
+          status,
+          monthly_payment,
+          monthly_lease_rate,
+          principal_amount,
+          total_amount,
+          term_months,
+          contract_start_date,
+          contract_end_date,
+          deal_documents(id, title, document_type, status, storage_path, signed_at, created_at)
+        )
+      `,
+    )
+    .eq("id", matchedVehicle.id)
+    .maybeSingle();
 
-  console.log(`[DEBUG] Vehicle image:`, imageUrl);
+  if (detailError) {
+    console.error("[SERVER-OPS] failed to load vehicle detail", detailError);
+    return null;
+  }
 
-  // Формируем профиль автомобиля
-  const vehicleName = `${vehicleData.make} ${vehicleData.model}`.trim();
-  const profile: CarDetailResult['profile'] = {
-    heading: vehicleName,
-    subtitle: `${vehicleData.year} ${vehicleData.body_type || "Vehicle"}`,
-    image: imageUrl || "/assets/vehicle-placeholder.svg",
-    specs: [
-      { label: "VIN", value: vehicleData.vin || "TBD" },
-      { label: "Year", value: vehicleData.year?.toString() || "TBD" },
-      { label: "Mileage", value: vehicleData.mileage ? `${Number(vehicleData.mileage).toLocaleString("en-US")} km` : "0 km" },
-      { label: "Body Type", value: vehicleData.body_type || "TBD" },
-      { label: "Value", value: vehicleData.current_value ? `AED ${Number(vehicleData.current_value).toLocaleString("en-US")}` : "TBD" },
-    ],
+  if (!vehicleDetail) {
+    console.warn("[SERVER-OPS] vehicle detail not found after lookup", { id: matchedVehicle.id });
+    return null;
+  }
+
+  type JsonRecord = Record<string, unknown>;
+
+  const toneStyles: Record<string, OpsTone> = {
+    draft: "muted",
+    available: "success",
+    reserved: "warning",
+    leased: "info",
+    maintenance: "warning",
+    retired: "danger",
   };
 
-  console.log(`[DEBUG] Vehicle profile:`, profile);
-
-  // Загружаем документы (пока пусто, можно расширить)
-  const documents: CarDetailResult['documents'] = [];
-
-  // Загружаем сервис-лог (пока пусто, можно расширить)
-  const serviceLog: CarDetailResult['serviceLog'] = [
-    // Добавляем пустой элемент для соответствия типу
-    {
-      id: "empty",
-      date: new Date().toISOString(),
-      description: "No service records",
-      icon: "info"
+  const vehicleStatusLabel = (() => {
+    const status = typeof vehicleDetail.status === "string" ? vehicleDetail.status : "";
+    switch (status) {
+      case "draft":
+        return "Черновик";
+      case "available":
+        return "Доступен";
+      case "reserved":
+        return "Зарезервирован";
+      case "leased":
+        return "В лизинге";
+      case "maintenance":
+        return "На обслуживании";
+      case "retired":
+        return "Списан";
+      default:
+        if (!status) {
+          return "Не указан";
+        }
+        return status.charAt(0).toUpperCase() + status.slice(1);
     }
+  })();
+
+  const formatNumber = (value: number | null | undefined, options?: Intl.NumberFormatOptions): string => {
+    if (value == null || Number.isNaN(Number(value))) {
+      return "—";
+    }
+    return Number(value).toLocaleString("ru-RU", options);
+  };
+
+  const formatMileage = (value: number | null | undefined): string => {
+    if (value == null || Number.isNaN(Number(value))) {
+      return "—";
+    }
+    return `${formatNumber(value)} км`;
+  };
+
+  const formatPercentage = (value: number | null | undefined): string => {
+    if (value == null || Number.isNaN(Number(value))) {
+      return "—";
+    }
+    return `${Number(value).toLocaleString("ru-RU", {
+      maximumFractionDigits: 1,
+      minimumFractionDigits: 0,
+    })} %`;
+  };
+
+  const humanizeKey = (key: string): string => {
+    return key
+      .replace(/[_\-]+/g, " ")
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/^./, (char) => char.toUpperCase());
+  };
+
+  type GalleryEntry = { id: string; url: string | null; label: string | null; isPrimary: boolean };
+  const rawImages = Array.isArray(vehicleDetail.vehicle_images) ? vehicleDetail.vehicle_images : [];
+  const sortedImages = [...rawImages].sort((a, b) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0));
+  const galleryEntries = await Promise.all(
+    sortedImages.map(async (image, index) => {
+      if (!image) {
+        return null;
+      }
+      const path = typeof image.storage_path === "string" ? image.storage_path : null;
+      const url = path ? await createSignedStorageUrl({ bucket: "vehicle-images", path }) : null;
+      return {
+        id: image.id ?? `vehicle-image-${index}`,
+        url,
+        label: image.label ?? null,
+        isPrimary: Boolean(image.is_primary),
+      } as GalleryEntry;
+    }),
+  );
+  const gallery = galleryEntries.filter((item): item is GalleryEntry => item !== null);
+  const primaryGalleryImage = gallery.find((image) => image.isPrimary && image.url)
+    ?? gallery.find((image) => image.url)
+    ?? null;
+  const imageUrl = primaryGalleryImage?.url ?? "/assets/vehicle-placeholder.svg";
+
+  const generalSpecs = [
+    { label: "Статус", value: vehicleStatusLabel },
+    { label: "VIN", value: vehicleDetail.vin ?? "—" },
+    { label: "Марка", value: vehicleDetail.make ?? "—" },
+    { label: "Модель", value: vehicleDetail.model ?? "—" },
+    { label: "Комплектация", value: vehicleDetail.variant ?? "—" },
+    { label: "Год выпуска", value: vehicleDetail.year ? `${vehicleDetail.year}` : "—" },
+    { label: "Тип кузова", value: vehicleDetail.body_type ?? "—" },
+    { label: "Тип топлива", value: vehicleDetail.fuel_type ?? "—" },
+    { label: "Трансмиссия", value: vehicleDetail.transmission ?? "—" },
+    { label: "Пробег", value: formatMileage(vehicleDetail.mileage) },
+    { label: "Цвет кузова", value: vehicleDetail.color_exterior ?? "—" },
+    { label: "Цвет салона", value: vehicleDetail.color_interior ?? "—" },
+    {
+      label: "Объём двигателя",
+      value: vehicleDetail.engine_capacity != null
+        ? formatNumber(vehicleDetail.engine_capacity, { maximumFractionDigits: 2 })
+        : "—",
+    },
   ];
+
+  const financialSpecs = [
+    { label: "Закупочная стоимость", value: formatCurrency(vehicleDetail.purchase_price) },
+    { label: "Текущая стоимость", value: formatCurrency(vehicleDetail.current_value) },
+    { label: "Остаточная стоимость", value: formatCurrency(vehicleDetail.residual_value) },
+  ];
+
+  const telemetryRow = Array.isArray(vehicleDetail.vehicle_telematics)
+    ? vehicleDetail.vehicle_telematics[0]
+    : vehicleDetail.vehicle_telematics;
+
+  const normalizeKeyValueRecord = (value: unknown): Record<string, number | string> => {
+    if (!value || typeof value !== "object") {
+      return {};
+    }
+    return Object.entries(value as JsonRecord).reduce<Record<string, number | string>>((acc, [key, raw]) => {
+      if (!key) return acc;
+      if (typeof raw === "number") {
+        acc[key] = raw;
+      } else if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        if (trimmed.length > 0) {
+          const numeric = Number(trimmed);
+          acc[key] = Number.isFinite(numeric) ? numeric : trimmed;
+        }
+      }
+      return acc;
+    }, {});
+  };
+
+  const telemetrySpecs = telemetryRow
+    ? ([
+        { label: "Одометр", value: formatMileage(telemetryRow.odometer) },
+        { label: "Состояние батареи", value: formatPercentage(telemetryRow.battery_health) },
+        { label: "Уровень топлива", value: formatPercentage(telemetryRow.fuel_level) },
+        {
+          label: "Давление в шинах",
+          value: (() => {
+            if (!telemetryRow.tire_pressure || typeof telemetryRow.tire_pressure !== "object") {
+              return "—";
+            }
+            const entries = Object.entries(telemetryRow.tire_pressure as JsonRecord)
+              .map(([position, reading]) => {
+                const readValue = typeof reading === "number" ? reading : Number(reading);
+                if (Number.isNaN(readValue)) {
+                  return null;
+                }
+                return `${humanizeKey(position)}: ${readValue.toLocaleString("ru-RU", {
+                  maximumFractionDigits: 1,
+                  minimumFractionDigits: 1,
+                })}`;
+              })
+              .filter((value): value is string => Boolean(value));
+            return entries.length > 0 ? entries.join(" • ") : "—";
+          })(),
+        },
+        {
+          label: "Расположение",
+          value: (() => {
+            if (!telemetryRow.location || typeof telemetryRow.location !== "object") {
+              return "—";
+            }
+            const locationEntries = Object.entries(telemetryRow.location as JsonRecord)
+              .map(([key, value]) => {
+                if (value == null) {
+                  return null;
+                }
+                if (typeof value === "number") {
+                  return `${humanizeKey(key)}: ${value.toLocaleString("ru-RU", {
+                    maximumFractionDigits: 4,
+                  })}`;
+                }
+                return `${humanizeKey(key)}: ${String(value)}`;
+              })
+              .filter((value): value is string => Boolean(value));
+            return locationEntries.length > 0 ? locationEntries.join(" • ") : "—";
+          })(),
+        },
+        { label: "Отчёт обновлён", value: formatDateTime(telemetryRow.last_reported_at) },
+      ] satisfies Array<{ label: string; value: string }>)
+    : [];
+
+  const lifecycleSpecs = [
+    { label: "Создано", value: formatDateTime(vehicleDetail.created_at) },
+    { label: "Обновлено", value: formatDateTime(vehicleDetail.updated_at) },
+  ];
+
+  const specificationGroups = (() => {
+    const specifications = Array.isArray(vehicleDetail.vehicle_specifications)
+      ? vehicleDetail.vehicle_specifications
+      : [];
+    const groups = new Map<string, Array<{ label: string; value: string }>>();
+    for (const spec of specifications) {
+      if (!spec) continue;
+      const category = spec.category || "Дополнительные параметры";
+      const label = spec.spec_key ? humanizeKey(spec.spec_key) : "Параметр";
+      const valueBody = [spec.spec_value, spec.unit].filter(Boolean).join(" ").trim();
+      const value = valueBody.length > 0 ? valueBody : "—";
+      const existing = groups.get(category) ?? [];
+      existing.push({ label, value });
+      groups.set(category, existing);
+    }
+    return Array.from(groups.entries()).map(([title, specs]) => ({
+      title,
+      specs: specs.sort((a, b) => a.label.localeCompare(b.label, "ru")),
+    }));
+  })();
+
+  const specGroups: Array<{ title: string; specs: Array<{ label: string; value: string }> }> = [];
+  specGroups.push({ title: "Основная информация", specs: generalSpecs });
+  if (financialSpecs.some((spec) => spec.value !== "—")) {
+    specGroups.push({ title: "Финансовые параметры", specs: financialSpecs });
+  }
+  if (telemetrySpecs.length > 0) {
+    specGroups.push({ title: "Телематика", specs: telemetrySpecs });
+  }
+  if (specificationGroups.length > 0) {
+    specGroups.push(...specificationGroups);
+  }
+  specGroups.push({ title: "Учёт", specs: lifecycleSpecs });
+
+  const featureList = (() => {
+    const raw = vehicleDetail.features;
+    if (!raw) {
+      return [];
+    }
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => (typeof item === "string" ? item.trim() : String(item)))
+        .filter((value) => value.length > 0);
+    }
+    if (typeof raw === "object") {
+      return Object.entries(raw as JsonRecord)
+        .map(([key, value]) => {
+          if (value == null) {
+            return null;
+          }
+          const label = humanizeKey(key);
+          if (typeof value === "object") {
+            return `${label}: ${JSON.stringify(value)}`;
+          }
+          return `${label}: ${String(value)}`;
+        })
+        .filter((entry): entry is string => Boolean(entry));
+    }
+    return [String(raw)];
+  })();
+
+  const deals = Array.isArray(vehicleDetail.deals) ? vehicleDetail.deals : [];
+  const dealById = new Map<string, (typeof deals)[number]>();
+  for (const deal of deals) {
+    if (deal?.id) {
+      dealById.set(deal.id, deal);
+    }
+  }
+
+  const ACTIVE_DEAL_STATUSES = new Set([
+    "pending_activation",
+    "active",
+    "signing_funding",
+  ]);
+
+  const activeDealRow = deals.find((deal) =>
+    ACTIVE_DEAL_STATUSES.has(String(deal?.status ?? "").toLowerCase()),
+  );
+
+  const activeDealMonthlyPaymentValue = activeDealRow?.monthly_payment != null
+    ? Number(activeDealRow.monthly_payment)
+    : null;
+  const activeDealMonthlyRateValue = activeDealRow?.monthly_lease_rate != null
+    ? Number(activeDealRow.monthly_lease_rate)
+    : activeDealMonthlyPaymentValue;
+  const activeDealStatusRaw = activeDealRow?.status ? String(activeDealRow.status) : null;
+  const activeDealStatusMeta = activeDealStatusRaw
+    ? OPS_DEAL_STATUS_META[activeDealStatusRaw] ?? { label: activeDealStatusRaw, tone: "muted" as OpsTone }
+    : null;
+  const activeDealSlug = activeDealRow
+    ? toSlug((activeDealRow.deal_number as string) || (activeDealRow.id as string) || "")
+    : null;
+
+  const activeDeal = activeDealRow
+    ? {
+        id: String(activeDealRow.id ?? crypto.randomUUID()),
+        number: activeDealRow.deal_number ?? null,
+        status: activeDealStatusRaw,
+        statusLabel: activeDealStatusMeta?.label ?? null,
+        statusTone: activeDealStatusMeta?.tone ?? null,
+        monthlyPayment: activeDealMonthlyPaymentValue != null ? formatCurrency(activeDealMonthlyPaymentValue) : null,
+        monthlyPaymentValue: activeDealMonthlyPaymentValue,
+        monthlyLeaseRate: activeDealMonthlyRateValue != null ? formatCurrency(activeDealMonthlyRateValue) : null,
+        monthlyLeaseRateValue: activeDealMonthlyRateValue,
+        href: activeDealSlug ? `/ops/deals/${activeDealSlug}` : null,
+      }
+    : null;
+
+  const highlightCandidates = (
+    [
+      { label: "VIN", value: vehicleDetail.vin ?? "—" },
+      { label: "Год выпуска", value: vehicleDetail.year ? String(vehicleDetail.year) : "—" },
+      { label: "Пробег", value: formatMileage(vehicleDetail.mileage) },
+      { label: "Текущая стоимость", value: formatCurrency(vehicleDetail.current_value) },
+      ] satisfies VehicleHighlight[]
+  ).filter((item) => item.value && item.value !== "—");
+
+  const highlights = highlightCandidates.slice(0, 4);
+
+  const telematicsRecord: OpsVehicleData["telematics"] = telemetryRow
+    ? {
+        odometer: telemetryRow.odometer != null ? Number(telemetryRow.odometer) : null,
+        batteryHealth: telemetryRow.battery_health != null ? Number(telemetryRow.battery_health) : null,
+        fuelLevel: telemetryRow.fuel_level != null ? Number(telemetryRow.fuel_level) : null,
+        tirePressure: normalizeKeyValueRecord(telemetryRow.tire_pressure),
+        location: normalizeKeyValueRecord(telemetryRow.location),
+        lastReportedAt: telemetryRow.last_reported_at ?? null,
+      }
+    : null;
+
+  const vehicleRecord: OpsVehicleData = {
+    id: vehicleDetail.id,
+    vin: vehicleDetail.vin ?? null,
+    make: vehicleDetail.make ?? null,
+    model: vehicleDetail.model ?? null,
+    variant: vehicleDetail.variant ?? null,
+    year: vehicleDetail.year ?? null,
+    bodyType: vehicleDetail.body_type ?? null,
+    fuelType: vehicleDetail.fuel_type ?? null,
+    transmission: vehicleDetail.transmission ?? null,
+    engineCapacity:
+      vehicleDetail.engine_capacity != null ? Number(vehicleDetail.engine_capacity) : null,
+    mileage: vehicleDetail.mileage != null ? Number(vehicleDetail.mileage) : null,
+    colorExterior: vehicleDetail.color_exterior ?? null,
+    colorInterior: vehicleDetail.color_interior ?? null,
+    status: vehicleDetail.status ?? null,
+    purchasePrice:
+      vehicleDetail.purchase_price != null ? Number(vehicleDetail.purchase_price) : null,
+    currentValue:
+      vehicleDetail.current_value != null ? Number(vehicleDetail.current_value) : null,
+    residualValue:
+      vehicleDetail.residual_value != null ? Number(vehicleDetail.residual_value) : null,
+    monthlyLeaseRate: activeDealMonthlyRateValue ?? null,
+    features: featureList,
+    rawFeatures: vehicleDetail.features,
+    telematics: telematicsRecord,
+    createdAt: vehicleDetail.created_at ?? null,
+    updatedAt: vehicleDetail.updated_at ?? null,
+  };
+
+  const documentRows = deals.flatMap((deal) =>
+    (deal?.deal_documents ?? []).map((doc) => ({ doc, dealNumber: deal?.deal_number ?? null })),
+  );
+
+  const documents: OpsVehicleDocument[] = await Promise.all(
+    documentRows.map(async ({ doc, dealNumber }) => {
+      const url = doc?.storage_path
+        ? await createSignedStorageUrl({ bucket: "deal-documents", path: doc.storage_path })
+        : null;
+      const statusRaw = typeof doc?.status === "string" ? doc.status : "";
+      const statusTone: OpsTone = (() => {
+        switch (statusRaw) {
+          case "signed":
+            return "success";
+          case "active":
+            return "info";
+          case "pending_signature":
+            return "warning";
+          case "recorded":
+            return "success";
+          default:
+            return "muted";
+        }
+      })();
+      const status = (() => {
+        switch (statusRaw) {
+          case "signed":
+            return "Подписан";
+          case "active":
+            return "Активен";
+          case "pending_signature":
+            return "Ожидает подписи";
+          case "recorded":
+            return "Зафиксирован";
+          default:
+            if (!statusRaw) {
+              return "Не указан";
+            }
+            return statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+        }
+      })();
+      const typeLabel = doc?.document_type ? humanizeKey(doc.document_type.replace(/\./g, " ")) : undefined;
+      const dateLabel = formatShortDate(doc?.signed_at ?? doc?.created_at ?? null);
+      const documentId = doc?.id ?? `doc-${Math.random().toString(36).slice(2)}`;
+      return {
+        id: documentId,
+        title: doc?.title ?? typeLabel ?? "Документ",
+        status,
+        statusTone,
+        type: typeLabel,
+        date: dateLabel !== "—" ? dateLabel : undefined,
+        dealNumber,
+        url,
+      } satisfies OpsVehicleDocument;
+    }),
+  );
+
+  documents.sort((a, b) => {
+    const left = a.date ?? "";
+    const right = b.date ?? "";
+    return right.localeCompare(left, "ru");
+  });
+
+  const serviceRows = Array.isArray(vehicleDetail.vehicle_services)
+    ? vehicleDetail.vehicle_services
+    : [];
+
+  const serviceLog: OpsVehicleServiceLogEntry[] = await Promise.all(
+    serviceRows
+      .sort((a, b) => {
+        const left = a?.due_date ?? a?.created_at ?? "";
+        const right = b?.due_date ?? b?.created_at ?? "";
+        return (right || "").localeCompare(left || "");
+      })
+      .map(async (service) => {
+        const statusRaw = typeof service?.status === "string" ? service.status : "";
+        const statusTone: OpsTone = (() => {
+          switch (statusRaw) {
+            case "completed":
+              return "success";
+            case "overdue":
+              return "danger";
+            case "in_progress":
+              return "info";
+            case "scheduled":
+              return "warning";
+            default:
+              return "muted";
+          }
+        })();
+        const status = (() => {
+          switch (statusRaw) {
+            case "completed":
+              return "Завершено";
+            case "overdue":
+              return "Просрочено";
+            case "in_progress":
+              return "В работе";
+            case "scheduled":
+              return "Запланировано";
+            default:
+              if (!statusRaw) {
+                return "Не указан";
+              }
+              return statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
+          }
+        })();
+
+        const serviceTypeLabel = (() => {
+          const typeRaw = typeof service?.service_type === "string" ? service.service_type : "";
+          switch (typeRaw) {
+            case "maintenance":
+              return "ТО";
+            case "inspection":
+              return "Осмотр";
+            case "telemetry":
+              return "Телеметрия";
+            case "repair":
+              return "Ремонт";
+            default:
+              return typeRaw ? humanizeKey(typeRaw) : "Сервис";
+          }
+        })();
+
+        const relatedDeal = service?.deal_id ? dealById.get(service.deal_id) : null;
+
+        const metaDetails: string[] = [];
+        if (serviceTypeLabel) {
+          metaDetails.push(`Тип: ${serviceTypeLabel}`);
+        }
+        const dueDate = formatShortDate(service?.due_date ?? null);
+        if (dueDate !== "—") {
+          metaDetails.push(`Срок: ${dueDate}`);
+        }
+        const mileageTarget = service?.mileage_target;
+        if (mileageTarget != null) {
+          metaDetails.push(`Пробег: ${formatMileage(mileageTarget)}`);
+        }
+        const completed = formatShortDate(service?.completed_at ?? null);
+        if (completed !== "—") {
+          metaDetails.push(`Завершено: ${completed}`);
+        }
+        if (relatedDeal?.deal_number) {
+          metaDetails.push(`Сделка: ${relatedDeal.deal_number}`);
+        }
+        const updatedAt = formatDateTime(service?.updated_at ?? null);
+        if (updatedAt !== "—") {
+          metaDetails.push(`Обновлено: ${updatedAt}`);
+        }
+
+        const attachmentsRaw = Array.isArray(service?.attachments) ? service.attachments : [];
+        const attachmentResults = await Promise.all(
+          attachmentsRaw.map(async (attachment, index) => {
+            if (!attachment || typeof attachment !== "object") {
+              return null;
+            }
+            const attachmentRecord = attachment as JsonRecord;
+            const label = typeof attachmentRecord.label === "string" && attachmentRecord.label.length > 0
+              ? attachmentRecord.label
+              : `Вложение ${index + 1}`;
+            const path = typeof attachmentRecord.storage_path === "string" ? attachmentRecord.storage_path : null;
+            const url = path
+              ? await createSignedStorageUrl({ bucket: "vehicle-services", path })
+              : null;
+            return { label, url, path: path ?? null };
+          }),
+        );
+        const attachments = attachmentResults.filter((value): value is { label: string; url: string | null; path: string | null } => value !== null);
+
+        const timelineDate = formatShortDate(
+          service?.due_date ?? service?.completed_at ?? service?.created_at ?? null,
+        );
+
+        const serviceId = service?.id ?? `service-${Math.random().toString(36).slice(2)}`;
+        return {
+          id: serviceId,
+          timelineDate,
+          title: service?.title ?? serviceTypeLabel ?? "Сервисное событие",
+          status,
+          statusTone,
+          description: service?.description ?? undefined,
+          meta: metaDetails,
+          attachments: attachments,
+        } satisfies OpsVehicleServiceLogEntry;
+      }),
+  );
+
+  const profile: OpsVehicleProfile = {
+    heading: `${vehicleDetail.make ?? ""} ${vehicleDetail.model ?? ""}`.trim() || "Автомобиль",
+    subtitle: (() => {
+      const parts: string[] = [];
+      if (vehicleDetail.year) {
+        parts.push(String(vehicleDetail.year));
+      }
+      if (vehicleDetail.body_type) {
+        parts.push(vehicleDetail.body_type);
+      }
+      return parts.length > 0 ? parts.join(" • ") : "Детали автомобиля";
+    })(),
+    status: vehicleDetail.status
+      ? {
+          label: vehicleStatusLabel,
+          tone: toneStyles[vehicleDetail.status] ?? "muted",
+        }
+      : null,
+    image: imageUrl,
+    highlights: highlights.length > 0 ? highlights : undefined,
+    gallery: gallery.length > 0 ? gallery : undefined,
+    specGroups,
+    features: featureList.length > 0 ? featureList : undefined,
+  };
 
   return {
     slug: normalizedSlug,
-    vehicleUuid: vehicleData.id,
+    vehicleUuid: vehicleDetail.id,
+    activeDeal,
+    vehicle: vehicleRecord,
     profile,
     documents,
     serviceLog,

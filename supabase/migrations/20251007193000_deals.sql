@@ -28,6 +28,7 @@ create table if not exists public.deals (
   principal_amount numeric(16,2),
   total_amount numeric(16,2),
   monthly_payment numeric(16,2),
+  monthly_lease_rate numeric(16,2),
   term_months integer,
   interest_rate numeric(8,4),
   down_payment_amount numeric(16,2),

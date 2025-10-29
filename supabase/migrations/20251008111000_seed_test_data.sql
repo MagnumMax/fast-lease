@@ -168,19 +168,19 @@ begin
       ops_id
     );
 
-  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, monthly_lease_rate, residual_value, status, features, location_data, acquired_at)
+  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
   values
-    ('WDC12345678900001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'SUV', 'petrol', 'automatic', 1200, 1000000, 985000, 30000, 1000000, 'available', jsonb_build_object('batteryRange', 'N/A', 'color', 'Obsidian'), jsonb_build_object('city', 'Dubai', 'warehouse', 'DXB-1'), now() - interval '120 days')
+    ('WDC12345678900001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'SUV', 'petrol', 'automatic', 1200, 1000000, 985000, 1000000, 'available', jsonb_build_object('batteryRange', 'N/A', 'color', 'Obsidian'))
   returning id into rolls_id;
 
-  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, monthly_lease_rate, residual_value, status, features, location_data, acquired_at)
+  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
   values
-    ('ZHW12345678900002', 'Lamborghini', 'Huracán', 'EVO AWD', 2023, 'Coupe', 'petrol', 'automatic', 3400, 750000, 720000, 25000, 750000, 'reserved', jsonb_build_object('acceleration', '2.9s 0-100'), jsonb_build_object('city', 'Dubai', 'warehouse', 'DXB-1'), now() - interval '200 days')
+    ('ZHW12345678900002', 'Lamborghini', 'Huracán', 'EVO AWD', 2023, 'Coupe', 'petrol', 'automatic', 3400, 750000, 720000, 750000, 'reserved', jsonb_build_object('acceleration', '2.9s 0-100'))
   returning id into lambo_id;
 
-  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, monthly_lease_rate, residual_value, status, features, location_data, acquired_at)
+  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
   values
-    ('YV1H1234567890003', 'Volvo', 'XC40 Recharge', 'Twin Motor', 2024, 'SUV', 'electric', 'automatic', 560, 150000, 149000, 1750, 150000, 'available', jsonb_build_object('batteryRange', '450 km', 'drive', 'AWD'), jsonb_build_object('city', 'Abu Dhabi', 'warehouse', 'AUH-1'), now() - interval '90 days')
+    ('YV1H1234567890003', 'Volvo', 'XC40 Recharge', 'Twin Motor', 2024, 'SUV', 'electric', 'automatic', 560, 150000, 149000, 150000, 'available', jsonb_build_object('batteryRange', '450 km', 'drive', 'AWD'))
   returning id into volvo_id;
 
   insert into public.vehicle_images (vehicle_id, storage_path, label, is_primary, sort_order)
@@ -372,6 +372,9 @@ begin
     principal_amount,
     total_amount,
     monthly_payment,
+    monthly_lease_rate,
+    monthly_lease_rate,
+    monthly_lease_rate,
     term_months,
     interest_rate,
     down_payment_amount,
@@ -402,6 +405,7 @@ begin
     'CONTRACT_PREP',
     865000,
     1025000,
+    29800,
     29800,
     36,
     0.045,
@@ -471,6 +475,7 @@ begin
     'SIGNING_FUNDING',
     540000,
     690000,
+    24500,
     24500,
     30,
     0.052,
@@ -542,6 +547,7 @@ begin
     'DOCS_COLLECT',
     185000,
     225000,
+    3250,
     3250,
     24,
     0.038,

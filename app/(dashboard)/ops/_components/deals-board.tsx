@@ -518,7 +518,7 @@ export function OpsDealsBoard({
           make: vehicleMake,
           model: vehicleModel,
           vin: selectedVehicle.vin !== "—" ? selectedVehicle.vin : undefined,
-          year: selectedVehicle.year,
+          year: selectedVehicle.year ?? undefined,
           price: vehiclePrice,
           mileage: vehicleMileage,
           meta: {
@@ -545,7 +545,7 @@ export function OpsDealsBoard({
           make: vehicleMake,
           model: vehicleModel,
           vin: selectedVehicle.vin !== "—" ? selectedVehicle.vin : undefined,
-          year: selectedVehicle.year,
+          year: selectedVehicle.year ?? undefined,
           price: vehiclePrice,
           mileage: vehicleMileage,
           meta: {

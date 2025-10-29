@@ -83,26 +83,26 @@ begin
   for vehicle_row in (
     select *
     from (values
-      ('WDCPEAK00000001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'SUV', 'petrol', 'automatic', 1200, 1100000, 1050000, 32000, 1020000, 'available', jsonb_build_object('color','Obsidian','package','Executive'), jsonb_build_object('city','Dubai','warehouse','DXB-1')),
-      ('ZFFPEAK00000002', 'Ferrari', 'Roma', 'Launch Edition', 2024, 'Coupe', 'petrol', 'automatic', 800, 900000, 880000, 28000, 850000, 'reserved', jsonb_build_object('color','Rosso Corsa','package','Carbon Fiber'), jsonb_build_object('city','Dubai','warehouse','DXB-2')),
-      ('SCAPEAK00000003', 'Bentley', 'Bentayga', 'Azure', 2023, 'SUV', 'petrol', 'automatic', 9500, 620000, 590000, 18500, 600000, 'leased', jsonb_build_object('color','Midnight Emerald','upholstery','Linen'), jsonb_build_object('city','Abu Dhabi','warehouse','AUH-1')),
-      ('YV1PEAK00000004', 'Volvo', 'XC90 Recharge', 'Ultimate', 2024, 'SUV', 'hybrid', 'automatic', 3100, 390000, 380000, 9500, 360000, 'available', jsonb_build_object('battery_range_km',600,'color','Denim Blue'), jsonb_build_object('city','Dubai','warehouse','DXB-3')),
-      ('SALPEAK00000005', 'Range Rover', 'SV', 'P530', 2024, 'SUV', 'petrol', 'automatic', 1500, 780000, 760000, 23000, 740000, 'available', jsonb_build_object('color','Carpathian Grey','interior','SV Serenity'), jsonb_build_object('city','Dubai','warehouse','DXB-1')),
-      ('WBAPEAK00000006', 'BMW', 'i7', 'xDrive60', 2024, 'Sedan', 'electric', 'automatic', 2400, 520000, 510000, 14500, 500000, 'available', jsonb_build_object('battery_range_km',625,'package','M Sport'), jsonb_build_object('city','Abu Dhabi','warehouse','AUH-2')),
-      ('ZHWPEAK00000007', 'Lamborghini', 'Urus', 'Performante', 2023, 'SUV', 'petrol', 'automatic', 5400, 990000, 940000, 33000, 920000, 'leased', jsonb_build_object('color','Giallo Auge','package','Carbon Fiber Roof'), jsonb_build_object('city','Dubai','warehouse','DXB-2')),
-      ('1HGPEAK00000008', 'Honda', 'Civic', 'LXi', 2024, 'Sedan', 'petrol', 'automatic', 1400, 85000, 83000, 1800, 82000, 'available', jsonb_build_object('color','Pearl White','package','Tech'), jsonb_build_object('city','Sharjah','warehouse','SHJ-1')),
-      ('JM1PEAK00000009', 'Mazda', 'CX-90', 'Signature', 2024, 'SUV', 'petrol', 'automatic', 620, 210000, 205000, 4200, 200000, 'available', jsonb_build_object('color','Soul Red','package','Premium'), jsonb_build_object('city','Dubai','warehouse','DXB-4')),
-      ('5YJPEAK00000010', 'Tesla', 'Model X', 'Plaid', 2024, 'SUV', 'electric', 'automatic', 900, 620000, 610000, 18500, 600000, 'available', jsonb_build_object('battery_range_km',560,'color','Pearl White'), jsonb_build_object('city','Dubai','warehouse','DXB-5')),
-      ('WAUPEAK00000011', 'Audi', 'Q8 e-tron', '55 quattro', 2024, 'SUV', 'electric', 'automatic', 1750, 440000, 430000, 11500, 420000, 'available', jsonb_build_object('battery_range_km',505,'package','Black Optic'), jsonb_build_object('city','Abu Dhabi','warehouse','AUH-3')),
-      ('JTDPEAK00000012', 'Toyota', 'Hiace', 'GL', 2023, 'Van', 'diesel', 'manual', 12400, 140000, 138000, 3200, 135000, 'leased', jsonb_build_object('color','Silver','usage','Corporate Shuttle'), jsonb_build_object('city','Dubai','warehouse','DXB-6')),
-      ('JTEPEAK00000013', 'Toyota', 'Land Cruiser', 'GR Sport', 2024, 'SUV', 'petrol', 'automatic', 2100, 410000, 405000, 9500, 400000, 'reserved', jsonb_build_object('color','Graphite','package','Adventure'), jsonb_build_object('city','Dubai','warehouse','DXB-2')),
-      ('KNMPEAK00000014', 'Kia', 'EV9', 'GT-Line', 2024, 'SUV', 'electric', 'automatic', 520, 290000, 285000, 7200, 280000, 'available', jsonb_build_object('battery_range_km',505,'seating','7'), jsonb_build_object('city','Dubai','warehouse','DXB-7')),
-      ('YS3PEAK00000015', 'Saab', '9-5', 'Aero', 2011, 'Sedan', 'petrol', 'automatic', 98000, 65000, 50000, 1200, 45000, 'maintenance', jsonb_build_object('color','Carbon Grey','note','Classic enthusiast vehicle'), jsonb_build_object('city','Dubai','warehouse','DXB-Classic'))
-    ) as v(vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, monthly_lease_rate, residual_value, status, features, location_data)
+      ('WDCPEAK00000001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'SUV', 'petrol', 'automatic', 1200, 1100000, 1050000, 1020000, 'available', jsonb_build_object('color','Obsidian','package','Executive')),
+      ('ZFFPEAK00000002', 'Ferrari', 'Roma', 'Launch Edition', 2024, 'Coupe', 'petrol', 'automatic', 800, 900000, 880000, 850000, 'reserved', jsonb_build_object('color','Rosso Corsa','package','Carbon Fiber')),
+      ('SCAPEAK00000003', 'Bentley', 'Bentayga', 'Azure', 2023, 'SUV', 'petrol', 'automatic', 9500, 620000, 590000, 600000, 'leased', jsonb_build_object('color','Midnight Emerald','upholstery','Linen')),
+      ('YV1PEAK00000004', 'Volvo', 'XC90 Recharge', 'Ultimate', 2024, 'SUV', 'hybrid', 'automatic', 3100, 390000, 380000, 360000, 'available', jsonb_build_object('battery_range_km',600,'color','Denim Blue')),
+      ('SALPEAK00000005', 'Range Rover', 'SV', 'P530', 2024, 'SUV', 'petrol', 'automatic', 1500, 780000, 760000, 740000, 'available', jsonb_build_object('color','Carpathian Grey','interior','SV Serenity')),
+      ('WBAPEAK00000006', 'BMW', 'i7', 'xDrive60', 2024, 'Sedan', 'electric', 'automatic', 2400, 520000, 510000, 500000, 'available', jsonb_build_object('battery_range_km',625,'package','M Sport')),
+      ('ZHWPEAK00000007', 'Lamborghini', 'Urus', 'Performante', 2023, 'SUV', 'petrol', 'automatic', 5400, 990000, 940000, 920000, 'leased', jsonb_build_object('color','Giallo Auge','package','Carbon Fiber Roof')),
+      ('1HGPEAK00000008', 'Honda', 'Civic', 'LXi', 2024, 'Sedan', 'petrol', 'automatic', 1400, 85000, 83000, 82000, 'available', jsonb_build_object('color','Pearl White','package','Tech')),
+      ('JM1PEAK00000009', 'Mazda', 'CX-90', 'Signature', 2024, 'SUV', 'petrol', 'automatic', 620, 210000, 205000, 200000, 'available', jsonb_build_object('color','Soul Red','package','Premium')),
+      ('5YJPEAK00000010', 'Tesla', 'Model X', 'Plaid', 2024, 'SUV', 'electric', 'automatic', 900, 620000, 610000, 600000, 'available', jsonb_build_object('battery_range_km',560,'color','Pearl White')),
+      ('WAUPEAK00000011', 'Audi', 'Q8 e-tron', '55 quattro', 2024, 'SUV', 'electric', 'automatic', 1750, 440000, 430000, 420000, 'available', jsonb_build_object('battery_range_km',505,'package','Black Optic')),
+      ('JTDPEAK00000012', 'Toyota', 'Hiace', 'GL', 2023, 'Van', 'diesel', 'manual', 12400, 140000, 138000, 135000, 'leased', jsonb_build_object('color','Silver','usage','Corporate Shuttle')),
+      ('JTEPEAK00000013', 'Toyota', 'Land Cruiser', 'GR Sport', 2024, 'SUV', 'petrol', 'automatic', 2100, 410000, 405000, 400000, 'reserved', jsonb_build_object('color','Graphite','package','Adventure')),
+      ('KNMPEAK00000014', 'Kia', 'EV9', 'GT-Line', 2024, 'SUV', 'electric', 'automatic', 520, 290000, 285000, 280000, 'available', jsonb_build_object('battery_range_km',505,'seating','7')),
+      ('YS3PEAK00000015', 'Saab', '9-5', 'Aero', 2011, 'Sedan', 'petrol', 'automatic', 98000, 65000, 50000, 45000, 'maintenance', jsonb_build_object('color','Carbon Grey','note','Classic enthusiast vehicle'))
+    ) as v(vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
   ) loop
     vehicle_seq := vehicle_seq + 1;
 
-    insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, monthly_lease_rate, residual_value, status, features, location_data, acquired_at)
+    insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
     values (
       vehicle_row.vin,
       vehicle_row.make,
@@ -115,12 +115,9 @@ begin
       vehicle_row.mileage,
       vehicle_row.purchase_price,
       vehicle_row.current_value,
-      vehicle_row.monthly_lease_rate,
       vehicle_row.residual_value,
       vehicle_row.status::public.vehicle_status,
-      vehicle_row.features,
-      vehicle_row.location_data,
-      now() - (vehicle_seq * interval '20 days')
+      vehicle_row.features
     )
     returning id into vehicle_id;
 
@@ -155,7 +152,7 @@ begin
       case when vehicle_row.fuel_type = 'electric' then 95 - vehicle_seq else 80 + vehicle_seq end,
       case when vehicle_row.fuel_type = 'electric' then null else 70 - vehicle_seq end,
       jsonb_build_object('front_left', 2.6 + vehicle_seq * 0.01, 'front_right', 2.6 + vehicle_seq * 0.01, 'rear_left', 2.7 + vehicle_seq * 0.01, 'rear_right', 2.7 + vehicle_seq * 0.01),
-      vehicle_row.location_data || jsonb_build_object('lat', 25.2 + vehicle_seq * 0.01, 'lng', 55.27 + vehicle_seq * 0.005),
+      jsonb_build_object('lat', 25.2 + vehicle_seq * 0.01, 'lng', 55.27 + vehicle_seq * 0.005),
       now() - ((vehicle_seq * 12) * interval '1 minute')
     );
 
@@ -186,7 +183,7 @@ begin
       vehicle_row.year,
       case when vehicle_seq % 2 = 0 then 'Royal Motors' else 'DXB Motors' end,
       vehicle_row.purchase_price,
-      jsonb_build_object('status', vehicle_row.status, 'location', vehicle_row.location_data)
+      jsonb_build_object('status', vehicle_row.status)
     )
     returning id into target_asset;
   end loop;
@@ -636,6 +633,7 @@ begin
       principal_amount,
       total_amount,
       monthly_payment,
+      monthly_lease_rate,
       term_months,
       interest_rate,
       down_payment_amount,
@@ -666,6 +664,7 @@ begin
       status_codes[(app_record.rn % array_length(status_codes,1)) + 1]::public.deal_status,
       160000 + app_record.rn * 22000,
       280000 + app_record.rn * 23000,
+      4800 + app_record.rn * 120,
       4800 + app_record.rn * 120,
       24 + (app_record.rn % 36),
       0.042 + (app_record.rn * 0.0008),

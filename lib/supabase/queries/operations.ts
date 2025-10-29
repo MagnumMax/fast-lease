@@ -363,14 +363,51 @@ export type OpsClientRecord = {
 };
 
 export type OpsCarRecord = {
+  id: string;
   vin: string;
   name: string;
-  year: number;
-  type: string;
+  make: string;
+  model: string;
+  variant: string | null;
+  year: number | null;
+  bodyType: string | null;
+  status: string;
+  statusLabel: string;
+  statusTone: OpsTone;
   price: string;
+  priceValue: number | null;
   mileage: string;
-  battery: string;
+  mileageValue: number | null;
+  activeDealNumber: string | null;
+  activeDealStatus: string | null;
+  activeDealStatusLabel: string | null;
+  activeDealStatusTone: OpsTone | null;
+  activeDealHref: string | null;
   detailHref: string;
+  type?: string;
+};
+
+export type OpsVehicleActiveDeal = {
+  id: string;
+  number: string | null;
+  status: string | null;
+  statusLabel: string | null;
+  statusTone: OpsTone | null;
+  monthlyPayment: string | null;
+  monthlyPaymentValue: number | null;
+  monthlyLeaseRate: string | null;
+  monthlyLeaseRateValue: number | null;
+  href: string | null;
+};
+
+export const OPS_DEAL_STATUS_META: Record<string, { label: string; tone: OpsTone }> = {
+  draft: { label: "Черновик", tone: "muted" },
+  pending_activation: { label: "Подготовка к активации", tone: "warning" },
+  active: { label: "Активна", tone: "success" },
+  suspended: { label: "Приостановлена", tone: "warning" },
+  completed: { label: "Завершена", tone: "muted" },
+  defaulted: { label: "Дефолт", tone: "danger" },
+  cancelled: { label: "Отменена", tone: "danger" },
 };
 
 export type OpsDealSummary = {
@@ -609,46 +646,96 @@ export type OpsClientProfile = {
   tags?: string[];
 };
 
+export type OpsTone = "success" | "warning" | "info" | "danger" | "muted";
+
+export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsTone }> = {
+  draft: { label: "Черновик", tone: "muted" },
+  available: { label: "Доступен", tone: "success" },
+  reserved: { label: "Зарезервирован", tone: "warning" },
+  leased: { label: "В лизинге", tone: "info" },
+  maintenance: { label: "На обслуживании", tone: "warning" },
+  retired: { label: "Списан", tone: "danger" },
+};
+
 export type OpsVehicleDocument = {
   id: string;
   title: string;
   status: string;
-  icon?: string;
+  statusTone?: OpsTone;
+  type?: string;
+  date?: string;
+  dealNumber?: string | null;
+  url: string | null;
 };
 
 export type OpsVehicleServiceLogEntry = {
   id: string;
-  date: string;
-  description: string;
-  note?: string;
-  icon: string;
+  timelineDate: string;
+  title: string;
+  status: string;
+  statusTone?: OpsTone;
+  description?: string;
+  meta?: string[];
+  attachments?: Array<{ label: string; url: string | null; path?: string | null }>;
 };
 
 export type OpsVehicleProfile = {
   heading: string;
   subtitle: string;
+  status?: { label: string; tone: OpsTone } | null;
   image: string;
-  specs: Array<{ label: string; value: string }>;
+  highlights?: Array<{ label: string; value: string; hint?: string }>;
+  gallery?: Array<{ id: string; url: string | null; label?: string | null; isPrimary?: boolean }>;
+  specGroups: Array<{
+    title: string;
+    specs: Array<{ label: string; value: string }>;
+  }>;
+  features?: string[];
+};
+
+export type OpsVehicleTelematics = {
+  odometer: number | null;
+  batteryHealth: number | null;
+  fuelLevel: number | null;
+  tirePressure: Record<string, number | string>;
+  location: Record<string, number | string>;
+  lastReportedAt: string | null;
+};
+
+export type OpsVehicleData = {
+  id: string;
+  vin: string | null;
+  make: string | null;
+  model: string | null;
+  variant: string | null;
+  year: number | null;
+  bodyType: string | null;
+  fuelType: string | null;
+  transmission: string | null;
+  engineCapacity: number | null;
+  mileage: number | null;
+  colorExterior: string | null;
+  colorInterior: string | null;
+  status: string | null;
+  purchasePrice: number | null;
+  currentValue: number | null;
+  residualValue: number | null;
+  monthlyLeaseRate: number | null;
+  features: string[];
+  rawFeatures: unknown;
+  telematics: OpsVehicleTelematics | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 };
 
 export type CarDetailResult = {
   slug: string;
   vehicleUuid: string;
+  activeDeal: OpsVehicleActiveDeal | null;
+  vehicle: OpsVehicleData;
   profile: OpsVehicleProfile;
-  documents: Array<{
-    id: string;
-    title: string;
-    status: string;
-    url: string | null;
-    icon?: string;
-  }>;
-  serviceLog: Array<{
-    id: string;
-    date: string;
-    description: string;
-    note?: string;
-    icon: string;
-  }>;
+  documents: OpsVehicleDocument[];
+  serviceLog: OpsVehicleServiceLogEntry[];
 };
 
 export type OpsKpiMetric = {

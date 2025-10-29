@@ -79,6 +79,8 @@ async function fetchWikipediaImage(query: string): Promise<{ url: string; buffer
   return { url: imageUrl, buffer: Buffer.from(arrayBuffer) };
 }
 
+const VEHICLE_IMAGES_BUCKET = "vehicle-images";
+
 async function ensureBucketExists(bucketId: string): Promise<void> {
   const { data, error: getError } = await supabase.storage.getBucket(bucketId);
   if (data) {
@@ -89,7 +91,7 @@ async function ensureBucketExists(bucketId: string): Promise<void> {
   if (getError && (/not found/i.test(getError.message ?? ""))) {
     console.log(`[storage] Bucket '${bucketId}' not found, attempting to create...`);
     const { error: createError } = await supabase.storage.createBucket(bucketId, {
-      public: true,
+      public: false,
       fileSizeLimit: 20 * 1024 * 1024,
       allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
     });
@@ -142,7 +144,7 @@ async function upsertVehicleImage(vehicleId: string, storagePath: string, metada
 }
 
 async function syncVehicleImages() {
-  await ensureBucketExists("vehicles");
+  await ensureBucketExists(VEHICLE_IMAGES_BUCKET);
 
   const { data: vehicles, error } = await supabase
     .from("vehicles")
@@ -185,7 +187,7 @@ async function syncVehicleImages() {
       console.log(`[upload] Uploading ${displayName} to storage path ${storagePath}`);
 
       const { error: uploadError } = await supabase.storage
-        .from("vehicles")
+        .from(VEHICLE_IMAGES_BUCKET)
         .upload(objectPath, buffer, {
           contentType: "image/jpeg",
           upsert: true,

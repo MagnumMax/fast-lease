@@ -33,12 +33,9 @@ create table if not exists public.vehicles (
   color_interior text,
   purchase_price numeric(16,2),
   current_value numeric(16,2),
-  monthly_lease_rate numeric(16,2),
   residual_value numeric(16,2),
   status public.vehicle_status not null default 'draft',
   features jsonb default '{}'::jsonb,
-  location_data jsonb default '{}'::jsonb,
-  acquired_at timestamptz,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );

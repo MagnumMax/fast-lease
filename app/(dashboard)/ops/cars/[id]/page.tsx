@@ -15,5 +15,14 @@ export default async function OpsCarDetailsPage({ params }: OpsCarDetailsProps) 
     notFound();
   }
 
-  return <CarDetailView profile={detail.profile} documents={detail.documents} serviceLog={detail.serviceLog} />;
+  return (
+    <CarDetailView
+      slug={detail.slug}
+      activeDeal={detail.activeDeal}
+      vehicle={detail.vehicle}
+      profile={detail.profile}
+      documents={detail.documents}
+      serviceLog={detail.serviceLog}
+    />
+  );
 }

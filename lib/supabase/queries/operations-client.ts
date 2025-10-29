@@ -2,7 +2,9 @@ import { getSessionUser } from "@/lib/auth/session";
 import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
+  OPS_DEAL_STATUS_META,
   OPS_WORKFLOW_STATUS_MAP,
+  OPS_VEHICLE_STATUS_META,
   WORKFLOW_ROLE_LABELS,
   type OpsDealSummary,
   type OpsCarRecord,
@@ -39,6 +41,15 @@ type SupabasePaymentRow = {
   created_at: string | null;
   received_at: string | null;
 };
+
+function toSlug(value: string | null | undefined): string {
+  if (!value) return "";
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 type WorkflowQueueRow = {
   id: string;
@@ -558,7 +569,22 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
 
   const { data, error } = await supabase
     .from("vehicles")
-    .select("vin, make, model, year, body_type, mileage, current_value, status")
+    .select(
+      `
+        id,
+        vin,
+        make,
+        model,
+        variant,
+        year,
+        body_type,
+        mileage,
+        current_value,
+        status,
+        updated_at,
+        deals:deals!deals_vehicle_id_fkey (id, deal_number, status)
+      `,
+    )
     .not("vin", "is", null)
     .not("vin", "eq", "")
     .neq("vin", "—")
@@ -573,19 +599,68 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
     return [];
   }
 
-  return data.map((vehicle) => ({
-    vin: (vehicle.vin as string) ?? "—",
-    name: `${vehicle.make ?? "Vehicle"} ${vehicle.model ?? ""}`.trim(),
-    year: (vehicle.year as number) ?? new Date().getFullYear(),
-    type: (vehicle.body_type as string) ?? "Luxury SUV",
-    price: vehicle.current_value ? `AED ${Number(vehicle.current_value).toLocaleString("en-US")}` : "—",
-    mileage: vehicle.mileage != null ? `${Number(vehicle.mileage).toLocaleString("en-US")} km` : "—",
-    battery: "97%",
-    detailHref: `/ops/cars/${`${vehicle.make ?? "vehicle"}-${vehicle.model ?? ""}`
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "")}`,
-  }));
+  return data.map((vehicle) => {
+    const id = (vehicle.id as string) ?? `${vehicle.vin ?? "vehicle"}`;
+    const vin = ((vehicle.vin as string) ?? "—").toUpperCase();
+    const make = String(vehicle.make ?? "").trim() || "Vehicle";
+    const model = String(vehicle.model ?? "").trim();
+    const name = `${make} ${model}`.trim();
+    const variant = vehicle.variant ? String(vehicle.variant) : null;
+    const yearValue = vehicle.year != null ? Number(vehicle.year) : null;
+    const bodyType = vehicle.body_type ? String(vehicle.body_type) : null;
+    const priceValue = vehicle.current_value != null ? Number(vehicle.current_value) : null;
+    const mileageValue = vehicle.mileage != null ? Number(vehicle.mileage) : null;
+    const price = priceValue != null
+      ? `AED ${priceValue.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
+      : "—";
+    const mileage = mileageValue != null
+      ? `${mileageValue.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`
+      : "—";
+    const statusRaw = typeof vehicle.status === "string" ? vehicle.status : "draft";
+    const statusMeta = OPS_VEHICLE_STATUS_META[statusRaw] ?? { label: statusRaw, tone: "muted" as const };
+
+    const detailSlug = (() => {
+      const candidate = `${make} ${model}`.trim();
+      const slugSource = candidate.length > 0 ? candidate : vin || id;
+      return toSlug(slugSource);
+    })();
+
+    const dealsData = Array.isArray(vehicle.deals) ? vehicle.deals : [];
+    const activeDeal = dealsData.find((deal) => ["pending_activation", "active"].includes(String(deal.status ?? "").toLowerCase()));
+    const activeDealNumber = activeDeal?.deal_number ?? null;
+    const activeDealStatus = activeDeal?.status ? String(activeDeal.status) : null;
+    const activeDealStatusMeta = activeDealStatus
+      ? OPS_DEAL_STATUS_META[activeDealStatus] ?? { label: activeDealStatus, tone: "muted" as const }
+      : null;
+    const activeDealSlug = activeDeal
+      ? toSlug((activeDeal.deal_number as string) || (activeDeal.id as string) || "")
+      : null;
+
+    return {
+      id,
+      vin,
+      name,
+      make,
+      model: model || make,
+      variant,
+      year: yearValue,
+      bodyType,
+      status: statusRaw,
+      statusLabel: statusMeta.label,
+      statusTone: statusMeta.tone,
+      price,
+      priceValue,
+      mileage,
+      mileageValue,
+      activeDealNumber,
+      activeDealStatus,
+      activeDealStatusLabel: activeDealStatusMeta?.label ?? null,
+      activeDealStatusTone: activeDealStatusMeta?.tone ?? null,
+      activeDealHref: activeDealSlug ? `/ops/deals/${activeDealSlug}` : null,
+      detailHref: `/ops/cars/${detailSlug}`,
+      type: bodyType ?? "—",
+    } satisfies OpsCarRecord;
+  });
 }
 
 export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
