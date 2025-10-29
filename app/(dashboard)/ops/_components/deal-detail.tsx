@@ -195,7 +195,13 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const dealTitle = slug.startsWith("deal-")
     ? `Deal-${slug.slice("deal-".length)}`
     : profile.dealId ?? slug;
-  const clientHref = client.name ? `/ops/clients/${slugifyRouteSegment(client.name)}` : "/ops/clients";
+  const clientHref = client.detailHref
+    ? client.detailHref
+    : client.userId
+      ? `/ops/clients/${client.userId}`
+      : client.name
+        ? `/ops/clients/${slugifyRouteSegment(client.name)}`
+        : "/ops/clients";
   const vehicleHref = profile.vehicleName
     ? `/ops/cars/${slugifyRouteSegment(profile.vehicleName)}`
     : "/ops/cars";

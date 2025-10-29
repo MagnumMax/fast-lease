@@ -340,10 +340,26 @@ export type OpsClientRecord = {
   email: string;
   phone: string;
   status: "Active" | "Blocked";
+  statusLabel: string;
   scoring: string;
   overdue: number;
   limit: string;
   detailHref: string;
+  memberSince: string | null;
+  segment: string | null;
+  tags: string[];
+  metricsSummary?: {
+    scoring: string;
+    limit: string;
+    overdue: string;
+  };
+  residencyStatus?: string | null;
+  leasing?: {
+    vehicle: string;
+    amount: string;
+    since: string;
+    dealNumber?: string;
+  };
 };
 
 export type OpsCarRecord = {
@@ -449,6 +465,8 @@ export type OpsDealClientProfile = {
   email: string;
   scoring: string;
   notes: string;
+  userId?: string | null;
+  detailHref?: string | null;
 };
 
 export type OpsDealKeyInfoEntry = {
@@ -470,33 +488,125 @@ export type OpsDealTimelineEvent = {
 
 export type OpsClientDeal = {
   id: string;
-  dealId: string;
-  vehicle: string;
+  dealNumber: string;
   status: string;
-  updatedAt: string;
+  statusKey?: OpsDealStatusKey;
+  stageLabel?: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  vehicleId: string | null;
+  vehicleName: string;
+  vehicleVin?: string | null;
+  monthlyPayment?: string | null;
+  totalAmount?: string | null;
+  principalAmount?: string | null;
+  termMonths?: number | null;
+  contractStartDate?: string | null;
+  contractEndDate?: string | null;
+  nextPaymentDue?: string | null;
+  overdueAmount?: string | null;
+  assignedManagerId?: string | null;
+  assignedManagerName?: string | null;
+  source?: string | null;
 };
 
 export type OpsClientDocument = {
   id: string;
   name: string;
   status: string;
-  icon: string;
+  documentType: string | null;
+  category: string | null;
+  source: "deal" | "application";
+  bucket: string | null;
+  storagePath: string | null;
+  uploadedAt: string | null;
+  signedAt: string | null;
+  url?: string | null;
+};
+
+export type OpsClientNotification = {
+  id: string;
+  title: string;
+  message: string | null;
+  severity: string;
+  icon: string | null;
+  createdAt: string;
+  readAt: string | null;
+};
+
+export type OpsClientSupportTicket = {
+  id: string;
+  ticketNumber: string;
+  topic: string;
+  priority: string;
+  status: string;
+  updatedAt: string;
+  lastMessagePreview: string | null;
+};
+
+export type OpsClientReferralSummary = {
+  code: string;
+  shareUrl: string | null;
+  createdAt: string | null;
+  clicks: number;
+  applications: number;
+  deals: number;
+  totalRewards: string | null;
+};
+
+export type OpsClientDetail = {
+  profile: OpsClientProfile;
+  deals: OpsClientDeal[];
+  documents: OpsClientDocument[];
+  notifications: OpsClientNotification[];
+  supportTickets: OpsClientSupportTicket[];
+  referrals: OpsClientReferralSummary | null;
 };
 
 export type OpsClientProfile = {
+  userId: string;
   fullName: string;
-  clientId: string;
-  program: string;
-  memberSince: string;
-  email: string;
-  phone: string;
-  address: string;
-  passport: string;
+  status: string;
+  segment: string | null;
+  memberSince: string | null;
+  email: string | null;
+  phone: string | null;
+  emiratesId: string | null;
+  passportNumber: string | null;
+  nationality: string | null;
+  residencyStatus: string | null;
+  dateOfBirth: string | null;
+  address: {
+    street?: string | null;
+    city?: string | null;
+    community?: string | null;
+    country?: string | null;
+    raw: Record<string, unknown> | null;
+  };
+  employment: {
+    employer?: string | null;
+    position?: string | null;
+    years?: number | null;
+    raw: Record<string, unknown> | null;
+  };
+  financial: {
+    monthlyIncome?: number | null;
+    existingLoans?: number | null;
+    creditScore?: number | null;
+    riskGrade?: string | null;
+    raw: Record<string, unknown> | null;
+  };
+  lastLoginAt: string | null;
+  createdAt: string | null;
   metrics: {
     scoring: string;
     overdue: string;
+    overdueCount: number;
     limit: string;
+    totalExposure: string;
+    activeDeals: number;
   };
+  tags?: string[];
 };
 
 export type OpsVehicleDocument = {
@@ -631,20 +741,50 @@ export const OPS_AUTOMATION_METRICS = [];
 // Константы для документов и профилей
 export const OPS_DEAL_DOCUMENTS = [];
 export const OPS_DEAL_TIMELINE = [];
-export const OPS_CLIENT_PROFILE = {
+export const OPS_CLIENT_PROFILE: OpsClientProfile = {
+  userId: "00000000-0000-0000-0000-000000000000",
   fullName: "Client",
-  clientId: "CL-0000",
-  program: "Lease-to-own program",
-  memberSince: "2024",
+  status: "pending",
+  segment: null,
+  memberSince: null,
   email: "client@example.com",
   phone: "+971 50 000 0000",
-  address: "Dubai, UAE",
-  passport: "UAE 123456789",
-  metrics: {
-    scoring: "90/100",
-    overdue: "0",
-    limit: "AED 350 000",
+  emiratesId: null,
+  passportNumber: null,
+  nationality: null,
+  residencyStatus: null,
+  dateOfBirth: null,
+  address: {
+    street: null,
+    city: "Dubai",
+    community: null,
+    country: "UAE",
+    raw: null,
   },
+  employment: {
+    employer: null,
+    position: null,
+    years: null,
+    raw: null,
+  },
+  financial: {
+    monthlyIncome: null,
+    existingLoans: null,
+    creditScore: null,
+    riskGrade: null,
+    raw: null,
+  },
+  lastLoginAt: null,
+  createdAt: null,
+  metrics: {
+    scoring: "—",
+    overdue: "—",
+    overdueCount: 0,
+    limit: "—",
+    totalExposure: "—",
+    activeDeals: 0,
+  },
+  tags: [],
 };
 
 export const OPS_CLIENT_DEALS = [];

@@ -147,7 +147,6 @@ async function diagnoseDeal48() {
       return;
     }
 
-    const template = version.template;
     console.log('✅ Workflow template получен');
     console.log('');
 

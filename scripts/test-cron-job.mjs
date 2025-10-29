@@ -68,7 +68,7 @@ async function testCronJob() {
     // 2. Проверяем функцию call_workflow_alerts
     console.log('🔧 Тестируем функцию call_workflow_alerts...')
     
-    const { data: functionResult, error: functionError } = await supabase
+    const { error: functionError } = await supabase
       .rpc('call_workflow_alerts')
 
     if (functionError) {

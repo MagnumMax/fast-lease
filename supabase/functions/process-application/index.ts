@@ -21,7 +21,7 @@ serve(async (req) => {
   let payload: ProcessApplicationPayload;
   try {
     payload = (await req.json()) as ProcessApplicationPayload;
-  } catch (_err) {
+  } catch {
     return errorResponse("Invalid JSON payload.", 400);
   }
 

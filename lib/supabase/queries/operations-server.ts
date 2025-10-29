@@ -1,8 +1,16 @@
 import { z } from "zod";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
 import type {
+  OpsClientRecord,
+  OpsClientDeal,
+  OpsClientDetail,
+  OpsClientDocument,
+  OpsClientNotification,
+  OpsClientProfile,
+  OpsClientReferralSummary,
+  OpsClientSupportTicket,
   OpsDealClientProfile,
   OpsDealDetailsEntry,
   OpsDealDocument,
@@ -367,6 +375,22 @@ function getString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
+function getNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function isUuid(value: string | null | undefined): value is string {
+  if (!value) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function formatDate(
   value: string | null | undefined,
   options: Intl.DateTimeFormatOptions = {
@@ -413,6 +437,22 @@ function formatCurrency(value: number | null | undefined): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+function normalizeClientStatus(raw: unknown): { display: string; filter: "Active" | "Blocked" } {
+  const status = typeof raw === "string" ? raw : "";
+  const normalized = status.toLowerCase();
+  if (normalized === "suspended" || normalized === "blocked") {
+    return { display: "Blocked", filter: "Blocked" };
+  }
+  if (normalized === "active") {
+    return { display: "Active", filter: "Active" };
+  }
+  if (status.length) {
+    const capitalized = status.charAt(0).toUpperCase() + status.slice(1);
+    return { display: capitalized, filter: "Active" };
+  }
+  return { display: "Pending", filter: "Active" };
 }
 
 function formatShortDate(value: string | null | undefined): string {
@@ -1092,27 +1132,16 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   });
 }
 
-type OperationsClient = {
-  userId: string;
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  status: "Active" | "Blocked";
-  scoring: string;
-  overdue: number;
-  limit: string;
-  detailHref: string;
-};
-
-export async function getOperationsClients(): Promise<OperationsClient[]> {
+export async function getOperationsClients(): Promise<OpsClientRecord[]> {
   console.log("[SERVER-OPS] getOperationsClients called");
 
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, full_name, status, phone, nationality, metadata")
+    .select(
+      "user_id, full_name, status, phone, nationality, residency_status, marketing_opt_in, created_at, metadata",
+    )
     .order("full_name", { ascending: true });
 
   if (error) {
@@ -1126,26 +1155,748 @@ export async function getOperationsClients(): Promise<OperationsClient[]> {
     return [];
   }
 
+  const clientIds = data.map((profile) => profile.user_id as string);
+
+  let leasingRows: Array<{
+    client_id: string;
+    deal_number: string | null;
+    vehicle_name: string | null;
+    total_amount: number | null;
+    contract_start_date: string | null;
+  }> = [];
+
+  if (clientIds.length) {
+    const leasingResult = await supabase
+      .from("deals")
+      .select(
+        "client_id, deal_number, total_amount, contract_start_date, vehicles:vehicle_id(make, model)",
+      )
+      .in("client_id", clientIds)
+      .order("contract_start_date", { ascending: false, nullsFirst: false });
+
+    if (leasingResult.error) {
+      console.error("[SERVER-OPS] failed to load leasing aggregates", leasingResult.error);
+    } else {
+      leasingRows = (leasingResult.data ?? []).map((row) => {
+        const vehicle = Array.isArray(row.vehicles) ? row.vehicles[0] : row.vehicles;
+        const vehicleName =
+          vehicle && typeof vehicle === "object"
+            ? `${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
+            : null;
+        return {
+          client_id: row.client_id as string,
+          deal_number: getString(row.deal_number),
+          total_amount: typeof row.total_amount === "number" ? row.total_amount : null,
+          contract_start_date: getString(row.contract_start_date),
+          vehicle_name: vehicleName && vehicleName.length ? vehicleName : null,
+        };
+      });
+    }
+  }
+
+  const leasingMap = leasingRows.reduce<Map<string, typeof leasingRows[number]>>((acc, row) => {
+    if (!row.client_id) return acc;
+    if (!acc.has(row.client_id)) {
+      acc.set(row.client_id, row);
+    }
+    return acc;
+  }, new Map());
+
   return data.map((profile, index) => {
-    const metadata = (profile.metadata as { ops_email?: string } | null) ?? null;
-    const emailFromMetadata = typeof metadata?.ops_email === "string" ? metadata.ops_email : null;
+    const metadata = isRecord(profile.metadata)
+      ? (profile.metadata as Record<string, unknown>)
+      : {};
+    const statusInfo = normalizeClientStatus(profile.status);
+    const emailFromMetadata = getString(metadata?.["ops_email"]);
+    const phoneFromMetadata = getString(metadata?.["ops_phone"]);
+    const segment =
+      getString(metadata?.["segment"]) ??
+      getString(metadata?.["client_segment"]) ??
+      getString(metadata?.["customer_segment"]) ??
+      null;
+
+    const rawMemberSince = profile.created_at
+      ? formatDate(profile.created_at as string, { month: "long", year: "numeric" })
+      : null;
+    const memberSince = rawMemberSince && rawMemberSince !== "—" ? rawMemberSince : null;
+
+    const marketingOptIn = Boolean(profile.marketing_opt_in);
+    const overdueCount = index % 3 === 0 ? 1 : 0;
+    const overdueSummary = overdueCount > 0 ? `${overdueCount} проср.` : "Нет просрочек";
+
+    const tags = Array.from(
+      new Set(
+        [
+          statusInfo.display,
+          getString(profile.residency_status),
+          segment,
+          getString(profile.nationality),
+        ]
+          .filter((value): value is string => Boolean(value))
+          .map((value) => value.trim()),
+      ),
+    );
+
+    const leasing = leasingMap.get(profile.user_id as string) ?? null;
+    const leasingAmount = leasing?.total_amount != null ? formatCurrency(leasing.total_amount) : "—";
+    const leasingStart = leasing?.contract_start_date
+      ? formatDate(leasing.contract_start_date, { day: "2-digit", month: "2-digit", year: "numeric" })
+      : "—";
+    const leasingVehicle = leasing?.vehicle_name ?? "—";
 
     return {
       userId: (profile.user_id as string) ?? "",
       id: `CL-${(101 + index).toString().padStart(4, "0")}`,
       name: (profile.full_name as string) ?? "Client",
       email: emailFromMetadata ?? "",
-      phone: (profile.phone as string) ?? "+971 50 000 0000",
-      status: (profile.status === "blocked" ? "Blocked" : "Active") as "Active" | "Blocked",
+      phone: phoneFromMetadata ?? (profile.phone as string) ?? "+971 50 000 0000",
+      status: statusInfo.filter,
+      statusLabel: statusInfo.display,
       scoring: "90/100",
-      overdue: index % 3 === 0 ? 1 : 0,
+      overdue: overdueCount,
       limit: "AED 350,000",
-      detailHref: `/ops/clients/${((profile.full_name as string) ?? "client")
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "") || "client-104"}`,
-    };
+      detailHref: `/ops/clients/${profile.user_id}`,
+      memberSince,
+      segment,
+      marketingOptIn,
+      tags,
+      metricsSummary: {
+        scoring: "90/100",
+        limit: "AED 350,000",
+        overdue: overdueSummary,
+      },
+      residencyStatus: getString(profile.residency_status),
+      leasing:
+        leasing
+          ? {
+              vehicle: leasingVehicle,
+              amount: leasingAmount,
+              since: leasingStart,
+              dealNumber: leasing.deal_number ?? undefined,
+            }
+          : undefined,
+    } satisfies OpsClientRecord;
   });
+}
+
+function formatPaymentsLabel(count: number): string {
+  if (count <= 0) return "Нет просрочек";
+  if (count === 1) return "1 просроченный платёж";
+  if (count >= 2 && count <= 4) return `${count} просроченных платежа`;
+  return `${count} просроченных платежей`;
+}
+
+export async function getOperationsClientDetail(identifier: string): Promise<OpsClientDetail | null> {
+  const normalizedIdentifier = (identifier ?? "").trim();
+  if (!normalizedIdentifier) {
+    console.warn("[SERVER-OPS] getOperationsClientDetail called with empty identifier");
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  let userId: string | null = isUuid(normalizedIdentifier) ? normalizedIdentifier : null;
+
+  if (!userId) {
+    const slugCandidate = toSlug(normalizedIdentifier);
+    const nameSearch = normalizedIdentifier.replace(/[-_]+/g, " ").trim();
+
+    let profileQuery = supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .order("full_name", { ascending: true })
+      .limit(50);
+
+    if (nameSearch) {
+      const pattern = `%${nameSearch.replace(/\s+/g, "%")}%`;
+      profileQuery = profileQuery.ilike("full_name", pattern);
+    }
+
+    const { data: profileCandidates, error: profileSearchError } = await profileQuery;
+    if (profileSearchError) {
+      console.error("[SERVER-OPS] failed to search profile by slug", {
+        identifier,
+        error: profileSearchError,
+      });
+    } else if (profileCandidates?.length) {
+      const match = profileCandidates.find((candidate) => {
+        const candidateName = getString(candidate.full_name);
+        if (!candidateName) return false;
+        return toSlug(candidateName) === slugCandidate;
+      });
+      userId = match?.user_id ?? null;
+    }
+  }
+
+  if (!userId) {
+    console.warn("[SERVER-OPS] client detail user id not resolved", { identifier });
+    return null;
+  }
+
+  const {
+    data: profileRow,
+    error: profileError,
+  } = await supabase
+    .from("profiles")
+    .select(
+      `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
+       address, employment_info, financial_profile, metadata, marketing_opt_in, created_at, last_login_at`
+    )
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("[SERVER-OPS] failed to load client profile", { userId, error: profileError });
+    return null;
+  }
+
+  if (!profileRow) {
+    console.warn("[SERVER-OPS] profile not found for user", { userId });
+    return null;
+  }
+
+  let authEmail: string | null = null;
+  let authPhone: string | null = null;
+
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+    const { data: authData, error: authError } = await serviceClient.auth.admin.getUserById(userId);
+    if (authError) {
+      console.warn("[SERVER-OPS] auth user not available for client", { userId, error: authError.message ?? authError });
+    } else if (authData?.user) {
+      authEmail = authData.user.email ?? null;
+      authPhone = authData.user.phone ?? null;
+    }
+  } catch (error) {
+    console.warn("[SERVER-OPS] auth lookup skipped (service key not configured?)", { userId, error });
+  }
+
+  const metadata = isRecord(profileRow.metadata) ? (profileRow.metadata as Record<string, unknown>) : {};
+  const metadataEmailCandidates = ["ops_email", "work_email", "email", "contact_email"];
+  for (const key of metadataEmailCandidates) {
+    const candidateEmail = getString(metadata[key]);
+    if (candidateEmail) {
+      authEmail = authEmail ?? candidateEmail;
+      break;
+    }
+  }
+
+  const metadataPhoneCandidates = ["ops_phone", "work_phone", "phone"];
+  for (const key of metadataPhoneCandidates) {
+    const candidatePhone = getString(metadata[key]);
+    if (candidatePhone) {
+      authPhone = authPhone ?? candidatePhone;
+      break;
+    }
+  }
+
+  const addressRecord = isRecord(profileRow.address) ? (profileRow.address as Record<string, unknown>) : null;
+  const employmentRecord = isRecord(profileRow.employment_info)
+    ? (profileRow.employment_info as Record<string, unknown>)
+    : null;
+  const financialRecord = isRecord(profileRow.financial_profile)
+    ? (profileRow.financial_profile as Record<string, unknown>)
+    : null;
+
+  const address = {
+    street: getString(addressRecord?.street ?? addressRecord?.line1 ?? addressRecord?.address_line1),
+    city: getString(addressRecord?.city),
+    community: getString(addressRecord?.community ?? addressRecord?.district),
+    country: getString(addressRecord?.country),
+    raw: addressRecord,
+  };
+
+  const employment = {
+    employer: getString(employmentRecord?.employer ?? employmentRecord?.company),
+    position: getString(employmentRecord?.position ?? employmentRecord?.title),
+    years: getNumber(employmentRecord?.years ?? employmentRecord?.tenure_years),
+    raw: employmentRecord,
+  };
+
+  const financial = {
+    monthlyIncome: getNumber(financialRecord?.monthly_income ?? financialRecord?.income_monthly),
+    existingLoans: getNumber(financialRecord?.existing_loans ?? financialRecord?.loans_total),
+    creditScore: getNumber(financialRecord?.credit_score),
+    riskGrade: getString(financialRecord?.risk_grade),
+    raw: financialRecord,
+  };
+
+  const segment =
+    getString(metadata?.segment) ??
+    getString(metadata?.client_segment) ??
+    getString(metadata?.customer_segment) ??
+    null;
+
+  const statusInfo = normalizeClientStatus(profileRow.status);
+
+  const tagSource = [
+    statusInfo.display,
+    getString(profileRow.residency_status),
+    segment,
+    getString(profileRow.nationality),
+  ];
+
+  const tags = tagSource
+    .map((value) => (value ? value.trim() : null))
+    .filter((value): value is string => Boolean(value));
+
+  const profile: OpsClientProfile = {
+    userId,
+    fullName: getString(profileRow.full_name) ?? "Без имени",
+    status: statusInfo.display,
+    segment,
+    memberSince: profileRow.created_at ? formatDate(profileRow.created_at, { month: "long", year: "numeric" }) : null,
+    email: authEmail,
+    phone: getString(profileRow.phone) ?? authPhone,
+    emiratesId: getString(profileRow.emirates_id),
+    passportNumber: getString(profileRow.passport_number),
+    nationality: getString(profileRow.nationality),
+    residencyStatus: getString(profileRow.residency_status),
+    dateOfBirth: profileRow.date_of_birth ?? null,
+    address,
+    employment,
+    financial,
+    marketingOptIn: Boolean(profileRow.marketing_opt_in),
+    lastLoginAt: profileRow.last_login_at ?? null,
+    createdAt: profileRow.created_at ?? null,
+    metrics: {
+      scoring: "—",
+      overdue: "Нет данных",
+      overdueCount: 0,
+      limit: "—",
+      totalExposure: "—",
+      activeDeals: 0,
+    },
+    tags,
+  };
+
+  type SupabaseDealRow = {
+    id: string;
+    deal_number: string | null;
+    status: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    monthly_payment: number | null;
+    total_amount: number | null;
+    principal_amount: number | null;
+    term_months: number | null;
+    contract_start_date: string | null;
+    contract_end_date: string | null;
+    first_payment_date: string | null;
+    source: string | null;
+    assigned_account_manager: string | null;
+    vehicle_id: string | null;
+    vehicles?:
+      | Array<{
+          id: string;
+          vin: string | null;
+          make: string | null;
+          model: string | null;
+          year: number | null;
+        }>
+      | null;
+  };
+
+  type SupabaseScheduleRow = {
+    id: string;
+    deal_id: string;
+    due_date: string | null;
+    amount: number | null;
+    status: string | null;
+  };
+
+  type SupabaseDealDocumentRow = {
+    id: string;
+    deal_id: string;
+    title: string | null;
+    document_type: string | null;
+    status: string | null;
+    storage_path: string | null;
+    signed_at: string | null;
+    created_at: string | null;
+  };
+
+  type SupabaseApplicationDocumentRow = {
+    id: string;
+    document_type: string | null;
+    document_category: string | null;
+    original_filename: string | null;
+    stored_filename: string | null;
+    storage_path: string | null;
+    status: string | null;
+    uploaded_at: string | null;
+    verified_at: string | null;
+  };
+
+  const [
+    { data: applicationRow, error: applicationError },
+    { data: dealsData, error: dealsError },
+    { data: notificationsData, error: notificationsError },
+    { data: ticketsData, error: ticketsError },
+    { data: referralRows, error: referralError },
+  ] = await Promise.all([
+    supabase
+      .from("applications")
+      .select(
+        `id, application_number, status, requested_amount, term_months, monthly_payment,
+         financial_info, employment_info, scoring_results, risk_assessment`
+      )
+      .eq("user_id", userId)
+      .order("submitted_at", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("deals")
+      .select(
+        `id, deal_number, status, created_at, updated_at, monthly_payment, total_amount,
+         principal_amount, term_months, contract_start_date, contract_end_date, first_payment_date,
+         source, assigned_account_manager, vehicle_id,
+         vehicles!vehicle_id (id, vin, make, model, year)`
+      )
+      .eq("client_id", userId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("client_notifications")
+      .select("id, title, message, icon, severity, created_at, read_at")
+      .eq("client_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("support_tickets")
+      .select("id, ticket_number, topic, priority, status, last_message_preview, created_at, updated_at")
+      .eq("client_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("referral_codes")
+      .select(
+        `id, code, share_url, created_at,
+         referral_events (event_type),
+         referral_deals (id),
+         referral_rewards (reward_amount, status)`
+      )
+      .eq("client_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1),
+  ]);
+
+  if (applicationError) {
+    console.error("[SERVER-OPS] failed to load client application", { userId, error: applicationError });
+  }
+  if (dealsError) {
+    console.error("[SERVER-OPS] failed to load client deals", { userId, error: dealsError });
+  }
+  if (notificationsError) {
+    console.error("[SERVER-OPS] failed to load client notifications", { userId, error: notificationsError });
+  }
+  if (ticketsError) {
+    console.error("[SERVER-OPS] failed to load client support tickets", { userId, error: ticketsError });
+  }
+  if (referralError) {
+    console.error("[SERVER-OPS] failed to load client referral data", { userId, error: referralError });
+  }
+
+  const deals = (dealsData ?? []) as SupabaseDealRow[];
+  const dealIds = deals.map((deal) => deal.id);
+  const managerIds = Array.from(
+    new Set(
+      deals
+        .map((deal) => deal.assigned_account_manager)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  const [managerProfilesResult, schedulesResult, dealDocumentsResult, applicationDocumentsResult] = await Promise.all([
+    managerIds.length
+      ? supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", managerIds)
+      : Promise.resolve({ data: [], error: null } as const),
+    dealIds.length
+      ? supabase
+          .from("payment_schedules")
+          .select("id, deal_id, due_date, amount, status")
+          .in("deal_id", dealIds)
+      : Promise.resolve({ data: [], error: null } as const),
+    dealIds.length
+      ? supabase
+          .from("deal_documents")
+          .select("id, deal_id, title, document_type, status, storage_path, signed_at, created_at")
+          .in("deal_id", dealIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null } as const),
+    applicationRow?.id
+      ? supabase
+          .from("application_documents")
+          .select(
+            "id, document_type, document_category, original_filename, stored_filename, storage_path, status, uploaded_at, verified_at",
+          )
+          .eq("application_id", applicationRow.id)
+          .order("uploaded_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null } as const),
+  ]);
+
+  const managerProfiles = new Map<string, string>();
+  if (managerProfilesResult?.data?.length) {
+    for (const manager of managerProfilesResult.data as Array<{ user_id: string; full_name: string | null }>) {
+      if (manager.user_id) {
+        managerProfiles.set(manager.user_id, getString(manager.full_name) ?? manager.user_id.slice(0, 8));
+      }
+    }
+  }
+
+  if (managerProfilesResult && "error" in managerProfilesResult && managerProfilesResult.error) {
+    console.error("[SERVER-OPS] failed to load manager profiles", managerProfilesResult.error);
+  }
+
+  if (schedulesResult && "error" in schedulesResult && schedulesResult.error) {
+    console.error("[SERVER-OPS] failed to load payment schedules", schedulesResult.error);
+  }
+
+  if (dealDocumentsResult && "error" in dealDocumentsResult && dealDocumentsResult.error) {
+    console.error("[SERVER-OPS] failed to load deal documents", dealDocumentsResult.error);
+  }
+
+  if (applicationDocumentsResult && "error" in applicationDocumentsResult && applicationDocumentsResult.error) {
+    console.error("[SERVER-OPS] failed to load application documents", applicationDocumentsResult.error);
+  }
+
+  const schedules = (schedulesResult?.data ?? []) as SupabaseScheduleRow[];
+  const schedulesByDeal = schedules.reduce<Map<string, SupabaseScheduleRow[]>>((acc, schedule) => {
+    if (!schedule.deal_id) return acc;
+    const list = acc.get(schedule.deal_id) ?? [];
+    list.push(schedule);
+    acc.set(schedule.deal_id, list);
+    return acc;
+  }, new Map());
+
+  const scheduleNow = new Date();
+  scheduleNow.setHours(0, 0, 0, 0);
+
+  let totalExposureValue = 0;
+  let activeDealsCount = 0;
+  let overdueCount = 0;
+  let overdueAmountTotal = 0;
+
+  const clientDeals: OpsClientDeal[] = deals.map((deal) => {
+    const vehicleCandidates = Array.isArray(deal.vehicles)
+      ? deal.vehicles
+      : deal.vehicles
+        ? [deal.vehicles]
+        : [];
+    const vehicle = vehicleCandidates[0] ?? null;
+    const statusKey = mapStatusToWorkflow(deal.status ?? null);
+    const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
+    const managerName = deal.assigned_account_manager
+      ? managerProfiles.get(deal.assigned_account_manager) ?? null
+      : null;
+
+    if (deal.total_amount != null) {
+      totalExposureValue += Number(deal.total_amount) || 0;
+    } else if (deal.principal_amount != null) {
+      totalExposureValue += Number(deal.principal_amount) || 0;
+    }
+
+    if ((deal.status ?? "").toLowerCase() === "active") {
+      activeDealsCount += 1;
+    }
+
+    const dealSchedules = schedulesByDeal.get(deal.id) ?? [];
+    let nextPaymentDue: string | null = null;
+    let overdueAmount: number | null = null;
+
+    if (dealSchedules.length) {
+      const upcoming = dealSchedules
+        .filter((schedule) => schedule.status?.toLowerCase() !== "paid" && schedule.due_date)
+        .map((schedule) => ({
+          ...schedule,
+          dueDate: new Date(schedule.due_date as string),
+        }))
+        .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+      const next = upcoming.find((item) => item.dueDate.getTime() >= scheduleNow.getTime());
+      if (next) {
+        nextPaymentDue = formatShortDate(next.due_date ?? null);
+      }
+
+      const overdueSchedules = upcoming.filter((item) => item.dueDate.getTime() < scheduleNow.getTime());
+      if (overdueSchedules.length) {
+        overdueCount += overdueSchedules.length;
+        const sum = overdueSchedules.reduce((acc, schedule) => acc + (Number(schedule.amount) || 0), 0);
+        overdueAmount = sum > 0 ? sum : null;
+        overdueAmountTotal += sum;
+      }
+    }
+
+    return {
+      id: deal.id,
+      dealNumber: deal.deal_number ?? computeFallbackDealNumber(deal.id),
+      status: (deal.status ?? "unknown").toUpperCase(),
+      statusKey,
+      stageLabel: statusMeta?.title ?? null,
+      createdAt: deal.created_at,
+      updatedAt: deal.updated_at,
+      vehicleId: deal.vehicle_id ?? vehicle?.id ?? null,
+      vehicleName: vehicle ? `${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim() || "Авто не выбрано" : "Авто не выбрано",
+      vehicleVin: vehicle?.vin ?? null,
+      monthlyPayment: formatCurrency(deal.monthly_payment),
+      totalAmount: formatCurrency(deal.total_amount),
+      principalAmount: formatCurrency(deal.principal_amount),
+      termMonths: deal.term_months ?? null,
+      contractStartDate: formatShortDate(deal.contract_start_date),
+      contractEndDate: formatShortDate(deal.contract_end_date),
+      nextPaymentDue,
+      overdueAmount: overdueAmount != null ? formatCurrency(overdueAmount) : null,
+      assignedManagerId: deal.assigned_account_manager ?? null,
+      assignedManagerName: managerName,
+      source: getString(deal.source),
+    } satisfies OpsClientDeal;
+  });
+
+  const overdueDisplay = overdueCount > 0
+    ? `${formatPaymentsLabel(overdueCount)}${overdueAmountTotal > 0 ? ` • ${formatCurrency(overdueAmountTotal)}` : ""}`
+    : "Нет просрочек";
+
+  const limitValue =
+    getNumber(financial.raw?.["credit_limit"]) ??
+    (applicationRow?.financial_info && isRecord(applicationRow.financial_info)
+      ? getNumber(applicationRow.financial_info.credit_limit)
+      : null) ??
+    getNumber(applicationRow?.requested_amount) ??
+    null;
+
+  const scoringValue = resolveScore(applicationRow?.scoring_results ?? metadata);
+  const scoringDisplay = scoringValue != null ? `${Math.round(scoringValue)}/100` : financial.creditScore != null ? `${Math.round(financial.creditScore)}` : "—";
+
+  profile.metrics = {
+    scoring: scoringDisplay,
+    overdue: overdueDisplay,
+    overdueCount,
+    limit: limitValue != null ? formatCurrency(limitValue) : "—",
+    totalExposure: totalExposureValue > 0 ? formatCurrency(totalExposureValue) : "—",
+    activeDeals: activeDealsCount,
+  };
+
+  const applicationDocuments = (applicationDocumentsResult?.data ?? []) as SupabaseApplicationDocumentRow[];
+  const dealDocuments = (dealDocumentsResult?.data ?? []) as SupabaseDealDocumentRow[];
+
+  const documentDescriptors = await Promise.all(
+    [
+      ...applicationDocuments.map(async (document) => {
+        const url = await createSignedStorageUrl({
+          bucket: "application-documents",
+          path: document.storage_path,
+        });
+        return {
+          id: document.id,
+          name: getString(document.original_filename) ?? getString(document.document_type) ?? "Документ",
+          status: getString(document.status) ?? "unknown",
+          documentType: getString(document.document_type),
+          category: getString(document.document_category),
+          source: "application" as const,
+          bucket: "application-documents",
+          storagePath: document.storage_path ?? null,
+          uploadedAt: document.uploaded_at ?? null,
+          signedAt: document.verified_at ?? null,
+          url,
+        } satisfies OpsClientDocument;
+      }),
+      ...dealDocuments.map(async (document) => {
+        const url = await createSignedStorageUrl({
+          bucket: "deal-documents",
+          path: document.storage_path,
+        });
+        return {
+          id: document.id,
+          name: getString(document.title) ?? getString(document.document_type) ?? "Документ",
+          status: getString(document.status) ?? "unknown",
+          documentType: getString(document.document_type),
+          category: null,
+          source: "deal" as const,
+          bucket: "deal-documents",
+          storagePath: document.storage_path ?? null,
+          uploadedAt: document.created_at ?? null,
+          signedAt: document.signed_at ?? null,
+          url,
+        } satisfies OpsClientDocument;
+      }),
+    ],
+  );
+
+  const notifications: OpsClientNotification[] = (notificationsData ?? []).map((row) => ({
+    id: row.id,
+    title: row.title ?? "",
+    message: row.message ?? null,
+    severity: row.severity ?? "info",
+    icon: row.icon ?? null,
+    createdAt: row.created_at ?? new Date().toISOString(),
+    readAt: row.read_at ?? null,
+  }));
+
+  const supportTickets: OpsClientSupportTicket[] = (ticketsData ?? []).map((row) => ({
+    id: row.id,
+    ticketNumber: row.ticket_number ?? "—",
+    topic: row.topic ?? "—",
+    priority: row.priority ?? "normal",
+    status: row.status ?? "open",
+    updatedAt: row.updated_at ?? row.created_at ?? new Date().toISOString(),
+    lastMessagePreview: row.last_message_preview ?? null,
+  }));
+
+  let referralSummary: OpsClientReferralSummary | null = null;
+  if (referralRows && referralRows.length) {
+    const referral = referralRows[0] as {
+      code: string;
+      share_url: string | null;
+      created_at: string | null;
+      referral_events?: Array<{ event_type: string | null }>;
+      referral_deals?: Array<{ id: string }>;
+      referral_rewards?: Array<{ reward_amount: number | null; status: string | null }>;
+    };
+
+    const clicks = referral.referral_events?.filter((event) => event.event_type === "click").length ?? 0;
+    const applicationsCount = referral.referral_events?.filter((event) => event.event_type === "application").length ?? 0;
+    const dealsCount = referral.referral_events?.filter((event) => event.event_type === "deal").length ?? referral.referral_deals?.length ?? 0;
+    const totalRewardsValue = (referral.referral_rewards ?? []).reduce((sum, reward) => {
+      if (!reward || reward.reward_amount == null) return sum;
+      const status = reward.status?.toLowerCase() ?? "";
+      if (["earned", "paid"].includes(status)) {
+        return sum + Number(reward.reward_amount);
+      }
+      return sum;
+    }, 0);
+
+    referralSummary = {
+      code: referral.code,
+      shareUrl: referral.share_url,
+      createdAt: referral.created_at,
+      clicks,
+      applications: applicationsCount,
+      deals: dealsCount,
+      totalRewards: totalRewardsValue > 0 ? formatCurrency(totalRewardsValue) : null,
+    };
+  }
+
+  const clientDocuments = documentDescriptors
+    .filter(Boolean)
+    .sort((a, b) => {
+      const left = a.uploadedAt ?? "";
+      const right = b.uploadedAt ?? "";
+      return right.localeCompare(left);
+    });
+
+  const detail: OpsClientDetail = {
+    profile,
+    deals: clientDeals,
+    documents: clientDocuments,
+    notifications,
+    supportTickets,
+    referrals: referralSummary,
+  };
+
+  return detail;
 }
 
 type OperationsCar = {
@@ -1735,6 +2486,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     email: resolvedClientEmail,
     scoring: scoringDisplay,
     notes: clientNotesParts.length > 0 ? clientNotesParts.join(" • ") : "—",
+    userId: dealRow.client_id ?? null,
+    detailHref: dealRow.client_id ? `/ops/clients/${dealRow.client_id}` : null,
   };
 
   console.log(`[DEBUG] Final client profile:`, {

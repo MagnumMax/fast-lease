@@ -322,7 +322,7 @@ async function checkWorkflowAlerts(): Promise<AlertResponse> {
   }
 }
 
-serve(async (req: Request) => {
+serve(async () => {
   try {
     // Проверяем алерты
     const result = await checkWorkflowAlerts()

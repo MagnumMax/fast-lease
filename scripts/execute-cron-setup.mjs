@@ -36,7 +36,7 @@ async function setupCronJob() {
     // 1. Сохраняем секреты в Vault
     console.log('📝 Сохраняем секреты в Vault...');
     
-    const { data: vaultResult1, error: vaultError1 } = await supabase
+    const { error: vaultError1 } = await supabase
       .rpc('sql', {
         query: `
           INSERT INTO vault.secrets (name, secret) 
@@ -52,7 +52,7 @@ async function setupCronJob() {
       console.log('✅ project_url сохранен');
     }
 
-    const { data: vaultResult2, error: vaultError2 } = await supabase
+    const { error: vaultError2 } = await supabase
       .rpc('sql', {
         query: `
           INSERT INTO vault.secrets (name, secret) 

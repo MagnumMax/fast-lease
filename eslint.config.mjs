@@ -24,6 +24,7 @@ const eslintConfig = [
       "next-env.d.ts",
       "beta/**",
       "lib/legacy/**",
+      ".vercel/**",
     ],
   },
 ];

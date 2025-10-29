@@ -59,7 +59,7 @@ serve(async (req) => {
   let payload: PaymentSyncPayload;
   try {
     payload = (await req.json()) as PaymentSyncPayload;
-  } catch (_err) {
+  } catch {
     return errorResponse("Invalid JSON payload.", 400);
   }
 

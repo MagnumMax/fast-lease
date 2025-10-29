@@ -36,7 +36,7 @@ serve(async (req) => {
   let payload: NotificationPayload;
   try {
     payload = (await req.json()) as NotificationPayload;
-  } catch (_err) {
+  } catch {
     return errorResponse("Invalid JSON payload.", 400);
   }
 

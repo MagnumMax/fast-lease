@@ -84,14 +84,28 @@ function createEmptyDashboardData(): DashboardDataSource {
   };
 }
 
-// Вспомогательная функция для проверки объектов (используется в других местах)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function getString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function normalizeClientStatusLabel(raw: unknown): { display: string; filter: "Active" | "Blocked" } {
+  const status = typeof raw === "string" ? raw : "";
+  const normalized = status.toLowerCase();
+  if (normalized === "suspended" || normalized === "blocked") {
+    return { display: "Blocked", filter: "Blocked" };
+  }
+  if (normalized === "active") {
+    return { display: "Active", filter: "Active" };
+  }
+  if (status.length) {
+    const capitalized = status.charAt(0).toUpperCase() + status.slice(1);
+    return { display: capitalized, filter: "Active" };
+  }
+  return { display: "Pending", filter: "Active" };
 }
 
 function parseDate(value: string | null | undefined): Date | null {
@@ -579,7 +593,9 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("user_id, full_name, status, phone, nationality, metadata")
+    .select(
+      "user_id, full_name, status, phone, nationality, residency_status, marketing_opt_in, created_at, metadata",
+    )
     .order("full_name", { ascending: true });
 
   if (error) {
@@ -594,24 +610,63 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
   }
 
   return data.map((profile, index) => {
-    const metadata = (profile.metadata as { ops_email?: string } | null) ?? null;
-    const emailFromMetadata =
-      typeof metadata?.ops_email === "string" ? metadata.ops_email : null;
+    const metadata = isRecord(profile.metadata)
+      ? (profile.metadata as Record<string, unknown>)
+      : {};
+    const statusInfo = normalizeClientStatusLabel(profile.status);
+    const emailFromMetadata = getString(metadata?.["ops_email"]);
+    const phoneFromMetadata = getString(metadata?.["ops_phone"]);
+    const segment =
+      getString(metadata?.["segment"]) ??
+      getString(metadata?.["client_segment"]) ??
+      getString(metadata?.["customer_segment"]) ??
+      null;
+
+    const memberSince = profile.created_at
+      ? new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(
+          new Date(profile.created_at as string),
+        )
+      : null;
+    const marketingOptIn = Boolean(profile.marketing_opt_in);
+    const overdueCount = index % 3 === 0 ? 1 : 0;
+    const overdueSummary = overdueCount > 0 ? `${overdueCount} проср.` : "Нет просрочек";
+
+    const tags = Array.from(
+      new Set(
+        [
+          statusInfo.display,
+          getString(profile.residency_status),
+          segment,
+          getString(profile.nationality),
+        ]
+          .filter((value): value is string => Boolean(value))
+          .map((value) => value.trim()),
+      ),
+    );
 
     return {
       userId: (profile.user_id as string) ?? "",
       id: `CL-${(101 + index).toString().padStart(4, "0")}`,
       name: (profile.full_name as string) ?? "Client",
       email: emailFromMetadata ?? "",
-      phone: (profile.phone as string) ?? "+971 50 000 0000",
-      status: profile.status === "blocked" ? "Blocked" : "Active",
+      phone: phoneFromMetadata ?? (profile.phone as string) ?? "+971 50 000 0000",
+      status: statusInfo.filter,
+      statusLabel: statusInfo.display,
       scoring: "90/100",
-      overdue: index % 3 === 0 ? 1 : 0,
+      overdue: overdueCount,
       limit: "AED 350,000",
-      detailHref: `/ops/clients/${((profile.full_name as string) ?? "client")
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "") || "client-104"}`,
-    };
+      detailHref: `/ops/clients/${profile.user_id}`,
+      memberSince,
+      segment,
+      marketingOptIn,
+      tags,
+      metricsSummary: {
+        scoring: "90/100",
+        limit: "AED 350,000",
+        overdue: overdueSummary,
+      },
+      residencyStatus: getString(profile.residency_status),
+      leasing: undefined,
+    } satisfies OpsClientRecord;
   });
 }

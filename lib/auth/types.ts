@@ -29,7 +29,6 @@ export type ProfileRecord = {
   employment_info: Record<string, unknown>;
   financial_profile: Record<string, unknown>;
   metadata: Record<string, unknown>;
-  marketing_opt_in: boolean;
   timezone: string | null;
   avatar_url: string | null;
   last_login_at: string | null;
