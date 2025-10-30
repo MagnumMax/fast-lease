@@ -16,10 +16,16 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
+import type { User } from "@supabase/supabase-js";
 
 type Identity =
   | { type: "email"; value: string }
   | { type: "phone"; value: string };
+
+const QUICK_LOGIN_PASSWORD =
+  process.env.AUTH_QUICK_LOGIN_PASSWORD ??
+  process.env.QUICK_LOGIN_PASSWORD ??
+  "fastlease";
 
 function normalizeEmail(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
@@ -73,19 +79,107 @@ function resolveIdentity(
   return { type: "phone", value: phone };
 }
 
-function formatIdentityForDisplay(identity: Identity): string {
-  if (identity.type === "email") {
-    const [localPart, domain] = identity.value.split("@");
-    if (!domain) return identity.value;
-    if (localPart.length <= 2) {
-      return `${localPart[0] ?? ""}***@${domain}`;
-    }
-    return `${localPart[0]}***${localPart.at(-1)}@${domain}`;
+async function ensureUserWithQuickPassword(
+  service: Awaited<ReturnType<typeof createSupabaseServiceClient>>,
+  email: string,
+  password: string,
+): Promise<User> {
+  const normalizedEmail = email.toLowerCase();
+  const { data: listData, error: listError } = await service.auth.admin.listUsers({
+    perPage: 100,
+  });
+
+  if (listError) {
+    throw listError;
   }
 
-  const lead = identity.value.slice(0, 4);
-  const tail = identity.value.slice(-2);
-  return `${lead}***${tail}`;
+  const existingUser =
+    listData?.users?.find(
+      (user) =>
+        typeof user.email === "string" &&
+        user.email.toLowerCase() === normalizedEmail,
+    ) ?? null;
+
+  if (!existingUser) {
+    const { data: createdData, error: createError } =
+      await service.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password,
+      });
+
+    if (createError || !createdData?.user) {
+      throw createError ?? new Error("createUser did not return user");
+    }
+
+    return createdData.user;
+  }
+
+  const { data: updatedData, error: updateError } =
+    await service.auth.admin.updateUserById(existingUser.id, {
+      email_confirm: true,
+      password,
+    });
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  return updatedData?.user ?? existingUser;
+}
+
+async function quickPasswordSignIn(
+  identity: Identity & { type: "email" },
+  preferredRole: AppRole | null,
+): Promise<AuthActionState> {
+  const password = QUICK_LOGIN_PASSWORD;
+
+  const service = await createSupabaseServiceClient();
+  const supabase = await createSupabaseServerClient();
+
+  let user: User;
+  try {
+    user = await ensureUserWithQuickPassword(service, identity.value, password);
+  } catch (error) {
+    return {
+      status: "error",
+      message: formatAuthErrorMessage(error),
+      errorCode: "quick_login_user_setup_failed",
+    };
+  }
+
+  const { data: signInData, error: signInError } =
+    await supabase.auth.signInWithPassword({
+      email: identity.value,
+      password,
+    });
+
+  if (signInError || !signInData.session || !signInData.user) {
+    return {
+      status: "error",
+      message: formatAuthErrorMessage(signInError ?? "Не удалось создать сессию."),
+      errorCode: "quick_login_sign_in_failed",
+    };
+  }
+
+  const userId = signInData.user.id ?? user.id;
+
+  await ensureDefaultProfileAndRole(supabase, userId);
+  await ensureRoleAssignment(userId, preferredRole);
+
+  await supabase
+    .from("profiles")
+    .update({ last_login_at: new Date().toISOString() })
+    .eq("user_id", userId);
+
+  const { redirectPath } = await resolveRedirectPathWithPreferredRole(
+    preferredRole,
+  );
+
+  return {
+    status: "success",
+    redirectPath,
+  };
 }
 
 function normalizeRole(value: FormDataEntryValue | null): AppRole | null {
@@ -218,79 +312,15 @@ export async function requestOtpAction(
 
   const identity = resolveIdentity(formData.get("identity"));
   const preferredRole = normalizeRole(formData.get("targetRole"));
-  if (!identity) {
+  if (!identity || identity.type !== "email") {
     return {
       status: "error",
-      message: "Введите корректный телефон или email.",
+      message: "Введите корректный email адрес для входа.",
       errorCode: "invalid_identity",
     };
   }
 
-  const devBypassRequested =
-    process.env.NODE_ENV !== "production" &&
-    normalizeString(formData.get("devBypass")) === "true";
-
-  if (devBypassRequested && identity.type === "email") {
-    const devResult = await devMagicLinkSignIn(identity.value, preferredRole);
-    if (devResult.status === "success" || devResult.status === "error") {
-      return devResult;
-    }
-  }
-
-  const supabase = await createSupabaseServerClient();
-
-  if (identity.type === "email") {
-    const emailRedirectTo =
-      process.env.NEXT_PUBLIC_SITE_URL &&
-      `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
-    const { error } = await supabase.auth.signInWithOtp({
-      email: identity.value,
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: emailRedirectTo || undefined,
-      },
-    });
-
-    if (error) {
-      return {
-        status: "error",
-        message: formatAuthErrorMessage(error),
-        errorCode: "otp_request_failed",
-      };
-    }
-  } else {
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: identity.value,
-      options: {
-        shouldCreateUser: true,
-        channel: "sms",
-      },
-    });
-
-    if (error) {
-      return {
-        status: "error",
-        message: formatAuthErrorMessage(error),
-        errorCode: "otp_request_failed",
-      };
-    }
-  }
-
-  const displayIdentity = formatIdentityForDisplay(identity);
-
-  return {
-    status: "otp_requested",
-    message:
-      identity.type === "email"
-        ? `Мы отправили код на ${displayIdentity}.`
-        : `Мы отправили код в SMS на ${displayIdentity}.`,
-    context: {
-      identity: identity.value,
-      identityType: identity.type,
-      displayIdentity,
-      targetRole: preferredRole ?? "",
-    },
-  };
+  return quickPasswordSignIn(identity, preferredRole);
 }
 
 export async function verifyOtpAction(
