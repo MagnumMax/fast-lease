@@ -3,9 +3,11 @@
 import { useMemo } from "react";
 import type { ChartOptions } from "chart.js";
 import { TrendingUp } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import type { InvestorDashboardSnapshot } from "@/lib/supabase/queries/investor";
 import { cn } from "@/lib/utils";
+import { readCssVariable } from "@/lib/utils/css";
 import { ChartCanvas } from "@/components/system/chart";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -104,73 +106,87 @@ function formatRelative(value: string) {
   });
 }
 
-const chartBaseOptions: ChartOptions = {
-  plugins: {
-    legend: {
-      position: "bottom",
-      labels: {
-        font: {
-          size: 12,
-        },
-        color: "rgba(100, 116, 139, 1)",
-      },
-    },
-    tooltip: {
-      backgroundColor: "rgba(15, 23, 42, 0.92)",
-      borderColor: "rgba(148, 163, 184, 0.2)",
-      borderWidth: 1,
-      padding: 12,
-    },
-  },
-  responsive: true,
-  maintainAspectRatio: false,
-  scales: {
-    x: {
-      grid: {
-        display: false,
-      },
-      ticks: {
-        color: "rgba(100, 116, 139, 1)",
-      },
-    },
-    y: {
-      beginAtZero: true,
-      grid: {
-        color: "rgba(226, 232, 240, 0.35)",
-      },
-      ticks: {
-        color: "rgba(100, 116, 139, 1)",
-      },
-    },
-  },
-};
-
 type InvestorDashboardScreenProps = {
   snapshot: InvestorDashboardSnapshot;
 };
 
 export function InvestorDashboardScreen({ snapshot }: InvestorDashboardScreenProps) {
+  const { resolvedTheme } = useTheme();
+  const themeKey = resolvedTheme ?? "system";
+
+  const chartBaseOptions = useMemo<ChartOptions>(() => {
+    void themeKey;
+    const legendColor = readCssVariable("--chart-legend-label", "rgba(100, 116, 139, 1)");
+    const tooltipBg = readCssVariable("--chart-tooltip-bg", "rgba(15, 23, 42, 0.92)");
+    const tooltipBorder = readCssVariable("--chart-tooltip-border", "rgba(148, 163, 184, 0.2)");
+    const tickColor = readCssVariable("--chart-axis-tick", "rgba(100, 116, 139, 1)");
+    const gridColor = readCssVariable("--chart-grid-line", "rgba(226, 232, 240, 0.35)");
+
+    return {
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            font: {
+              size: 12,
+            },
+            color: legendColor,
+          },
+        },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 12,
+        },
+      },
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            color: tickColor,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: gridColor,
+          },
+          ticks: {
+            color: tickColor,
+          },
+        },
+      },
+    } satisfies ChartOptions;
+  }, [themeKey]);
+
   const chartData = useMemo(
     () => ({
+      // зависимость от themeKey требуется для обновления цветов при смене темы
+      ...(void themeKey, {}),
       labels: snapshot.payoutSeries.map((point) => point.label),
       datasets: [
         {
           label: "Accrued payments",
           data: snapshot.payoutSeries.map((point) => point.accrued),
-          backgroundColor: "rgba(15, 23, 42, 0.9)",
+          backgroundColor: readCssVariable("--chart-investor-accrued", "rgba(15, 23, 42, 0.9)"),
           borderRadius: 16,
           barThickness: 32,
         },
         {
           label: "Actual payments",
           data: snapshot.payoutSeries.map((point) => point.actual),
-          backgroundColor: "rgba(148, 163, 184, 0.4)",
+          backgroundColor: readCssVariable("--chart-investor-actual", "rgba(148, 163, 184, 0.4)"),
           borderRadius: 16,
           barThickness: 32,
         },
       ],
     }),
-    [snapshot.payoutSeries],
+    [snapshot.payoutSeries, themeKey],
   );
 
   return (

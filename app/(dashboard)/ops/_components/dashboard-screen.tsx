@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { ChartOptions } from "chart.js";
+import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -17,6 +18,7 @@ import type {
   OpsDemandCapacitySeries,
   OpsPipelineDataset,
 } from "@/lib/supabase/queries/operations";
+import { readCssVariable } from "@/lib/utils/css";
 
 type OpsDashboardScreenProps = {
   snapshot: OpsDashboardSnapshot;
@@ -39,13 +41,14 @@ function resolveToneBadge(tone?: string) {
 
 
 function buildPipelineChartConfig(pipeline: OpsPipelineDataset) {
+  const barColor = readCssVariable("--chart-pipeline-bar", "rgba(15, 23, 42, 0.9)");
   return {
     labels: pipeline.map((entry) => entry.label),
     datasets: [
       {
         label: "Number of Deals",
         data: pipeline.map((entry) => entry.value),
-        backgroundColor: "rgba(15, 23, 42, 0.9)",
+        backgroundColor: barColor,
         borderRadius: 14,
         barThickness: 26,
       },
@@ -54,22 +57,26 @@ function buildPipelineChartConfig(pipeline: OpsPipelineDataset) {
 }
 
 function buildDemandCapacityChartConfig(series: OpsDemandCapacitySeries) {
+  const submittedLine = readCssVariable("--chart-demand-submitted-line", "rgba(71, 85, 105, 1)");
+  const submittedFill = readCssVariable("--chart-demand-submitted-fill", "rgba(71, 85, 105, 0.2)");
+  const activatedLine = readCssVariable("--chart-demand-activated-line", "rgba(37, 99, 235, 1)");
+  const activatedFill = readCssVariable("--chart-demand-activated-fill", "rgba(37, 99, 235, 0.2)");
   return {
     labels: series.labels,
     datasets: [
       {
         label: "Applications Submitted",
         data: series.submitted,
-        borderColor: "rgba(71, 85, 105, 1)",
-        backgroundColor: "rgba(71, 85, 105, 0.2)",
+        borderColor: submittedLine,
+        backgroundColor: submittedFill,
         fill: true,
         tension: 0.4,
       },
       {
         label: "Applications Activated",
         data: series.activated,
-        borderColor: "rgba(15, 23, 42, 1)",
-        backgroundColor: "rgba(15, 23, 42, 0.25)",
+        borderColor: activatedLine,
+        backgroundColor: activatedFill,
         fill: true,
         tension: 0.4,
       },
@@ -77,57 +84,75 @@ function buildDemandCapacityChartConfig(series: OpsDemandCapacitySeries) {
   };
 }
 
-const baseChartOptions: ChartOptions = {
-  plugins: {
-    legend: {
-      position: "bottom",
-      labels: {
-        font: {
-          size: 12,
-        },
-        color: "rgba(148, 163, 184, 1)",
-      },
-    },
-    tooltip: {
-      backgroundColor: "rgba(15, 23, 42, 0.9)",
-      borderColor: "rgba(148, 163, 184, 0.2)",
-      borderWidth: 1,
-      padding: 12,
-    },
-  },
-  scales: {
-    x: {
-      grid: {
-        display: false,
-      },
-      ticks: {
-        color: "rgba(100, 116, 139, 1)",
-      },
-    },
-    y: {
-      beginAtZero: true,
-      grid: {
-        color: "rgba(226, 232, 240, 0.4)",
-      },
-      ticks: {
-        color: "rgba(100, 116, 139, 1)",
-        precision: 0,
-      },
-    },
-  },
-  responsive: true,
-  maintainAspectRatio: false,
-};
-
 export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
+  const { resolvedTheme } = useTheme();
+  const themeKey = resolvedTheme ?? "system";
+
+  const baseChartOptions = useMemo<ChartOptions>(() => {
+    void themeKey;
+    const legendColor = readCssVariable("--chart-legend-label", "rgba(100, 116, 139, 1)");
+    const tooltipBg = readCssVariable("--chart-tooltip-bg", "rgba(15, 23, 42, 0.9)");
+    const tooltipBorder = readCssVariable("--chart-tooltip-border", "rgba(148, 163, 184, 0.2)");
+    const tickColor = readCssVariable("--chart-axis-tick", "rgba(100, 116, 139, 1)");
+    const gridColor = readCssVariable("--chart-grid-line", "rgba(226, 232, 240, 0.4)");
+
+    return {
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: {
+            font: {
+              size: 12,
+            },
+            color: legendColor,
+          },
+        },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          borderColor: tooltipBorder,
+          borderWidth: 1,
+          padding: 12,
+        },
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            color: tickColor,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: gridColor,
+          },
+          ticks: {
+            color: tickColor,
+            precision: 0,
+          },
+        },
+      },
+      responsive: true,
+      maintainAspectRatio: false,
+    } satisfies ChartOptions;
+  }, [themeKey]);
+
   const pipelineChartData = useMemo(
-    () => buildPipelineChartConfig(snapshot.pipeline),
-    [snapshot.pipeline],
+    () => {
+      void themeKey;
+      return buildPipelineChartConfig(snapshot.pipeline);
+    },
+    [snapshot.pipeline, themeKey],
   );
 
   const demandCapacityChart = useMemo(
-    () => buildDemandCapacityChartConfig(snapshot.demandCapacity),
-    [snapshot.demandCapacity],
+    () => {
+      void themeKey;
+      return buildDemandCapacityChartConfig(snapshot.demandCapacity);
+    },
+    [snapshot.demandCapacity, themeKey],
   );
 
   return (
@@ -204,7 +229,7 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
                   y: {
                     ...(baseChartOptions.scales?.y as object),
                     ticks: {
-                      color: "rgba(100, 116, 139, 1)",
+                      color: readCssVariable("--chart-axis-tick", "rgba(100, 116, 139, 1)"),
                       stepSize: 5,
                     },
                   },
