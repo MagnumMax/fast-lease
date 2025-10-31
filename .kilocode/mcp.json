@@ -5,7 +5,8 @@
       "args": [
         "-y",
         "@supabase/mcp-server-supabase@latest",
-        "--project-ref=sfekjkzuionqapecccwf"
+        "--project-ref=sfekjkzuionqapecccwf",
+        "--access-token=sbp_ba72d73135538af60402ba2e50629543ffcd31d2"
       ],
       "env": {
         "SUPABASE_ACCESS_TOKEN": "sbp_ba72d73135538af60402ba2e50629543ffcd31d2"
@@ -14,7 +15,8 @@
         "execute_sql",
         "list_tables",
         "get_advisors",
-        "get_logs"
+        "get_logs",
+        "apply_migration"
       ]
     }
   }

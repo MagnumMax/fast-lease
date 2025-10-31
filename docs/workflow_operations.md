@@ -9,7 +9,7 @@
 
 ## Настройка окружения
 
-1. Применить миграции Supabase (`supabase/migrations/**/*.sql`), ключевые из них:
+1. Применить миграции Supabase (через MCP, `migrations/**/*.sql`), ключевые из них:
    - `20250212193000_workflow_versions.sql`
    - `20250212194500_workflow_action_queues.sql`
 2. Убедиться, что `NEXT_PUBLIC_SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` присутствуют в окружении.
@@ -21,7 +21,7 @@
 - **CLI**: `ts-node scripts/process-workflow-queues.ts` — аналогичный запуск из терминала.
 - Рекомендуемый план: cron/task runner раз в N минут вызывает CLI/HTTP обработчик. Для продакшена заменить stub'ы реальными отправителями и логированием.
 - Настройка окружения для Telegram: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
-- Edge Function: `supabase/functions/process-workflow-queues` (расписание `*/5 * * * *` через `supabase/config.toml`).
+- Edge Function: `supabase/functions/process-workflow-queues` (расписание `*/5 * * * *` через скрипты `scripts/setup-cron-*.mjs` или Supabase MCP Scheduler; `config.toml` более не используется).
 - Локальная проверка Telegram: `ts-node scripts/test-telegram.ts` (поставит сообщение в очередь и вызовет edge-функцию).
 
 ## Мониторинг и алерты
@@ -34,7 +34,7 @@
   group by status;
   ```
 
-- Логи edge-функции доступны через `supabase functions logs process-workflow-queues` — подключить алерты на ошибки (например, через Supabase Alerts / внешнюю систему).
+- Логи edge-функции доступны через Supabase MCP (service: `edge-function`) или Supabase Studio — подключить алерты на ошибки (например, через Supabase Alerts / внешнюю систему).
 - Рекомендуется собирать дашборд (Supabase Studio → SQL saved query + graph) и настроить уведомления при превышении порогов (например, >10 записей в `FAILED` или задержка > 15 минут).
 - Для автоматических оповещений можно использовать Supabase Alerts или внешний мониторинг (PagerDuty, Grafana, Telegram бот) на основе SQL из `docs/workflow_monitoring.sql`.
 

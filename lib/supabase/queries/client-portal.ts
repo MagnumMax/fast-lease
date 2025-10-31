@@ -208,7 +208,11 @@ function ensureRecord(value: unknown): Record<string, unknown> {
 export async function getClientPortalSnapshot(
   clientId: string,
 ): Promise<ClientPortalSnapshot> {
+  console.log("[client-portal] starting snapshot for client:", clientId);
+
   const supabase = await createSupabaseServerClient();
+
+  console.log("[client-portal] supabase client created");
 
   const { data: dealRow, error: dealError } = await supabase
     .from("deals")
@@ -220,6 +224,8 @@ export async function getClientPortalSnapshot(
 
   if (dealError) {
     console.error("[client-portal] failed to load deal", dealError);
+  } else {
+    console.log("[client-portal] deal loaded:", !!dealRow);
   }
 
   const deal = dealRow

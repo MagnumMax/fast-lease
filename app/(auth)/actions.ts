@@ -85,47 +85,60 @@ async function ensureUserWithQuickPassword(
   password: string,
 ): Promise<User> {
   const normalizedEmail = email.toLowerCase();
-  const { data: listData, error: listError } = await service.auth.admin.listUsers({
-    perPage: 100,
-  });
 
-  if (listError) {
-    throw listError;
+  // Ищем существующего пользователя через Admin API
+  let existingUser: User | undefined;
+  try {
+    const { data: listData } = await service.auth.admin.listUsers({
+      page: 1,
+      perPage: 50,
+    });
+    existingUser = listData?.users?.find(
+      (u) => u.email?.toLowerCase() === normalizedEmail,
+    );
+  } catch {
+    // Если не удалось получить список, продолжаем с попыткой создания пользователя
+    existingUser = undefined;
   }
 
-  const existingUser =
-    listData?.users?.find(
-      (user) =>
-        typeof user.email === "string" &&
-        user.email.toLowerCase() === normalizedEmail,
-    ) ?? null;
-
-  if (!existingUser) {
-    const { data: createdData, error: createError } =
-      await service.auth.admin.createUser({
-        email,
+  if (existingUser) {
+    // Обновляем существующего пользователя
+    const { data: updatedData, error: updateError } =
+      await service.auth.admin.updateUserById(existingUser.id, {
         email_confirm: true,
         password,
       });
 
-    if (createError || !createdData?.user) {
-      throw createError ?? new Error("createUser did not return user");
+    if (updateError) {
+      throw updateError;
     }
 
-    return createdData.user;
+    return updatedData?.user ?? existingUser;
   }
 
-  const { data: updatedData, error: updateError } =
-    await service.auth.admin.updateUserById(existingUser.id, {
+  // Создаем нового пользователя
+  const { data: createdData, error: createError } =
+    await service.auth.admin.createUser({
+      email: normalizedEmail,
       email_confirm: true,
       password,
     });
 
-  if (updateError) {
-    throw updateError;
+  if (createError) {
+    // Если пользователь уже существует, продолжим без ошибки
+    const message = typeof createError?.message === "string" ? createError.message.toLowerCase() : "";
+    if (createError.status === 409 || message.includes("already") || message.includes("exists")) {
+      // Возвращаем заглушку; фактически она не будет использоваться далее
+      return { id: "00000000-0000-0000-0000-000000000000" } as unknown as User;
+    }
+    throw createError;
   }
 
-  return updatedData?.user ?? existingUser;
+  if (!createdData?.user) {
+    throw new Error("createUser did not return user");
+  }
+
+  return createdData.user;
 }
 
 async function quickPasswordSignIn(
@@ -137,9 +150,8 @@ async function quickPasswordSignIn(
   const service = await createSupabaseServiceClient();
   const supabase = await createSupabaseServerClient();
 
-  let user: User;
   try {
-    user = await ensureUserWithQuickPassword(service, identity.value, password);
+    await ensureUserWithQuickPassword(service, identity.value, password);
   } catch (error) {
     return {
       status: "error",
@@ -162,7 +174,7 @@ async function quickPasswordSignIn(
     };
   }
 
-  const userId = signInData.user.id ?? user.id;
+  const userId = signInData.user.id;
 
   await ensureDefaultProfileAndRole(supabase, userId);
   await ensureRoleAssignment(userId, preferredRole);
@@ -216,93 +228,6 @@ async function resolveRedirectPathWithPreferredRole(
   };
 }
 
-async function devMagicLinkSignIn(
-  email: string,
-  preferredRole: AppRole | null,
-): Promise<AuthActionState> {
-  if (!email) {
-    return {
-      status: "error",
-      message: "Не удалось выполнить вход через пресет. Не указан email.",
-      errorCode: "missing_dev_email",
-    };
-  }
-
-  const service = await createSupabaseServiceClient();
-  const supabase = await createSupabaseServerClient();
-
-  const { data, error } = await service.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-  });
-
-  if (error) {
-    return {
-      status: "error",
-      message: formatAuthErrorMessage(error),
-      errorCode: "dev_generate_link_failed",
-    };
-  }
-
-  const otp = data?.properties?.email_otp;
-  if (!otp) {
-    return {
-      status: "error",
-      message:
-        "Supabase не вернул OTP для пресета. Проверьте настройки magic link.",
-      errorCode: "missing_dev_otp",
-    };
-  }
-
-  const { error: verifyError } = await supabase.auth.verifyOtp({
-    email,
-    token: otp,
-    type: "email",
-  });
-
-  if (verifyError) {
-    return {
-      status: "error",
-      message: formatAuthErrorMessage(verifyError),
-      errorCode: "dev_verify_failed",
-    };
-  }
-
-  // Используем getUser() вместо getSession() для безопасности
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-
-  if (userError || !userData.user) {
-    return {
-      status: "error",
-      message: "Supabase не вернул пользователя после входа через пресет.",
-      errorCode: "dev_missing_user",
-    };
-  }
-
-  await ensureDefaultProfileAndRole(supabase, userData.user.id);
-  await ensureRoleAssignment(userData.user.id, preferredRole);
-
-  await supabase
-    .from("profiles")
-    .update({ last_login_at: new Date().toISOString() })
-    .eq("user_id", userData.user.id);
-
-  // Проверяем сессию ПЕРЕД вызовом resolveRedirectPathWithPreferredRole
-  const { data: sessionCheck } = await supabase.auth.getSession();
-  console.log("[DEBUG] sessionCheck before redirect:", {
-    hasSession: !!sessionCheck.session,
-    userId: sessionCheck.session?.user?.id
-  });
-
-  const { redirectPath } = await resolveRedirectPathWithPreferredRole(
-    preferredRole,
-  );
-
-  return {
-    status: "success",
-    redirectPath,
-  };
-}
 
 export async function requestOtpAction(
   _prevState: AuthActionState | undefined,
@@ -313,6 +238,7 @@ export async function requestOtpAction(
   const identity = resolveIdentity(formData.get("identity"));
   const preferredRole = normalizeRole(formData.get("targetRole"));
   if (!identity || identity.type !== "email") {
+    console.log("[LOGIN ERROR] Неверный email адрес", { identity: formData.get("identity") });
     return {
       status: "error",
       message: "Введите корректный email адрес для входа.",
@@ -320,7 +246,23 @@ export async function requestOtpAction(
     };
   }
 
-  return quickPasswordSignIn(identity, preferredRole);
+  console.log("[LOGIN] Запуск быстрого входа по паролю", { email: identity.value, role: preferredRole });
+  try {
+    const result = await quickPasswordSignIn(identity, preferredRole);
+    if (result.status === "success") {
+      console.log("[LOGIN SUCCESS] Успешный вход", { email: identity.value, role: preferredRole, redirectPath: result.redirectPath });
+    } else {
+      console.log("[LOGIN ERROR] Ошибка аутентификации", { email: identity.value, role: preferredRole, errorCode: result.errorCode, message: result.message });
+    }
+    return result;
+  } catch (error) {
+    console.error("[LOGIN ERROR] Неожиданная ошибка в requestOtpAction", error);
+    return {
+      status: "error",
+      message: "Произошла неожиданная ошибка при входе.",
+      errorCode: "unexpected_error",
+    };
+  }
 }
 
 export async function verifyOtpAction(

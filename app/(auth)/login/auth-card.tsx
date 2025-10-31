@@ -185,6 +185,7 @@ export function AuthCard() {
         type="submit"
         className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-70 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
         disabled={submitDisabled}
+        onClick={() => console.log("[LOGIN] Начало процесса входа", { identity: identityValue, role: targetRoleValue })}
       >
         {pending ? (
           <>

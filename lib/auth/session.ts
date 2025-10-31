@@ -124,19 +124,29 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const user = userData.user;
   if (!user) {
+    console.log("[auth] no user found in session");
     return null;
   }
+
+  console.log("[auth] user found:", user.id, user.email);
 
   // Getting session separately for additional information
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData.session ?? null;
 
+  console.log("[auth] session found:", !!session);
+
   const metadataRoles = extractRolesFromUserMetadata(user);
+
+  console.log("[auth] metadata roles:", metadataRoles);
 
   const [profile, rolesFromTable] = await Promise.all([
     fetchProfile(supabase, user.id),
     fetchRoles(supabase, user.id),
   ]);
+
+  console.log("[auth] profile loaded:", !!profile);
+  console.log("[auth] roles from table:", rolesFromTable);
 
   const roles = (rolesFromTable.length ? rolesFromTable : metadataRoles).filter(
     (role, index, array) => array.indexOf(role) === index,
@@ -144,6 +154,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const primaryRole = resolvePrimaryRole(
     roles.length ? roles : metadataRoles,
   );
+
+  console.log("[auth] final roles:", roles, "primary:", primaryRole);
 
   return {
     session,
