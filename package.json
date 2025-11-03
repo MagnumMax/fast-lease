@@ -11,13 +11,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest --run",
-    "sync:vehicle-images": "ts-node scripts/sync_vehicle_images.ts"
+    "sync:vehicle-images": "ts-node scripts/sync_vehicle_images.ts",
+    "ingest:deals": "node scripts/ingest_local_deals.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@supabase/ssr": "^0.7.0",
+    "@google/generative-ai": "^0.5.0",
     "@supabase/supabase-js": "^2.74.0",
     "chart.js": "^4.5.0",
     "class-variance-authority": "^0.7.1",
@@ -31,6 +33,7 @@
     "sortablejs": "^1.15.6",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^11.0.2",
     "yaml": "^2.7.0",
     "zod": "^3.25.76"
   },

@@ -78,7 +78,6 @@ export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, s
         <CardHeader>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
-              <CardDescription>Автомобиль</CardDescription>
               <CardTitle className="text-2xl font-semibold tracking-tight">{profile.heading}</CardTitle>
               <p className="text-sm text-muted-foreground">{profile.subtitle}</p>
             </div>
@@ -146,99 +145,69 @@ export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, s
                 </div>
               ) : null}
 
-              <div className="rounded-2xl border border-border bg-background/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  Краткая сводка
-                </p>
-                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                  <li>Последнее обновление профиля: <span className="text-foreground">{profile.specGroups.find((group) => group.title === "Учёт")?.specs.find((spec) => spec.label === "Обновлено")?.value ?? "—"}</span></li>
-                  {profile.features?.length ? (
-                    <li>
-                      Особенности: <span className="text-foreground">{profile.features.slice(0, 2).join(", ")}{profile.features.length > 2 ? "…" : ""}</span>
-                    </li>
-                  ) : null}
-                </ul>
-              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {activeDeal ? (
-        <Card className="bg-card/60 backdrop-blur">
-          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardDescription>Текущая сделка</CardDescription>
-              <CardTitle>{activeDeal.number ?? "Без номера"}</CardTitle>
-            </div>
-            {activeDeal.statusLabel ? (
-              <Badge
-                variant="outline"
-                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${resolveToneClass(activeDeal.statusTone ?? undefined)}`}
-              >
-                {activeDeal.statusLabel}
-              </Badge>
-            ) : null}
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <dl className="grid gap-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2 whitespace-nowrap text-foreground">
-                <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Платёж</dt>
-                <dd className="text-sm font-semibold text-foreground">
-                  {activeDeal.monthlyLeaseRate ?? activeDeal.monthlyPayment ?? "—"}
-                </dd>
-              </div>
-              {activeDeal.monthlyLeaseRate && activeDeal.monthlyPayment && activeDeal.monthlyLeaseRate !== activeDeal.monthlyPayment ? (
-                <div className="flex items-center gap-2 whitespace-nowrap">
-                  <dt className="text-xs uppercase tracking-[0.2em]">Оплата</dt>
-                  <dd className="text-sm font-medium text-foreground">{activeDeal.monthlyPayment}</dd>
-                </div>
-              ) : null}
-              {activeDeal.status ? (
-                <div className="flex items-center gap-2 whitespace-nowrap">
-                  <dt className="text-xs uppercase tracking-[0.2em]">Статус</dt>
-                  <dd className="text-sm text-foreground">{activeDeal.status}</dd>
-                </div>
-              ) : null}
-            </dl>
-            {activeDeal.href ? (
-              <Button asChild size="sm" variant="outline" className="rounded-xl">
-                <Link href={activeDeal.href}>Открыть сделку</Link>
-              </Button>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
 
       <div className="grid gap-4 xl:grid-cols-2">
-        {profile.specGroups.map((group) => (
-          <Card key={group.title} className="bg-card/60 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">{group.title}</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Подробности из Supabase
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {group.specs.map((spec) => (
-                  <div key={`${group.title}-${spec.label}`} className="rounded-lg border border-border/60 bg-background/50 p-3">
-                    <dt className="text-xs font-medium text-muted-foreground">{spec.label}</dt>
-                    <dd className="mt-1 text-sm font-semibold text-foreground">{spec.value}</dd>
+        {profile.specGroups
+          .filter((group) => group.title !== "Учёт")
+          .map((group) => (
+            <Card key={group.title} className="bg-card/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold">{group.title}</CardTitle>
+                {group.title === "Основная информация" && (
+                  <div className="mt-2">
+                    <p className="text-sm font-medium text-foreground">{profile.heading}</p>
                   </div>
-                ))}
-              </dl>
-            </CardContent>
-          </Card>
-        ))}
+                )}
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  {group.specs.map((spec) => {
+                    // If this is the status spec in Основная информация and there's an active deal, add deal number and link
+                    if (group.title === "Основная информация" && spec.label === "Статус" && activeDeal) {
+                      return (
+                        <div key={`${group.title}-${spec.label}`} className="rounded-lg border border-border/60 bg-background/50 p-3">
+                          <dt className="text-xs font-medium text-muted-foreground">{spec.label}</dt>
+                          <dd className="mt-1 text-sm font-semibold text-foreground">
+                            {spec.value}
+                            {activeDeal.number && (
+                              <>
+                                <br />
+                                <span className="text-xs text-muted-foreground">Сделка: </span>
+                                {activeDeal.href ? (
+                                  <Link href={activeDeal.href} className="text-primary hover:underline">
+                                    {activeDeal.number}
+                                  </Link>
+                                ) : (
+                                  <span className="text-primary">{activeDeal.number}</span>
+                                )}
+                              </>
+                            )}
+                          </dd>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div key={`${group.title}-${spec.label}`} className="rounded-lg border border-border/60 bg-background/50 p-3">
+                        <dt className="text-xs font-medium text-muted-foreground">{spec.label}</dt>
+                        <dd className="mt-1 text-sm font-semibold text-foreground">{spec.value}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              </CardContent>
+            </Card>
+          ))}
 
         {profile.features?.length ? (
           <Card className="bg-card/60 backdrop-blur">
             <CardHeader>
               <CardTitle className="text-base font-semibold">Особенности</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Из поля features в Supabase
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm text-foreground">
@@ -260,7 +229,6 @@ export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, s
             <CardDescription>Документы</CardDescription>
             <CardTitle>Флит‑архив</CardTitle>
           </div>
-          <p className="text-xs text-muted-foreground">Из таблицы deal_documents</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {documents.length === 0 ? (
@@ -308,7 +276,6 @@ export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, s
               <CardDescription>Обслуживание</CardDescription>
               <CardTitle>История операций</CardTitle>
             </div>
-            <p className="text-xs text-muted-foreground">Из таблицы vehicle_services</p>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

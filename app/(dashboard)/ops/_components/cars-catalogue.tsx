@@ -347,7 +347,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 <TableHead>Пробег</TableHead>
                 <TableHead>Стоимость</TableHead>
                 <TableHead>Активная сделка</TableHead>
-                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -355,7 +354,16 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 currentCars.map((car) => (
                   <TableRow key={car.id}>
                     <TableCell className="space-y-1">
-                      <div className="text-sm font-semibold text-foreground">{car.name}</div>
+                      {car.detailHref ? (
+                        <Link
+                          href={car.detailHref}
+                          className="text-sm font-semibold text-foreground hover:text-primary"
+                        >
+                          {car.name}
+                        </Link>
+                      ) : (
+                        <div className="text-sm font-semibold text-foreground">{car.name}</div>
+                      )}
                       <div className="text-xs text-muted-foreground">
                         VIN: {car.vin}
                         {car.variant ? ` • ${car.variant}` : ""}
@@ -374,40 +382,26 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                     <TableCell className="text-sm">
                       {car.activeDealNumber ? (
                         <div className="flex flex-col gap-1">
-                          <span className="text-sm font-medium text-foreground">{car.activeDealNumber}</span>
-                          {car.activeDealStatusLabel ? (
-                            <Badge
-                              variant="outline"
-                              className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.activeDealStatusTone ?? "muted")}`}
-                            >
-                              {car.activeDealStatusLabel}
-                            </Badge>
-                          ) : null}
                           {car.activeDealHref ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                              className="h-auto rounded-lg px-2 py-1 text-xs text-primary hover:text-primary/80"
+                            <Link
+                              href={car.activeDealHref}
+                              className="text-sm font-medium text-primary hover:text-primary/80"
                             >
-                              <Link href={car.activeDealHref}>Открыть сделку</Link>
-                            </Button>
-                          ) : null}
+                              {car.activeDealNumber}
+                            </Link>
+                          ) : (
+                            <span className="text-sm font-medium text-foreground">{car.activeDealNumber}</span>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">Нет активной сделки</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild className="rounded-lg border border-border">
-                        <Link href={car.detailHref}>Открыть</Link>
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
                     Автомобили не найдены. Измените фильтры или добавьте новый автомобиль.
                   </TableCell>
                 </TableRow>
@@ -454,7 +448,16 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
             <CardContent className="space-y-3 p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-foreground">{car.name}</p>
+                  {car.detailHref ? (
+                    <Link
+                      href={car.detailHref}
+                      className="text-sm font-semibold text-foreground hover:text-primary"
+                    >
+                      {car.name}
+                    </Link>
+                  ) : (
+                    <p className="text-sm font-semibold text-foreground">{car.name}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">VIN: {car.vin}</p>
                 </div>
                 <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.statusTone)}`}>
@@ -469,34 +472,22 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 <span className="col-span-2">
                   {car.activeDealNumber ? (
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium text-foreground">{car.activeDealNumber}</span>
-                      {car.activeDealStatusLabel ? (
-                        <Badge
-                          variant="outline"
-                          className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.activeDealStatusTone ?? "muted")}`}
-                        >
-                          {car.activeDealStatusLabel}
-                        </Badge>
-                      ) : null}
                       {car.activeDealHref ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          asChild
-                          className="h-auto rounded-lg px-2 py-1 text-xs text-primary hover:text-primary/80"
+                        <Link
+                          href={car.activeDealHref}
+                          className="font-medium text-primary hover:text-primary/80"
                         >
-                          <Link href={car.activeDealHref}>Открыть сделку</Link>
-                        </Button>
-                      ) : null}
+                          {car.activeDealNumber}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-foreground">{car.activeDealNumber}</span>
+                      )}
                     </div>
                   ) : (
                     <span className="text-muted-foreground">Нет активной сделки</span>
                   )}
                 </span>
               </div>
-              <Button variant="ghost" size="sm" asChild className="rounded-xl border border-border">
-                <Link href={car.detailHref}>Открыть профиль</Link>
-              </Button>
             </CardContent>
           </Card>
         )) : (

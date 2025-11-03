@@ -153,33 +153,28 @@ export function ClientDetailView({
         <ClientEditDialog profile={profile} onSubmit={updateOperationsClient} />
       </div>
 
-      <SectionCard title="Основная информация">
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <p className="text-2xl font-semibold text-foreground">{profile.fullName}</p>
-            <p className="text-sm text-muted-foreground">
-              UID: {profile.userId.slice(0, 8)} • Клиент с {profile.memberSince ?? "неизвестно"}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={getStatusBadgeVariant(profile.status)} className="rounded-lg">
-              {profile.status.toUpperCase()}
-            </Badge>
-            {profile.segment ? (
-              <Badge variant="outline" className="rounded-lg uppercase tracking-wide">
-                {profile.segment}
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={getStatusBadgeVariant(profile.status)} className="rounded-lg">
+                {profile.status.toUpperCase()}
               </Badge>
-            ) : null}
-            {profile.tags?.map((tag) => (
-              <Badge key={tag} variant="secondary" className="rounded-lg">
-                {tag}
-              </Badge>
-            ))}
+              {profile.segment ? (
+                <Badge variant="outline" className="rounded-lg uppercase tracking-wide">
+                  {profile.segment}
+                </Badge>
+              ) : null}
+              {profile.tags?.map((tag) => (
+                <Badge key={tag} variant="secondary" className="rounded-lg">
+                  {tag}
+                </Badge>
+              ))}
+            </div>
           </div>
         </div>
-      </SectionCard>
 
-      <SectionCard title="Контактная информация">
         <div className="grid gap-4 sm:grid-cols-2">
           <InfoCell label="Email">
             {profile.email ? (
@@ -208,15 +203,14 @@ export function ClientDetailView({
             )}
           </InfoCell>
           <InfoCell label="Адрес проживания">{addressDisplay}</InfoCell>
-          <InfoCell label="Последний вход">{formatDateDisplay(profile.lastLoginAt, true)}</InfoCell>
         </div>
-      </SectionCard>
+      </div>
+
 
       <SectionCard title="Документы и идентификация">
         <div className="grid gap-4 sm:grid-cols-2">
           <InfoCell label="Emirates ID">{profile.emiratesId ?? "—"}</InfoCell>
           <InfoCell label="Паспорт">{profile.passportNumber ?? "—"}</InfoCell>
-          <InfoCell label="Национальность">{profile.nationality ?? "—"}</InfoCell>
           <InfoCell label="Статус резидентства">{profile.residencyStatus ?? "—"}</InfoCell>
           <InfoCell label="Дата рождения">{formatDateDisplay(profile.dateOfBirth)}</InfoCell>
         </div>

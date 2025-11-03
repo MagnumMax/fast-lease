@@ -1,0 +1,140 @@
+# Конфигурация импорта PDF из локальной папки
+local_root: "datasets/deals"
+skip_processed: false
+
+supabase:
+  url_env: "NEXT_PUBLIC_SUPABASE_URL"
+  service_role_key_env: "SUPABASE_SERVICE_ROLE_KEY"
+  storage_bucket: "deals"
+  storage_prefix: "documents"
+
+gemini:
+  enabled: true
+  api_key_env: "GEMINI_API_KEY"
+  model: 'gemini-2.5-pro'
+  temperature: 0.2
+  top_p: 0.95
+  top_k: 32
+  max_output_tokens: 8192
+  system_instruction: |
+    You are a data extraction assistant for the FastLease leasing platform.
+    You must return factual information present in the input. If a field cannot be
+    determined, output null for that field.
+  document_prompt_template: |
+    You are a leasing-document extraction assistant. Analyse the provided PDF file and respond strictly
+    with valid JSON matching the schema below. Do not include explanations or markdown.
+
+    Schema (all keys required, use null when data is missing):
+    {
+      "document_type": string|null,
+      "title": string|null,
+      "parties": array<object>|null,
+      "amounts": array<object>|null,
+      "dates": array<object>|null,
+      "summary": string|null,
+      "fields": array<object>|null
+    }
+
+    Each object inside arrays may contain any relevant key/value pairs extracted from the document.
+
+    Deal folder: {deal_folder}
+    Document name: {document_name}
+    Created at: {created_time}
+    Modified at: {modified_time}
+  prompt_template: |
+    You are an assistant that aggregates structured leasing data for the FastLease platform. Use only the
+    provided document summaries and recognised JSON. Respond strictly with valid JSON matching the schema below.
+    Do not include explanations, markdown, or additional fields.
+
+    **COMPREHENSIVE DATA SCHEMA FOR FASTLEASE PLATFORM:**
+
+    **CLIENT DATA (client object):**
+    - external_id: string|null
+    - full_name: string|null
+    - legal_name: string|null (for legal entities)
+    - resident_status: string|null (citizen/resident/non-resident)
+    - nationality: string|null
+    - email: string|null
+    - phone: string|null
+    - address: object|null with street, city, emirate, postal_code
+    - company: object|null with industry, employee_count, annual_revenue, contact_person
+    - documents: array|null of document references
+    - emirates_id: string|null
+    - date_of_birth: string|null
+    - occupation: string|null
+    - employer: string|null
+    - driver_license: string|null
+
+    **VEHICLE DATA (vehicle object):**
+    - external_id: string|null
+    - vin: string|null
+    - make: string|null
+    - model: string|null
+    - variant: string|null
+    - year: number|null
+    - body_type: string|null
+    - mileage: number|null
+    - engine: object|null with capacity, fuel_type, transmission
+    - colors: object|null with exterior, interior
+    - features: array|null of strings
+    - valuation: object|null with purchase_price, current_value, residual_value
+    - license_plate: string|null
+    - modifications: array|null of modifications
+
+    **DEAL DATA (deal object):**
+    - external_id: string|null
+    - client_external_id: string|null
+    - vehicle_external_id: string|null
+    - status: string|null
+    - contract_number: string|null
+    - contract_date: string|null
+    - lease_term_months: number|null
+    - mileage_allowed: number|null
+    - services_included: array|null
+    - delivery_date: string|null
+    - delivery_location: string|null
+    - return_conditions: string|null
+    - notes: string|null
+    - lease_start: string|null
+    - lease_end: string|null
+    - monthly_payment: number|null
+    - down_payment: number|null
+    - vehicle_purchase_price: number|null
+    - total_lease_value: number|null
+    - interest_rate: number|null
+    - balloon_payment: number|null
+    - currency: string|null
+    - lessor: string|null
+    - investor: string|null
+    - seller: string|null
+
+    **FINANCIAL DATA (deal object extension):**
+    - initial_payment: number|null
+    - interest_rate: number|null
+    - fees: object|null with registration, insurance, maintenance, other
+    - payment_schedule: array|null of {due_date, amount}
+    - bank_details: object|null
+
+    **DOCUMENTS DATA (documents array):**
+    Each document object should include:
+    - filename: string
+    - document_type: string|null
+    - title: string|null
+    - summary: string|null
+    - parties: array|null
+    - amounts: array|null
+    - dates: array|null
+
+    **IMPORTANT INSTRUCTIONS:**
+    1. Extract ALL possible data from the documents - fill in as many fields as possible
+    2. Use null only when data is genuinely unavailable
+    3. For financial amounts, specify currency (AED, USD, EUR) when known
+    4. For dates, use ISO format (YYYY-MM-DD) when possible
+    5. For names and text fields, preserve original language and formatting
+    6. Cross-reference data between documents to fill gaps
+
+    Deal folder: {deal_folder}
+    Documents summary:
+    {documents_summary}
+    Recognised documents (JSON):
+    {documents_analysis}

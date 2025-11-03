@@ -22,6 +22,7 @@
 
 # misc
 .DS_Store
+/.venv
 *.pem
 
 # debug
@@ -39,3 +40,332 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+datasets/aggregated-38321982.json
+datasets/Sunday Car Rental L.L.C. – Register of Agreements.-20251102T024135Z-1-001.zip
+datasets/deals/Виды сделок и требования к докам.docx
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/1. 8BA Motors TL-25.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/2. Tax Group Registration Certifiate 8BA MOTORS & AUCTION.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/3. Tax Invoice.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/4. Inspection Certificate brabus .pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/5. Vehicle Information .pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/6. Authorization Letter .pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/7. Vehicle sales agreement.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/8. Sale confirmation letter.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/9. Buyer (G800 BRABUS 2022 (6982)).pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/10. Договор_аренды.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/11. Приложения А.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/12. Приложения B.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/13. Предварительный договор купли-продажи.pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/14. SUNDAY CAR RENTAL L.L.C. - 1 Policy (G63).pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/15. GPS certificate - 6982(SUNDAY RENTAL).pdf
+datasets/deals/#1 G800 BRABUS 2022 (6982) 14.04.2025/INVESTMENT_AGREEMENT_WITH_PROFIT_SHARING_Altair_Sunday_fully_signed.pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/1. 8BA Motors TL-25.pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/3. photo_2025-07-08 12.22.22.jpeg
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/4. Inspection Certificate (77).pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/5.1 photo_2025-07-08 12.32.08.jpeg
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/5.2 photo_2025-07-08 12.32.05.jpeg
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/6. Authorization letter Owner to 8BA Motors S580 (1).pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/7. Vehicle sales agreement MB S580 (8BA-Sunday) (1).pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/8. Assign letter S580 8BA Motors - 8BA  (1).pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/9. Buyer MB S580.pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/10. 1229_001_merged.pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/11. Sunday Car Rental mercedes 2 (1).pdf
+datasets/deals/#10 - MB S580 Maybach 2022 (4874)/12. 4874 (SUNDAY CAR RENTAL).pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/1. 8BA Motors TL-25.pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/3. Tax Invoice.pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/4. Inspection Certificate (Passing).pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/5. Vehicle Information (MB G63 Gold 2025 (1051)).pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/6. Authorization_Letter_(MB G63 Gold 2025 (1051)).pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/7. Dealer Vehicle Purchase Agreement (MB G63 Gold 2025 (1051))_signed.pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/9. Buyer (MB G63 Gold 2025 (1051) 15.09.25).pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/10-12. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_MB_G63_Gold_2025_1051_Schedule A,B_signed.pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/13. Preliminary_Vehicle_Purchase_Agreement_MB_G63_Gold_2025_1051_signed.pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/14. Mercedes G63 Gold Black Insurance EE38440_Sunday.pdf
+datasets/deals/#11-2 Mercedes G63 Gold 2025 (1051)/15. Mercedes G63 Gold Black GPS EE38440_Sunday.pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/1. photo_2025-07-04 17.41.24.jpeg
+datasets/deals/#12 Brabus G800 2022 (5386)/3. Invoice EST1-1432 - NEW.pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/4. Inspection Certificate (88).pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/5.1 Mulkia photo_2025-07-04 17.32.15.jpeg
+datasets/deals/#12 Brabus G800 2022 (5386)/5.2 Mulkia photo_2025-07-04 17.32.19.jpeg
+datasets/deals/#12 Brabus G800 2022 (5386)/6. Authorization Letter.pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/7. VEHICLE PURCHASE AGREEMENT (1) (1).pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/9. Amir90khedmati.pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/10. Vehicle Purchase Agreement (2).pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/11. Sunday Car Rental L.l.c 2.pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/12. 5386(SUNDAY RENTAL).pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/13. Addendum 1 по досрочному выкупу.pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/14. 0723_001.pdf
+datasets/deals/#12 Brabus G800 2022 (5386)/15. AK7 Tax invoice.pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/1. 8BA Motors TL-25.pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/3. Tax Invoice.jpg
+datasets/deals/#12 MB G63 Black 2022 (1508)/4. Inspection Certificate-7 (1).pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/5. Mulkia.pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/6. Authorization_Letter_(MB G63 Black 2022 (1508)).pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/7. Dealer Vehicle Purchase Agreement (MB G63 Black 2022 (1508)).pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/10. Vehicle_Purchase_Agreement_MB_G63_Black_2022_1508_Signed_Ansar.pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/11. Mercedes G63 Gold Black Insurance EE38439_Sunday.pdf
+datasets/deals/#12 MB G63 Black 2022 (1508)/12. Mercedes G63 Gold Black GPS EE38439_Sunday.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/1. 8BA Motors TL-25.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/3. Tax Invoice.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/4. Inspection Certificate (91).pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/5. Vehicle Information.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/6. Authorization Letter MB GLS600.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/7. Vehicle Purchase agreement MB GLS600 (8BA-Sunday).pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/8. Assign Letter MB GLS600.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/9. Buyer MB GLS600.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/10. Long term rental agreement GLS 600 (5609)_with Schedule A,B.pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/11. Sunday Car Rental L.l.c 22 (1).pdf
+datasets/deals/#13 Mercedes GLS 600 (5609)/12. 5609 (SUNDAY CAR RENTAL).pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/1. 8BA Motors TL-25.pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/3. Tax Invoice.pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/4. Inspection Certificate (Passing).pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/5. Vehicle Information (MB G63 2024 Yellow (0247)).pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/6. Authorization_Letter_(MB G63 2024 Yellow (0247)).pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/7. Dealer_Vehicle_Purchase_Agreement_MB_G63_2024_Yellow_0247.pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/9. Buyer (MB G63 2024 Yellow (0247)).pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/10-12. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_MB_G63_2024_Yellow_0247_Schedule A,B.pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/13. Preliminary_Vehicle_Purchase_Agreement_MB_G63_2024_Yellow_0247.pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/14. MOT_TPL_SCH_2527166_0 (1).pdf
+datasets/deals/#14 MB G63 2024 Yellow (0247)/15. T 87777(SUNDAY RENTAL).pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/1. Vehicle Possession Certificate (G63 2025 white) .pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/2_INVESTMENT_AGREEMENT_WITH_PROFIT_SHARING_Altair_Sunday_fully_signed.pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/2. Inspection Certificate (65).pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/3. ID (Продавца), электронная почта, номер мобильного телефона.docx
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/4. Invoice от физического лица на автомобиль.pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/5. Seyed Ekram_ Vehicle Purchase agreemnent.pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/6. ID клиента, права клиента, электронная почта, номер мобильного телефона.docx
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/7. Long Term Rental Vehicle Agreement.pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/8. A Schedule .pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/9. B Schedule .pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/10. Preliminary vehicle Purchase Agreement.pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/11. Страховка 2514_001.pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/12. GPS - 5333 (SUNDAY CAR RENTAL).pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/13. Vehicle information (Mulkia).pdf
+datasets/deals/#2 MB G63 2025 (5333) 22.04.25/Add Agreement 1_to Invest Agr_Altair - Sunday (2).pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/1. Mulkia.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/2. Passing .pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/3. ID Продавца, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/4.Cadillac Escalade TAX INVOICE 06.05.25. (1).pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/5_Sohail_Ahmed_Abdul_Rasheed_Vehicle_Purchase_Agreement_Cadillac.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/6. ID клиента, права клиента, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/7. Договор долгосрочной аренды на клиента.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/8. Приложение A к договору долгосрочной аренды.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/9. Приложение Б к договору долгосрочной аренды.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/10. Предварительный договор купли-продажи.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/11. Страховка-Cadillac Escalade SP Black Insurance BB90362_SUNDAY.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/12. GPS - Cadillac Escalade SP Black GPS BB90362_SUNDAY.pdf
+datasets/deals/#3 Cadillac Escalade SP 2023 (6864)/13. Vehicle Information.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/1. Mulkia.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/2. Inspection Certificate (67).pdf
+datasets/deals/#4 BMW M8 2022 (2550)/3. ID Продавца, электронная почта, номер мобильного телефона.docx
+datasets/deals/#4 BMW M8 2022 (2550)/4.BMW M8 TAX INVOICE 06.05.25 (1).pdf
+datasets/deals/#4 BMW M8 2022 (2550)/5. Vehicle agreement with seller.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/6. ID клиента, права клиента, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/7. Leonid_Kravtsov_Long_term_rental_agreement_sample_BMW_M8_3.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/8. Leonid Kravtsov _SCHEDULE A BMW M8 (1).pdf
+datasets/deals/#4 BMW M8 2022 (2550)/9. Leonid_Kravtsov_Schedule_B_АКТ_ПРИЕМА_ПЕРЕДАЧИ_BMW_M8_2.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/10. Leonid_Kravtsov_Предварительный_договор_купли_продажи_BMW_M8.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/11. BMW M8 Carbon Black Blue Insurance U86236_SUNDAY.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/12. BMW_M8_Blue_Black_Carbon_GPS_Chassis_2550_SundayEXP_05_09_2026.pdf
+datasets/deals/#4 BMW M8 2022 (2550)/13. Vehicle Information.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/1. Blackline ENBD Details (1).pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/1. Blackline Trade License .pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/3. Tax invoice.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/4. Inspection Certificate (66).pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/5. Vehicle Possession Certificate.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/6. Contract с продавцом .pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/7. ID клиента, права клиента, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/7. Лицензия компании.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/8.Договор купли-продажи с рассрочкой оплат -Cayman GT4 RS.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/9. Porsche_Cayman_GT4R_Carbon_Grey_Black_Insurance_D41949_SUNDAY.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/10. Porsche Cayman GT4R Carbon Grey Black GPS D41949_SUNDAY.pdf
+datasets/deals/#5 Porsche Cayman GT4 RS 2025 (1082)/11. Vehicle Information.pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/1. Mulkia.pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/2. Inspection Certificate (73).pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/3. ID клиента (Продавца), электронная почта, номер мобильного телефона.pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/4. Invoice от физического лица на автомобиль.pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/5.Lamborghini URUS SELLER  Vehicle Purchase Agreement (1).pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/6. ID клиента, права клиента, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/7. Lamborghini URUS CLIENT .Vehicle Purchase Agreement (1).pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/8. Страховка.pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/9. GPS -6681(SUNDAY RENTAL).pdf
+datasets/deals/#6 Lamborghini Urus 2022 (6681)/10. Vehicle Information.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/1. Vehicle Possession Certificate.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/2. Inspection Certificate (72).pdf
+datasets/deals/#7 BMW M4 2024 (6847)/3. ID клиента (Продавца), электронная почта, номер мобильного телефона.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/4. Maher Mohammad Kaddoura TAX INVOICE 150525_250513_133401.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/5. Maher_Mohammad_Kaddoura_Vehicle_Purchase_Agreeme_250513_132842.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/6. ID клиента, права клиента, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/7._Sagar_Panditrao_Long_term_rental_agreement_sample_BMW_M4_Sign.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/8. Sagar Panditrao_SCHEDULE A BMW M4 Sign.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/9. Sagar_Panditrao_Schedule_B_АКТ_ПРИЕМА_ПЕРЕДАЧИ_BMW_M4_Signn.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/10. Sagar_Panditrao_Предварительный_договор_купли_продажи_BMW_M4Ssign.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/11. BMW M4 Grey Insurance Chassis 6847_SUNDAY .pdf
+datasets/deals/#7 BMW M4 2024 (6847)/12. BMW M4 Grey GPS Chassis 6847_SUNDAY.pdf
+datasets/deals/#7 BMW M4 2024 (6847)/13. Vehicle Information.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/1. Лицензия компании, указание реквизитов банковского счета, контактного адреса электронной почты и номера телефона..pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/2. Receipte Voucher.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/5. Vehicle Possession Certificate.jpg
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/6. Agreemenent with seller.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/6. VPA Seller.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/7. ID клиента, права клиента, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/8. LTR VA Porsche 2022.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/9. Schedule A Matteo.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/10. Schedule B Matteo.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/11. PVPA Matteo.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/12. 0147_001 (1).pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/13. my-certificate 40.pdf
+datasets/deals/#8 Porsche 911 Turbo S 2022 (4239)/14. Vehicle Information.pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/1. 8BA MOTORS L.L.C.pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/3. AED account confirmation letter (1).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/3. ID Продавца, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/3. Tax Invoice.jpg
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/4. Inspection Certificate (78).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/5. Mulkia.pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/6. Authorization Letter Laborghini Urus (9647).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/7. Vehicle sales Agreement Lamborghini Urus (9647).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/8. Assigning Letter Lamborghini Urus (9647).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/9. ID клиента, права клиента, электронная почта, номер мобильного телефона.pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/10. LTRVA Lamborghini Urus (9647).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/11. Schedule A Laborghini Urus (9647).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/12. Schedule B Laborghini Urus (9647).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/13. Preliminary vehicle purchase agreement  Urus(9647).pdf
+datasets/deals/#9 Lamborghini Urus Perf 2024 (9647)/14. Страховка - ZPBEC3ZL6RLA29647 2.pdf
+datasets/deals/BMW 420i 2024 China (9232)/1. WBA11AP01RCP19232.pdf
+datasets/deals/BMW 420i 2024 China (9232)/2. Inspection Certificate (BMW 420i 2024 China (9232)).pdf
+datasets/deals/BMW 420i 2024 China (9232)/3. ID (Продавца), электронная почта, номер мобильного телефона (BMW 420i 2024 China (9232)).pdf
+datasets/deals/BMW 420i 2024 China (9232)/5. Vehicle Purchase Agreement (BMW 420i 2024 China (9232)).pdf
+datasets/deals/BMW 420i 2024 China (9232)/6. ID клиента, права клиента, электронная почта, номер мобильного телефона (BMW 420i 2024 China (9232)).pdf
+datasets/deals/BMW 420i 2024 China (9232)/7-9. Long Term Rental Vehicle Agreement_Schedule A, B (BMW 420i 2024 China (9232)).pdf
+datasets/deals/BMW 420i 2024 China (9232)/10. Preliminary Vehicle Purchase Agreement (BMW 420i 2024 China (9232))_.pdf
+datasets/deals/BMW 420i 2024 China (9232)/11. Страховка (BMW 420i 2024 China (9232)).pdf
+datasets/deals/BMW 420i 2024 China (9232)/12. GPS (BMW 420i 2024 China (9232)).pdf
+datasets/deals/BMW 420i 2024 China (9232)/13. Vehicle Information (BMW 420i 2024 China (9232)).pdf
+datasets/deals/Cad Esc 2022 (8169)/1. Vehicle Possession Certificate (Cad Esc 2022 (8169) .jpg
+datasets/deals/Cad Esc 2022 (8169)/3. ID (Продавца), электронная почта, номер мобильного телефона (Cad Esc 2022 (8169)).pdf
+datasets/deals/Cad Esc 2022 (8169)/5. Vehicle Purchase Agreement (Cad Esc 2022 (8169)).pdf
+datasets/deals/Cad Esc 2022 (8169)/6. ID клиента, права клиента, электронная почта, номер мобильного телефона (Cad Esc 2022 (8169)).pdf
+datasets/deals/Cad Esc 2022 (8169)/7-9. Long Term Rental Vehicle Agreement_Schedule A, B (Cad Esc 2022 (8169)).pdf
+datasets/deals/Cad Esc 2022 (8169)/10. Preliminary Vehicle Purchase Agreement (Cad Esc 2022 (8169)).pdf
+datasets/deals/Cad Esc 2022 (8169)/10.1. Addendum 1 to LONG TERM RENTAL VEHICLE AGREEMENT(Cad Esc 2022 (8169)).pdf
+datasets/deals/Cad Esc 2022 (8169)/11. Страховка.pdf
+datasets/deals/Cad Esc 2022 (8169)/12. GPS - 8169(SUNDAY RENTAL).pdf
+datasets/deals/Cad Esc 2022 (8169)/13. Vehicle Information (Cad Esc 2022 (8169)).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/1. Vehicle Possession Certificate Chevrolet Corvette 2022 (3280).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/2. ID продавца, электронная почта, номер мобильного телефона Chevrolet Corvette 2022 (3280).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/3. Vehicle Purchase Agreement (Chevrolet Corvette 2022 (3280)).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/4. ID клиента, права клиента, электронная почта, номер мобильного телефона (Chevrolet Corvette 2022 (3280)).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/5.-7. Long Term Rental Vehicle Agreement_Schedule A, B (Chevrolet Corvette 2022 (3280)).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/8. Vehicle Purchase Agreement_(Chevrolet Corvette 2022 (3280)).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/9. MEMORANDUM OF UNDERSTANDING RENTAL (Chevrolet Corvette 2022 (3280)).pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/10. Insurance (Chevrolet Corvette 2022 (3280))pdf.pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/11. GPS ((Chevrolet Corvette 2022 (3280)) SUNDAY RENTAL.pdf
+datasets/deals/Chevrolet Corvette 2022 (3280)/12. Vehicle Information (Chevrolet Corvette 2022 (3280)).pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/1. EXOTIC CARS (LLC).pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/2. Квотейшн.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/3.Inspection Certificate.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/4_Dealer_Vehicle_Purchase_Agreement_LAMBORGHINI_HURACAN_GREEN_2023.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/5.Vehicle Information.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/6. Authorization_Letter_LAMBORGHINI_HURACAN_GREEN_2023_5219_signed.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/7. Buyer.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/8-10. LONG-TERM RENTAL VEHICLE AGREEMENT.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/11.PRELIMINARY VEHICLE PURCHASE AGREEMENT.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/12.Страховка.pdf
+datasets/deals/LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25/13. GPS_5219(SUNDAY RENTAL) (1).pdf
+datasets/deals/LOAN AGREEMENT (Aleksandr Pankratov - Sunday Car Rental LLC)/Additional Agreement 1 to Loan Agreement 01.01.2024.pdf
+datasets/deals/LOAN AGREEMENT (Aleksandr Pankratov - Sunday Car Rental LLC)/Additional Agreement 1 to Loan Agreement 01.01.2025 .pdf
+datasets/deals/LOAN AGREEMENT (Aleksandr Pankratov - Sunday Car Rental LLC)/Additional Agreement 1 to Loan Agreement 01.08.2022.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/1. 8BA Motors TL-25.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/2. Tax Invoice.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/3. Inspection Certificate_(Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/4. Vehicle Information (Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/5. Authorization Letter.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/6. Dealer Vehicle Purchase Agreement (Land Rover Vogue (0240).pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/8.-10. Long Term Rental Vehicle Agreement_Schedule A, B (Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/11. Vehicle Purchase Agreement_(Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/12. MEMORANDUM OF UNDERSTANDING RENTAL (Land Rover Vogue (0240))_new.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 19.09.2025.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 19.09.2025.pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/15. Insurance_ 0842_001 (1).pdf
+datasets/deals/Land Rover Vogue (0240)/Новый пакет документов/16. GPS - (Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/1. 8BA Motors TL-25.pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/2. Tax Invoice.pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/3. Inspection Certificate_(Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/4. Vehicle Information (Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/5. Authorization Letter.pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/6. Dealer Vehicle Purchase Agreement (Land Rover Vogue (0240).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/7. Buyer (Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/8.-10. Long Term Rental Vehicle Agreement_Schedule A, B (Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/11. Preliminary Vehicle Purchase Agreement (Land Rover Vogue (0240)).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/12. Insurance_ 0842_001 (1).pdf
+datasets/deals/Land Rover Vogue (0240)/Старый пакет документов/13. GPS - (Land Rover Vogue (0240)).pdf
+datasets/deals/MB G63 2022 (2738)/1. Apex Motors FZE_Licence, VAT Certificate, Bank account, Manager_s ID.pdf
+datasets/deals/MB G63 2022 (2738)/3. Tax Invoice_APEX MOTORS 2.pdf
+datasets/deals/MB G63 2022 (2738)/4. Inspection Certificate (Passing).pdf
+datasets/deals/MB G63 2022 (2738)/5. Vehicle Information (MB G63 2022 (2738)).pdf
+datasets/deals/MB G63 2022 (2738)/7. Dealer VEHICLE PURCHASE AGREEMENT (MB G63 2022 (2738)).pdf
+datasets/deals/MB G63 2022 (2738)/9. Buyer (MB G63 2022 (2738)).pdf
+datasets/deals/MB G63 2022 (2738)/10-12. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_(MB G63 2022 (2738))_Schedule A,B.pdf
+datasets/deals/MB G63 2022 (2738)/13. Preliminary_Vehicle_Purchase_Agreement_MB_G63_2022_2738.pdf
+datasets/deals/MB G63 2022 (2738)/14. Insurance .pdf
+datasets/deals/MB G63 2022 (2738)/15. 2738(SUNDAY RENTAL).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/1. Abu Dhabi Police(MB G63 2025 (3091) 01.12.25.pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/2. ID продавца, электронная почта, номер мобильного телефона (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/3. Vehicle Purchase Agreement (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/4. ID клиента, права клиента, электронная почта, номер мобильного телефона (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/5.-7. Long Term Rental Vehicle Agreement_Schedule A, B (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/8. Vehicle Purchase Agreement_(MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/9. MEMORANDUM OF UNDERSTANDING RENTAL (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/10.  Insurance (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/11. Inspection Certificate (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/12. GPS - (MB G63 2025 (3091) 01.12.25).pdf
+datasets/deals/MB G63 2025 (3091) 01.12.25/13. Vehicle Information (Chevrolet Corvette 2022 (3280)).pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/1. EASY CARE Docs .pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/2. Tax Invoice 8166 - Mercedes G63 Brabus.pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/3. Receipt_Receive_Payment_903,000_00_AED_Easy_Care.pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/4. Inspection Certificate.pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/5. Dealer_Vehicle_Purchase_Agreement_(MB G63 Brabus 2024 (1059) 15.11.25.pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/6. Vehicle Information.pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/7. ID клиента, права клиента, электронная почта, номер мобильного телефона ((MB G63 Brabus 2024 (1059) 15.11.25).pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/8-10. LONG-TERM RENTAL VEHICLE AGREEMENT.pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/11. Preliminary_Vehicle_Purchase_Agreement_(MB G63 Brabus 2024 (1059) 15.11.25)_signed.pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/12. GPS - 1059(SUNDAY RENTAL).pdf
+datasets/deals/MB G63 Brabus 2024 (1059) 15.11.25/13. Insurance - 0948_001.pdf
+datasets/deals/MB S63 AMG 2024 (7678)/1. Mulkia.pdf
+datasets/deals/MB S63 AMG 2024 (7678)/2. Passing (eCertificate).pdf
+datasets/deals/MB S63 AMG 2024 (7678)/3. ID (Продавца), электронная почта, номер мобильного телефона (MB S63 AMG 2024 (7678)).pdf
+datasets/deals/MB S63 AMG 2024 (7678)/5. Vehicle Purchase Agreement (MB S63 AMG 2024 (7678))_signed.pdf
+datasets/deals/MB S63 AMG 2024 (7678)/6. ID клиента, права клиента, электронная почта, номер мобильного телефона (MB S63 AMG 2024 (7678)).pdf
+datasets/deals/MB S63 AMG 2024 (7678)/7-9. Long Term Rental Vehicle Agreement_Schedule A, B (MB S63 AMG 2024 (7678)).pdf
+datasets/deals/MB S63 AMG 2024 (7678)/10. Preliminary Vehicle Purchase Agreement (MB S63 AMG 2024 (7678))_signed.pdf
+datasets/deals/MB S63 AMG 2024 (7678)/11. Страховка.pdf
+datasets/deals/MB S63 AMG 2024 (7678)/12. GPS - (MB S63 AMG 2024 (7678)).pdf
+datasets/deals/MB S63 AMG 2024 (7678)/13. Vehicle Information (MB S63 AMG 2024 (7678)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/1. 8BA Motors TL-25.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/2. Tax Invoice.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/3. Inspection Certificate.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/4. Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/5. Vehicle Information (Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/6. Authorization Letter (Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/8-10. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_(Mercedes G63 Brabus 2025 (1170))_Schedule A,B.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/11. Vehicle Purchase Agreement_(Mercedes G63 Brabus 2025 (1170))_new.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/12. MEMORANDUM OF UNDERSTANDING RENTAL (Mercedes G63 Brabus 2025 (1170))_new.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 30.09.2025_.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 30.09.2025.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/15. Страховка (Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Новый пакет документов/16. GPS - 1170(SUNDAY RENTAL).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/1. 8BA Motors TL-25.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/2. Tax Invoice.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/3. Inspection Certificate.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/4. Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/5. Vehicle Information (Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/6. Authorization Letter (Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/7. Buyer (Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/8-10. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_(Mercedes G63 Brabus 2025 (1170))_Schedule A,B.pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/11. Preliminary_Vehicle_Purchase_Agreement_(Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/12. Страховка (Mercedes G63 Brabus 2025 (1170)).pdf
+datasets/deals/Mercedes G63 Brabus 2025 (1170)/Старый пакет документов/13. 1170(SUNDAY RENTAL).pdf
+datasets/deals/RR Spectre 2024 (3802) 01.04.25/1. Termination Contract to the Vehicle Purchase Agreement dated 04.03.2025_signed.pdf
+datasets/deals/RR Spectre 2024 (3802) 01.04.25/2. Vehicle Purchase Agreement 01.10.2025 (RR Spectre 2024 (3802))_signed.pdf
