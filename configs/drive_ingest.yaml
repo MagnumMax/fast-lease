@@ -6,7 +6,7 @@ supabase:
   url_env: "NEXT_PUBLIC_SUPABASE_URL"
   service_role_key_env: "SUPABASE_SERVICE_ROLE_KEY"
   storage_bucket: "deals"
-  storage_prefix: "documents"
+  storage_prefix: "deals/documents"
 
 gemini:
   enabled: true

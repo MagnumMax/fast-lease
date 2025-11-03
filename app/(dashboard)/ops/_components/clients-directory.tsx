@@ -28,11 +28,31 @@ import {
 import { createOperationsClient } from "@/app/(dashboard)/ops/clients/actions";
 import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
 
+const CLIENT_STATUS_TONE_CLASS: Record<string, string> = {
+  success: "border-emerald-400/80 bg-emerald-500/10 text-emerald-700",
+  danger: "border-rose-400/80 bg-rose-500/10 text-rose-700",
+  muted: "border-border bg-background/60 text-muted-foreground",
+};
+
+function resolveClientStatusToneClass(status: string | undefined | null) {
+  if (!status) {
+    return CLIENT_STATUS_TONE_CLASS.muted;
+  }
+  
+  switch (status) {
+    case "Active":
+      return CLIENT_STATUS_TONE_CLASS.success;
+    case "Blocked":
+      return CLIENT_STATUS_TONE_CLASS.danger;
+    default:
+      return CLIENT_STATUS_TONE_CLASS.muted;
+  }
+}
+
 type ClientFormState = {
   name: string;
   email: string;
   phone: string;
-  status: OpsClientRecord["status"];
 };
 
 function createDefaultClientFormState(): ClientFormState {
@@ -40,7 +60,6 @@ function createDefaultClientFormState(): ClientFormState {
     name: "",
     email: "",
     phone: "",
-    status: "Active",
   };
 }
 
@@ -98,7 +117,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
     setPage(0);
   }, [searchQuery, statusFilter, overdueFilter, clients]);
 
-  function handleCreateClient() {
+function handleCreateClient() {
     if (!formState.name.trim()) return;
     setErrorMessage(null);
 
@@ -107,7 +126,6 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
         name: formState.name.trim(),
         email: formState.email.trim() || undefined,
         phone: formState.phone.trim() || undefined,
-        status: formState.status,
       });
 
       if (result.error) {
@@ -149,7 +167,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
       <DialogContent className="max-w-lg rounded-3xl">
         <DialogHeader>
           <DialogTitle>Создать клиента</DialogTitle>
-          <DialogDescription>Заполните контактную информацию и статус клиента.</DialogDescription>
+          <DialogDescription>Заполните контактную информацию клиента.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -194,25 +212,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
               className="rounded-xl"
             />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="client-status" className="text-sm font-medium text-foreground/80">
-              Статус
-            </label>
-            <select
-              id="client-status"
-              value={formState.status}
-              onChange={(event) =>
-                setFormState((prev) => ({
-                  ...prev,
-                  status: event.target.value as OpsClientRecord["status"],
-                }))
-              }
-              className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              <option value="Active">Active</option>
-              <option value="Blocked">Blocked</option>
-            </select>
-          </div>
+          {/* Поле статуса убрано - статус автоматически устанавливается как "Active" */}
         </div>
         {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         <DialogFooter>
@@ -281,8 +281,8 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
             <TableHeader>
               <TableRow>
                 <TableHead className="min-w-[200px]">Полное имя</TableHead>
+                <TableHead className="min-w-[120px]">Статус</TableHead>
                 <TableHead className="min-w-[200px]">Контакты</TableHead>
-                <TableHead className="min-w-[120px]">Скоринг</TableHead>
                 <TableHead className="min-w-[140px]">Просрочки</TableHead>
                 <TableHead className="min-w-[220px]">Лизинг</TableHead>
               </TableRow>
@@ -294,20 +294,22 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                     <TableCell className="max-w-[240px]">
                       <Link
                         href={client.detailHref}
-                        className="text-sm font-semibold text-brand-600 underline-offset-2 hover:underline"
+                        className="text-sm font-semibold text-foreground underline-offset-2 hover:underline"
                       >
                         {client.name}
                       </Link>
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        <Badge variant={client.status === "Blocked" ? "danger" : "success"} className="rounded-lg">
-                          {client.statusLabel}
-                        </Badge>
-                        {client.segment ? (
+                      {client.segment ? (
+                        <div className="mt-2">
                           <Badge variant="outline" className="rounded-lg text-xs">
                             {client.segment}
                           </Badge>
-                        ) : null}
-                      </div>
+                        </div>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveClientStatusToneClass(client.status)}`}>
+                        {client.statusLabel}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       <div className="flex items-center gap-2">
@@ -318,9 +320,6 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                         <Phone className="h-4 w-4 text-muted-foreground" />
                         <span>{client.phone}</span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-sm font-medium text-foreground">
-                      {client.metricsSummary?.scoring ?? client.scoring}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
                       {client.overdue > 0 ? (
@@ -353,7 +352,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
                     Подходящих клиентов не найдено. Измените фильтры или создайте нового клиента.
                   </TableCell>
                 </TableRow>

@@ -16,7 +16,8 @@
         "list_tables",
         "get_advisors",
         "get_logs",
-        "apply_migration"
+        "apply_migration",
+        "get_publishable_keys"
       ]
     }
   }

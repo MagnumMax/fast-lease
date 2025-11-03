@@ -10,7 +10,6 @@ import yaml from "yaml";
 
 const UUID_NAMESPACE = uuidv5.URL;
 
-
 const MAX_OUTPUT_TOKENS_LIMIT = 8192;
 const RETRY_PROMPT_SUFFIX = `\n\nЕсли предыдущая попытка не удалась или ответ получился слишком длинным,` +
   `\nповтори ответ, строго соблюдая формат JSON без дополнительных пояснений.`;
@@ -19,6 +18,7 @@ const GEMINI_DEBUG_SNIPPET_LENGTH = Math.max(
   Number.parseInt(process.env.GEMINI_DEBUG_SNIPPET ?? "800", 10) || 800,
 );
 
+// Вспомогательные функции из ingest_local_deals.mjs
 function logGeminiDebug(label, rawText, diagnostics) {
   if (rawText && rawText.length > 0) {
     const truncated = rawText.length > GEMINI_DEBUG_SNIPPET_LENGTH
@@ -183,7 +183,7 @@ function createSupabaseClient(supabaseConfig) {
   return createClient(supabaseUrl, serviceRoleKey, {
     global: {
       headers: {
-        "X-Client-Info": "local-deal-ingest-script",
+        "X-Client-Info": "regenerate-aggregated-script",
       },
     },
   });
@@ -271,84 +271,110 @@ async function uploadToStorage(supabase, bucket, pathKey, buffer, contentType) {
   return `${bucket}/${pathKey}`;
 }
 
-async function fileExists(supabase, bucket, pathKey) {
-  const res = await supabase.storage.from(bucket).download(pathKey);
-  if (res.error) {
-    return false;
+async function downloadFromStorage(supabase, bucket, pathKey) {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .download(pathKey);
+  if (error) {
+    throw error;
   }
-  if (res.data && typeof res.data.destroy === "function") {
-    res.data.destroy();
-  }
-  return true;
+  return data;
 }
 
-async function processDealFolder({
-  folderPath,
-  folderName,
+async function getStorageFiles(supabase, bucket, folderPrefix) {
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .list(folderPrefix, {
+      limit: 1000,
+      sortBy: { column: 'name', order: 'asc' }
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return data.filter(item => item.name.toLowerCase().endsWith('.pdf'));
+}
+
+async function checkAggregatedJson(supabase, bucket, aggregatedPath) {
+  try {
+    const data = await downloadFromStorage(supabase, bucket, aggregatedPath);
+    const content = await data.text();
+    const json = JSON.parse(content);
+
+    // Check if there's a gemini_error
+    if (json.gemini_error) {
+      return { exists: true, valid: false, error: json.gemini_error };
+    }
+
+    return { exists: true, valid: true, data: json };
+  } catch (error) {
+    return { exists: false, valid: false, error: error.message };
+  }
+}
+
+async function regenerateAggregatedJson({
+  dealId,
   config,
   supabase,
   model,
   generationConfig,
   bucket,
   prefix,
-  skipProcessed,
 }) {
   const startTime = Date.now();
-  console.info(`📁 Starting processing folder: ${folderName}`);
+  console.info(`📁 Starting regeneration for deal: ${dealId}`);
 
-  const dealId = uuidv5(folderName, UUID_NAMESPACE);
   const storageBasePrefix = `${prefix}/${dealId}`;
   const aggregatedPath = `${storageBasePrefix}/aggregated.json`;
 
-  // Skip processing check - only if skipProcessed is true and file exists
-  if (skipProcessed) {
-    try {
-      if (await fileExists(supabase, bucket, aggregatedPath)) {
-        console.info(`⏭️ Skipping ${folderName} — aggregated.json already exists.`);
-        return;
-      }
-    } catch (error) {
-      // If we can't check file existence (e.g., invalid credentials), continue processing
-      console.warn(`⚠️ Could not check if ${aggregatedPath} exists, proceeding with processing: ${error.message}`);
-    }
+  // Check if aggregated.json exists and is valid
+  const aggregatedCheck = await checkAggregatedJson(supabase, bucket, aggregatedPath);
+
+  if (aggregatedCheck.exists && aggregatedCheck.valid) {
+    console.info(`⏭️ Skipping deal ${dealId} — aggregated.json exists and is valid.`);
+    return { skipped: true, reason: 'valid aggregated.json exists' };
   }
 
-  const entries = await fs.readdir(folderPath, { withFileTypes: true });
-  const pdfFiles = entries.filter(
-    (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".pdf"),
-  );
+  if (aggregatedCheck.exists && !aggregatedCheck.valid) {
+    console.info(`🔄 Regenerating deal ${dealId} — aggregated.json exists but has error: ${aggregatedCheck.error}`);
+  } else {
+    console.info(`🆕 Creating deal ${dealId} — aggregated.json does not exist`);
+  }
+
+  // Get list of PDF files in the folder
+  const pdfFiles = await getStorageFiles(supabase, bucket, storageBasePrefix);
 
   if (pdfFiles.length === 0) {
-    console.info(`📁 Folder ${folderName} has no PDF files, skipping.`);
-    return;
+    console.info(`📁 Deal ${dealId} has no PDF files, skipping.`);
+    return { skipped: true, reason: 'no PDF files' };
   }
 
-  console.info(`📄 Found ${pdfFiles.length} PDF files in ${folderName}`);
+  console.info(`📄 Found ${pdfFiles.length} PDF files in deal ${dealId}`);
 
   const documents = [];
   let successCount = 0;
   let errorCount = 0;
 
-  for (const entry of pdfFiles) {
+  for (const file of pdfFiles) {
     const fileStartTime = Date.now();
-    console.info(`🔍 Processing file: ${entry.name}`);
+    console.info(`🔍 Processing file: ${file.name}`);
 
-    const absolutePath = path.join(folderPath, entry.name);
-    const buffer = await fs.readFile(absolutePath);
-    const stats = await fs.stat(absolutePath);
+    const pdfPath = `${storageBasePrefix}/${file.name}`;
+    const buffer = await downloadFromStorage(supabase, bucket, pdfPath);
 
     const prompt = (config.gemini.document_prompt_template ?? "")
-      .replace("{deal_folder}", folderName)
-      .replace("{document_name}", entry.name)
-      .replace("{created_time}", stats.birthtime.toISOString())
-      .replace("{modified_time}", stats.mtime.toISOString());
+      .replace("{deal_folder}", dealId)
+      .replace("{document_name}", file.name)
+      .replace("{created_time}", file.created_at || new Date().toISOString())
+      .replace("{modified_time}", file.updated_at || new Date().toISOString());
 
     const recognition = await recognizeDocument({
       model,
       prompt,
       buffer,
       generationConfig,
-      filename: entry.name,
+      filename: file.name,
     });
 
     const processingTime = Date.now() - fileStartTime;
@@ -356,15 +382,15 @@ async function processDealFolder({
 
     if (recognition.error) {
       errorCount++;
-      console.error(`❌ Failed to analyze ${entry.name}: ${recognition.error} (${processingTime}ms)`);
+      console.error(`❌ Failed to analyze ${file.name}: ${recognition.error} (${processingTime}ms)`);
     } else {
       successCount++;
-      console.info(`✅ Successfully analyzed ${entry.name} (${fieldsCount} fields, ${processingTime}ms)`);
+      console.info(`✅ Successfully analyzed ${file.name} (${fieldsCount} fields, ${processingTime}ms)`);
 
       // Extract and display key data
       if (recognition.data) {
         const vin = recognition.data.fields?.find(f => f.key?.toLowerCase().includes('vin'))?.value ||
-                   recognition.data.fields?.find(f => f.key?.toLowerCase().includes('chassis'))?.value;
+                    recognition.data.fields?.find(f => f.key?.toLowerCase().includes('chassis'))?.value;
         const clientName = recognition.data.parties?.find(p => p.type === 'client' || p.type === 'buyer')?.name;
         const amounts = recognition.data.amounts?.map(a => `${a.currency || 'AED'} ${a.value}`).join(', ') || 'N/A';
 
@@ -374,32 +400,16 @@ async function processDealFolder({
       }
     }
 
-    const slug = entry.name.replace(/[^0-9a-zA-Z]+/g, "_") || "document";
-    const pdfKey = `${storageBasePrefix}/${slug}.pdf`;
+    const slug = file.name.replace(/[^0-9a-zA-Z]+/g, "_") || "document";
     const jsonKey = `${storageBasePrefix}/${slug}.json`;
-
-    let pdfStorage = null;
-    let jsonStorage = null;
-
-    try {
-      pdfStorage = await uploadToStorage(
-        supabase,
-        bucket,
-        pdfKey,
-        buffer,
-        "application/pdf",
-      );
-    } catch (error) {
-      console.warn(`⚠️ Failed to upload PDF ${pdfKey}: ${error.message}`);
-    }
 
     const jsonPayload = {
       source: {
-        filename: entry.name,
-        size_bytes: stats.size,
-        created_time: stats.birthtime.toISOString(),
-        modified_time: stats.mtime.toISOString(),
-        local_path: absolutePath,
+        filename: file.name,
+        size_bytes: file.metadata?.size || 0,
+        created_time: file.created_at || new Date().toISOString(),
+        modified_time: file.updated_at || new Date().toISOString(),
+        storage_path: pdfPath,
       },
       recognition: recognition.data,
       recognition_error: recognition.error,
@@ -408,7 +418,7 @@ async function processDealFolder({
     };
 
     try {
-      jsonStorage = await uploadToStorage(
+      await uploadToStorage(
         supabase,
         bucket,
         jsonKey,
@@ -420,23 +430,23 @@ async function processDealFolder({
     }
 
     documents.push({
-      drive_file_id: entry.name,
-      filename: entry.name,
-      size_bytes: stats.size,
-      created_time: stats.birthtime.toISOString(),
-      modified_time: stats.mtime.toISOString(),
+      drive_file_id: file.name,
+      filename: file.name,
+      size_bytes: file.metadata?.size || 0,
+      created_time: file.created_at || new Date().toISOString(),
+      modified_time: file.updated_at || new Date().toISOString(),
       analysis: recognition.data,
       analysis_error: recognition.error,
       analysis_raw: recognition.raw,
       analysis_debug: recognition.diagnostics,
       storage: {
-        pdf: pdfStorage,
-        json: jsonStorage,
+        pdf: `${bucket}/${pdfPath}`,
+        json: `${bucket}/${jsonKey}`,
       },
     });
   }
 
-  console.info(`📊 Starting aggregate analysis for ${folderName}...`);
+  console.info(`📊 Starting aggregate analysis for ${dealId}...`);
 
   // Chunking implementation to handle large document sets
   const CHUNK_SIZE = 4; // Process 4 documents at a time to stay within token limits
@@ -463,7 +473,7 @@ async function processDealFolder({
       .join("\n");
 
     const chunkPrompt = (config.gemini.prompt_template ?? "")
-      .replace("{deal_folder}", folderName)
+      .replace("{deal_folder}", dealId)
       .replace("{documents_summary}", chunkSummary)
       .replace("{documents_analysis}", chunkAnalysis);
 
@@ -498,7 +508,7 @@ async function processDealFolder({
           model,
           parts: [{ text: attempt.prompt }],
           generationConfig: attempt.generationConfig ?? generationConfig,
-          label: `chunk ${chunkIndex} ${folderName} [attempt ${attemptIndex + 1}]`,
+          label: `chunk ${chunkIndex} ${dealId} [attempt ${attemptIndex + 1}]`,
         });
 
         chunkRaw = rawText;
@@ -507,25 +517,25 @@ async function processDealFolder({
 
         if (error && !rawText) {
           console.warn(
-            `[Gemini] chunk ${chunkIndex} ${folderName}: attempt ${attemptIndex + 1} error — ${error}`,
+            `[Gemini] chunk ${chunkIndex} ${dealId}: attempt ${attemptIndex + 1} error — ${error}`,
           );
           if (diagnostics) {
-            logGeminiDebug(`chunk ${chunkIndex} ${folderName} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
+            logGeminiDebug(`chunk ${chunkIndex} ${dealId} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
           }
         }
 
         if (rawText) {
           try {
-            chunkGemini = parseJsonResponse(rawText, `chunk ${chunkIndex} ${folderName}`);
+            chunkGemini = parseJsonResponse(rawText, `chunk ${chunkIndex} ${dealId}`);
             chunkError = null;
-            console.info(`✅ Chunk ${chunkIndex} analysis completed for ${folderName}`);
+            console.info(`✅ Chunk ${chunkIndex} analysis completed for ${dealId}`);
             break;
           } catch (parseError) {
             chunkError = parseError.message;
             console.warn(
-              `[Gemini] chunk ${chunkIndex} ${folderName}: parse error on attempt ${attemptIndex + 1}: ${parseError.message}`,
+              `[Gemini] chunk ${chunkIndex} ${dealId}: parse error on attempt ${attemptIndex + 1}: ${parseError.message}`,
             );
-            logGeminiDebug(`chunk ${chunkIndex} ${folderName} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
+            logGeminiDebug(`chunk ${chunkIndex} ${dealId} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
           }
         }
 
@@ -536,7 +546,7 @@ async function processDealFolder({
           attemptsTotal: chunkAttempts.length,
         })) {
           if (chunkError) {
-            console.error(`❌ Chunk ${chunkIndex} analysis failed for ${folderName}: ${chunkError}`);
+            console.error(`❌ Chunk ${chunkIndex} analysis failed for ${dealId}: ${chunkError}`);
           }
           break;
         }
@@ -598,7 +608,7 @@ Use the provided chunk summaries and analyses to create a single, complete JSON 
 
 ${config.gemini.system_instruction || ""}
 
-Deal folder: ${folderName}
+Deal folder: ${dealId}
 Chunk summaries:
 ${chunksSummary}
 Chunk analyses (JSON):
@@ -623,7 +633,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
         model,
         parts: [{ text: attempt.prompt }],
         generationConfig: attempt.generationConfig ?? generationConfig,
-        label: `final aggregate ${folderName} [attempt ${attemptIndex + 1}]`,
+        label: `final aggregate ${dealId} [attempt ${attemptIndex + 1}]`,
       });
 
       aggregatedRaw = rawText;
@@ -632,25 +642,25 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
 
       if (error && !rawText) {
         console.warn(
-          `[Gemini] final aggregate ${folderName}: attempt ${attemptIndex + 1} error — ${error}`,
+          `[Gemini] final aggregate ${dealId}: attempt ${attemptIndex + 1} error — ${error}`,
         );
         if (diagnostics) {
-          logGeminiDebug(`final aggregate ${folderName} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
+          logGeminiDebug(`final aggregate ${dealId} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
         }
       }
 
       if (rawText) {
         try {
-          aggregatedGemini = parseJsonResponse(rawText, `final aggregate ${folderName}`);
+          aggregatedGemini = parseJsonResponse(rawText, `final aggregate ${dealId}`);
           aggregatedError = null;
-          console.info(`✅ Final aggregate analysis completed for ${folderName}`);
+          console.info(`✅ Final aggregate analysis completed for ${dealId}`);
           break;
         } catch (parseError) {
           aggregatedError = parseError.message;
           console.warn(
-            `[Gemini] final aggregate ${folderName}: parse error on attempt ${attemptIndex + 1}: ${parseError.message}`,
+            `[Gemini] final aggregate ${dealId}: parse error on attempt ${attemptIndex + 1}: ${parseError.message}`,
           );
-          logGeminiDebug(`final aggregate ${folderName} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
+          logGeminiDebug(`final aggregate ${dealId} [attempt ${attemptIndex + 1}]`, rawText, diagnostics);
         }
       }
 
@@ -661,7 +671,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
         attemptsTotal: finalAttempts.length,
       })) {
         if (aggregatedError) {
-          console.error(`❌ Final aggregate analysis failed for ${folderName}: ${aggregatedError}`);
+          console.error(`❌ Final aggregate analysis failed for ${dealId}: ${aggregatedError}`);
         }
         break;
       }
@@ -671,8 +681,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
   const aggregatedPayload = {
     deal_id: dealId,
     folder: {
-      name: folderName,
-      path: folderPath,
+      storage_prefix: storageBasePrefix,
     },
     documents,
     gemini: aggregatedGemini,
@@ -684,6 +693,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
       base_prefix: storageBasePrefix,
       aggregated_json: `${bucket}/${aggregatedPath}`,
     },
+    regenerated_at: new Date().toISOString(),
   };
 
   try {
@@ -701,7 +711,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
   const totalTime = Date.now() - startTime;
   const totalFields = documents.reduce((sum, doc) => sum + (doc.analysis?.fields?.length || 0), 0);
 
-  console.info(`✅ Completed processing ${folderName} → deal ${dealId}`);
+  console.info(`✅ Completed regeneration for deal ${dealId}`);
   console.info(`📊 Statistics: ${successCount} successful, ${errorCount} failed, ${totalFields} total fields, ${totalTime}ms total`);
 
   // Extract and display aggregated key data
@@ -714,50 +724,32 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
     if (clientName) console.info(`👤 Deal Client: ${clientName}`);
     if (dealAmount) console.info(`💰 Deal Amount: ${dealAmount}`);
   }
+
+  return {
+    success: !aggregatedError,
+    dealId,
+    documentsCount: documents.length,
+    successCount,
+    errorCount,
+    totalFields,
+    processingTime: totalTime,
+    error: aggregatedError,
+  };
 }
 
 async function run() {
   const overallStartTime = Date.now();
-  console.info(`🚀 Starting local deal ingestion process...`);
+  console.info(`🚀 Starting specific aggregated.json regeneration...`);
 
-  const argv = process.argv.slice(2);
-  let configPath = "configs/drive_ingest.yaml";
-  let rootOverride;
-  let onlyFilter;
+  const config = await loadConfig("configs/drive_ingest.yaml");
 
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
-    if (arg === "--config") {
-      configPath = argv[i + 1];
-      i += 1;
-    } else if (arg === "--root") {
-      rootOverride = argv[i + 1];
-      i += 1;
-    } else if (arg === "--only") {
-      onlyFilter = argv[i + 1]
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
-      i += 1;
-    }
-  }
-
-  const config = await loadConfig(configPath);
-
-  const rootPath = path.resolve(rootOverride ?? config.local_root ?? "datasets/deals");
   const bucket = config.supabase.storage_bucket ?? "deals";
-  const prefix = config.supabase.storage_prefix ?? "documents";
-  const skipProcessed = config.skip_processed ?? true;
+  const prefix = "documents"; // Hardcoded to documents
 
   const geminiKeyEnv = config.gemini.api_key_env ?? "GEMINI_API_KEY";
   const geminiApiKey = process.env[geminiKeyEnv];
   if (!geminiApiKey) {
     throw new Error(`${geminiKeyEnv} environment variable is required`);
-  }
-
-  const stat = await fs.stat(rootPath).catch(() => null);
-  if (!stat || !stat.isDirectory()) {
-    throw new Error(`Local root folder not found: ${rootPath}`);
   }
 
   const supabase = createSupabaseClient(config.supabase);
@@ -775,83 +767,98 @@ async function run() {
     maxOutputTokens: config.gemini.max_output_tokens ?? 6000,
   };
 
-  const entries = await fs.readdir(rootPath, { withFileTypes: true });
-  const folderEntries = entries.filter((entry) => entry.isDirectory());
+  // Known deals with errors from our previous analysis
+  const dealsWithErrors = [
+    '38321982-db01-5eb8-bee2-f2706489e5b9', // Error: Unterminated string in JSON
+    '656473fe-df3a-580d-9645-2845e59c3a12'  // Error: Unexpected end of JSON input
+  ];
 
-  let totalFolders = 0;
-  let processedFolders = 0;
-  let totalFiles = 0;
-  let successfulFiles = 0;
-  let failedFiles = 0;
+  console.info(`📂 Found ${dealsWithErrors.length} deals with gemini errors to regenerate:`);
+  dealsWithErrors.forEach(dealId => {
+    console.info(`   - ${dealId}`);
+  });
+
+  let totalDeals = 0;
+  let processedDeals = 0;
+  let skippedDeals = 0;
+  let successfulRegenerations = 0;
+  let failedRegenerations = 0;
+  let totalDocuments = 0;
+  let totalSuccessfulDocuments = 0;
+  let totalFailedDocuments = 0;
   let totalFields = 0;
 
-  if (folderEntries.length === 0) {
-    const pdfFiles = entries.filter(
-      (entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".pdf"),
-    );
-    if (pdfFiles.length === 0) {
-      console.warn(`No deal folders or PDF files found in ${rootPath}`);
-      return;
-    }
+  for (const dealId of dealsWithErrors) {
+    totalDeals++;
 
-    const rootName = path.basename(rootPath);
-    if (!onlyFilter || onlyFilter.includes(rootName)) {
-      totalFolders = 1;
-      await processDealFolder({
-        folderPath: rootPath,
-        folderName: rootName,
+    try {
+      const result = await regenerateAggregatedJson({
+        dealId,
         config,
         supabase,
         model,
         generationConfig,
         bucket,
         prefix,
-        skipProcessed,
       });
-      processedFolders = 1;
-      // Note: We can't easily track file stats from here, but the function logs them internally
-    } else {
-      console.info(`⏭️ Skipping ${rootName} — not included in --only filter.`);
-    }
-  } else {
-    totalFolders = folderEntries.length;
-    console.info(`📂 Found ${totalFolders} deal folders to process`);
 
-    for (const entry of folderEntries) {
-      const folderName = entry.name;
-      if (onlyFilter && !onlyFilter.includes(folderName)) {
-        console.info(`⏭️ Skipping ${folderName} — not included in --only filter.`);
-        continue;
+      if (result.skipped) {
+        skippedDeals++;
+        console.info(`⏭️ Skipped deal ${dealId}: ${result.reason}`);
+      } else {
+        processedDeals++;
+        totalDocuments += result.documentsCount;
+        totalSuccessfulDocuments += result.successCount;
+        totalFailedDocuments += result.errorCount;
+        totalFields += result.totalFields;
+
+        if (result.success) {
+          successfulRegenerations++;
+          console.info(`✅ Successfully regenerated deal ${dealId}`);
+        } else {
+          failedRegenerations++;
+          console.error(`❌ Failed to regenerate deal ${dealId}: ${result.error}`);
+        }
       }
-
-      const folderPath = path.join(rootPath, folderName);
-      await processDealFolder({
-        folderPath,
-        folderName,
-        config,
-        supabase,
-        model,
-        generationConfig,
-        bucket,
-        prefix,
-        skipProcessed,
-      });
-      processedFolders++;
+    } catch (error) {
+      failedRegenerations++;
+      console.error(`❌ Error processing deal ${dealId}: ${error.message}`);
     }
   }
 
   const overallTime = Date.now() - overallStartTime;
-  console.info(`🎉 Local deal ingestion completed!`);
-  console.info(`📊 Final Statistics:`);
-  console.info(`   📂 Folders processed: ${processedFolders}/${totalFolders}`);
-  console.info(`   📄 Total files: ${totalFiles}`);
-  console.info(`   ✅ Successful analyses: ${successfulFiles}`);
-  console.info(`   ❌ Failed analyses: ${failedFiles}`);
+  console.info(`🎉 Specific aggregated.json regeneration completed!`);
+  console.info(`📊 Final Report:`);
+  console.info(`   📂 Total deals with errors: ${dealsWithErrors.length}`);
+  console.info(`   📂 Deals processed: ${processedDeals}/${totalDeals}`);
+  console.info(`   ⏭️ Deals skipped: ${skippedDeals}`);
+  console.info(`   ✅ Successful regenerations: ${successfulRegenerations}`);
+  console.info(`   ❌ Failed regenerations: ${failedRegenerations}`);
+  console.info(`   📄 Total documents processed: ${totalDocuments}`);
+  console.info(`   ✅ Successful document analyses: ${totalSuccessfulDocuments}`);
+  console.info(`   ❌ Failed document analyses: ${totalFailedDocuments}`);
   console.info(`   📋 Total fields extracted: ${totalFields}`);
   console.info(`   ⏱️ Total processing time: ${overallTime}ms`);
+
+  // Summary for completion
+  const report = {
+    totalDealErrors: dealsWithErrors.length,
+    processedDeals,
+    skippedDeals,
+    successfulRegenerations,
+    failedRegenerations,
+    totalDocuments,
+    successfulDocuments: totalSuccessfulDocuments,
+    failedDocuments: totalFailedDocuments,
+    totalFields,
+    totalTime: overallTime,
+    dealsWithErrors,
+  };
+
+  return report;
 }
 
 run().catch((error) => {
-  console.error("Local ingestion failed", error);
+  console.error("Regeneration failed", error);
   process.exitCode = 1;
 });

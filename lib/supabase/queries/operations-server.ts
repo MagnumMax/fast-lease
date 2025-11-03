@@ -1410,7 +1410,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     .from("profiles")
     .select(
       `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
-       address, employment_info, financial_profile, metadata, created_at, last_login_at`
+       employment_info, financial_profile, metadata, created_at, last_login_at`
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -1460,21 +1460,12 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     }
   }
 
-  const addressRecord = isRecord(profileRow.address) ? (profileRow.address as Record<string, unknown>) : null;
   const employmentRecord = isRecord(profileRow.employment_info)
     ? (profileRow.employment_info as Record<string, unknown>)
     : null;
   const financialRecord = isRecord(profileRow.financial_profile)
     ? (profileRow.financial_profile as Record<string, unknown>)
     : null;
-
-  const address = {
-    street: getString(addressRecord?.street ?? addressRecord?.line1 ?? addressRecord?.address_line1),
-    city: getString(addressRecord?.city),
-    community: getString(addressRecord?.community ?? addressRecord?.district),
-    country: getString(addressRecord?.country),
-    raw: addressRecord,
-  };
 
   const employment = {
     employer: getString(employmentRecord?.employer ?? employmentRecord?.company),
@@ -1523,7 +1514,6 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     nationality: getString(profileRow.nationality),
     residencyStatus: getString(profileRow.residency_status),
     dateOfBirth: profileRow.date_of_birth ?? null,
-    address,
     employment,
     financial,
     lastLoginAt: profileRow.last_login_at ?? null,

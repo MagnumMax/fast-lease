@@ -646,13 +646,6 @@ export type OpsClientProfile = {
   nationality: string | null;
   residencyStatus: string | null;
   dateOfBirth: string | null;
-  address: {
-    street?: string | null;
-    city?: string | null;
-    community?: string | null;
-    country?: string | null;
-    raw: Record<string, unknown> | null;
-  };
   employment: {
     employer?: string | null;
     position?: string | null;

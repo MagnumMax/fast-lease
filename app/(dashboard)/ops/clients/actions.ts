@@ -16,7 +16,6 @@ const inputSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional(),
   phone: z.string().optional(),
-  status: z.union([z.literal("Active"), z.literal("Blocked")]).default("Active"),
 });
 
 type CreateOperationsClientInput = z.infer<typeof inputSchema>;
@@ -165,11 +164,12 @@ export async function createOperationsClient(
     return { error: "Введите корректные данные клиента." };
   }
 
-  const { name, email, phone, status } = parsed.data;
+const { name, email, phone } = parsed.data;
   const { fullName, firstName, lastName } = parseNameParts(name);
   const normalizedEmail = normalizeEmail(email);
   const sanitizedPhone = sanitizePhone(phone);
-  const userStatus = status === "Blocked" ? "suspended" : "active";
+  // Статус автоматически устанавливается как "Active" (suspended = "active" в базе данных)
+  const userStatus = "active";
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -332,14 +332,6 @@ const updateInputSchema = z.object({
   nationality: z.string().optional(),
   residencyStatus: z.string().optional(),
   dateOfBirth: z.string().optional(),
-  address: z
-    .object({
-      street: z.string().optional(),
-      community: z.string().optional(),
-      city: z.string().optional(),
-      country: z.string().optional(),
-    })
-    .optional(),
   employment: z
     .object({
       employer: z.string().optional(),
@@ -362,6 +354,14 @@ export type UpdateOperationsClientInput = z.infer<typeof updateInputSchema>;
 export type UpdateOperationsClientResult =
   | { success: true }
   | { success: false; error: string };
+
+export type DeleteOperationsClientInput = {
+  userId: string;
+};
+
+export type DeleteOperationsClientResult =
+  | { success: true }
+  | { success: false; error: string; dealsCount?: number };
 
 function parseNumber(value: string | null): number | null {
   if (!value) return null;
@@ -395,7 +395,6 @@ export async function updateOperationsClient(
     nationality,
     residencyStatus,
     dateOfBirth,
-    address,
     employment,
     financial,
   } = parsed.data;
@@ -436,13 +435,6 @@ export async function updateOperationsClient(
       delete metadata.ops_phone;
     }
 
-    const addressPayload = {
-      street: normalizeOptionalString(address?.street),
-      community: normalizeOptionalString(address?.community),
-      city: normalizeOptionalString(address?.city),
-      country: normalizeOptionalString(address?.country),
-    };
-
     const employmentPayload = {
       employer: normalizeOptionalString(employment?.employer),
       position: normalizeOptionalString(employment?.position),
@@ -469,7 +461,6 @@ export async function updateOperationsClient(
         nationality: normalizeOptionalString(nationality),
         residency_status: normalizeOptionalString(residencyStatus),
         date_of_birth: dateOfBirth ? dateOfBirth : null,
-        address: addressPayload,
         employment_info: employmentPayload,
         financial_profile: financialPayload,
         metadata,
@@ -520,5 +511,105 @@ export async function updateOperationsClient(
   } catch (error) {
     console.error("[operations] unexpected error while updating client", error);
     return { success: false, error: "Произошла ошибка при обновлении клиента." };
+  }
+}
+
+export async function deleteOperationsClient(
+  input: DeleteOperationsClientInput,
+): Promise<DeleteOperationsClientResult> {
+  const { userId } = input;
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const serviceClient = await createSupabaseServiceClient();
+
+    // Проверяем, есть ли активные сделки у клиента
+    const { data: dealsData, error: dealsError } = await supabase
+      .from("deals")
+      .select("id, status")
+      .eq("client_id", userId);
+
+    if (dealsError) {
+      console.error("[operations] failed to check client deals", dealsError);
+      return { success: false, error: "Не удалось проверить связанные сделки." };
+    }
+
+    const activeDealStatuses = ["pending_activation", "active", "signing_funding", "contract_prep"];
+    const activeDeals = (dealsData || []).filter(deal =>
+      activeDealStatuses.includes(deal.status.toLowerCase())
+    );
+
+    if (activeDeals.length > 0) {
+      return {
+        success: false,
+        error: `Нельзя удалить клиента с активными сделками. Найдено ${activeDeals.length} активных сделок.`,
+        dealsCount: activeDeals.length
+      };
+    }
+
+    // Удаляем документы клиента (сначала документы, потом профиль)
+    const { error: documentsError } = await supabase
+      .from("deal_documents")
+      .delete()
+      .in("deal_id", (dealsData || []).map(deal => deal.id));
+
+    if (documentsError) {
+      console.warn("[operations] failed to delete client documents", documentsError);
+      // Продолжаем удаление, даже если не удалось удалить документы
+    }
+
+    // Удаляем сделки клиента (если есть завершенные или отмененные)
+    const { error: dealsDeleteError } = await supabase
+      .from("deals")
+      .delete()
+      .eq("client_id", userId);
+
+    if (dealsDeleteError) {
+      console.warn("[operations] failed to delete client deals", dealsDeleteError);
+      // Продолжаем удаление профиля
+    }
+
+    // Удаляем профиль клиента
+    const { error: profileDeleteError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("user_id", userId);
+
+    if (profileDeleteError) {
+      console.error("[operations] failed to delete client profile", profileDeleteError);
+      return { success: false, error: "Не удалось удалить профиль клиента." };
+    }
+
+    // Удаляем роль пользователя
+    const { error: roleError } = await serviceClient
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", "CLIENT");
+
+    if (roleError) {
+      console.warn("[operations] failed to delete client role", roleError);
+      // Продолжаем, роль не критична
+    }
+
+    // Удаляем пользователя из auth
+    try {
+      const { error: authDeleteError } = await serviceClient.auth.admin.deleteUser(userId);
+      if (authDeleteError) {
+        console.warn("[operations] failed to delete auth user", authDeleteError);
+      }
+    } catch (error) {
+      console.warn("[operations] auth user deletion skipped", { userId, error });
+    }
+
+    // Инвалидируем кеш
+    for (const path of getWorkspacePaths("clients")) {
+      revalidatePath(path);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while deleting client", error);
+    return { success: false, error: "Произошла ошибка при удалении клиента." };
   }
 }
