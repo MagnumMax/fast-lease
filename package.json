@@ -12,7 +12,14 @@
     "test": "vitest",
     "test:run": "vitest --run",
     "sync:vehicle-images": "ts-node scripts/sync_vehicle_images.ts",
-    "ingest:deals": "node scripts/ingest_local_deals.mjs"
+    "ingest:deals": "node scripts/ingest_local_deals.mjs",
+    "ingest:deals:specific": "node scripts/ingest_local_deals.mjs --only",
+    "migrate:storage": "node scripts/ingest_local_deals.mjs --migrate-storage",
+    "cleanup:storage": "node scripts/cleanup_storage_structure.mjs",
+    "migrate:storage:flat": "node scripts/migrate_to_flat_structure.mjs",
+    "ingest:deals:root": "node scripts/ingest_local_deals.mjs --root",
+    "ingest:check": "node scripts/check_deals_folders.mjs",
+    "ingest:report": "node scripts/final_deals_report.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

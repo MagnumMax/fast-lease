@@ -527,8 +527,6 @@ export async function createDealWithWorkflow(
               model: assetSnapshot.model ?? null,
               variant: assetSnapshot.trim ?? null,
               year: assetSnapshot.year ?? null,
-              purchase_price: assetSnapshot.price ?? null,
-              current_value: assetSnapshot.price ?? null,
               status: "reserved",
               mileage: mileageValue ?? null,
               features: assetMeta ?? {},

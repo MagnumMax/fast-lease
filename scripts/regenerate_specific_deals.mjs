@@ -718,7 +718,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
   if (aggregatedGemini) {
     const vin = aggregatedGemini.vehicle?.vin || aggregatedGemini.vehicle?.chassis_number;
     const clientName = aggregatedGemini.client?.name || aggregatedGemini.client?.full_name;
-    const dealAmount = aggregatedGemini.deal?.total_amount || aggregatedGemini.deal?.purchase_price;
+    const dealAmount = aggregatedGemini.deal?.total_amount;
 
     if (vin) console.info(`🚗 Deal VIN: ${vin}`);
     if (clientName) console.info(`👤 Deal Client: ${clientName}`);

@@ -99,7 +99,7 @@ describe("workflow action executor", () => {
           notifications: { channels: [], templates: {} },
         } as WorkflowTemplate,
         dealId: "deal-1",
-        payload: { finance: { residual_value: 15000 } },
+        payload: { finance: {} },
       },
     );
 

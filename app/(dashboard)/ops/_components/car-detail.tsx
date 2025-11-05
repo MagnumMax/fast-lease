@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useMemo, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,9 +13,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type {
   OpsTone,
   OpsVehicleActiveDeal,
+  OpsVehicleDeal,
   OpsVehicleData,
   OpsVehicleDocument,
   OpsVehicleProfile,
@@ -23,16 +32,31 @@ import type {
 } from "@/lib/supabase/queries/operations";
 import { CarEditDialog } from "./car-edit-dialog";
 
+type InfoCellProps = {
+  label: string;
+  children: ReactNode;
+};
+
+function InfoCell({ label, children }: InfoCellProps) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <div className="mt-1 text-sm font-medium text-foreground">{children}</div>
+    </div>
+  );
+}
+
 type CarDetailProps = {
   slug: string;
   activeDeal: OpsVehicleActiveDeal | null;
+  deals: OpsVehicleDeal[];
   vehicle: OpsVehicleData;
   profile: OpsVehicleProfile;
   documents: OpsVehicleDocument[];
   serviceLog: OpsVehicleServiceLogEntry[];
 };
 
-export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, serviceLog }: CarDetailProps) {
+export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, documents, serviceLog }: CarDetailProps) {
   const toneClassMap: Record<OpsTone, string> = {
     success: "border-emerald-400/80 bg-emerald-500/10 text-emerald-700",
     warning: "border-amber-400/80 bg-amber-500/10 text-amber-700",
@@ -48,22 +72,80 @@ export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, s
     return toneClassMap[tone] ?? toneClassMap.muted;
   };
 
-  const gallery = useMemo(() => profile.gallery ?? [], [profile.gallery]);
-  const defaultImageId = useMemo(() => {
-    return gallery.find((image) => image.isPrimary)?.id ?? gallery[0]?.id ?? null;
-  }, [gallery]);
-
-  const [activeImageId, setActiveImageId] = useState<string | null>(defaultImageId);
-
-  const activeImageUrl = useMemo(() => {
-    if (activeImageId) {
-      const found = gallery.find((image) => image.id === activeImageId);
-      if (found?.url) {
-        return found.url;
-      }
+  const specGroups = profile.specGroups ?? [];
+  const primaryInfoGroup = specGroups.find((group) => group.title === "Основная информация") ?? null;
+  const secondarySpecGroups = specGroups.filter(
+    (group) => group.title !== "Учёт" && group.title !== "Основная информация",
+  );
+  const excludedPrimaryLabels = new Set(["Статус", "Тип кузова"]);
+  const primarySpecsRaw = primaryInfoGroup?.specs?.filter((spec) => !excludedPrimaryLabels.has(spec.label)) ?? [];
+  const specOrder = [
+    "Марка",
+    "Модель",
+    "Комплектация",
+    "Год выпуска",
+    "VIN",
+    "Пробег",
+    "Тип топлива",
+    "Трансмиссия",
+    "Цвет кузова",
+    "Цвет салона",
+    "Объём двигателя",
+  ];
+  const primarySpecs = [...primarySpecsRaw].sort((a, b) => {
+    const indexA = specOrder.indexOf(a.label);
+    const indexB = specOrder.indexOf(b.label);
+    if (indexA === -1 && indexB === -1) {
+      return a.label.localeCompare(b.label, "ru");
     }
-    return profile.image;
-  }, [activeImageId, gallery, profile.image]);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+  const primarySpecLabels = new Set(primarySpecs.map((spec) => spec.label));
+  const highlightItems = (profile.highlights ?? []).filter((item) => !primarySpecLabels.has(item.label));
+  const hasPrimaryDetails = primarySpecs.length > 0 || Boolean(activeDeal?.number);
+  const vehicleYearLabel = vehicle.year != null ? String(vehicle.year) : null;
+  const resolvedSubtitle = (() => {
+    if (!profile.subtitle) {
+      return "";
+    }
+    const rawParts = profile.subtitle.split("•").map((part) => part.trim()).filter(Boolean);
+    const filtered = rawParts.filter((part) => {
+      if (vehicleYearLabel && part === vehicleYearLabel) {
+        return false;
+      }
+      if (vehicle.bodyType && part.toLowerCase() === vehicle.bodyType.toLowerCase()) {
+        return false;
+      }
+      return true;
+    });
+    return filtered.join(" • ");
+  })();
+
+  const galleryImages = useMemo(
+    () =>
+      (profile.gallery ?? [])
+        .filter((image): image is { id: string; url: string; label: string | null; isPrimary: boolean } => {
+          if (!image || typeof image.url !== "string" || image.url.length === 0) {
+            return false;
+          }
+          return true;
+        })
+        .map((image, index) => ({
+          id: image.id ?? `gallery-${index}`,
+          url: image.url as string,
+          label: image.label ?? null,
+          isPrimary: Boolean(image.isPrimary),
+        })),
+    [profile.gallery],
+  );
+
+  const hasGalleryImages = galleryImages.length > 0;
+  const fallbackImage =
+    typeof profile.image === "string" && profile.image.length > 0
+      ? profile.image
+      : "/assets/vehicle-placeholder.svg";
 
   return (
     <div className="space-y-6">
@@ -71,141 +153,146 @@ export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, s
         <Button variant="ghost" size="sm" asChild className="rounded-xl border border-border">
           <Link href="/ops/cars">← Назад к каталогу</Link>
         </Button>
-        <CarEditDialog vehicle={vehicle} slug={slug} />
+        <CarEditDialog vehicle={vehicle} slug={slug} documents={documents} gallery={profile.gallery} />
       </div>
 
-      <Card className="bg-card/60 backdrop-blur">
-        <CardHeader>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-2xl font-semibold tracking-tight">{profile.heading}</CardTitle>
-              <p className="text-sm text-muted-foreground">{profile.subtitle}</p>
+      <Card className="border border-border/60 bg-card/70 backdrop-blur">
+        <CardHeader className="pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-2xl font-semibold tracking-tight text-foreground">
+                {profile.heading}
+                {vehicleYearLabel ? `, ${vehicleYearLabel}` : ""}
+              </CardTitle>
+              {resolvedSubtitle ? <CardDescription>{resolvedSubtitle}</CardDescription> : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {profile.status ? (
-                <Badge
-                  variant="outline"
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${resolveToneClass(profile.status.tone)}`}
-                >
-                  {profile.status.label}
-                </Badge>
-              ) : null}
-            </div>
+            {profile.status ? (
+              <Badge
+                variant="outline"
+                className={`rounded-lg border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${resolveToneClass(profile.status.tone)}`}
+              >
+                {profile.status.label}
+              </Badge>
+            ) : null}
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
-            <div className="space-y-4">
-              <div className="overflow-hidden rounded-2xl border border-border bg-surface-subtle">
-                <Image
-                  src={activeImageUrl || "/assets/vehicle-placeholder.svg"}
-                  alt={profile.heading}
-                  width={960}
-                  height={540}
-                  className="h-full w-full object-cover"
-                  priority
-                />
-              </div>
-              {gallery.length > 1 ? (
-                <div className="flex gap-3 overflow-x-auto pb-1">
-                  {gallery.map((image) => (
-                    <button
-                      key={image.id}
-                      type="button"
-                      onClick={() => setActiveImageId(image.id)}
-                      className={`relative flex h-20 w-32 items-center justify-center overflow-hidden rounded-xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 ${
-                        activeImageId === image.id ? "border-primary shadow" : "border-border hover:border-foreground/40"
-                      }`}
-                    >
-                      {image.url ? (
-                        <Image src={image.url} alt={image.label ?? profile.heading} width={160} height={100} className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Нет изображения</span>
-                      )}
-                    </button>
-                  ))}
+        <CardContent className="space-y-6 pt-0">
+          {highlightItems.length ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {highlightItems.map((item) => (
+                <div key={item.label} className="rounded-lg border border-border/60 bg-background/40 p-4">
+                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 text-base font-semibold text-foreground">{item.value}</p>
+                  {item.hint ? <p className="text-xs text-muted-foreground">{item.hint}</p> : null}
                 </div>
-              ) : null}
+              ))}
             </div>
-            <div className="space-y-4">
-              {profile.highlights?.length ? (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {profile.highlights.map((item) => (
-                    <div
-                      key={item.label}
-                      className="rounded-xl border border-border bg-background/80 p-4 shadow-sm"
-                    >
-                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                        {item.label}
-                      </p>
-                      <p className="mt-2 text-base font-semibold text-foreground">{item.value}</p>
-                      {item.hint ? <p className="text-xs text-muted-foreground">{item.hint}</p> : null}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+          ) : null}
 
+          {hasPrimaryDetails ? (
+            <div className="space-y-3">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {primarySpecs.map((spec) => (
+                  <InfoCell key={`primary-${spec.label}`} label={spec.label}>
+                    {spec.value}
+                  </InfoCell>
+                ))}
+                {activeDeal?.number ? (
+                  <InfoCell label="Сделка">
+                    {activeDeal.href ? (
+                      <Link href={activeDeal.href} className="text-primary hover:underline">
+                        {activeDeal.number}
+                      </Link>
+                    ) : (
+                      <span className="text-primary">{activeDeal.number}</span>
+                    )}
+                  </InfoCell>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
         </CardContent>
       </Card>
 
+      <Card className="bg-card/60 backdrop-blur">
+        <CardHeader>
+          <CardTitle>Фото</CardTitle>
+          <CardDescription>Предпросмотр галереи автомобиля</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {hasGalleryImages ? (
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {galleryImages.map((image) => (
+                <div
+                  key={image.id}
+                  className="space-y-2 rounded-xl border border-border/60 bg-background/60 p-2"
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
+                    <Image
+                      src={image.url}
+                      alt={image.label ?? "Фото автомобиля"}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className="object-cover"
+                    />
+                    {image.isPrimary ? (
+                      <span className="absolute left-2 top-2 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
+                        Основное
+                      </span>
+                    ) : null}
+                  </div>
+                  {image.label ? (
+                    <p className="truncate text-xs text-muted-foreground" title={image.label}>
+                      {image.label}
+                    </p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-6 text-center">
+              <div className="relative h-28 w-40 overflow-hidden rounded-lg border border-border/60 bg-background/60">
+                <Image
+                  src={fallbackImage}
+                  alt="Предпросмотр автомобиля"
+                  fill
+                  sizes="160px"
+                  className="object-cover"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Фото ещё не загружены. Добавьте изображения в окне редактирования автомобиля.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        {profile.specGroups
-          .filter((group) => group.title !== "Учёт")
-          .map((group) => (
-            <Card key={group.title} className="bg-card/60 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">{group.title}</CardTitle>
-                {group.title === "Основная информация" && (
-                  <div className="mt-2">
-                    <p className="text-sm font-medium text-foreground">{profile.heading}</p>
-                  </div>
-                )}
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  {group.specs.map((spec) => {
-                    // If this is the status spec in Основная информация and there's an active deal, add deal number and link
-                    if (group.title === "Основная информация" && spec.label === "Статус" && activeDeal) {
-                      return (
-                        <div key={`${group.title}-${spec.label}`} className="rounded-lg border border-border/60 bg-background/50 p-3">
-                          <dt className="text-xs font-medium text-muted-foreground">{spec.label}</dt>
-                          <dd className="mt-1 text-sm font-semibold text-foreground">
-                            {spec.value}
-                            {activeDeal.number && (
-                              <>
-                                <br />
-                                <span className="text-xs text-muted-foreground">Сделка: </span>
-                                {activeDeal.href ? (
-                                  <Link href={activeDeal.href} className="text-primary hover:underline">
-                                    {activeDeal.number}
-                                  </Link>
-                                ) : (
-                                  <span className="text-primary">{activeDeal.number}</span>
-                                )}
-                              </>
-                            )}
-                          </dd>
-                        </div>
-                      );
-                    }
-                    
-                    return (
-                      <div key={`${group.title}-${spec.label}`} className="rounded-lg border border-border/60 bg-background/50 p-3">
-                        <dt className="text-xs font-medium text-muted-foreground">{spec.label}</dt>
-                        <dd className="mt-1 text-sm font-semibold text-foreground">{spec.value}</dd>
-                      </div>
-                    );
-                  })}
-                </dl>
-              </CardContent>
-            </Card>
-          ))}
+        {secondarySpecGroups.map((group) => (
+          <Card key={group.title} className="bg-card/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">{group.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {group.specs
+                  .filter((spec) => spec.label !== "Статус")
+                  .map((spec) => (
+                    <div key={`${group.title}-${spec.label}`} className="rounded-lg border border-border/60 bg-background/50 p-3">
+                      <dt className="text-xs font-medium text-muted-foreground">{spec.label}</dt>
+                      <dd className="mt-1 text-sm font-semibold text-foreground">{spec.value}</dd>
+                    </div>
+                  ))}
+              </dl>
+            </CardContent>
+          </Card>
+        ))}
 
         {profile.features?.length ? (
-          <Card className="bg-card/60 backdrop-blur">
+          <Card className="bg-card/60 backdrop-blur xl:col-span-2">
             <CardHeader>
               <CardTitle className="text-base font-semibold">Особенности</CardTitle>
             </CardHeader>
@@ -226,8 +313,89 @@ export function CarDetailView({ slug, activeDeal, vehicle, profile, documents, s
       <Card className="bg-card/60 backdrop-blur">
         <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardDescription>Документы</CardDescription>
-            <CardTitle>Флит‑архив</CardTitle>
+            <CardTitle>Сделки</CardTitle>
+            <CardDescription>История сделок, в которых участвует автомобиль</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-0">
+          {deals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Сделки не найдены.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-border/60">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Сделка</TableHead>
+                    <TableHead>Клиент</TableHead>
+                    <TableHead>Статус</TableHead>
+                    <TableHead>Платёж/мес</TableHead>
+                    <TableHead>Сумма</TableHead>
+                    <TableHead>Следующий платёж</TableHead>
+                    <TableHead>Просрочка</TableHead>
+                    <TableHead>Менеджер</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {deals.map((deal) => (
+                    <TableRow key={deal.id}>
+                      <TableCell className="min-w-[160px] font-medium text-foreground">
+                        {deal.href ? (
+                          <Link href={deal.href} className="underline-offset-2 hover:underline">
+                            {deal.dealNumber}
+                          </Link>
+                        ) : (
+                          deal.dealNumber
+                        )}
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {deal.contractPeriod
+                            ?? (deal.termLabel ? `Срок: ${deal.termLabel}` : "—")}
+                        </div>
+                      </TableCell>
+                      <TableCell className="min-w-[160px]">
+                        {deal.clientName ? (
+                          deal.clientHref ? (
+                            <Link
+                              href={deal.clientHref}
+                              className="text-foreground underline-offset-2 hover:underline"
+                            >
+                              {deal.clientName}
+                            </Link>
+                          ) : (
+                            <span className="text-foreground">{deal.clientName}</span>
+                          )
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                        {deal.clientPhone ? (
+                          <p className="text-xs text-muted-foreground">{deal.clientPhone}</p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`rounded-lg border px-3 py-1 text-xs font-semibold ${resolveToneClass(deal.statusTone)}`}
+                        >
+                          {deal.statusLabel ?? deal.status ?? "—"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{deal.monthlyPayment ?? "—"}</TableCell>
+                      <TableCell>{deal.totalAmount ?? deal.principalAmount ?? "—"}</TableCell>
+                      <TableCell>{deal.nextPaymentDue ?? deal.firstPaymentDate ?? "—"}</TableCell>
+                      <TableCell>{deal.overdueAmount ?? "—"}</TableCell>
+                      <TableCell>{deal.managerName ?? "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card/60 backdrop-blur">
+        <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Документы</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">

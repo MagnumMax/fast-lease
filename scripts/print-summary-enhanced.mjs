@@ -65,7 +65,6 @@ export function printSummaryEnhanced(normalized) {
     interestRate: normalized.deal.interestRate,
     balloonPayment: normalized.deal.balloonPayment,
     currency: normalized.deal.currency,
-    vehiclePurchasePrice: normalized.deal.vehiclePurchasePrice,
     totalLeaseValue: normalized.deal.totalLeaseValue,
     fees: normalized.deal.fees,
     paymentSchedule: normalized.deal.paymentSchedule,

@@ -38,8 +38,7 @@ TRUNCATE TABLE public.referral_deals RESTART IDENTITY CASCADE;
 TRUNCATE TABLE public.referral_events RESTART IDENTITY CASCADE;
 TRUNCATE TABLE public.referral_codes RESTART IDENTITY CASCADE;
 
--- 6. Удаляем сервис и телеметрию
-TRUNCATE TABLE public.vehicle_telematics RESTART IDENTITY CASCADE;
+-- 6. Удаляем сервисные данные
 TRUNCATE TABLE public.vehicle_services RESTART IDENTITY CASCADE;
 TRUNCATE TABLE public.vehicle_specifications RESTART IDENTITY CASCADE;
 

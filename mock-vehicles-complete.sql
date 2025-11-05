@@ -20,8 +20,7 @@
 -- Toyota Corolla (5 единиц)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -37,9 +36,6 @@ INSERT INTO vehicles (
     2500,
     'Super White',
     'Black Cloth',
-    18500.00,
-    17800.00,
-    12000.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "30/38 mpg", "safety": ["Toyota Safety Sense 2.0", "Lane Departure Alert", "Pre-Collision System"]}'
 ),
@@ -57,9 +53,6 @@ INSERT INTO vehicles (
     3200,
     'Magnetic Gray',
     'Light Gray Cloth',
-    17800.00,
-    17100.00,
-    11500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "30/38 mpg", "entertainment": ["8-inch touchscreen", "Apple CarPlay", "Android Auto"]}'
 ),
@@ -77,9 +70,6 @@ INSERT INTO vehicles (
     1200,
     'Celestial Silver',
     'Black SofTex',
-    22500.00,
-    22200.00,
-    15500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "53/52 mpg", "hybrid": true, "evMode": "Available"}'
 ),
@@ -97,9 +87,6 @@ INSERT INTO vehicles (
     4800,
     'Barcelona Red',
     'Black Cloth',
-    19200.00,
-    18200.00,
-    12500.00,
     'leased',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "30/38 mpg", "manual": true, "sport": "Sport suspension"}'
 ),
@@ -117,9 +104,6 @@ INSERT INTO vehicles (
     800,
     'Classic Silver',
     'Light Gray Cloth',
-    20500.00,
-    20300.00,
-    14000.00,
     'reserved',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "30/38 mpg", "warranty": "Basic: 3yr/36k mi, Powertrain: 5yr/60k mi"}'
 );
@@ -127,8 +111,7 @@ INSERT INTO vehicles (
 -- Honda Civic (5 единиц)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -144,9 +127,6 @@ INSERT INTO vehicles (
     3200,
     'Crystal Black',
     'Black Cloth',
-    21000.00,
-    20200.00,
-    13500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "31/40 mpg", "safety": ["Honda Sensing", "Collision Mitigation Braking", "Road Departure Mitigation"]}'
 ),
@@ -164,9 +144,6 @@ INSERT INTO vehicles (
     2800,
     'Modern Steel',
     'Gray Cloth',
-    22800.00,
-    21900.00,
-    14800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "31/40 mpg", "comfort": ["Heated front seats", "Remote engine start"]}'
 ),
@@ -184,9 +161,6 @@ INSERT INTO vehicles (
     1500,
     'Rallye Red',
     'Black Cloth',
-    24200.00,
-    23900.00,
-    16500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "29/37 mpg", "sport": ["Sport suspension", "Body-colored spoilers", "Sport pedals"]}'
 ),
@@ -204,9 +178,6 @@ INSERT INTO vehicles (
     4200,
     'Platinum White',
     'Black Leather',
-    26800.00,
-    25400.00,
-    18200.00,
     'maintenance',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "31/40 mpg", "luxury": ["Premium audio", "Wireless phone charger", "Leather seats"]}'
 ),
@@ -224,9 +195,6 @@ INSERT INTO vehicles (
     600,
     'Cosmic Blue',
     'Gray Leather',
-    27600.00,
-    27400.00,
-    19200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "31/40 mpg", "premium": ["Leather-wrapped steering wheel", "Power moonroof"]}'
 );
@@ -234,8 +202,7 @@ INSERT INTO vehicles (
 -- Nissan Altima (5 единиц)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -251,9 +218,6 @@ INSERT INTO vehicles (
     3800,
     'Super Black',
     'Charcoal Cloth',
-    22300.00,
-    21300.00,
-    14200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "28/39 mpg", "safety": ["Nissan Safety Shield 360", "Automatic Emergency Braking", "Rear Automatic Braking"]}'
 ),
@@ -271,9 +235,6 @@ INSERT INTO vehicles (
     2900,
     'Gun Metallic',
     'Charcoal Sport Cloth',
-    24500.00,
-    23500.00,
-    15800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "28/39 mpg", "tech": ["8-inch touchscreen", "Dual-Zone Automatic Temperature Control"]}'
 ),
@@ -291,9 +252,6 @@ INSERT INTO vehicles (
     1200,
     'Brilliant Silver',
     'Light Gray Leather',
-    28800.00,
-    28500.00,
-    19500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "28/39 mpg", "luxury": ["ProPILOT Assist", "Bose Premium Audio", "Heated steering wheel"]}'
 ),
@@ -311,9 +269,6 @@ INSERT INTO vehicles (
     5100,
     'Pearl White',
     'Charcoal Sport Cloth',
-    26200.00,
-    24800.00,
-    17200.00,
     'leased',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "28/39 mpg", "sport": ["19-inch wheels", "Sport suspension", "LED fog lights"]}'
 ),
@@ -331,9 +286,6 @@ INSERT INTO vehicles (
     700,
     'Deep Blue',
     'Charcoal Leather',
-    31200.00,
-    31000.00,
-    21500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "28/39 mpg", "premium": ["Memory driver seat", "Power passenger seat", "Interior accent lighting"]}'
 );
@@ -345,8 +297,7 @@ INSERT INTO vehicles (
 -- BMW 3 Series (5 единиц)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -362,9 +313,6 @@ INSERT INTO vehicles (
     4200,
     'Alpine White',
     'Black Sensatec',
-    42000.00,
-    40500.00,
-    28000.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "26/36 mpg", "luxury": ["BMW iDrive 7.0", "LED headlights", "Dual-zone climate control"]}'
 ),
@@ -382,9 +330,6 @@ INSERT INTO vehicles (
     3600,
     'Jet Black',
     'Oyster Sensatec',
-    44200.00,
-    42600.00,
-    29500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "25/34 mpg", "awd": true, "premium": ["Satin Aluminum trim", "Heated front seats"]}'
 ),
@@ -402,9 +347,6 @@ INSERT INTO vehicles (
     1800,
     'Mineral Gray',
     'Black Vernasca',
-    52800.00,
-    52300.00,
-    36500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "23/33 mpg", "performance": ["3.0L Turbo", "M Sport Package", "Sport differential"]}'
 ),
@@ -422,9 +364,6 @@ INSERT INTO vehicles (
     5200,
     'Mediterranean Blue',
     'Cognac Vernasca',
-    46500.00,
-    43800.00,
-    31000.00,
     'maintenance',
     '{"batteryRange": "23 miles", "drive": "RWD", "fuelEconomy": "75 MPGe", "hybrid": true, "evMode": true}'
 ),
@@ -442,9 +381,6 @@ INSERT INTO vehicles (
     900,
     'Isle of Man Green',
     'Black SensaTec',
-    58400.00,
-    58000.00,
-    41000.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "25/32 mpg", "m": true, "performance": ["M Sport differential", "Adaptive M suspension", "M brakes"]}'
 );
@@ -452,8 +388,7 @@ INSERT INTO vehicles (
 -- Mercedes-Benz C-Class (5 единиц)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -469,9 +404,6 @@ INSERT INTO vehicles (
     3800,
     'Polar White',
     'Black MB-Tex',
-    45300.00,
-    43600.00,
-    30200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "26/36 mpg", "luxury": ["Mercedes-Benz User Experience", "64-color ambient lighting"]}'
 ),
@@ -489,9 +421,6 @@ INSERT INTO vehicles (
     2900,
     'Obsidian Black',
     'Silk Beige MB-Tex',
-    47500.00,
-    45800.00,
-    31800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "25/35 mpg", "awd": true, "comfort": ["4MATIC all-wheel drive", "Heated front seats"]}'
 ),
@@ -509,9 +438,6 @@ INSERT INTO vehicles (
     1400,
     'Graphite Grey',
     'Black Nappa Leather',
-    62800.00,
-    62200.00,
-    43500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "23/33 mpg", "amg": true, "performance": ["AMG Performance 4MATIC", "AMG Sport Suspension"]}'
 ),
@@ -529,9 +455,6 @@ INSERT INTO vehicles (
     4500,
     'Iridium Silver',
     'Neva Grey MB-Tex',
-    52800.00,
-    49600.00,
-    35500.00,
     'leased',
     '{"batteryRange": "62 miles", "drive": "RWD", "fuelEconomy": "68 MPGe", "hybrid": true, "evRange": "62 miles"}'
 ),
@@ -549,9 +472,6 @@ INSERT INTO vehicles (
     1100,
     'Selenite Grey',
     'Bengal Red Nappa',
-    58200.00,
-    57800.00,
-    40500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "24/34 mpg", "convertible": true, "luxury": ["AIRCAP", "AIRSCARF"]}'
 );
@@ -559,8 +479,7 @@ INSERT INTO vehicles (
 -- Audi A4 (5 единиц)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -576,9 +495,6 @@ INSERT INTO vehicles (
     4100,
     'Mythos Black',
     'Black Leather',
-    42800.00,
-    41200.00,
-    28500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "26/35 mpg", "quattro": true, "tech": ["MMI Navigation plus", "Virtual cockpit"]}'
 ),
@@ -596,9 +512,6 @@ INSERT INTO vehicles (
     3300,
     'Glacier White',
     'Rock Gray Leather',
-    46800.00,
-    45100.00,
-    31200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "26/35 mpg", "quattro": true, "performance": ["S line exterior", "Sport suspension"]}'
 ),
@@ -616,9 +529,6 @@ INSERT INTO vehicles (
     1600,
     'Navarra Blue',
     'Black Valetta Leather',
-    54800.00,
-    54300.00,
-    38000.00,
     'available',
     '{"batteryRange": "23 miles", "drive": "AWD", "fuelEconomy": "74 MPGe", "hybrid": true, "quattro": true}'
 ),
@@ -636,9 +546,6 @@ INSERT INTO vehicles (
     5200,
     'Manhattan Grey',
     'Black Milano Leather',
-    51800.00,
-    48800.00,
-    34500.00,
     'maintenance',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "24/30 mpg", "allroad": true, "practical": ["Roof rails", "All-season tires"]}'
 ),
@@ -656,9 +563,6 @@ INSERT INTO vehicles (
     800,
     'Daytona Grey',
     'Black Valetta Leather',
-    58900.00,
-    58600.00,
-    41500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "21/30 mpg", "s": true, "quattro": true, "performance": ["3.0L V6", "Sport differential"]}'
 );
@@ -666,8 +570,7 @@ INSERT INTO vehicles (
 -- Lexus IS (5 единиц)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -683,9 +586,6 @@ INSERT INTO vehicles (
     4500,
     'Atomic Silver',
     'Black NuLuxe',
-    41200.00,
-    39400.00,
-    27200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "28/37 mpg", "luxury": ["Lexus Safety System+ 2.0", "Premium audio system"]}'
 ),
@@ -703,9 +603,6 @@ INSERT INTO vehicles (
     3700,
     'Ultra White',
     'Circuit Red NuLuxe',
-    44700.00,
-    43000.00,
-    29800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "28/37 mpg", "fsport": true, "sport": ["F Sport tuning", "Sport suspension", "Sport seats"]}'
 ),
@@ -723,9 +620,6 @@ INSERT INTO vehicles (
     1900,
     'Caviar',
     'Black NuLuxe',
-    51200.00,
-    50700.00,
-    35500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "22/32 mpg", "performance": ["3.5L V6", "Lexus safety integration"]}'
 ),
@@ -743,9 +637,6 @@ INSERT INTO vehicles (
     1200,
     'Redline',
     'White NuLuxe',
-    46800.00,
-    46400.00,
-    32500.00,
     'reserved',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "28/37 mpg", "fsport": true, "limited": "F Sport Series 1"}'
 ),
@@ -763,9 +654,6 @@ INSERT INTO vehicles (
     600,
     'Flare Yellow',
     'Black F Sport NuLuxe',
-    63800.00,
-    63500.00,
-    44500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "17/26 mpg", "v8": true, "fsport": true, "performance": ["5.0L V8", "RWD Performance Package"]}'
 );
@@ -777,8 +665,7 @@ INSERT INTO vehicles (
 -- BMW 7 Series (4 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -794,9 +681,6 @@ INSERT INTO vehicles (
     5200,
     'Carbon Black',
     'Black Extended Merino',
-    98400.00,
-    92500.00,
-    65500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "22/29 mpg", "luxury": ["BMW Individual", "Executive Lounge", "Massage seats"]}'
 ),
@@ -814,9 +698,6 @@ INSERT INTO vehicles (
     3800,
     'Mineral White',
     'Tartufo Extended Merino',
-    115200.00,
-    110800.00,
-    78500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "17/25 mpg", "awd": true, "v8": true, "premium": ["V8 engine", "xDrive", "Sky Lounge"]}'
 ),
@@ -834,9 +715,6 @@ INSERT INTO vehicles (
     2100,
     'Dravit Grey',
     'Black Extended Merino',
-    128500.00,
-    127200.00,
-    90500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "17/25 mpg", "v8": true, "performance": ["TwinPower Turbo V8", "xDrive"]}'
 ),
@@ -854,9 +732,6 @@ INSERT INTO vehicles (
     800,
     'Storm Bay',
     'Ivory White Extended Merino',
-    138800.00,
-    137500.00,
-    98500.00,
     'available',
     '{"batteryRange": "321 miles", "drive": "AWD", "electric": true, "luxury": ["Electric luxury", "Air suspension", "Executive lounge"]}'
 );
@@ -864,8 +739,7 @@ INSERT INTO vehicles (
 -- Mercedes-Benz S-Class (4 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -881,9 +755,6 @@ INSERT INTO vehicles (
     4600,
     'Obsidian Black',
     'Nappa Leather Black',
-    108500.00,
-    103200.00,
-    73500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "21/30 mpg", "luxury": ["MBUX Hyperscreen", "E-Active Body Control", "Executive seating"]}'
 ),
@@ -901,9 +772,6 @@ INSERT INTO vehicles (
     3200,
     'Designo Diamond White',
     'Nappa Leather Porcelain',
-    129800.00,
-    124700.00,
-    88500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "18/28 mpg", "awd": true, "v8": true, "premium": ["V8 engine", "4MATIC", "Designo package"]}'
 ),
@@ -921,9 +789,6 @@ INSERT INTO vehicles (
     1400,
     'Obsidian Black',
     'Nappa Leather Black',
-    168500.00,
-    167200.00,
-    118500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "16/25 mpg", "v12": true, "awd": true, "top": "Maybach-inspired interior"}'
 ),
@@ -941,9 +806,6 @@ INSERT INTO vehicles (
     900,
     'High-Tech Silver',
     'Nappa Leather Black',
-    142800.00,
-    141500.00,
-    101200.00,
     'available',
     '{"batteryRange": "453 miles", "drive": "AWD", "electric": true, "luxury": ["MBUX Hyperscreen", "Air suspension", "Executive rear seating"]}'
 );
@@ -951,8 +813,7 @@ INSERT INTO vehicles (
 -- Audi A8 (4 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -968,9 +829,6 @@ INSERT INTO vehicles (
     4800,
     'Mythos Black',
     'Black Valetta Leather',
-    92400.00,
-    87800.00,
-    62500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "20/28 mpg", "luxury": ["MMI Navigation", "Virtual cockpit", "Bose sound"]}'
 ),
@@ -988,9 +846,6 @@ INSERT INTO vehicles (
     3500,
     'Glacier White',
     'Black Valetta Leather',
-    105600.00,
-    100800.00,
-    71500.00,
     'available',
     '{"batteryRange": "29 miles", "drive": "AWD", "fuelEconomy": "54 MPGe", "hybrid": true, "quattro": true}'
 ),
@@ -1008,9 +863,6 @@ INSERT INTO vehicles (
     1800,
     'Daytona Grey',
     'Saddle Brown Valetta',
-    116200.00,
-    115100.00,
-    82000.00,
     'available',
     '{"batteryRange": "29 miles", "drive": "AWD", "fuelEconomy": "54 MPGe", "hybrid": true, "long": "L version", "quattro": true}'
 ),
@@ -1028,9 +880,6 @@ INSERT INTO vehicles (
     1100,
     'Nardo Grey',
     'Black Valetta Leather',
-    102800.00,
-    102100.00,
-    73500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "20/28 mpg", "long": "L version", "quattro": true, "luxury": ["Executive rear seating"]}'
 );
@@ -1038,8 +887,7 @@ INSERT INTO vehicles (
 -- Lexus LS (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1055,9 +903,6 @@ INSERT INTO vehicles (
     4200,
     'Eminent White Pearl',
     'Parchment Semi-Aniline',
-    89500.00,
-    85200.00,
-    60500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "19/30 mpg", "luxury": ["Mark Levinson audio", "Executive seating", "Air suspension"]}'
 ),
@@ -1075,9 +920,6 @@ INSERT INTO vehicles (
     3800,
     'Nightfall Mica',
     'Black Semi-Aniline',
-    102800.00,
-    97800.00,
-    69500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "25/33 mpg", "hybrid": true, "luxury": ["Multi-Stage Hybrid", "Executive seating"]}'
 ),
@@ -1095,9 +937,6 @@ INSERT INTO vehicles (
     1600,
     'Sonic Silver',
     'Red F Sport Semi-Aniline',
-    112600.00,
-    111800.00,
-    79500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "19/30 mpg", "fsport": true, "performance": ["F Sport package", "Variable gear ratio steering"]}'
 );
@@ -1113,8 +952,7 @@ INSERT INTO vehicles (
 -- Honda CR-V (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1130,9 +968,6 @@ INSERT INTO vehicles (
     3500,
     'Platinum White',
     'Gray Cloth',
-    26200.00,
-    25200.00,
-    17500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "28/34 mpg", "safety": ["Honda Sensing", "Collision Mitigation Braking"]}'
 ),
@@ -1150,9 +985,6 @@ INSERT INTO vehicles (
     2800,
     'Crystal Black',
     'Black Cloth',
-    29200.00,
-    28100.00,
-    19800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "27/32 mpg", "awd": true, "sport": ["Sport suspension", "19-inch wheels"]}'
 ),
@@ -1170,9 +1002,6 @@ INSERT INTO vehicles (
     1200,
     'Radiant Red',
     'Ivory Leather',
-    34800.00,
-    34500.00,
-    24200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "27/32 mpg", "awd": true, "luxury": ["Leather seats", "Navigation", "Hands-free tailgate"]}'
 );
@@ -1180,8 +1009,7 @@ INSERT INTO vehicles (
 -- Toyota RAV4 (4 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1197,9 +1025,6 @@ INSERT INTO vehicles (
     4200,
     'Magnetic Gray',
     'Black Cloth',
-    27800.00,
-    26500.00,
-    18500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "27/35 mpg", "safety": ["Toyota Safety Sense 2.0", "Pre-Collision System"]}'
 ),
@@ -1217,9 +1042,6 @@ INSERT INTO vehicles (
     3600,
     'Blue Flame',
     'Gray Cloth',
-    30200.00,
-    28900.00,
-    20200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "25/33 mpg", "awd": true, "comfort": ["Dual-zone climate", "Power driver seat"]}'
 ),
@@ -1237,9 +1059,6 @@ INSERT INTO vehicles (
     1500,
     'Magnetic Gray',
     'Black SofTex',
-    36800.00,
-    36500.00,
-    25800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "40/36 mpg", "hybrid": true, "awd": true, "sport": ["XSE package", "Sport suspension"]}'
 ),
@@ -1257,9 +1076,6 @@ INSERT INTO vehicles (
     800,
     'Supersonic Red',
     'Black SofTex',
-    44800.00,
-    44500.00,
-    31500.00,
     'reserved',
     '{"batteryRange": "42 miles", "drive": "AWD", "fuelEconomy": "94 MPGe", "hybrid": true, "awd": true, "phev": true}'
 );
@@ -1267,8 +1083,7 @@ INSERT INTO vehicles (
 -- Nissan Rogue (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1284,9 +1099,6 @@ INSERT INTO vehicles (
     3800,
     'Super Black',
     'Charcoal Cloth',
-    26800.00,
-    25600.00,
-    17800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "28/34 mpg", "awd": true, "safety": ["Nissan Safety Shield 360"]}'
 ),
@@ -1304,9 +1116,6 @@ INSERT INTO vehicles (
     2900,
     'Pearl White',
     'Charcoal Cloth',
-    29800.00,
-    28600.00,
-    20000.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "28/34 mpg", "awd": true, "tech": ["NissanConnect", "Intelligent Key"]}'
 ),
@@ -1324,9 +1133,6 @@ INSERT INTO vehicles (
     1100,
     'Gun Metallic',
     'Tan Leather',
-    36800.00,
-    36500.00,
-    25800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "28/34 mpg", "awd": true, "luxury": ["Leather seats", "Bose audio", "ProPILOT Assist"]}'
 );
@@ -1338,8 +1144,7 @@ INSERT INTO vehicles (
 -- BMW X3 (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1355,9 +1160,6 @@ INSERT INTO vehicles (
     4500,
     'Jet Black',
     'Black Sensatec',
-    48500.00,
-    46200.00,
-    32500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "25/29 mpg", "luxury": ["BMW iDrive 8.0", "LED headlights", "Panoramic moonroof"]}'
 ),
@@ -1375,9 +1177,6 @@ INSERT INTO vehicles (
     3600,
     'Mineral White',
     'Oyster Sensatec',
-    51500.00,
-    49400.00,
-    34500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "25/29 mpg", "awd": true, "tech": ["Live Cockpit Professional", "Gesture control"]}'
 ),
@@ -1395,9 +1194,6 @@ INSERT INTO vehicles (
     1800,
     'Phytonic Blue',
     'Black Vernasca',
-    63800.00,
-    63200.00,
-    44500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "22/29 mpg", "awd": true, "m": true, "performance": ["M Sport differential", "M Sport brakes"]}'
 );
@@ -1405,8 +1201,7 @@ INSERT INTO vehicles (
 -- Mercedes-Benz GLC (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1422,9 +1217,6 @@ INSERT INTO vehicles (
     4200,
     'Polar White',
     'Black MB-Tex',
-    52800.00,
-    50400.00,
-    35500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "22/29 mpg", "awd": true, "luxury": ["MBUX infotainment", "Ambient lighting", "Keyless start"]}'
 ),
@@ -1442,9 +1234,6 @@ INSERT INTO vehicles (
     3300,
     'Obsidian Black',
     'Silk Beige MB-Tex',
-    58800.00,
-    56200.00,
-    39500.00,
     'available',
     '{"batteryRange": "48 miles", "drive": "AWD", "fuelEconomy": "75 MPGe", "hybrid": true, "awd": true, "electric": "Plug-in hybrid"}'
 ),
@@ -1462,9 +1251,6 @@ INSERT INTO vehicles (
     1500,
     'Iridium Silver',
     'Black Nappa Leather',
-    71800.00,
-    71200.00,
-    50500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "21/28 mpg", "awd": true, "amg": true, "performance": ["AMG Performance 4MATIC", "AMG Dynamics"]}'
 );
@@ -1472,8 +1258,7 @@ INSERT INTO vehicles (
 -- Audi Q5 (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1489,9 +1274,6 @@ INSERT INTO vehicles (
     3900,
     'Mythos Black',
     'Black Leather',
-    48800.00,
-    46800.00,
-    32800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "23/28 mpg", "quattro": true, "luxury": ["Virtual cockpit", "MMI Navigation"]}'
 ),
@@ -1509,9 +1291,6 @@ INSERT INTO vehicles (
     3200,
     'Glacier White',
     'Rock Gray Leather',
-    52800.00,
-    50800.00,
-    35500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "23/28 mpg", "quattro": true, "performance": ["Sport suspension", "S line exterior"]}'
 ),
@@ -1529,9 +1308,6 @@ INSERT INTO vehicles (
     1400,
     'Navarra Blue',
     'Black Valetta Leather',
-    59800.00,
-    59300.00,
-    41800.00,
     'available',
     '{"batteryRange": "37 miles", "drive": "AWD", "fuelEconomy": "65 MPGe", "hybrid": true, "quattro": true, "electric": "Plug-in hybrid"}'
 );
@@ -1539,8 +1315,7 @@ INSERT INTO vehicles (
 -- Lexus NX (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1556,9 +1331,6 @@ INSERT INTO vehicles (
     4100,
     'Eminent White Pearl',
     'Black NuLuxe',
-    42200.00,
-    40400.00,
-    28200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "25/33 mpg", "awd": true, "luxury": ["Lexus Safety System+ 3.0", "10-speaker audio"]}'
 ),
@@ -1576,9 +1348,6 @@ INSERT INTO vehicles (
     3500,
     'Atomic Silver',
     'Black NuLuxe',
-    48200.00,
-    46100.00,
-    32500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "38/36 mpg", "hybrid": true, "awd": true, "luxury": ["Multi Stage Hybrid", "Lexus Interface"]}'
 ),
@@ -1596,9 +1365,6 @@ INSERT INTO vehicles (
     1200,
     'Cobalt Mica',
     'Black NuLuxe',
-    58800.00,
-    58400.00,
-    41200.00,
     'available',
     '{"batteryRange": "37 miles", "drive": "AWD", "fuelEconomy": "80 MPGe", "hybrid": true, "awd": true, "luxury": ["Lexus Interface", "Mark Levinson audio"]}'
 );
@@ -1610,8 +1376,7 @@ INSERT INTO vehicles (
 -- BMW X5 (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1627,9 +1392,6 @@ INSERT INTO vehicles (
     5200,
     'Alpine White',
     'Cognac Vernasca',
-    68800.00,
-    65200.00,
-    46200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "21/25 mpg", "awd": true, "luxury": ["Panoramic sky lounge", "Wireless charging", "Gesture control"]}'
 ),
@@ -1647,9 +1409,6 @@ INSERT INTO vehicles (
     2100,
     'Jet Black',
     'Black Extended Merino',
-    94800.00,
-    94100.00,
-    66500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "18/24 mpg", "awd": true, "v8": true, "m": true, "performance": ["4.4L V8", "M Sport exhaust"]}'
 );
@@ -1657,8 +1416,7 @@ INSERT INTO vehicles (
 -- Mercedes-Benz GLE (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1674,9 +1432,6 @@ INSERT INTO vehicles (
     4800,
     'Iridium Silver',
     'Black Nappa Leather',
-    75800.00,
-    72200.00,
-    51500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "22/28 mpg", "awd": true, "luxury": ["MBUX Hyperscreen", "AIRMATIC suspension", "360-degree camera"]}'
 ),
@@ -1694,9 +1449,6 @@ INSERT INTO vehicles (
     1800,
     'Designo Diamond White',
     'Nappa Leather Porcelain',
-    95800.00,
-    95100.00,
-    67500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "20/25 mpg", "awd": true, "v8": true, "luxury": ["V8 engine", "Executive rear seating", "Burmester audio"]}'
 );
@@ -1704,8 +1456,7 @@ INSERT INTO vehicles (
 -- Audi Q7 (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1721,9 +1472,6 @@ INSERT INTO vehicles (
     4600,
     'Mythos Black',
     'Black Valetta Leather',
-    64800.00,
-    61800.00,
-    43800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "21/25 mpg", "quattro": true, "luxury": ["Virtual cockpit", "MMI Navigation", "Bang & Olufsen"]}'
 ),
@@ -1741,9 +1489,6 @@ INSERT INTO vehicles (
     1600,
     'Glacier White',
     'Black Valetta Leather',
-    74800.00,
-    74200.00,
-    52800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "21/25 mpg", "quattro": true, "luxury": ["7-passenger seating", "Power-folding third row", "Air suspension"]}'
 );
@@ -1751,8 +1496,7 @@ INSERT INTO vehicles (
 -- Lexus GX (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1768,9 +1512,6 @@ INSERT INTO vehicles (
     5800,
     'Starfire Pearl',
     'Black Leather',
-    62800.00,
-    59400.00,
-    42200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "15/19 mpg", "awd": true, "v8": true, "luxury": ["Off-road package", "Mark Levinson audio"]}'
 ),
@@ -1788,9 +1529,6 @@ INSERT INTO vehicles (
     2200,
     'Eminent White Pearl',
     'Black Semi-Aniline',
-    74800.00,
-    74200.00,
-    52800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "15/19 mpg", "awd": true, "v8": true, "luxury": ["Semi-aniline leather", "Heated/cooled seats", "Off-road cameras"]}'
 );
@@ -1806,8 +1544,7 @@ INSERT INTO vehicles (
 -- Ford Transit (4 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1823,9 +1560,6 @@ INSERT INTO vehicles (
     2800,
     'Oxford White',
     'Charcoal Cloth',
-    42500.00,
-    40800.00,
-    28500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "15/19 mpg", "commercial": true, "cargo": "8-9 passengers or 1000+ lbs"}'
 ),
@@ -1843,9 +1577,6 @@ INSERT INTO vehicles (
     3200,
     'Race Red',
     'Charcoal Cloth',
-    48500.00,
-    46400.00,
-    32500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "14/19 mpg", "commercial": true, "high": true, "cargo": "Extended cargo capacity"}'
 ),
@@ -1863,9 +1594,6 @@ INSERT INTO vehicles (
     1400,
     'Magnetic',
     'Charcoal Cloth',
-    46800.00,
-    46400.00,
-    32500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "15/19 mpg", "commercial": true, "crew": true, "cargo": "Crew seating configuration"}'
 ),
@@ -1883,9 +1611,6 @@ INSERT INTO vehicles (
     800,
     'Iconic Silver',
     'Charcoal Cloth',
-    58800.00,
-    58400.00,
-    41200.00,
     'available',
     '{"batteryRange": "126 miles", "drive": "RWD", "electric": true, "commercial": true, "cargo": "Electric cargo van"}'
 );
@@ -1893,8 +1618,7 @@ INSERT INTO vehicles (
 -- Mercedes-Benz Sprinter (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1910,9 +1634,6 @@ INSERT INTO vehicles (
     3600,
     'Arctic White',
     'Black Cloth',
-    44800.00,
-    42800.00,
-    29800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "16/19 mpg", "commercial": true, "cargo": "Large cargo capacity"}'
 ),
@@ -1930,9 +1651,6 @@ INSERT INTO vehicles (
     2900,
     'Obsidian Black',
     'Black Cloth',
-    48800.00,
-    46800.00,
-    32500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "16/19 mpg", "commercial": true, "cargo": "Heavy-duty cargo capacity"}'
 ),
@@ -1950,9 +1668,6 @@ INSERT INTO vehicles (
     1200,
     'Cement Gray',
     'Black Cloth',
-    56800.00,
-    56400.00,
-    39800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "15/18 mpg", "commercial": true, "diesel": true, "heavy": true}'
 );
@@ -1960,8 +1675,7 @@ INSERT INTO vehicles (
 -- Iveco Daily (3 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -1977,9 +1691,6 @@ INSERT INTO vehicles (
     4800,
     'White',
     'Gray Cloth',
-    39800.00,
-    37800.00,
-    26200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "18/22 mpg", "commercial": true, "diesel": true, "manual": true}'
 ),
@@ -1997,9 +1708,6 @@ INSERT INTO vehicles (
     3500,
     'Silver',
     'Gray Cloth',
-    44800.00,
-    42800.00,
-    29800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "17/21 mpg", "commercial": true, "diesel": true, "automatic": true}'
 ),
@@ -2017,9 +1725,6 @@ INSERT INTO vehicles (
     1800,
     'Red',
     'Gray Cloth',
-    52800.00,
-    52400.00,
-    36800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "16/20 mpg", "commercial": true, "diesel": true, "heavy": true, "truck": true}'
 );
@@ -2031,8 +1736,7 @@ INSERT INTO vehicles (
 -- Ford F-150 (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2048,9 +1752,6 @@ INSERT INTO vehicles (
     5200,
     'Oxford White',
     'Gray Cloth',
-    48800.00,
-    46200.00,
-    32500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "4WD", "fuelEconomy": "20/24 mpg", "commercial": true, "4wd": true, "work": "Work-ready pickup"}'
 ),
@@ -2068,9 +1769,6 @@ INSERT INTO vehicles (
     2100,
     'Velocity Blue',
     'Black Leather',
-    62800.00,
-    62300.00,
-    43800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "4WD", "fuelEconomy": "18/23 mpg", "commercial": true, "4wd": true, "luxury": ["Leather seats", "SYNC 4", "Co-Pilot360"]}'
 );
@@ -2078,8 +1776,7 @@ INSERT INTO vehicles (
 -- Toyota Hilux (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2095,9 +1792,6 @@ INSERT INTO vehicles (
     6800,
     'Super White',
     'Black Cloth',
-    44800.00,
-    42400.00,
-    29500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "4WD", "fuelEconomy": "20/24 mpg", "commercial": true, "diesel": true, "4wd": true, "manual": true}'
 ),
@@ -2115,9 +1809,6 @@ INSERT INTO vehicles (
     3200,
     'Emotional Red',
     'Black Leather',
-    52800.00,
-    52400.00,
-    36800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "4WD", "fuelEconomy": "20/23 mpg", "commercial": true, "diesel": true, "4wd": true, "luxury": ["Automatic transmission", "Premium interior"]}'
 );
@@ -2125,8 +1816,7 @@ INSERT INTO vehicles (
 -- Nissan Titan (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2142,9 +1832,6 @@ INSERT INTO vehicles (
     4200,
     'Glacier White',
     'Black Cloth',
-    46800.00,
-    44800.00,
-    31200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "4WD", "fuelEconomy": "15/21 mpg", "commercial": true, "4wd": true, "v8": true, "work": "Heavy-duty pickup"}'
 ),
@@ -2162,9 +1849,6 @@ INSERT INTO vehicles (
     1800,
     'Red Alert',
     'Black Cloth',
-    56800.00,
-    56400.00,
-    39800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "4WD", "fuelEconomy": "15/21 mpg", "commercial": true, "4wd": true, "v8": true, "offroad": "Off-road package"}'
 );
@@ -2176,8 +1860,7 @@ INSERT INTO vehicles (
 -- Mercedes-Benz Vito (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2193,9 +1876,6 @@ INSERT INTO vehicles (
     3800,
     'Arctic White',
     'Black Cloth',
-    42800.00,
-    40800.00,
-    28500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "18/22 mpg", "commercial": true, "passenger": true, "diesel": true, "seats": "7-8 passengers"}'
 ),
@@ -2213,9 +1893,6 @@ INSERT INTO vehicles (
     1500,
     'Obsidian Black',
     'Black Cloth',
-    48800.00,
-    48400.00,
-    34200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "RWD", "fuelEconomy": "17/21 mpg", "commercial": true, "passenger": true, "diesel": true, "extended": true, "seats": "9 passengers"}'
 );
@@ -2223,8 +1900,7 @@ INSERT INTO vehicles (
 -- Volkswagen Crafter (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2240,9 +1916,6 @@ INSERT INTO vehicles (
     4500,
     'Pure White',
     'Gray Cloth',
-    38800.00,
-    36800.00,
-    25800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "22/29 mpg", "commercial": true, "passenger": true, "diesel": true, "manual": true, "seats": "6 passengers"}'
 ),
@@ -2260,9 +1933,6 @@ INSERT INTO vehicles (
     2200,
     'Reflex Silver',
     'Gray Cloth',
-    44800.00,
-    44400.00,
-    31200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "21/28 mpg", "commercial": true, "passenger": true, "diesel": true, "automatic": true, "high": true, "seats": "8 passengers"}'
 );
@@ -2278,8 +1948,7 @@ INSERT INTO vehicles (
 -- Tesla Model 3 (2 единицы)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2295,9 +1964,6 @@ INSERT INTO vehicles (
     2800,
     'Pearl White',
     'Black',
-    42800.00,
-    41200.00,
-    28800.00,
     'available',
     '{"batteryRange": "272 miles", "drive": "RWD", "electric": true, "autopilot": "Basic autopilot", "tech": ["15-inch touchscreen", "Over-the-air updates"]}'
 ),
@@ -2315,9 +1981,6 @@ INSERT INTO vehicles (
     1200,
     'Solid Black',
     'White',
-    52800.00,
-    52400.00,
-    36800.00,
     'available',
     '{"batteryRange": "333 miles", "drive": "AWD", "electric": true, "autopilot": "Full self-driving", "dual": true, "performance": "Long Range AWD"}'
 );
@@ -2325,8 +1988,7 @@ INSERT INTO vehicles (
 -- BMW i3 (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2342,9 +2004,6 @@ INSERT INTO vehicles (
     4500,
     'Capparis White',
     'Deka World',
-    38800.00,
-    36800.00,
-    25800.00,
     'available',
     '{"batteryRange": "153 miles", "drive": "RWD", "electric": true, "luxury": ["iDrive 6.0", "ConnectedDrive", "EcoPro mode"]}'
 );
@@ -2352,8 +2011,7 @@ INSERT INTO vehicles (
 -- Nissan Leaf (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2369,9 +2027,6 @@ INSERT INTO vehicles (
     3200,
     'Pearl White',
     'Black Cloth',
-    34800.00,
-    33200.00,
-    23200.00,
     'available',
     '{"batteryRange": "215 miles", "drive": "FWD", "electric": true, "tech": ["NissanConnect", "ProPILOT Assist", "Intelligent Key"]}'
 );
@@ -2379,8 +2034,7 @@ INSERT INTO vehicles (
 -- Tesla Model S (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2396,9 +2050,6 @@ INSERT INTO vehicles (
     800,
     'Deep Blue',
     'Black',
-    128800.00,
-    128000.00,
-    90500.00,
     'available',
     '{"batteryRange": "396 miles", "drive": "AWD", "electric": true, "performance": "Tri-motor", "autopilot": "Full self-driving capability"}'
 );
@@ -2410,8 +2061,7 @@ INSERT INTO vehicles (
 -- Toyota Prius (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2427,9 +2077,6 @@ INSERT INTO vehicles (
     3800,
     'Magnetic Gray',
     'Black Cloth',
-    28800.00,
-    27400.00,
-    19200.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "58/53 mpg", "hybrid": true, "eco": ["Toyota Safety Sense 3.0", "EV mode"]}'
 );
@@ -2437,8 +2084,7 @@ INSERT INTO vehicles (
 -- Honda Insight (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2454,9 +2100,6 @@ INSERT INTO vehicles (
     4200,
     'Platinum White',
     'Gray Cloth',
-    29800.00,
-    28200.00,
-    19800.00,
     'available',
     '{"batteryRange": "N/A", "drive": "FWD", "fuelEconomy": "55/49 mpg", "hybrid": true, "luxury": ["Honda Sensing", "Apple CarPlay", "Android Auto"]}'
 );
@@ -2464,8 +2107,7 @@ INSERT INTO vehicles (
 -- BMW 330e (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2481,9 +2123,6 @@ INSERT INTO vehicles (
     3500,
     'Mineral Grey',
     'Black Sensatec',
-    48800.00,
-    46600.00,
-    32800.00,
     'available',
     '{"batteryRange": "23 miles", "drive": "AWD", "fuelEconomy": "71 MPGe", "hybrid": true, "luxury": ["BMW iDrive 7.0", "LED headlights"]}'
 );
@@ -2495,8 +2134,7 @@ INSERT INTO vehicles (
 -- Bentley Continental (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2512,9 +2150,6 @@ INSERT INTO vehicles (
     1200,
     'Beluga Black',
     'Beluga Leather',
-    228800.00,
-    227200.00,
-    160500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "16/26 mpg", "awd": true, "v8": true, "luxury": ["Hand-crafted interior", "Mulliner bespoke", "Touring package"]}'
 );
@@ -2522,8 +2157,7 @@ INSERT INTO vehicles (
 -- Rolls-Royce Ghost (1 единица)
 INSERT INTO vehicles (
     id, vin, make, model, variant, year, body_type, fuel_type, transmission,
-    engine_capacity, mileage, color_exterior, color_interior,
-    purchase_price, current_value, residual_value, status, features
+    engine_capacity, mileage, color_exterior, color_interior, status, features
 ) VALUES 
 (
     gen_random_uuid(),
@@ -2539,9 +2173,6 @@ INSERT INTO vehicles (
     800,
     'English White',
     'Seashell Leather',
-    358800.00,
-    357200.00,
-    252500.00,
     'available',
     '{"batteryRange": "N/A", "drive": "AWD", "fuelEconomy": "12/19 mpg", "awd": true, "v12": true, "luxury": ["Bespoke interior", "Starlight headliner", "Massage seats"]}'
 );

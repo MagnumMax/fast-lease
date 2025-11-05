@@ -6,6 +6,7 @@ import { buildSlugWithId, extractIdFromSlug, slugify } from "@/lib/utils/slugs";
 import {
   OPS_DEAL_STATUS_META,
   OPS_VEHICLE_STATUS_META,
+  VEHICLE_DOCUMENT_TYPE_LABEL_MAP,
 } from "@/lib/supabase/queries/operations";
 import type {
   OpsClientRecord,
@@ -33,6 +34,7 @@ import type {
   OpsTone,
   OpsVehicleData,
   OpsVehicleDocument,
+  OpsVehicleDeal,
   OpsVehicleProfile,
   OpsVehicleServiceLogEntry,
 } from "@/lib/supabase/queries/operations";
@@ -327,7 +329,6 @@ export type SupabaseVehicleData = {
   year: number | null;
   body_type: string | null;
   mileage: number | null;
-  current_value: number | null;
   status: string | null;
   fuel_type?: string | null;
   transmission?: string | null;
@@ -351,6 +352,18 @@ export type SupabaseDealDocument = {
   status?: string | null;
   signed_at?: string | null;
   created_at: string | null;
+};
+
+export type SupabaseClientDocumentRow = {
+  id: string;
+  document_type: string | null;
+  document_category: string | null;
+  title: string | null;
+  storage_path: string | null;
+  status: string | null;
+  uploaded_at: string | null;
+  verified_at: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type SupabaseInvoice = {
@@ -384,6 +397,18 @@ export type SupabaseDealRow = {
 // Вспомогательные функции
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isMissingColumnError(error: unknown, column: string): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: string }).code;
+  if (code && String(code) === "42703") {
+    return true;
+  }
+  const message = String((error as { message?: string }).message ?? "");
+  const details = String((error as { details?: string }).details ?? "");
+  const needle = `column ${column}`;
+  return message.toLowerCase().includes(needle) || details.toLowerCase().includes(needle);
 }
 
 function getString(value: unknown): string | null {
@@ -904,7 +929,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       vehicle_id,
       total_amount,
       payload,
-      vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, current_value, status)
+      vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, status)
     `)
     .order("updated_at", { ascending: false });
 
@@ -1191,30 +1216,63 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   });
 }
 
+type SupabaseClientProfileRow = {
+  user_id: string;
+  full_name: string | null;
+  status: string | null;
+  phone: string | null;
+  nationality: string | null;
+  residency_status: string | null;
+  created_at: string | null;
+  metadata: unknown;
+};
+
 export async function getOperationsClients(): Promise<OpsClientRecord[]> {
   console.log("[SERVER-OPS] getOperationsClients called");
 
   const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(
-      "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata",
-    )
-    .order("full_name", { ascending: true });
+  const profileSelect =
+    "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata, source";
 
-  if (error) {
-    console.error("[SERVER-OPS] failed to load clients:", error);
+  let profilesData: SupabaseClientProfileRow[] | null = null;
+  let profilesError: unknown = null;
+
+  {
+    const response = await supabase
+      .from("profiles")
+      .select(profileSelect)
+      .order("full_name", { ascending: true });
+    profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
+    profilesError = response.error;
+  }
+
+  if (profilesError && isMissingColumnError(profilesError, "source")) {
+    console.warn("[SERVER-OPS] profiles.source column missing, retrying without it");
+    const response = await supabase
+      .from("profiles")
+      .select(
+        "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata",
+      )
+      .order("full_name", { ascending: true });
+    profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
+    profilesError = response.error;
+  }
+
+  if (profilesError) {
+    console.error("[SERVER-OPS] failed to load clients:", profilesError);
     return [];
   }
 
-  console.log(`[SERVER-OPS] loaded ${data?.length || 0} clients`);
+  const profiles = profilesData ?? [];
 
-  if (!data?.length) {
+  console.log(`[SERVER-OPS] loaded ${profiles.length} clients`);
+
+  if (!profiles.length) {
     return [];
   }
 
-  const clientIds = data.map((profile) => profile.user_id as string);
+  const clientIds = profiles.map((profile) => profile.user_id);
 
   let leasingRows: Array<{
     client_id: string;
@@ -1261,18 +1319,22 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     return acc;
   }, new Map());
 
-  return data.map((profile, index) => {
+  return profiles.map((profile, index) => {
     const metadata = isRecord(profile.metadata)
       ? (profile.metadata as Record<string, unknown>)
       : {};
     const statusInfo = normalizeClientStatus(profile.status);
     const emailFromMetadata = getString(metadata?.["ops_email"]);
     const phoneFromMetadata = getString(metadata?.["ops_phone"]);
-    const segment =
+    const rawSegment =
       getString(metadata?.["segment"]) ??
       getString(metadata?.["client_segment"]) ??
       getString(metadata?.["customer_segment"]) ??
       null;
+    const clientTypeValue = getString(metadata?.["client_type"]);
+    const clientType =
+      clientTypeValue === "Company" || clientTypeValue === "Personal" ? clientTypeValue : null;
+    const segment = rawSegment ?? clientType;
 
     const rawMemberSince = profile.created_at
       ? formatDate(profile.created_at as string, { month: "long", year: "numeric" })
@@ -1287,6 +1349,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         [
           statusInfo.display,
           getString(profile.residency_status),
+          clientType,
           segment,
           getString(profile.nationality),
         ]
@@ -1403,17 +1466,31 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     return null;
   }
 
-  const {
+  const profileSelect = `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
+       employment_info, financial_profile, metadata, created_at, last_login_at, source`;
+
+  let {
     data: profileRow,
     error: profileError,
   } = await supabase
     .from("profiles")
-    .select(
-      `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
-       employment_info, financial_profile, metadata, created_at, last_login_at`
-    )
+    .select(profileSelect)
     .eq("user_id", userId)
     .maybeSingle();
+
+  if (profileError && isMissingColumnError(profileError, "source")) {
+    console.warn("[SERVER-OPS] profiles.source column missing, retrying client profile without it", {
+      userId,
+    });
+    ({ data: profileRow, error: profileError } = await supabase
+      .from("profiles")
+      .select(
+        `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
+         employment_info, financial_profile, metadata, created_at, last_login_at`
+      )
+      .eq("user_id", userId)
+      .maybeSingle());
+  }
 
   if (profileError) {
     console.error("[SERVER-OPS] failed to load client profile", { userId, error: profileError });
@@ -1482,17 +1559,42 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     raw: financialRecord,
   };
 
-  const segment =
+  const profileSourceRaw = getString(profileRow.source);
+  const metadataSourceCandidates = [
+    getString(metadata?.["lead_source"]),
+    getString(metadata?.["source_label"]),
+    getString(metadata?.["source"]),
+  ];
+  const resolvedSource =
+    (profileSourceRaw && profileSourceRaw.trim().length > 0 ? profileSourceRaw.trim() : null) ??
+    metadataSourceCandidates.find(
+      (value): value is string => typeof value === "string" && value.trim().length > 0,
+    ) ??
+    null;
+
+  const rawSegment =
     getString(metadata?.segment) ??
     getString(metadata?.client_segment) ??
     getString(metadata?.customer_segment) ??
     null;
+  const clientTypeValue = getString(metadata?.client_type);
+  const clientType =
+    clientTypeValue === "Company" || clientTypeValue === "Personal" ? clientTypeValue : null;
+  const segment = rawSegment ?? clientType;
 
   const statusInfo = normalizeClientStatus(profileRow.status);
+
+  const companyProfile = {
+    contactName: getString(metadata?.company_contact_name),
+    contactEmiratesId: getString(metadata?.company_contact_emirates_id),
+    trn: getString(metadata?.company_trn),
+    licenseNumber: getString(metadata?.company_license_number),
+  };
 
   const tagSource = [
     statusInfo.display,
     getString(profileRow.residency_status),
+    clientType,
     segment,
     getString(profileRow.nationality),
   ];
@@ -1506,7 +1608,9 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     fullName: getString(profileRow.full_name) ?? "Без имени",
     status: statusInfo.display,
     segment,
+    clientType,
     memberSince: profileRow.created_at ? formatDate(profileRow.created_at, { month: "long", year: "numeric" }) : null,
+    source: resolvedSource,
     email: authEmail,
     phone: getString(profileRow.phone) ?? authPhone,
     emiratesId: getString(profileRow.emirates_id),
@@ -1514,6 +1618,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     nationality: getString(profileRow.nationality),
     residencyStatus: getString(profileRow.residency_status),
     dateOfBirth: profileRow.date_of_birth ?? null,
+    company: companyProfile,
     employment,
     financial,
     lastLoginAt: profileRow.last_login_at ?? null,
@@ -1593,6 +1698,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     { data: notificationsData, error: notificationsError },
     { data: ticketsData, error: ticketsError },
     { data: referralRows, error: referralError },
+    { data: clientDocumentsData, error: clientDocumentsError },
   ] = await Promise.all([
     supabase
       .from("applications")
@@ -1638,6 +1744,13 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
       .eq("client_id", userId)
       .order("created_at", { ascending: false })
       .limit(1),
+    supabase
+      .from("client_documents")
+      .select(
+        "id, document_type, document_category, title, storage_path, status, uploaded_at, verified_at, metadata",
+      )
+      .eq("client_id", userId)
+      .order("uploaded_at", { ascending: false }),
   ]);
 
   if (applicationError) {
@@ -1654,6 +1767,9 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   }
   if (referralError) {
     console.error("[SERVER-OPS] failed to load client referral data", { userId, error: referralError });
+  }
+  if (clientDocumentsError) {
+    console.error("[SERVER-OPS] failed to load client identity documents", { userId, error: clientDocumentsError });
   }
 
   const deals = (dealsData ?? []) as SupabaseDealRow[];
@@ -1840,6 +1956,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
 
   const applicationDocuments = (applicationDocumentsResult?.data ?? []) as SupabaseApplicationDocumentRow[];
   const dealDocuments = (dealDocumentsResult?.data ?? []) as SupabaseDealDocumentRow[];
+  const clientDocumentsRows = (clientDocumentsData ?? []) as SupabaseClientDocumentRow[];
 
   const documentDescriptors = (await Promise.all(
     [
@@ -1860,6 +1977,8 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
           storagePath: document.storage_path ?? null,
           uploadedAt: document.uploaded_at ?? null,
           signedAt: document.verified_at ?? null,
+          metadata: null,
+          context: "personal" as const,
           url,
         } satisfies OpsClientDocument;
       }),
@@ -1880,6 +1999,47 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
           storagePath: document.storage_path ?? null,
           uploadedAt: document.created_at ?? null,
           signedAt: document.signed_at ?? null,
+          metadata: null,
+          context: "personal" as const,
+          url,
+        } satisfies OpsClientDocument;
+      }),
+      ...clientDocumentsRows.map(async (document) => {
+        const url = await createSignedStorageUrl({
+          bucket: "client-documents",
+          path: document.storage_path,
+        });
+        if (!url) return null;
+
+        const metadata = (document.metadata ?? {}) as Record<string, unknown>;
+        const preferredName =
+          getString(document.title) ??
+          getString(metadata?.["label"]) ??
+          getString(document.document_type) ??
+          "Документ";
+
+        const contextRaw = getString(metadata?.["upload_context"]);
+        const context = contextRaw === "company"
+          ? ("company" as const)
+          : contextRaw === "personal"
+            ? ("personal" as const)
+            : document.document_type === "company_license"
+              ? ("company" as const)
+              : ("personal" as const);
+
+        return {
+          id: document.id,
+          name: preferredName,
+          status: getString(document.status) ?? "uploaded",
+          documentType: getString(document.document_type),
+          category: getString(document.document_category),
+          source: "client" as const,
+          bucket: "client-documents",
+          storagePath: document.storage_path ?? null,
+          uploadedAt: document.uploaded_at ?? null,
+          signedAt: document.verified_at ?? null,
+          metadata,
+          context,
           url,
         } satisfies OpsClientDocument;
       }),
@@ -1981,7 +2141,6 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
         year,
         body_type,
         mileage,
-        current_value,
         status,
         updated_at,
         deals:deals!deals_vehicle_id_fkey (id, deal_number, status)
@@ -2014,11 +2173,7 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
     const variant = vehicle.variant ? String(vehicle.variant) : null;
     const yearValue = vehicle.year != null ? Number(vehicle.year) : null;
     const bodyType = vehicle.body_type ? String(vehicle.body_type) : null;
-    const priceValue = vehicle.current_value != null ? Number(vehicle.current_value) : null;
     const mileageValue = vehicle.mileage != null ? Number(vehicle.mileage) : null;
-    const price = priceValue != null
-      ? `AED ${priceValue.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
-      : "—";
     const mileage = mileageValue != null
       ? `${mileageValue.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`
       : "—";
@@ -2063,8 +2218,6 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
       status: statusRaw,
       statusLabel: statusMeta.label,
       statusTone: statusMeta.tone,
-      price,
-      priceValue,
       mileage,
       mileageValue,
       activeDealNumber,
@@ -2095,6 +2248,7 @@ type DealDetailResult = {
   structuredData: OpsDealDetailJsonBlock[];
   paymentSchedule: OpsDealDetailsEntry[];
   editDefaults: OpsDealEditDefaults;
+  clientDocuments: OpsClientDocument[];
   documents: OpsDealDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];
@@ -2141,14 +2295,13 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     contract_start_date,
     contract_end_date,
     first_payment_date,
-    source,
     workflow_id,
     workflow_version_id,
     op_manager_id,
     assigned_account_manager,
     customer_id,
     asset_id,
-    vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, current_value, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
+    vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
     customer_contact:customer_id(id, full_name, email, phone, emirates_id),
     deal_documents(id, document_type, title, storage_path, status, signed_at, created_at)
   `;
@@ -2178,7 +2331,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     contract_start_date: string | null;
     contract_end_date: string | null;
     first_payment_date: string | null;
-    source: string | null;
     workflow_id: string | null;
     workflow_version_id: string | null;
     op_manager_id: string | null;
@@ -2346,7 +2498,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   // Загружаем данные клиента отдельным запросом
   const { data: clientData, error: clientError } = await supabase
     .from("profiles")
-    .select("id, user_id, full_name, phone, status, nationality, metadata")
+    .select("id, user_id, full_name, phone, status, nationality, metadata, source")
     .eq("user_id", dealRow.client_id)
     .maybeSingle();
 
@@ -2398,6 +2550,71 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         error,
       });
     }
+  }
+
+  let clientDocuments: OpsClientDocument[] = [];
+  if (dealRow.client_id) {
+    const { data: clientDocumentsRows, error: clientDocumentsError } = await supabase
+      .from("client_documents")
+      .select(
+        "id, document_type, document_category, title, storage_path, status, uploaded_at, verified_at, metadata",
+      )
+      .eq("client_id", dealRow.client_id)
+      .order("uploaded_at", { ascending: false });
+
+    if (clientDocumentsError) {
+      console.error("[SERVER-OPS] failed to load client documents for deal", {
+        dealId: dealRow.id,
+        clientId: dealRow.client_id,
+        error: clientDocumentsError,
+      });
+    }
+
+    const mappedClientDocuments = await Promise.all(
+      (clientDocumentsRows ?? []).map(async (document: SupabaseClientDocumentRow) => {
+        const signedUrl = document.storage_path
+          ? await createSignedStorageUrl({ bucket: "client-documents", path: document.storage_path })
+          : null;
+        const metadata = (document.metadata ?? {}) as Record<string, unknown>;
+        const preferredName =
+          getString(document.title) ??
+          getString(metadata?.["label"]) ??
+          getString(document.document_type) ??
+          "Документ";
+
+        const contextRaw = getString(metadata?.["upload_context"]);
+        const context =
+          contextRaw === "company"
+            ? ("company" as const)
+            : contextRaw === "personal"
+              ? ("personal" as const)
+              : document.document_type === "company_license"
+                ? ("company" as const)
+                : ("personal" as const);
+
+        return {
+          id: document.id,
+          name: preferredName,
+          status: getString(document.status) ?? "uploaded",
+          documentType: getString(document.document_type),
+          category: getString(document.document_category),
+          source: "client" as const,
+          bucket: "client-documents",
+          storagePath: document.storage_path ?? null,
+          uploadedAt: document.uploaded_at ?? null,
+          signedAt: document.verified_at ?? null,
+          metadata,
+          context,
+          url: signedUrl,
+        } satisfies OpsClientDocument;
+      }),
+    );
+
+    clientDocuments = mappedClientDocuments.sort((left, right) => {
+      const leftUploaded = left.uploadedAt ?? "";
+      const rightUploaded = right.uploadedAt ?? "";
+      return rightUploaded.localeCompare(leftUploaded);
+    });
   }
 
   // Загружаем scoring из applications
@@ -2621,6 +2838,23 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         normalizedTitle.includes("архив")
       ) {
         category = "archived";
+      } else if (
+        normalizedType.includes("invoice") ||
+        normalizedTitle.includes("invoice") ||
+        normalizedTitle.includes("инвойс")
+      ) {
+        category = "other";
+      } else if (
+        normalizedType.includes("statement") ||
+        normalizedTitle.includes("statement")
+      ) {
+        category = "other";
+      } else if (
+        normalizedType.includes("other") ||
+        normalizedTitle.includes("other") ||
+        normalizedTitle.includes("проч")
+      ) {
+        category = "other";
       }
 
       const signaturePattern = /(\d+)\s*\/*\s*(из|from)?\s*(\d+)/i;
@@ -2799,6 +3033,18 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       : null);
   const resolvedClientPhone = clientData?.phone ?? contactRecord?.phone ?? null;
   const resolvedClientEmail = metadataEmail ?? contactRecord?.email ?? authUser?.user?.email ?? "—";
+  const profileSourceRaw = typeof clientData?.source === "string" ? clientData.source : null;
+  const profileSource = profileSourceRaw ? profileSourceRaw.trim() : "";
+  const payloadSourceCandidates = [
+    getString(dealRow.payload?.["source_label"]),
+    getString(dealRow.payload?.source),
+  ];
+  const payloadSource =
+    payloadSourceCandidates.find(
+      (value): value is string => typeof value === "string" && value.trim().length > 0,
+    ) ?? null;
+  const resolvedClientSource =
+    profileSource.length > 0 ? profileSource : payloadSource ?? "—";
 
   const clientNotesParts: string[] = [];
   if (clientData?.status) {
@@ -2831,6 +3077,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     phone: resolvedClientPhone ?? "—",
     email: resolvedClientEmail,
     scoring: scoringDisplay,
+    source: resolvedClientSource,
     notes: clientNotesParts.length > 0 ? clientNotesParts.join(" • ") : "—",
     userId: dealRow.client_id ?? null,
     detailHref: clientDetailHref,
@@ -2841,6 +3088,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     phone: clientProfile.phone,
     email: clientProfile.email,
     scoring: clientProfile.scoring,
+    source: clientProfile.source,
     notes: clientProfile.notes,
   });
 
@@ -2868,6 +3116,14 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   // Формируем ключевую информацию об автомобиле
   const rawKeyInformation: DealDetailResult["keyInformation"] = [
     { label: "VIN", value: vehicleData?.vin ?? "—" },
+    {
+      label: "Производитель",
+      value: vehicleData?.make ?? "—",
+    },
+    {
+      label: "Модель",
+      value: vehicleData?.model ?? "—",
+    },
     {
       label: "Год выпуска",
       value: vehicleData?.year != null ? vehicleData.year.toString() : "—",
@@ -2900,14 +3156,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       value: vehicleData?.color_interior ?? "—",
     },
     {
-      label: "Статус авто",
-      value: vehicleData?.status ?? "—",
-    },
-    {
-      label: "Стоимость",
-      value: formatCurrency(vehicleData?.current_value ?? null),
-    },
-    {
       label: "Срок договора",
       value: dealRow.term_months != null ? `${dealRow.term_months} мес.` : "—",
     },
@@ -2929,13 +3177,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   // Формируем обзор сделки
   const overview: DealDetailResult["overview"] = [
-    {
-      label: "Source",
-      value:
-        getString(dealRow.source) ??
-        getString(dealRow.payload?.source) ??
-        "—",
-    },
     {
       label: "Created at",
       value: formatDateTime(dealRow.created_at),
@@ -3036,7 +3277,14 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     },
     { label: "Customer record ID", value: dealRow.customer_id ?? "—" },
     { label: "Workflow asset ID", value: dealRow.asset_id ?? "—" },
-    { label: "Source (payload)", value: getString(dealRow.payload?.source) ?? "—" },
+    { label: "Client source", value: clientProfile.source ?? "—" },
+    {
+      label: "Source (payload)",
+      value:
+        getString(dealRow.payload?.["source_label"]) ??
+        getString(dealRow.payload?.source) ??
+        "—",
+    },
   ];
 
   const paymentScheduleEntries: OpsDealDetailsEntry[] = paymentScheduleRows.map((row, index) => {
@@ -3201,10 +3449,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   const editDefaults: OpsDealEditDefaults = {
     dealNumber: dealRow.deal_number ?? "",
-    source:
-      getString(dealRow.source) ??
-      getString(dealRow.payload?.source) ??
-      "",
     statusKey,
     principalAmount: getNumber(dealRow.principal_amount),
     totalAmount: getNumber(dealRow.total_amount),
@@ -3249,6 +3493,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     structuredData,
     paymentSchedule: paymentScheduleEntries,
     editDefaults,
+    clientDocuments,
     documents,
     invoices,
     timeline,
@@ -3328,21 +3573,22 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
         mileage,
         color_exterior,
         color_interior,
-        purchase_price,
-        current_value,
-        residual_value,
         status,
         features,
         created_at,
         updated_at,
         vehicle_images(id, storage_path, label, is_primary, sort_order),
         vehicle_specifications(id, category, spec_key, spec_value, unit, sort_order),
-        vehicle_telematics(id, odometer, battery_health, fuel_level, tire_pressure, location, last_reported_at),
         vehicle_services(id, deal_id, service_type, title, description, due_date, mileage_target, status, completed_at, attachments, created_at, updated_at),
+        vehicle_documents(id, document_type, title, status, storage_path, mime_type, file_size, uploaded_at, metadata),
         deals:deals!deals_vehicle_id_fkey (
           id,
           deal_number,
           status,
+          client_id,
+          assigned_account_manager,
+          created_at,
+          updated_at,
           monthly_payment,
           monthly_lease_rate,
           principal_amount,
@@ -3350,6 +3596,8 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
           term_months,
           contract_start_date,
           contract_end_date,
+          first_payment_date,
+          source,
           deal_documents(id, title, document_type, status, storage_path, signed_at, created_at)
         )
       `,
@@ -3481,87 +3729,6 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     },
   ];
 
-  const financialSpecs = [
-    { label: "Закупочная стоимость", value: formatCurrency(vehicleDetail.purchase_price) },
-    { label: "Текущая стоимость", value: formatCurrency(vehicleDetail.current_value) },
-    { label: "Остаточная стоимость", value: formatCurrency(vehicleDetail.residual_value) },
-  ];
-
-  const telemetryRow = Array.isArray(vehicleDetail.vehicle_telematics)
-    ? vehicleDetail.vehicle_telematics[0]
-    : vehicleDetail.vehicle_telematics;
-
-  const normalizeKeyValueRecord = (value: unknown): Record<string, number | string> => {
-    if (!value || typeof value !== "object") {
-      return {};
-    }
-    return Object.entries(value as JsonRecord).reduce<Record<string, number | string>>((acc, [key, raw]) => {
-      if (!key) return acc;
-      if (typeof raw === "number") {
-        acc[key] = raw;
-      } else if (typeof raw === "string") {
-        const trimmed = raw.trim();
-        if (trimmed.length > 0) {
-          const numeric = Number(trimmed);
-          acc[key] = Number.isFinite(numeric) ? numeric : trimmed;
-        }
-      }
-      return acc;
-    }, {});
-  };
-
-  const telemetrySpecs = telemetryRow
-    ? ([
-        { label: "Одометр", value: formatMileage(telemetryRow.odometer) },
-        { label: "Состояние батареи", value: formatPercentage(telemetryRow.battery_health) },
-        { label: "Уровень топлива", value: formatPercentage(telemetryRow.fuel_level) },
-        {
-          label: "Давление в шинах",
-          value: (() => {
-            if (!telemetryRow.tire_pressure || typeof telemetryRow.tire_pressure !== "object") {
-              return "—";
-            }
-            const entries = Object.entries(telemetryRow.tire_pressure as JsonRecord)
-              .map(([position, reading]) => {
-                const readValue = typeof reading === "number" ? reading : Number(reading);
-                if (Number.isNaN(readValue)) {
-                  return null;
-                }
-                return `${humanizeKey(position)}: ${readValue.toLocaleString("ru-RU", {
-                  maximumFractionDigits: 1,
-                  minimumFractionDigits: 1,
-                })}`;
-              })
-              .filter((value): value is string => Boolean(value));
-            return entries.length > 0 ? entries.join(" • ") : "—";
-          })(),
-        },
-        {
-          label: "Расположение",
-          value: (() => {
-            if (!telemetryRow.location || typeof telemetryRow.location !== "object") {
-              return "—";
-            }
-            const locationEntries = Object.entries(telemetryRow.location as JsonRecord)
-              .map(([key, value]) => {
-                if (value == null) {
-                  return null;
-                }
-                if (typeof value === "number") {
-                  return `${humanizeKey(key)}: ${value.toLocaleString("ru-RU", {
-                    maximumFractionDigits: 4,
-                  })}`;
-                }
-                return `${humanizeKey(key)}: ${String(value)}`;
-              })
-              .filter((value): value is string => Boolean(value));
-            return locationEntries.length > 0 ? locationEntries.join(" • ") : "—";
-          })(),
-        },
-        { label: "Отчёт обновлён", value: formatDateTime(telemetryRow.last_reported_at) },
-      ] satisfies Array<{ label: string; value: string }>)
-    : [];
-
   const lifecycleSpecs = [
     { label: "Создано", value: formatDateTime(vehicleDetail.created_at) },
     { label: "Обновлено", value: formatDateTime(vehicleDetail.updated_at) },
@@ -3590,12 +3757,6 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
 
   const specGroups: Array<{ title: string; specs: Array<{ label: string; value: string }> }> = [];
   specGroups.push({ title: "Основная информация", specs: generalSpecs });
-  if (financialSpecs.some((spec) => spec.value !== "—")) {
-    specGroups.push({ title: "Финансовые параметры", specs: financialSpecs });
-  }
-  if (telemetrySpecs.length > 0) {
-    specGroups.push({ title: "Телематика", specs: telemetrySpecs });
-  }
   if (specificationGroups.length > 0) {
     specGroups.push(...specificationGroups);
   }
@@ -3628,13 +3789,132 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     return [String(raw)];
   })();
 
-  const deals = Array.isArray(vehicleDetail.deals) ? vehicleDetail.deals : [];
-  const dealById = new Map<string, (typeof deals)[number]>();
+  type SupabaseVehicleDealRow = {
+    id: string;
+    deal_number: string | null;
+    status: string | null;
+    client_id: string | null;
+    assigned_account_manager: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    monthly_payment: number | null;
+    monthly_lease_rate: number | null;
+    principal_amount: number | null;
+    total_amount: number | null;
+    term_months: number | null;
+    contract_start_date: string | null;
+    contract_end_date: string | null;
+    first_payment_date: string | null;
+    source: string | null;
+    deal_documents:
+      | Array<{
+          id: string | null;
+          title: string | null;
+          document_type: string | null;
+          status: string | null;
+          storage_path: string | null;
+          signed_at: string | null;
+          created_at: string | null;
+        }>
+      | null;
+  };
+
+  const deals = (Array.isArray(vehicleDetail.deals) ? vehicleDetail.deals : []) as SupabaseVehicleDealRow[];
+
+  const dealById = new Map<string, SupabaseVehicleDealRow>();
   for (const deal of deals) {
     if (deal?.id) {
-      dealById.set(deal.id, deal);
+      dealById.set(String(deal.id), deal);
     }
   }
+
+  const dealIds = deals
+    .map((deal) => getString(deal?.id))
+    .filter((value): value is string => Boolean(value));
+  const uniqueClientIds = Array.from(
+    new Set(
+      deals
+        .map((deal) => getString(deal?.client_id))
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+  const uniqueManagerIds = Array.from(
+    new Set(
+      deals
+        .map((deal) => getString(deal?.assigned_account_manager))
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+  const profileLookupIds = Array.from(new Set([...uniqueClientIds, ...uniqueManagerIds]));
+  const clientIdSet = new Set(uniqueClientIds);
+  const managerIdSet = new Set(uniqueManagerIds);
+
+  let profileRows: Array<{ user_id: string; full_name: string | null; phone: string | null }> = [];
+  if (profileLookupIds.length > 0) {
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, phone")
+      .in("user_id", profileLookupIds);
+
+    if (profileError) {
+      console.error("[SERVER-OPS] failed to load profiles for vehicle deals", profileError);
+    } else {
+      profileRows = (profileData ?? []) as Array<{
+        user_id: string;
+        full_name: string | null;
+        phone: string | null;
+      }>;
+    }
+  }
+
+  type VehicleScheduleRow = {
+    id: string;
+    deal_id: string | null;
+    due_date: string | null;
+    amount: number | null;
+    status: string | null;
+  };
+
+  let scheduleRows: VehicleScheduleRow[] = [];
+  if (dealIds.length > 0) {
+    const { data: scheduleData, error: schedulesError } = await supabase
+      .from("payment_schedules")
+      .select("id, deal_id, due_date, amount, status")
+      .in("deal_id", dealIds);
+
+    if (schedulesError) {
+      console.error("[SERVER-OPS] failed to load payment schedules for vehicle deals", schedulesError);
+    } else {
+      scheduleRows = (scheduleData ?? []) as VehicleScheduleRow[];
+    }
+  }
+
+  const clientProfiles = new Map<string, { name: string | null; phone: string | null }>();
+  const managerProfiles = new Map<string, { name: string | null; phone: string | null }>();
+
+  for (const profile of profileRows) {
+    const userId = getString(profile.user_id);
+    if (!userId) continue;
+    const name = getString(profile.full_name);
+    const phone = getString(profile.phone);
+    if (clientIdSet.has(userId)) {
+      clientProfiles.set(userId, { name, phone });
+    }
+    if (managerIdSet.has(userId)) {
+      managerProfiles.set(userId, { name, phone });
+    }
+  }
+
+  const schedulesByDeal = scheduleRows.reduce<Map<string, VehicleScheduleRow[]>>((acc, schedule) => {
+    const dealId = getString(schedule.deal_id);
+    if (!dealId) {
+      return acc;
+    }
+    const existing = acc.get(dealId) ?? [];
+    existing.push(schedule);
+    acc.set(dealId, existing);
+    return acc;
+  }, new Map());
 
   const ACTIVE_DEAL_STATUSES = new Set([
     "pending_activation",
@@ -3675,27 +3955,139 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
       }
     : null;
 
+  const scheduleNow = new Date();
+  scheduleNow.setHours(0, 0, 0, 0);
+
+  const vehicleDeals: OpsVehicleDeal[] = deals.map((deal) => {
+    const dealId = getString(deal.id) ?? crypto.randomUUID();
+    const rawNumber = getString(deal.deal_number);
+    const dealNumber = rawNumber ?? computeFallbackDealNumber(dealId);
+    const statusRaw = getString(deal.status);
+    const statusKey = statusRaw ? statusRaw.toLowerCase() : null;
+    const statusMeta = statusKey ? OPS_DEAL_STATUS_META[statusKey] ?? null : null;
+    const statusLabel = statusMeta?.label ?? (statusRaw ? humanizeKey(statusRaw.replace(/[_\.]+/g, " ")) : null);
+    const statusTone = statusMeta?.tone ?? null;
+
+    const clientId = getString(deal.client_id);
+    const clientProfile = clientId ? clientProfiles.get(clientId) ?? null : null;
+    const clientName = clientProfile?.name ?? null;
+    const clientPhone = clientProfile?.phone ?? null;
+    const clientSlug = clientId ? buildSlugWithId(clientName ?? clientId, clientId) || clientId : null;
+
+    const managerId = getString(deal.assigned_account_manager);
+    const managerProfile = managerId ? managerProfiles.get(managerId) ?? null : null;
+    const managerName = managerProfile?.name ?? null;
+
+    const monthlyPaymentLabel =
+      deal.monthly_payment != null ? formatCurrency(Number(deal.monthly_payment)) : null;
+    const totalAmountLabel =
+      deal.total_amount != null
+        ? formatCurrency(Number(deal.total_amount))
+        : deal.principal_amount != null
+          ? formatCurrency(Number(deal.principal_amount))
+          : null;
+    const principalAmountLabel =
+      deal.principal_amount != null ? formatCurrency(Number(deal.principal_amount)) : null;
+
+    const contractStartLabel = formatShortDate(deal.contract_start_date);
+    const contractEndLabel = formatShortDate(deal.contract_end_date);
+    const firstPaymentLabel = formatShortDate(deal.first_payment_date);
+    const contractPeriod = [
+      contractStartLabel !== "—" ? contractStartLabel : null,
+      contractEndLabel !== "—" ? contractEndLabel : null,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(" → ") || null;
+
+    const termLabel = deal.term_months != null ? `${deal.term_months} мес.` : null;
+
+    const scheduleRowsForDeal = schedulesByDeal.get(dealId) ?? [];
+    let nextPaymentDue: string | null = null;
+    let overdueAmountValue: number | null = null;
+
+    if (scheduleRowsForDeal.length > 0) {
+      const upcoming = scheduleRowsForDeal
+        .filter((schedule) => {
+          const status = String(schedule.status ?? "").toLowerCase();
+          return status !== "paid" && Boolean(schedule.due_date);
+        })
+        .map((schedule) => {
+          if (!schedule.due_date) {
+            return null;
+          }
+          const dueDate = new Date(schedule.due_date);
+          if (Number.isNaN(dueDate.getTime())) {
+            return null;
+          }
+          return { row: schedule, dueDate };
+        })
+        .filter((entry): entry is { row: VehicleScheduleRow; dueDate: Date } => entry !== null)
+        .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+      const nextEntry = upcoming.find((entry) => entry.dueDate.getTime() >= scheduleNow.getTime());
+      if (nextEntry) {
+        nextPaymentDue = formatShortDate(nextEntry.row.due_date);
+      }
+
+      const overdueEntries = upcoming.filter((entry) => entry.dueDate.getTime() < scheduleNow.getTime());
+      if (overdueEntries.length > 0) {
+        const sum = overdueEntries.reduce((acc, entry) => acc + (Number(entry.row.amount) || 0), 0);
+        overdueAmountValue = sum > 0 ? sum : null;
+      }
+    }
+
+    const overdueAmountLabel = overdueAmountValue != null ? formatCurrency(overdueAmountValue) : null;
+
+    const dealSlug = buildSlugWithId(dealNumber, dealId) || dealId;
+
+    return {
+      id: dealId,
+      dealNumber,
+      status: statusRaw ?? null,
+      statusLabel,
+      statusTone,
+      stageLabel: null,
+      monthlyPayment: monthlyPaymentLabel,
+      totalAmount: totalAmountLabel,
+      principalAmount: principalAmountLabel,
+      termMonths: deal.term_months ?? null,
+      termLabel,
+      contractPeriod,
+      contractStartDate: contractStartLabel !== "—" ? contractStartLabel : null,
+      contractEndDate: contractEndLabel !== "—" ? contractEndLabel : null,
+      firstPaymentDate: firstPaymentLabel !== "—" ? firstPaymentLabel : null,
+      nextPaymentDue: nextPaymentDue ?? null,
+      overdueAmount: overdueAmountLabel,
+      clientId,
+      clientName,
+      clientPhone,
+      clientHref: clientSlug ? `/ops/clients/${clientSlug}` : null,
+      managerId,
+      managerName,
+      href: dealSlug ? `/ops/deals/${dealSlug}` : null,
+    } satisfies OpsVehicleDeal;
+  });
+
+  vehicleDeals.sort((a, b) => {
+    const aStatus = String(a.status ?? "").toLowerCase();
+    const bStatus = String(b.status ?? "").toLowerCase();
+    if (aStatus === bStatus) {
+      return (b.contractStartDate ?? "").localeCompare(a.contractStartDate ?? "");
+    }
+    if (aStatus === "active") return -1;
+    if (bStatus === "active") return 1;
+    return aStatus.localeCompare(bStatus);
+  });
+
   const highlightCandidates = (
     [
       { label: "VIN", value: vehicleDetail.vin ?? "—" },
       { label: "Год выпуска", value: vehicleDetail.year ? String(vehicleDetail.year) : "—" },
       { label: "Пробег", value: formatMileage(vehicleDetail.mileage) },
-      { label: "Текущая стоимость", value: formatCurrency(vehicleDetail.current_value) },
       ] satisfies VehicleHighlight[]
   ).filter((item) => item.value && item.value !== "—");
 
   const highlights = highlightCandidates.slice(0, 4);
-
-  const telematicsRecord: OpsVehicleData["telematics"] = telemetryRow
-    ? {
-        odometer: telemetryRow.odometer != null ? Number(telemetryRow.odometer) : null,
-        batteryHealth: telemetryRow.battery_health != null ? Number(telemetryRow.battery_health) : null,
-        fuelLevel: telemetryRow.fuel_level != null ? Number(telemetryRow.fuel_level) : null,
-        tirePressure: normalizeKeyValueRecord(telemetryRow.tire_pressure),
-        location: normalizeKeyValueRecord(telemetryRow.location),
-        lastReportedAt: telemetryRow.last_reported_at ?? null,
-      }
-    : null;
 
   const vehicleRecord: OpsVehicleData = {
     id: vehicleDetail.id,
@@ -3713,26 +4105,19 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     colorExterior: vehicleDetail.color_exterior ?? null,
     colorInterior: vehicleDetail.color_interior ?? null,
     status: vehicleDetail.status ?? null,
-    purchasePrice:
-      vehicleDetail.purchase_price != null ? Number(vehicleDetail.purchase_price) : null,
-    currentValue:
-      vehicleDetail.current_value != null ? Number(vehicleDetail.current_value) : null,
-    residualValue:
-      vehicleDetail.residual_value != null ? Number(vehicleDetail.residual_value) : null,
     monthlyLeaseRate: activeDealMonthlyRateValue ?? null,
     features: featureList,
     rawFeatures: vehicleDetail.features,
-    telematics: telematicsRecord,
     createdAt: vehicleDetail.created_at ?? null,
     updatedAt: vehicleDetail.updated_at ?? null,
   };
 
-  const documentRows = deals.flatMap((deal) =>
+  const dealDocumentRows = deals.flatMap((deal) =>
     (deal?.deal_documents ?? []).map((doc) => ({ doc, dealNumber: deal?.deal_number ?? null })),
   );
 
-  const documents: OpsVehicleDocument[] = await Promise.all(
-    documentRows.map(async ({ doc, dealNumber }) => {
+  const dealDocuments: OpsVehicleDocument[] = await Promise.all(
+    dealDocumentRows.map(async ({ doc, dealNumber }) => {
       const url = doc?.storage_path
         ? await createSignedStorageUrl({ bucket: "deal-documents", path: doc.storage_path })
         : null;
@@ -3768,7 +4153,10 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
             return statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
         }
       })();
-      const typeLabel = doc?.document_type ? humanizeKey(doc.document_type.replace(/\./g, " ")) : undefined;
+      const typeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
+      const typeLabel = typeCode
+        ? VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode] ?? humanizeKey(typeCode.replace(/\./g, " "))
+        : undefined;
       const dateLabel = formatShortDate(doc?.signed_at ?? doc?.created_at ?? null);
       const documentId = doc?.id ?? `doc-${Math.random().toString(36).slice(2)}`;
       return {
@@ -3776,13 +4164,79 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
         title: doc?.title ?? typeLabel ?? "Документ",
         status,
         statusTone,
+        typeCode,
         type: typeLabel,
         date: dateLabel !== "—" ? dateLabel : undefined,
         dealNumber,
         url,
+        source: "deal",
       } satisfies OpsVehicleDocument;
     }),
   );
+
+  const vehicleDocumentRows = Array.isArray(vehicleDetail.vehicle_documents)
+    ? vehicleDetail.vehicle_documents
+    : [];
+
+  const vehicleDocuments: OpsVehicleDocument[] = await Promise.all(
+    vehicleDocumentRows.map(async (doc) => {
+      const url = doc?.storage_path
+        ? await createSignedStorageUrl({ bucket: "vehicle-documents", path: doc.storage_path })
+        : null;
+      const statusRaw = typeof doc?.status === "string" ? doc.status : "uploaded";
+      const statusTone: OpsTone = (() => {
+        switch (statusRaw) {
+          case "uploaded":
+            return "info";
+          case "verified":
+            return "success";
+          case "expired":
+            return "warning";
+          case "archived":
+            return "muted";
+          default:
+            return "muted";
+        }
+      })();
+      const status = (() => {
+        switch (statusRaw) {
+          case "uploaded":
+            return "Загружен";
+          case "verified":
+            return "Проверен";
+          case "expired":
+            return "Просрочен";
+          case "archived":
+            return "Архив";
+          default:
+            if (!statusRaw) {
+              return "Не указан";
+            }
+            return humanizeKey(statusRaw.replace(/[_\.]+/g, " "));
+        }
+      })();
+      const typeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
+      const typeLabel = typeCode
+        ? VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode] ?? humanizeKey(typeCode.replace(/\./g, " "))
+        : undefined;
+      const dateLabel = formatShortDate(doc?.uploaded_at ?? null);
+      const documentId = doc?.id ?? `vehicle-doc-${Math.random().toString(36).slice(2)}`;
+      return {
+        id: documentId,
+        title: doc?.title ?? typeLabel ?? "Документ",
+        status,
+        statusTone,
+        typeCode,
+        type: typeLabel,
+        date: dateLabel !== "—" ? dateLabel : undefined,
+        dealNumber: null,
+        url,
+        source: "vehicle",
+      } satisfies OpsVehicleDocument;
+    }),
+  );
+
+  const documents: OpsVehicleDocument[] = [...vehicleDocuments, ...dealDocuments];
 
   documents.sort((a, b) => {
     const left = a.date ?? "";
@@ -3947,6 +4401,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     slug: canonicalVehicleSlug,
     vehicleUuid: vehicleDetail.id,
     activeDeal,
+    deals: vehicleDeals,
     vehicle: vehicleRecord,
     profile,
     documents,

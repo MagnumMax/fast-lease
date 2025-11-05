@@ -49,7 +49,7 @@ prompt_template: |
 **Новые поля автомобиля:**
 - color_interior, external_id
 - engine (capacity, fuel_type, transmission)
-- features, valuation (purchase_price, current_value, residual_value)
+- features, valuation metadata (if available)
 
 **Новые поля сделки:**
 - contract_number, contract_date

@@ -23,7 +23,7 @@ const inputSchema = z.object({
     type: z.string().optional(),
     vin: z.string().min(1).optional(),
     year: z.number().int().min(1900).max(2100).optional(),
-    price: z.number().nonnegative().optional(),
+    price: z.number().nonnegative().nullable().optional(),
     mileage: z.number().nonnegative().optional(),
     meta: z.record(z.unknown()).optional(),
   }),
@@ -36,18 +36,18 @@ export type CreateOperationsDealResult =
   | { data?: undefined; error: string };
 
 export async function createOperationsDeal(
-   input: CreateOperationsDealInput,
- ): Promise<CreateOperationsDealResult> {
-   console.log(`[DEBUG] createOperationsDeal called with input:`, input);
+  input: CreateOperationsDealInput,
+): Promise<CreateOperationsDealResult> {
+  console.log(`[DEBUG] createOperationsDeal called with input:`, input);
 
-   const parsed = inputSchema.safeParse(input);
+  const parsed = inputSchema.safeParse(input);
 
-   if (!parsed.success) {
-     console.error(`[DEBUG] input validation failed:`, parsed.error);
-     return { error: "Введите корректные данные сделки." };
-   }
+  if (!parsed.success) {
+    console.error(`[DEBUG] input validation failed:`, parsed.error);
+    return { error: "Введите корректные данные сделки." };
+  }
 
-   console.log(`[DEBUG] parsed input:`, parsed.data);
+  console.log(`[DEBUG] parsed input:`, parsed.data);
 
   const payload: CreateDealWithEntitiesRequest = {
     source: parsed.data.source,
@@ -63,7 +63,7 @@ export async function createOperationsDeal(
       model: parsed.data.asset.model,
       vin: parsed.data.asset.vin,
       year: parsed.data.asset.year,
-      price: parsed.data.asset.price,
+      price: parsed.data.asset.price ?? undefined,
       meta: parsed.data.asset.meta,
     },
     payload: parsed.data.reference

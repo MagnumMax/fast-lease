@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ComponentProps } from "react";
 
 import {
@@ -23,8 +22,7 @@ import {
   MessageCircle,
   Send,
   Phone,
-  Ban,
-  Trash2,
+  Paperclip,
   UploadCloud,
   Wrench,
 } from "lucide-react";
@@ -80,6 +78,13 @@ const DOCUMENT_STATUS_VARIANT_MAP: Record<string, ComponentProps<typeof Badge>["
   archived: "outline",
   uploaded: "secondary",
   "в архиве": "outline",
+};
+
+const DEAL_DOCUMENT_CATEGORY_LABEL_MAP: Record<string, string> = {
+  required: "Обязательный",
+  signature: "Подписание",
+  archived: "Архив",
+  other: "Другое",
 };
 
 function resolveDocumentStatusVariant(rawStatus?: string | null): ComponentProps<typeof Badge>["variant"] {
@@ -180,6 +185,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const {
     profile,
     client,
+    clientDocuments,
     keyInformation,
     overview = [],
     financials = [],
@@ -225,8 +231,9 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const normalizedPhone = client.phone?.replace(/[^+\d]/g, "") ?? "";
   const telHref = normalizedPhone ? `tel:${normalizedPhone}` : null;
   const whatsappHref = normalizedPhone ? `https://wa.me/${normalizedPhone.replace(/^\+/, "")}` : null;
-  const sourceEntry = overview.find((item) => item.label.toLowerCase() === "source");
   const createdAtEntry = overview.find((item) => item.label.toLowerCase() === "created at");
+  const clientSourceDisplay =
+    client.source && client.source.trim().length > 0 ? client.source.trim() : "—";
   const vehicleYearEntry = keyInformation.find((item) => {
     const normalized = item.label.toLowerCase();
     return normalized.includes("год") || normalized.includes("year");
@@ -249,8 +256,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const vehicleImageAlt = profile.vehicleName || "Изображение автомобиля";
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  const [isCancelling, setIsCancelling] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [invoiceFilter, setInvoiceFilter] = useState<"all" | "overdue" | "pending" | "paid">("all");
@@ -260,8 +265,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
     archived: false,
     other: false,
   });
-  const router = useRouter();
-  const isDealCancelled = statusKey === "CANCELLED";
   const orderedTimeline = [...timeline].sort((a, b) => {
     const parse = (value: string): number => {
       const match = value.match(
@@ -377,6 +380,11 @@ export function DealDetailView({ detail }: DealDetailProps) {
       },
     );
   }, [documents]);
+  const companyDocuments = useMemo(
+    () => clientDocuments.filter((doc) => doc.context === "company"),
+    [clientDocuments],
+  );
+  const dealDocumentsPreview = useMemo(() => documents.slice(0, 5), [documents]);
   const vehicleChecklist = useMemo(
     () =>
       guardStatuses
@@ -446,11 +454,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
       tone: hasDebt ? "danger" : "success",
     },
     {
-      id: "source",
-      label: "Источник",
-      value: sourceEntry?.value ?? "—",
-    },
-    {
       id: "created",
       label: "Создана",
       value: createdAtEntry?.value ?? "—",
@@ -467,63 +470,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
     }, 4000);
     return () => window.clearTimeout(timeout);
   }, [actionMessage, actionError]);
-
-  async function handleCancelDeal() {
-    if (isDealCancelled || isCancelling || isDeleting) {
-      return;
-    }
-    setIsCancelling(true);
-    setActionMessage(null);
-    setActionError(null);
-    try {
-      const response = await fetch(`/api/deals/${dealUuid}/cancel`, {
-        method: "POST",
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(
-          typeof payload?.error === "string" ? payload.error : "Не удалось отменить сделку",
-        );
-      }
-      setActionMessage("Сделка отменена.");
-      router.refresh();
-    } catch (error) {
-      console.error(error);
-      setActionError(error instanceof Error ? error.message : "Не удалось отменить сделку");
-    } finally {
-      setIsCancelling(false);
-    }
-  }
-
-  async function handleDeleteDeal() {
-    if (isDeleting) {
-      return;
-    }
-    const confirmed = window.confirm("Удалить сделку? Это действие нельзя отменить.");
-    if (!confirmed) {
-      return;
-    }
-    setIsDeleting(true);
-    setActionMessage(null);
-    setActionError(null);
-    try {
-      const response = await fetch(`/api/deals/${dealUuid}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(
-          typeof payload?.error === "string" ? payload.error : "Не удалось удалить сделку",
-        );
-      }
-      router.push("/ops/deals");
-    } catch (error) {
-      console.error(error);
-      setActionError(error instanceof Error ? error.message : "Не удалось удалить сделку");
-    } finally {
-      setIsDeleting(false);
-    }
-  }
 
   async function handleTemplateAction(kind: "reminder" | "requestDocs") {
     const templates: Record<typeof kind, string> = {
@@ -669,12 +615,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
           <div className="grid gap-6 lg:grid-cols-[minmax(320px,1.2fr),minmax(240px,0.8fr)] lg:items-start">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={statusKey === "CANCELLED" ? "danger" : "success"} className="rounded-lg">
-                  {statusMeta?.title ?? "Статус неизвестен"}
-                </Badge>
-                <Badge variant={slaBadgeVariant} className="rounded-lg text-xs font-semibold">
-                  {slaBadgeText}
-                </Badge>
                 {hasDebt ? (
                   <Badge variant="danger" className="rounded-lg">
                     Долг {profile.dueAmount}
@@ -769,25 +709,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
             </Card>
           ) : null}
 
-          {overview.length ? (
-            <Card className="bg-card/60 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Сведения о сделке</CardTitle>
-                <CardDescription>Ключевые поля из таблицы deals</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-3 md:grid-cols-2">
-                  {overview.map((entry, index) => (
-                    <div key={`${entry.label}-${index}`}>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
-                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          ) : null}
-
           <Card
             className={`backdrop-blur transition-shadow ${
               hasPendingTasks
@@ -809,9 +730,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   </Badge>
                 )}
               </div>
-              <CardDescription className="text-sm text-muted-foreground">
-                Сосредоточьтесь на ближайших шагах и документах по текущему этапу.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <DealStageTasks tasks={workflowTasks} />
@@ -1047,6 +965,10 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   </div>
                 </div>
                 <div>
+                  <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Источник</dt>
+                  <dd className="mt-1 text-foreground">{clientSourceDisplay}</dd>
+                </div>
+                <div>
                   <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Скоринг</dt>
                   <dd className="mt-1">
                     <Badge variant="success" className="rounded-lg">
@@ -1070,6 +992,97 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   </Button>
                 ) : null}
               </div>
+
+              <div className="space-y-3 border-t border-border/50 pt-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Документы компании
+                </p>
+                {companyDocuments.length ? (
+                  <ul className="space-y-2 text-sm">
+                    {companyDocuments.map((doc) => {
+                      const uploadedDisplay = doc.uploadedAt
+                        ? new Date(doc.uploadedAt).toLocaleDateString("ru-RU")
+                        : null;
+                      const signedDisplay = doc.signedAt
+                        ? new Date(doc.signedAt).toLocaleDateString("ru-RU")
+                        : null;
+                      const metaParts: string[] = [];
+                      if (uploadedDisplay) {
+                        metaParts.push(`Загружен: ${uploadedDisplay}`);
+                      }
+                      if (signedDisplay) {
+                        metaParts.push(`Подписан: ${signedDisplay}`);
+                      }
+                      const metaText = metaParts.join(" • ");
+                      return (
+                        <li
+                          key={doc.id}
+                          className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                        >
+                          <div className="space-y-1">
+                            <p className="font-medium text-foreground">{doc.name}</p>
+                            <p className="text-xs text-muted-foreground">{metaText || ""}</p>
+                          </div>
+                          {doc.url ? (
+                            <Button asChild size="sm" variant="outline" className="rounded-lg">
+                              <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                <Download className="mr-2 h-4 w-4" /> Скачать
+                              </a>
+                            </Button>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Корпоративные документы ещё не загружены.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/60 backdrop-blur">
+            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+              <div>
+                <CardTitle>Документы сделки</CardTitle>
+                <CardDescription>Быстрый доступ к последним файлам</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" asChild className="rounded-lg">
+                <a href="#documents">Все документы</a>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {dealDocumentsPreview.length ? (
+                <ul className="space-y-2 text-sm">
+                  {dealDocumentsPreview.map((doc) => (
+                    <li
+                      key={`preview-${doc.id}`}
+                      className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground">{doc.title}</p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          {doc.status ? <span>{doc.status}</span> : null}
+                          <Badge variant="outline" className="rounded-lg">
+                            {DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category] ?? doc.category}
+                          </Badge>
+                        </div>
+                      </div>
+                      {doc.url ? (
+                        <Button asChild size="sm" variant="ghost" className="gap-1 rounded-lg text-xs">
+                          <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                            <Paperclip className="h-3.5 w-3.5" /> Открыть
+                          </a>
+                        </Button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">Документы сделки ещё не загружены.</p>
+              )}
             </CardContent>
           </Card>
 
@@ -1079,6 +1092,16 @@ export function DealDetailView({ detail }: DealDetailProps) {
               <CardDescription>Скопируйте текст и отправьте клиенту</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              {actionMessage ? (
+                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
+                  {actionMessage}
+                </div>
+              ) : null}
+              {actionError ? (
+                <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-900 dark:text-rose-200">
+                  {actionError}
+                </div>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -1132,44 +1155,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   История действий по сделке пока отсутствует.
                 </p>
               )}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader>
-              <CardTitle>Действия</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {actionMessage ? (
-                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
-                  {actionMessage}
-                </div>
-              ) : null}
-              {actionError ? (
-                <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-900 dark:text-rose-200">
-                  {actionError}
-                </div>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full gap-2 rounded-lg"
-                onClick={handleCancelDeal}
-                disabled={isCancelling || isDeleting || isDealCancelled}
-              >
-                <Ban className="h-4 w-4" />
-                {isDealCancelled ? "Сделка отменена" : isCancelling ? "Отменяем..." : "Отменить сделку"}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                className="w-full gap-2 rounded-lg"
-                onClick={handleDeleteDeal}
-                disabled={isDeleting}
-              >
-                <Trash2 className="h-4 w-4" />
-                {isDeleting ? "Удаляем..." : "Удалить сделку"}
-              </Button>
             </CardContent>
           </Card>
 

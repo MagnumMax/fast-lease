@@ -49,7 +49,6 @@ export type ClientPortalSnapshot = {
     mileage: Nullable<number>;
     status: string;
     monthlyLeaseRate: Nullable<number>;
-    residualValue: Nullable<number>;
     location: Record<string, unknown>;
     features: Record<string, unknown>;
   }>;
@@ -79,15 +78,6 @@ export type ClientPortalSnapshot = {
     attachments: Array<Record<string, unknown>>;
     createdAt: string;
     updatedAt: string;
-  }>;
-  vehicleTelematics: Nullable<{
-    id: string;
-    odometer: Nullable<number>;
-    batteryHealth: Nullable<number>;
-    fuelLevel: Nullable<number>;
-    tirePressure: Record<string, unknown>;
-    location: Record<string, unknown>;
-    lastReportedAt: string;
   }>;
   applicationDocuments: Array<{
     id: string;
@@ -275,7 +265,6 @@ export async function getClientPortalSnapshot(
     vehicleImagesRows,
     vehicleSpecsRows,
     vehicleServicesRows,
-    vehicleTelematicsRow,
     applicationDocumentsRows,
     dealDocumentsRows,
     invoicesRows,
@@ -324,13 +313,6 @@ export async function getClientPortalSnapshot(
           .eq("deal_id", dealId)
           .order("due_date", { ascending: true })
       : Promise.resolve({ data: [], error: null }),
-    vehicleId
-      ? supabase
-          .from("vehicle_telematics")
-          .select("*")
-          .eq("vehicle_id", vehicleId)
-          .maybeSingle()
-      : Promise.resolve({ data: null, error: null }),
     applicationId
       ? supabase
           .from("application_documents")
@@ -486,7 +468,6 @@ export async function getClientPortalSnapshot(
           mileage: asNumber(vehicleRow.data.mileage),
           status: (vehicleRow.data.status as string) ?? "draft",
           monthlyLeaseRate: deal?.monthlyLeaseRate ?? null,
-          residualValue: asNumber(vehicleRow.data.residual_value),
           location: {},
           features: ensureRecord(vehicleRow.data.features),
         }
@@ -520,19 +501,6 @@ export async function getClientPortalSnapshot(
       createdAt: (service.created_at as string) ?? new Date().toISOString(),
       updatedAt: (service.updated_at as string) ?? new Date().toISOString(),
     })),
-    vehicleTelematics: vehicleTelematicsRow?.data
-      ? {
-          id: vehicleTelematicsRow.data.id as string,
-          odometer: asNumber(vehicleTelematicsRow.data.odometer),
-          batteryHealth: asNumber(vehicleTelematicsRow.data.battery_health),
-          fuelLevel: asNumber(vehicleTelematicsRow.data.fuel_level),
-          tirePressure: ensureRecord(vehicleTelematicsRow.data.tire_pressure),
-          location: ensureRecord(vehicleTelematicsRow.data.location),
-          lastReportedAt:
-            (vehicleTelematicsRow.data.last_reported_at as string) ??
-            new Date().toISOString(),
-        }
-      : null,
     applicationDocuments: (applicationDocumentsRows.data ?? []).map((doc) => ({
       id: doc.id as string,
       documentType: (doc.document_type as string) ?? "",

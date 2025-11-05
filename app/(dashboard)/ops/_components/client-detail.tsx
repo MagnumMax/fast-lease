@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Download, Mail, Phone, Upload } from "lucide-react";
+import { ArrowLeft, Download, Mail, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type {
+import {
   OpsClientDeal,
   OpsClientDocument,
   OpsClientNotification,
@@ -63,11 +64,12 @@ function formatCurrency(value: number | string | null | undefined): string {
 type InfoCellProps = {
   label: string;
   children: ReactNode;
+  className?: string;
 };
 
-function InfoCell({ label, children }: InfoCellProps) {
+function InfoCell({ label, children, className }: InfoCellProps) {
   return (
-    <div>
+    <div className={className}>
       <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
       <div className="mt-1 text-sm text-foreground">{children}</div>
     </div>
@@ -126,6 +128,88 @@ export function ClientDetailView({
   supportTickets,
   referral,
 }: ClientDetailProps) {
+  const resolveDocumentContext = useCallback((doc: OpsClientDocument): "personal" | "company" => {
+    if (doc.context === "company" || doc.context === "personal") {
+      return doc.context;
+    }
+
+    const documentType = (doc.documentType ?? "").toLowerCase();
+    const category = (doc.category ?? "").toLowerCase();
+    const metadataContext =
+      typeof doc.metadata === "object" && doc.metadata !== null
+        ? String((doc.metadata as Record<string, unknown>)["upload_context"] ?? "").toLowerCase()
+        : "";
+
+    if (metadataContext === "company") {
+      return "company";
+    }
+    if (documentType === "company_license" || category === "company") {
+      return "company";
+    }
+
+    const nameLower = (doc.name ?? "").toLowerCase();
+    if (nameLower.includes("company") || nameLower.includes("license")) {
+      return "company";
+    }
+
+    return "personal";
+  }, []);
+
+  const personalDocuments = useMemo(
+    () => documents.filter((doc) => resolveDocumentContext(doc) === "personal"),
+    [documents, resolveDocumentContext],
+  );
+  const companyDocumentsList = useMemo(
+    () => documents.filter((doc) => resolveDocumentContext(doc) === "company"),
+    [documents, resolveDocumentContext],
+  );
+  const hasAnyDocuments = documents.length > 0;
+  const hasPersonalDocuments = personalDocuments.length > 0;
+  const hasCompanyDocuments = companyDocumentsList.length > 0;
+  const companyInfo = profile.company;
+  const clientTypeLabel = profile.clientType === "Company" ? "Company" : "Personal";
+
+  const personalEmptyMessage = hasAnyDocuments
+    ? "Документы идентификации не найдены. Загрузите документы через кнопку «Редактировать»."
+    : "Документы клиента отсутствуют. Нажмите «Редактировать» для загрузки документов идентификации.";
+  const companyEmptyMessage = hasAnyDocuments
+    ? "Документы компании не найдены. Загрузите документы через кнопку «Редактировать»."
+    : "Документы компании отсутствуют. Нажмите «Редактировать» для загрузки документов.";
+
+  const renderDocumentItems = useCallback((docs: OpsClientDocument[]) => {
+    if (!docs.length) {
+      return null;
+    }
+
+    return (
+      <div className="space-y-3">
+        {docs.map((doc) => (
+          <div
+            key={doc.id}
+            className="flex flex-col gap-2 rounded-xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <p className="text-sm font-medium text-foreground">{doc.name}</p>
+              <p className="text-xs text-muted-foreground">
+                Загружен: {formatDateDisplay(doc.uploadedAt)}
+                {doc.signedAt ? ` • Подписан: ${formatDateDisplay(doc.signedAt)}` : ""}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {doc.url ? (
+                <Button asChild size="sm" className="rounded-lg">
+                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                    <Download className="mr-2 h-4 w-4" /> Скачать
+                  </a>
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }, []);
+
   const financialHighlights = [
     { label: "Скоринг", value: profile.metrics.scoring },
     { label: "Просрочки", value: profile.metrics.overdue },
@@ -145,6 +229,7 @@ export function ClientDetailView({
         </Button>
         <ClientEditDialog
           profile={profile}
+          documents={documents}
           onSubmit={updateOperationsClient}
           onDelete={deleteOperationsClient}
         />
@@ -164,6 +249,8 @@ export function ClientDetailView({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            <InfoCell label="Тип клиента">{clientTypeLabel}</InfoCell>
+            <InfoCell label="Статус">{profile.status || "—"}</InfoCell>
             <InfoCell label="Телефон">
               {profile.phone ? (
                 <Link
@@ -190,106 +277,53 @@ export function ClientDetailView({
                 "—"
               )}
             </InfoCell>
+            <InfoCell label="Источник">
+              {profile.source && profile.source.trim().length ? profile.source.trim() : "—"}
+            </InfoCell>
+            <InfoCell label="Дата рождения">{formatDateDisplay(profile.dateOfBirth)}</InfoCell>
+            <InfoCell label="Национальность">{profile.nationality ?? "—"}</InfoCell>
+            <InfoCell label="Статус резидентства">{profile.residencyStatus ?? "—"}</InfoCell>
+            <InfoCell label="Emirates ID">{profile.emiratesId ?? "—"}</InfoCell>
+            <InfoCell label="Паспорт">{profile.passportNumber ?? "—"}</InfoCell>
+            {profile.clientType === "Company" ? (
+              <>
+                <InfoCell label="Контактное лицо">{companyInfo.contactName ?? "—"}</InfoCell>
+                <InfoCell label="Emirates ID контакта">
+                  {companyInfo.contactEmiratesId ?? "—"}
+                </InfoCell>
+                <InfoCell label="TRN">{companyInfo.trn ?? "—"}</InfoCell>
+                <InfoCell label="Лицензия компании">{companyInfo.licenseNumber ?? "—"}</InfoCell>
+              </>
+            ) : null}
           </div>
-        </div>
-      </div>
 
-
-      <SectionCard title="Документы и идентификация">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <InfoCell label="Emirates ID">{profile.emiratesId ?? "—"}</InfoCell>
-          <InfoCell label="Паспорт">{profile.passportNumber ?? "—"}</InfoCell>
-          <InfoCell label="Национальность">{profile.nationality ?? "—"}</InfoCell>
-          <InfoCell label="Статус резидентства">{profile.residencyStatus ?? "—"}</InfoCell>
-          <InfoCell label="Дата рождения">{formatDateDisplay(profile.dateOfBirth)}</InfoCell>
-        </div>
-
-        {documents.length ? (
-          <div className="space-y-3">
-            <p className="text-sm font-medium text-foreground">Документы клиента</p>
-            <p className="text-xs text-muted-foreground">
-              Отображаются документы, связанные с идентификацией клиента (Emirates ID, паспорт, виза, удостоверение личности и другие удостоверяющие документы)
-            </p>
-            {documents
-              .filter((doc) => {
-                // Фильтруем документы идентификации по категории или типу
-                const category = (doc.category || "").toLowerCase();
-                const documentType = (doc.documentType || "").toLowerCase();
-                const name = (doc.name || "").toLowerCase();
-                
-                const identityKeywords = [
-                  "emirates", "passport", "visa", "id", "identity", "nationality",
-                  "удостоверение", "паспорт", "виза", "emirates id", "national id",
-                  "residency", "резидент", "лицензия", "license"
-                ];
-                
-                return identityKeywords.some(keyword =>
-                  category.includes(keyword) ||
-                  documentType.includes(keyword) ||
-                  name.includes(keyword)
-                );
-              })
-              .map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex flex-col gap-2 rounded-xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{doc.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {doc.source === "deal" ? "Документ сделки" : "Документ заявки"}
-                      {doc.documentType ? ` • ${doc.documentType}` : ""}
-                      {doc.status ? ` • ${doc.status}` : ""}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Загружен: {formatDateDisplay(doc.uploadedAt)}
-                      {doc.signedAt ? ` • Подписан: ${formatDateDisplay(doc.signedAt)}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {doc.url ? (
-                      <Button asChild size="sm" className="rounded-lg">
-                        <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                          <Download className="mr-2 h-4 w-4" /> Скачать
-                        </a>
-                      </Button>
-                    ) : null}
-                    {doc.category ? (
-                      <Badge variant="outline" className="rounded-lg uppercase tracking-wide">
-                        {doc.category}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            {documents.filter((doc) => {
-              const category = (doc.category || "").toLowerCase();
-              const documentType = (doc.documentType || "").toLowerCase();
-              const name = (doc.name || "").toLowerCase();
-              
-              const identityKeywords = [
-                "emirates", "passport", "visa", "id", "identity", "nationality",
-                "удостоверение", "паспорт", "виза", "emirates id", "national id",
-                "residency", "резидент", "лицензия", "license"
-              ];
-              
-              return identityKeywords.some(keyword =>
-                category.includes(keyword) ||
-                documentType.includes(keyword) ||
-                name.includes(keyword)
-              );
-            }).length === 0 && (
-              <div className="text-center py-4 text-sm text-muted-foreground">
-                Документы идентификации не найдены. Загрузите документы через кнопку «Редактировать».
-              </div>
+          <div className="space-y-4 border-t border-border/40 pt-4">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">Документы клиента</p>
+            </div>
+            {hasPersonalDocuments ? (
+              renderDocumentItems(personalDocuments)
+            ) : (
+              <p className="text-sm text-muted-foreground">{personalEmptyMessage}</p>
             )}
           </div>
-        ) : (
-          <div className="text-center py-4 text-sm text-muted-foreground">
-            Документы клиента отсутствуют. Нажмите «Редактировать» для загрузки документов идентификации.
-          </div>
-        )}
-      </SectionCard>
+
+          {profile.clientType === "Company" ? (
+            <div className="space-y-4 border-t border-border/40 pt-4">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  Документы компании и контактного лица
+                </p>
+              </div>
+              {hasCompanyDocuments ? (
+                renderDocumentItems(companyDocumentsList)
+              ) : (
+                <p className="text-sm text-muted-foreground">{companyEmptyMessage}</p>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       <SectionCard title="Финансовая информация">
         <div className="grid gap-4 md:grid-cols-2">

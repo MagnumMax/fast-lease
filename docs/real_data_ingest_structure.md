@@ -35,9 +35,6 @@
 - `colors.exterior`
 - `colors.interior`
 - `features` — массив строк
-- `valuation.purchase_price`
-- `valuation.current_value`
-- `valuation.residual_value`
 - `attachments` — фотографии, сертификаты
 
 ## 3. Сделка / контракт (`deals`, `contracts`)

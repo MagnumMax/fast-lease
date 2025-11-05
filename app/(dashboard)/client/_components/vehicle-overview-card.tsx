@@ -9,20 +9,7 @@ import { FALLBACK_IMAGES as DEAL_FALLBACK_IMAGES } from "./deal-summary-card";
 type VehicleOverviewCardProps = {
   vehicle: ClientPortalSnapshot["vehicle"];
   vehicleImages: ClientPortalSnapshot["vehicleImages"];
-  telematics: ClientPortalSnapshot["vehicleTelematics"];
 };
-
-type TelemetryKey = "odometer" | "batteryHealth" | "fuelLevel";
-
-const telemetryLabels: Array<{
-  key: TelemetryKey;
-  label: string;
-  unit?: string;
-}> = [
-  { key: "odometer", label: "Mileage", unit: "km" },
-  { key: "batteryHealth", label: "Battery", unit: "%" },
-  { key: "fuelLevel", label: "Fuel", unit: "%" },
-];
 
 function resolveVehicleImage(
   vehicle: VehicleOverviewCardProps["vehicle"],
@@ -51,7 +38,6 @@ function resolveVehicleImage(
 export function VehicleOverviewCard({
   vehicle,
   vehicleImages,
-  telematics,
 }: VehicleOverviewCardProps) {
   if (!vehicle) return null;
 
@@ -98,7 +84,7 @@ export function VehicleOverviewCard({
           </div>
         </figure>
       </CardHeader>
-      <CardContent className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <CardContent>
         <dl className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-2">
           {vehicle.vin ? (
             <div>
@@ -118,16 +104,6 @@ export function VehicleOverviewCard({
               </dd>
             </div>
           ) : null}
-          {vehicle.residualValue != null ? (
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">
-                Residual value
-              </dt>
-              <dd className="font-medium text-foreground">
-                {formatCurrency(vehicle.residualValue)}
-              </dd>
-            </div>
-          ) : null}
           {vehicle.monthlyLeaseRate != null ? (
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -139,37 +115,6 @@ export function VehicleOverviewCard({
             </div>
           ) : null}
         </dl>
-        <div className="rounded-2xl border border-dashed border-border bg-surface-subtle p-4">
-          <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Telematics snapshot
-          </p>
-          {telematics ? (
-            <dl className="mt-3 space-y-2 text-sm text-muted-foreground">
-              {telemetryLabels.map(({ key, label, unit }) => {
-                const value = telematics[key];
-                if (value == null) return null;
-                return (
-                  <div key={key} className="flex items-center justify-between">
-                    <dt>{label}</dt>
-                    <dd className="font-medium text-foreground">
-                      {value}
-                      {unit ? ` ${unit}` : ""}
-                    </dd>
-                  </div>
-                );
-              })}
-              {telematics.lastReportedAt ? (
-                <div className="text-xs text-muted-foreground">
-                  Updated {new Date(telematics.lastReportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-              ) : null}
-            </dl>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Telemetry data is currently unavailable.
-            </p>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

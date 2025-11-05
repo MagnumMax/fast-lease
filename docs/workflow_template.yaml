@@ -246,13 +246,9 @@ statuses:
               - id: monthly_payment
                 type: currency
                 label: "Платёж"
-              - id: residual_value
-                type: currency
-                label: "Остаток"
           bindings:
             deal_id: "{{deal.id}}"
             monthly_payment: "{{payload.finance.monthly_payment}}"
-            residual_value: "{{payload.finance.residual_value}}"
     exit_requirements:
       - key: finance.approved
         rule: "== true"
@@ -374,7 +370,7 @@ statuses:
                 label: "Сумма"
           bindings:
             supplier: "{{payload.vehicle.supplier_name}}"
-            amount: "{{payload.finance.purchase_price}}"
+            amount: "{{payload.finance.total_amount}}"
     webhooks:
       on_event:
         - event: esign.completed

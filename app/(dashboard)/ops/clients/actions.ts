@@ -1,10 +1,17 @@
 "use server";
 
+import { Buffer } from "node:buffer";
+
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
-import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
+import type { OpsClientRecord, OpsClientType } from "@/lib/supabase/queries/operations";
+import {
+  CLIENT_DOCUMENT_TYPES,
+  CLIENT_DOCUMENT_TYPE_LABEL_MAP,
+  type ClientDocumentTypeValue,
+} from "@/lib/supabase/queries/operations";
 import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
@@ -24,9 +31,49 @@ export type CreateOperationsClientResult =
   | { data: OpsClientRecord; error?: undefined }
   | { data?: undefined; error: string };
 
+const CLIENT_DOCUMENT_BUCKET = "client-documents";
+const CLIENT_DOCUMENT_TYPE_VALUES = new Set(
+  CLIENT_DOCUMENT_TYPES.map((entry) => entry.value),
+);
+
+const uploadClientDocumentsSchema = z.object({
+  clientId: z.string().uuid(),
+  slug: z.string().min(1),
+});
+
+export type UploadClientDocumentsResult =
+  | { success: true; uploaded: number }
+  | { success: false; error: string };
+
+const CLIENT_DOCUMENT_CATEGORY_MAP: Record<ClientDocumentTypeValue, string> = {
+  emirates_id: "identity",
+  passport: "identity",
+  visa: "identity",
+  driving_license: "identity",
+  company_license: "company",
+};
+
 type ProfileMetadata = Record<string, unknown> & {
   ops_email?: string;
   ops_phone?: string;
+  client_type?: OpsClientType;
+  company_contact_name?: string;
+  company_contact_emirates_id?: string;
+  company_trn?: string;
+  company_license_number?: string;
+  lead_source?: string;
+  source?: string;
+  source_label?: string;
+};
+
+type SupabaseProfileRow = {
+  full_name: string | null;
+  phone: string | null;
+  status: string;
+  residency_status?: string | null;
+  metadata?: unknown;
+  created_at: string | null;
+  source?: string | null;
 };
 
 function normalizeEmail(email?: string) {
@@ -48,6 +95,18 @@ function normalizeOptionalString(value?: string | null) {
   if (value == null) return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function isMissingColumnError(error: unknown, column: string): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: string }).code;
+  if (code && String(code) === "42703") {
+    return true;
+  }
+  const message = String((error as { message?: string }).message ?? "");
+  const details = String((error as { details?: string }).details ?? "");
+  const needle = `column ${column}`;
+  return message.toLowerCase().includes(needle) || details.toLowerCase().includes(needle);
 }
 
 function formatMonthYear(value?: string | null): string | null {
@@ -236,14 +295,24 @@ const { name, email, phone } = parsed.data;
       };
     }
 
-    const {
+    let supportsSourceColumn = true;
+    let {
       data: existingProfile,
       error: existingProfileError,
     } = await supabase
       .from("profiles")
-      .select("metadata")
+      .select("metadata, source")
       .eq("user_id", userId)
       .maybeSingle();
+
+    if (existingProfileError && isMissingColumnError(existingProfileError, "source")) {
+      supportsSourceColumn = false;
+      ({ data: existingProfile, error: existingProfileError } = await supabase
+        .from("profiles")
+        .select("metadata")
+        .eq("user_id", userId)
+        .maybeSingle());
+    }
 
     if (existingProfileError) {
       console.error("[operations] failed to load existing profile metadata", {
@@ -252,28 +321,73 @@ const { name, email, phone } = parsed.data;
       });
     }
 
-    const metadata: ProfileMetadata = {
-      ...((existingProfile?.metadata as ProfileMetadata | null) ?? {}),
-      ...(normalizedEmail ? { ops_email: normalizedEmail } : {}),
-      ...(sanitizedPhone ? { ops_phone: sanitizedPhone } : {}),
+  const metadata: ProfileMetadata = {
+    ...((existingProfile?.metadata as ProfileMetadata | null) ?? {}),
+    ...(normalizedEmail ? { ops_email: normalizedEmail } : {}),
+    ...(sanitizedPhone ? { ops_phone: sanitizedPhone } : {}),
+  };
+  const existingSource = normalizeOptionalString(
+    (existingProfile?.source as string | null | undefined) ?? null,
+  );
+  const metadataSourceCandidate = normalizeOptionalString(
+    (metadata.lead_source as string | null | undefined) ??
+      (metadata.source_label as string | null | undefined) ??
+      (metadata.source as string | null | undefined) ??
+      null,
+  );
+  const upsertSource = existingSource ?? metadataSourceCandidate ?? "OPS Dashboard";
+
+  if (upsertSource) {
+    metadata.lead_source = metadata.lead_source ?? upsertSource;
+    metadata.source = metadata.source ?? upsertSource;
+  }
+
+    if (!supportsSourceColumn) {
+      metadata.source = metadata.source ?? upsertSource;
+      metadata.lead_source = metadata.lead_source ?? upsertSource;
+    }
+
+    const baseProfilePayload: Record<string, unknown> = {
+      user_id: userId,
+      full_name: fullName,
+      first_name: firstName,
+      last_name: lastName,
+      phone: sanitizedPhone,
+      status: userStatus,
+      metadata,
     };
 
-    const { data: profile, error: profileError } = await supabase
+    if (supportsSourceColumn) {
+      baseProfilePayload.source = upsertSource;
+    }
+
+    let { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .upsert(
-        {
-          user_id: userId,
-          full_name: fullName,
-          first_name: firstName,
-          last_name: lastName,
-          phone: sanitizedPhone,
-          status: userStatus,
-          metadata,
-        },
-        { onConflict: "user_id" },
+      .upsert(baseProfilePayload, { onConflict: "user_id" })
+      .select(
+        supportsSourceColumn
+          ? "full_name, phone, status, residency_status, metadata, created_at, source"
+          : "full_name, phone, status, residency_status, metadata, created_at",
       )
-      .select("full_name, phone, status, residency_status, metadata, created_at")
       .single();
+
+    if (profileError && supportsSourceColumn && isMissingColumnError(profileError, "source")) {
+      console.warn("[operations] profiles.source column missing during upsert, retrying without it", {
+        userId,
+      });
+      supportsSourceColumn = false;
+      metadata.source = metadata.source ?? upsertSource;
+      metadata.lead_source = metadata.lead_source ?? upsertSource;
+
+      const fallbackPayload = { ...baseProfilePayload };
+      delete fallbackPayload.source;
+
+      ({ data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .upsert(fallbackPayload, { onConflict: "user_id" })
+        .select("full_name, phone, status, residency_status, metadata, created_at")
+        .single());
+    }
 
     if (profileError) {
       console.error("[operations] failed to upsert profile", profileError);
@@ -300,13 +414,20 @@ const { name, email, phone } = parsed.data;
       revalidatePath(path);
     }
 
-    const profileMetadata =
-      (profile?.metadata as ProfileMetadata | null) ?? null;
+    const typedProfile = profile as SupabaseProfileRow | null;
+    if (!typedProfile) {
+      console.error("[operations] upsert profile returned empty data", { userId });
+      return {
+        error: "Не удалось сохранить профиль клиента.",
+      };
+    }
+
+    const profileMetadata = (typedProfile.metadata as ProfileMetadata | null) ?? null;
     const emailFromProfile =
       (profileMetadata?.ops_email as string | undefined) ?? normalizedEmail ?? null;
 
     const record = formatClientRecord(
-      { phone: profile.phone, status: profile.status, created_at: profile.created_at },
+      { phone: typedProfile.phone, status: typedProfile.status, created_at: typedProfile.created_at },
       fullName,
       emailFromProfile,
       userId,
@@ -324,6 +445,7 @@ const { name, email, phone } = parsed.data;
 const updateInputSchema = z.object({
   userId: z.string().uuid(),
   fullName: z.string().min(1),
+  clientType: z.union([z.literal("Personal"), z.literal("Company")]).default("Personal"),
   status: z.union([z.literal("Active"), z.literal("Blocked")]).default("Active"),
   email: z.union([z.string().email(), z.literal("")]).optional(),
   phone: z.string().optional(),
@@ -332,6 +454,10 @@ const updateInputSchema = z.object({
   nationality: z.string().optional(),
   residencyStatus: z.string().optional(),
   dateOfBirth: z.string().optional(),
+  companyContactName: z.string().optional(),
+  companyContactEmiratesId: z.string().optional(),
+  companyTrn: z.string().optional(),
+  companyLicenseNumber: z.string().optional(),
   employment: z
     .object({
       employer: z.string().optional(),
@@ -355,13 +481,26 @@ export type UpdateOperationsClientResult =
   | { success: true }
   | { success: false; error: string };
 
-export type DeleteOperationsClientInput = {
-  userId: string;
-};
+const deleteClientSchema = z.object({
+  userId: z.string().uuid(),
+});
+
+const ACTIVE_CLIENT_DEAL_STATUSES: string[] = [
+  "pending_activation",
+  "active",
+  "signing_funding",
+  "contract_prep",
+];
+
+export type DeleteOperationsClientInput = z.infer<typeof deleteClientSchema>;
 
 export type DeleteOperationsClientResult =
   | { success: true }
   | { success: false; error: string; dealsCount?: number };
+
+export type VerifyClientDeletionResult =
+  | { canDelete: true }
+  | { canDelete: false; reason?: string; dealsCount?: number };
 
 function parseNumber(value: string | null): number | null {
   if (!value) return null;
@@ -387,6 +526,7 @@ export async function updateOperationsClient(
   const {
     userId,
     fullName,
+    clientType,
     status,
     email,
     phone,
@@ -395,6 +535,10 @@ export async function updateOperationsClient(
     nationality,
     residencyStatus,
     dateOfBirth,
+    companyContactName,
+    companyContactEmiratesId,
+    companyTrn,
+    companyLicenseNumber,
     employment,
     financial,
   } = parsed.data;
@@ -434,6 +578,40 @@ export async function updateOperationsClient(
     } else {
       delete metadata.ops_phone;
     }
+
+    const normalizedCompanyContactName =
+      clientType === "Company" ? normalizeOptionalString(companyContactName) : null;
+    if (normalizedCompanyContactName) {
+      metadata.company_contact_name = normalizedCompanyContactName;
+    } else {
+      delete metadata.company_contact_name;
+    }
+
+    const normalizedCompanyContactEmiratesId =
+      clientType === "Company" ? normalizeOptionalString(companyContactEmiratesId) : null;
+    if (normalizedCompanyContactEmiratesId) {
+      metadata.company_contact_emirates_id = normalizedCompanyContactEmiratesId;
+    } else {
+      delete metadata.company_contact_emirates_id;
+    }
+
+    const normalizedCompanyTrn =
+      clientType === "Company" ? normalizeOptionalString(companyTrn) : null;
+    if (normalizedCompanyTrn) {
+      metadata.company_trn = normalizedCompanyTrn;
+    } else {
+      delete metadata.company_trn;
+    }
+
+    const normalizedCompanyLicenseNumber =
+      clientType === "Company" ? normalizeOptionalString(companyLicenseNumber) : null;
+    if (normalizedCompanyLicenseNumber) {
+      metadata.company_license_number = normalizedCompanyLicenseNumber;
+    } else {
+      delete metadata.company_license_number;
+    }
+
+    metadata.client_type = clientType;
 
     const employmentPayload = {
       employer: normalizeOptionalString(employment?.employer),
@@ -514,10 +692,221 @@ export async function updateOperationsClient(
   }
 }
 
+export async function uploadClientDocuments(
+  formData: FormData,
+): Promise<UploadClientDocumentsResult> {
+  const base = {
+    clientId: formData.get("clientId"),
+    slug: formData.get("slug"),
+  } satisfies Record<string, unknown>;
+
+  const parsed = uploadClientDocumentsSchema.safeParse(base);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid client document upload payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные документа." };
+  }
+
+  const { clientId, slug } = parsed.data;
+
+  const documentsMap = new Map<
+    number,
+    { type?: ClientDocumentTypeValue | ""; file?: File; context?: "personal" | "company" }
+  >();
+  for (const [key, value] of formData.entries()) {
+    const match = /^documents\[(\d+)\]\[(type|file|context)\]$/.exec(key);
+    if (!match) continue;
+    const index = Number.parseInt(match[1] ?? "", 10);
+    if (Number.isNaN(index)) continue;
+    const existing = documentsMap.get(index) ?? {};
+    if (match[2] === "type" && typeof value === "string") {
+      existing.type = value as ClientDocumentTypeValue | "";
+    }
+    if (match[2] === "file" && value instanceof File) {
+      existing.file = value;
+    }
+    if (match[2] === "context" && typeof value === "string") {
+      const normalized = value.toLowerCase();
+      existing.context = normalized === "company" ? "company" : "personal";
+    }
+    documentsMap.set(index, existing);
+  }
+
+  const rawDocuments = Array.from(documentsMap.values());
+  const hasIncompleteDocument = rawDocuments.some((entry) => {
+    const hasType = Boolean(entry.type);
+    const hasFile = entry.file instanceof File && entry.file.size > 0;
+    return (hasType && !hasFile) || (hasFile && !hasType);
+  });
+
+  if (hasIncompleteDocument) {
+    return { success: false, error: "Выберите тип и файл для каждого документа." };
+  }
+
+  const documents = rawDocuments
+    .map((entry) => {
+      if (!entry.type || !CLIENT_DOCUMENT_TYPE_VALUES.has(entry.type)) {
+        return null;
+      }
+      if (!(entry.file instanceof File) || entry.file.size <= 0) {
+        return null;
+      }
+      const context =
+        entry.context ??
+        (entry.type === "company_license" ? "company" : ("personal" as "personal" | "company"));
+      return { type: entry.type, file: entry.file, context };
+    })
+    .filter(
+      (entry): entry is { type: ClientDocumentTypeValue; file: File; context: "personal" | "company" } =>
+        entry !== null,
+    );
+
+  if (documents.length === 0) {
+    return { success: true, uploaded: 0 };
+  }
+
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: authData } = await supabase.auth.getUser();
+    const uploadedBy = authData?.user?.id ?? null;
+
+    let uploadedCount = 0;
+
+    for (const doc of documents) {
+      const sanitizedName = doc.file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-") || "document";
+      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const objectPath = `${clientId}/${uniqueSuffix}-${sanitizedName}`;
+      const buffer = Buffer.from(await doc.file.arrayBuffer());
+
+      const { error: uploadError } = await supabase.storage
+        .from(CLIENT_DOCUMENT_BUCKET)
+        .upload(objectPath, buffer, {
+          contentType: doc.file.type || "application/octet-stream",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("[operations] failed to upload client document", uploadError);
+        return { success: false, error: "Не удалось загрузить документ." };
+      }
+
+      const category = CLIENT_DOCUMENT_CATEGORY_MAP[doc.type] ?? (doc.context === "company" ? "company" : "identity");
+      const defaultLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? doc.file.name;
+
+      const { error: insertError } = await supabase.from("client_documents").insert({
+        client_id: clientId,
+        document_type: doc.type,
+        document_category: category,
+        title: defaultLabel,
+        storage_path: objectPath,
+        mime_type: doc.file.type || null,
+        file_size: doc.file.size ?? null,
+        status: "uploaded",
+        metadata: {
+          original_filename: doc.file.name,
+          uploaded_via: "ops_dashboard",
+          label: defaultLabel,
+          upload_context: doc.context,
+        },
+        uploaded_by: uploadedBy,
+      });
+
+      if (insertError) {
+        console.error("[operations] failed to insert client document metadata", insertError);
+        await supabase.storage.from(CLIENT_DOCUMENT_BUCKET).remove([objectPath]);
+        return { success: false, error: "Документ не сохранился. Попробуйте ещё раз." };
+      }
+
+      uploadedCount += 1;
+    }
+
+    for (const path of getWorkspacePaths("clients")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/clients/${slug}`);
+    if (slug !== clientId) {
+      revalidatePath(`/ops/clients/${clientId}`);
+    }
+
+    return { success: true, uploaded: uploadedCount };
+  } catch (error) {
+    console.error("[operations] unexpected error while uploading client documents", error);
+    return { success: false, error: "Произошла ошибка при загрузке документов." };
+  }
+}
+
+export async function verifyClientDeletion(
+  input: DeleteOperationsClientInput,
+): Promise<VerifyClientDeletionResult> {
+  const parsed = deleteClientSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid client deletion check payload", parsed.error.flatten());
+    return { canDelete: false, reason: "Некорректные данные для проверки удаления." };
+  }
+
+  const { userId } = parsed.data;
+
+  try {
+    const supabase = await createSupabaseServerClient();
+
+    const { data: dealsData, error: dealsError } = await supabase
+      .from("deals")
+      .select("status")
+      .eq("client_id", userId);
+
+    if (dealsError) {
+      console.error("[operations] failed to check client deals", dealsError);
+      return {
+        canDelete: false,
+        reason: "Не удалось проверить связанные сделки. Попробуйте позже.",
+      };
+    }
+
+    const activeDeals = (dealsData ?? []).filter((deal) => {
+      if (typeof deal.status !== "string") return false;
+      return ACTIVE_CLIENT_DEAL_STATUSES.includes(deal.status.toLowerCase());
+    });
+
+    if (activeDeals.length > 0) {
+      return {
+        canDelete: false,
+        dealsCount: activeDeals.length,
+        reason: `Удаление невозможно: у клиента есть активные сделки (${activeDeals.length}).`,
+      };
+    }
+
+    return { canDelete: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while checking client deletion", error);
+    return {
+      canDelete: false,
+      reason: "Произошла ошибка при проверке возможности удаления клиента.",
+    };
+  }
+}
+
 export async function deleteOperationsClient(
   input: DeleteOperationsClientInput,
 ): Promise<DeleteOperationsClientResult> {
-  const { userId } = input;
+  const parsed = deleteClientSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid client delete payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные для удаления клиента." };
+  }
+
+  const { userId } = parsed.data;
+
+  const verification = await verifyClientDeletion({ userId });
+
+  if (!verification.canDelete) {
+    return {
+      success: false,
+      error: verification.reason ?? "Нельзя удалить клиента.",
+      dealsCount: verification.dealsCount,
+    };
+  }
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -534,16 +923,18 @@ export async function deleteOperationsClient(
       return { success: false, error: "Не удалось проверить связанные сделки." };
     }
 
-    const activeDealStatuses = ["pending_activation", "active", "signing_funding", "contract_prep"];
-    const activeDeals = (dealsData || []).filter(deal =>
-      activeDealStatuses.includes(deal.status.toLowerCase())
-    );
+    const activeDeals = (dealsData || []).filter((deal) => {
+      if (typeof deal.status !== "string") {
+        return false;
+      }
+      return ACTIVE_CLIENT_DEAL_STATUSES.includes(deal.status.toLowerCase());
+    });
 
     if (activeDeals.length > 0) {
       return {
         success: false,
         error: `Нельзя удалить клиента с активными сделками. Найдено ${activeDeals.length} активных сделок.`,
-        dealsCount: activeDeals.length
+        dealsCount: activeDeals.length,
       };
     }
 

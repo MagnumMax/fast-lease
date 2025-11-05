@@ -16,7 +16,6 @@ truncate table public.referral_rewards restart identity cascade;
 truncate table public.referral_deals restart identity cascade;
 truncate table public.referral_events restart identity cascade;
 truncate table public.referral_codes restart identity cascade;
-truncate table public.vehicle_telematics restart identity cascade;
 truncate table public.vehicle_services restart identity cascade;
 truncate table public.payment_transactions restart identity cascade;
 truncate table public.payments restart identity cascade;
@@ -168,19 +167,19 @@ begin
       ops_id
     );
 
-  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
+  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, status, features)
   values
-    ('WDC12345678900001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'SUV', 'petrol', 'automatic', 1200, 1000000, 985000, 1000000, 'available', jsonb_build_object('batteryRange', 'N/A', 'color', 'Obsidian'))
+    ('WDC12345678900001', 'Rolls-Royce', 'Cullinan', 'Black Badge', 2024, 'SUV', 'petrol', 'automatic', 1200, 'available', jsonb_build_object('batteryRange', 'N/A', 'color', 'Obsidian'))
   returning id into rolls_id;
 
-  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
+  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, status, features)
   values
-    ('ZHW12345678900002', 'Lamborghini', 'Huracán', 'EVO AWD', 2023, 'Coupe', 'petrol', 'automatic', 3400, 750000, 720000, 750000, 'reserved', jsonb_build_object('acceleration', '2.9s 0-100'))
+    ('ZHW12345678900002', 'Lamborghini', 'Huracán', 'EVO AWD', 2023, 'Coupe', 'petrol', 'automatic', 3400, 'reserved', jsonb_build_object('acceleration', '2.9s 0-100'))
   returning id into lambo_id;
 
-  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, purchase_price, current_value, residual_value, status, features)
+  insert into public.vehicles (vin, make, model, variant, year, body_type, fuel_type, transmission, mileage, status, features)
   values
-    ('YV1H1234567890003', 'Volvo', 'XC40 Recharge', 'Twin Motor', 2024, 'SUV', 'electric', 'automatic', 560, 150000, 149000, 150000, 'available', jsonb_build_object('batteryRange', '450 km', 'drive', 'AWD'))
+    ('YV1H1234567890003', 'Volvo', 'XC40 Recharge', 'Twin Motor', 2024, 'SUV', 'electric', 'automatic', 560, 'available', jsonb_build_object('batteryRange', '450 km', 'drive', 'AWD'))
   returning id into volvo_id;
 
   insert into public.vehicle_images (vehicle_id, storage_path, label, is_primary, sort_order)
@@ -299,24 +298,6 @@ begin
   from public.workflow_versions
   order by created_at desc
   limit 1;
-
-  insert into public.vehicle_telematics (vehicle_id, odometer, battery_health, fuel_level, tire_pressure, location, last_reported_at)
-  values (
-    rolls_id,
-    18420,
-    98.5,
-    82.0,
-    jsonb_build_object('front_left', 2.6, 'front_right', 2.6, 'rear_left', 2.7, 'rear_right', 2.7),
-    jsonb_build_object('city', 'Dubai', 'lat', 25.2048, 'lng', 55.2708),
-    now() - interval '5 minutes'
-  )
-  on conflict (vehicle_id) do update
-    set odometer = excluded.odometer,
-        battery_health = excluded.battery_health,
-        fuel_level = excluded.fuel_level,
-        tire_pressure = excluded.tire_pressure,
-        location = excluded.location,
-        last_reported_at = excluded.last_reported_at;
 
   insert into public.vehicle_services (vehicle_id, deal_id, service_type, title, description, due_date, mileage_target, status, completed_at, attachments, created_at, updated_at)
   values

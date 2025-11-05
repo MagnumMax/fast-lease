@@ -305,56 +305,6 @@ SELECT
 FROM vehicles v;
 
 -- =====================================================================
--- 3. ДАННЫЕ ТЕЛЕМЕТРИИ
--- =====================================================================
-
--- Телеметрия для всех автомобилей
-INSERT INTO vehicle_telematics (vehicle_id, odometer, battery_health, fuel_level, tire_pressure, location, last_reported_at)
-SELECT 
-    v.id,
-    v.mileage,
-    CASE 
-        WHEN v.fuel_type = 'electric' THEN 
-            CASE 
-                WHEN v.year >= 2024 THEN 98.5 + (RANDOM() * 2)
-                WHEN v.year >= 2023 THEN 95.0 + (RANDOM() * 4)
-                ELSE 90.0 + (RANDOM() * 8)
-            END
-        ELSE NULL
-    END,
-    CASE 
-        WHEN v.fuel_type IN ('gasoline', 'hybrid', 'diesel') THEN 
-            CASE 
-                WHEN v.status = 'maintenance' THEN 15.0 + (RANDOM() * 20)
-                WHEN v.mileage < 1000 THEN 85.0 + (RANDOM() * 15)
-                ELSE 45.0 + (RANDOM() * 45)
-            END
-        ELSE NULL
-    END,
-    jsonb_build_object(
-        'front_left', 32 + (RANDOM() * 4),
-        'front_right', 32 + (RANDOM() * 4),
-        'rear_left', 32 + (RANDOM() * 4),
-        'rear_right', 32 + (RANDOM() * 4)
-    ),
-    jsonb_build_object(
-        'latitude', 25.2048 + (RANDOM() * 0.1 - 0.05),
-        'longitude', 55.2708 + (RANDOM() * 0.1 - 0.05),
-        'address', 'Dubai, UAE',
-        'facility', CASE 
-            WHEN v.make IN ('BMW', 'Mercedes-Benz', 'Audi', 'Lexus', 'Tesla', 'Bentley', 'Rolls-Royce') 
-            THEN 'Premium Vehicle Storage'
-            WHEN v.make IN ('Ford', 'Toyota', 'Nissan', 'Honda')
-            THEN 'Standard Vehicle Storage'
-            ELSE 'Commercial Vehicle Storage'
-        END,
-        'zone', 'A' || (floor(RANDOM() * 5) + 1)::text,
-        'parking_spot', 'P' || (floor(RANDOM() * 100) + 1)::text
-    ),
-    NOW() - (RANDOM() * INTERVAL '24 hours')
-FROM vehicles v;
-
--- =====================================================================
 -- 4. ДОКУМЕНТЫ НА АВТОМОБИЛИ
 -- =====================================================================
 
@@ -396,14 +346,14 @@ SELECT
     'verified',
     jsonb_build_object(
         'insurance_provider', CASE 
-            WHEN v.purchase_price > 100000 THEN 'AXA Insurance UAE'
-            WHEN v.purchase_price > 50000 THEN 'Emirates Insurance'
+            WHEN COALESCE(v.mileage, 0) > 80000 THEN 'AXA Insurance UAE'
+            WHEN COALESCE(v.mileage, 0) > 30000 THEN 'Emirates Insurance'
             ELSE 'ADNIC Insurance'
         END,
         'policy_number', 'POL-' || SUBSTRING(v.vin FROM 1 FOR 8),
         'coverage_type', 'Full Coverage',
         'valid_until', '2026-06-30',
-        'premium_amount', (v.purchase_price * 0.03)::numeric(10,2),
+        'premium_amount', (COALESCE(v.mileage, 0) * 0.85)::numeric(10,2),
         'deductible', '500'
     ),
     NOW() - INTERVAL '45 days' + (RANDOM() * INTERVAL '30 days')
@@ -667,10 +617,10 @@ LIMIT 10;
 SELECT 'vehicles_by_category' as metric, 
        body_type, 
        COUNT(*) as count,
-       ROUND(AVG(purchase_price), 2) as avg_price_aed,
-       MIN(purchase_price) as min_price_aed,
-       MAX(purchase_price) as max_price_aed,
-       SUM(purchase_price) as total_value_aed
+       ROUND(AVG((50000 + COALESCE(mileage,0) * 2)), 2) as avg_price_aed,
+       MIN((50000 + COALESCE(mileage,0) * 2)) as min_price_aed,
+       MAX((50000 + COALESCE(mileage,0) * 2)) as max_price_aed,
+       SUM((50000 + COALESCE(mileage,0) * 2)) as total_value_aed
 FROM vehicles 
 GROUP BY body_type 
 ORDER BY count DESC;
@@ -679,7 +629,7 @@ ORDER BY count DESC;
 SELECT 'vehicles_by_fuel_type' as metric,
        fuel_type,
        COUNT(*) as count,
-       ROUND(AVG(purchase_price), 2) as avg_price_aed,
+       ROUND(AVG((50000 + COALESCE(mileage,0) * 2)), 2) as avg_price_aed,
        COUNT(*) * 100.0 / (SELECT COUNT(*) FROM vehicles) as percentage
 FROM vehicles 
 GROUP BY fuel_type 
@@ -690,7 +640,7 @@ SELECT 'vehicles_by_status' as metric,
        status,
        COUNT(*) as count,
        COUNT(*) * 100.0 / (SELECT COUNT(*) FROM vehicles) as percentage,
-       SUM(CASE WHEN status = 'available' THEN purchase_price ELSE 0 END) as available_value_aed
+       SUM(CASE WHEN status = 'available' THEN (50000 + COALESCE(mileage,0) * 2) ELSE 0 END) as available_value_aed
 FROM vehicles 
 GROUP BY status 
 ORDER BY count DESC;
@@ -699,7 +649,7 @@ ORDER BY count DESC;
 SELECT 'top_makes' as metric,
        make,
        COUNT(*) as count,
-       ROUND(AVG(purchase_price), 2) as avg_price_aed,
+       ROUND(AVG((50000 + COALESCE(mileage,0) * 2)), 2) as avg_price_aed,
        ROUND(AVG(mileage), 0) as avg_mileage
 FROM vehicles 
 GROUP BY make 
@@ -717,11 +667,6 @@ SELECT 'linked_data_summary' as metric,
 FROM vehicle_specifications
 UNION ALL
 SELECT 'linked_data_summary' as metric,
-       'vehicle_telematics' as table_name,
-       COUNT(*) as count
-FROM vehicle_telematics
-UNION ALL
-SELECT 'linked_data_summary' as metric,
        'vehicle_documents' as table_name,
        COUNT(*) as count
 FROM application_documents WHERE document_type IN ('vehicle_registration', 'insurance_certificate', 'certificate_of_conformity', 'owners_manual')
@@ -734,27 +679,27 @@ FROM vehicle_services;
 -- Средние цены по сегментам
 SELECT 'price_segments' as metric,
        CASE 
-           WHEN purchase_price < 30000 THEN 'Эконом'
-           WHEN purchase_price < 60000 THEN 'Средний класс'
-           WHEN purchase_price < 100000 THEN 'Премиум'
+           WHEN (50000 + COALESCE(mileage,0) * 2) < 30000 THEN 'Эконом'
+           WHEN (50000 + COALESCE(mileage,0) * 2) < 60000 THEN 'Средний класс'
+           WHEN (50000 + COALESCE(mileage,0) * 2) < 100000 THEN 'Премиум'
            ELSE 'Люкс'
        END as segment,
        COUNT(*) as count,
-       ROUND(AVG(purchase_price), 2) as avg_price_aed,
+       ROUND(AVG((50000 + COALESCE(mileage,0) * 2)), 2) as avg_price_aed,
        ROUND(AVG(mileage), 0) as avg_mileage
 FROM vehicles 
 GROUP BY 
     CASE 
-        WHEN purchase_price < 30000 THEN 'Эконом'
-        WHEN purchase_price < 60000 THEN 'Средний класс'
-        WHEN purchase_price < 100000 THEN 'Премиум'
+        WHEN (50000 + COALESCE(mileage,0) * 2) < 30000 THEN 'Эконом'
+        WHEN (50000 + COALESCE(mileage,0) * 2) < 60000 THEN 'Средний класс'
+        WHEN (50000 + COALESCE(mileage,0) * 2) < 100000 THEN 'Премиум'
         ELSE 'Люкс'
     END
 ORDER BY 
     CASE 
-        WHEN purchase_price < 30000 THEN 1
-        WHEN purchase_price < 60000 THEN 2
-        WHEN purchase_price < 100000 THEN 3
+        WHEN (50000 + COALESCE(mileage,0) * 2) < 30000 THEN 1
+        WHEN (50000 + COALESCE(mileage,0) * 2) < 60000 THEN 2
+        WHEN (50000 + COALESCE(mileage,0) * 2) < 100000 THEN 3
         ELSE 4
     END;
 

@@ -287,7 +287,6 @@ export type SupabaseVehicleData = {
   year: number | null;
   body_type: string | null;
   mileage: number | null;
-  current_value: number | null;
   status: string | null;
   image?: string | null;
 };
@@ -362,6 +361,15 @@ export type OpsClientRecord = {
   };
 };
 
+export type OpsClientType = "Personal" | "Company";
+
+export type OpsClientCompanyProfile = {
+  contactName: string | null;
+  contactEmiratesId: string | null;
+  trn: string | null;
+  licenseNumber: string | null;
+};
+
 export type OpsCarRecord = {
   id: string;
   vin: string;
@@ -374,8 +382,6 @@ export type OpsCarRecord = {
   status: string;
   statusLabel: string;
   statusTone: OpsTone;
-  price: string;
-  priceValue: number | null;
   mileage: string;
   mileageValue: number | null;
   activeDealNumber: string | null;
@@ -398,6 +404,33 @@ export type OpsVehicleActiveDeal = {
   monthlyLeaseRate: string | null;
   monthlyLeaseRateValue: number | null;
   href: string | null;
+};
+
+export type OpsVehicleDeal = {
+  id: string;
+  dealNumber: string;
+  status: string | null;
+  statusLabel: string | null;
+  statusTone: OpsTone | null;
+  stageLabel?: string | null;
+  monthlyPayment?: string | null;
+  totalAmount?: string | null;
+  principalAmount?: string | null;
+  termMonths?: number | null;
+  termLabel?: string | null;
+  contractPeriod?: string | null;
+  contractStartDate?: string | null;
+  contractEndDate?: string | null;
+  firstPaymentDate?: string | null;
+  nextPaymentDue?: string | null;
+  overdueAmount?: string | null;
+  clientId?: string | null;
+  clientName?: string | null;
+  clientPhone?: string | null;
+  clientHref?: string | null;
+  managerId?: string | null;
+  managerName?: string | null;
+  href?: string | null;
 };
 
 export const OPS_DEAL_STATUS_META: Record<string, { label: string; tone: OpsTone }> = {
@@ -503,6 +536,7 @@ export type OpsDealClientProfile = {
   phone: string;
   email: string;
   scoring: string;
+  source: string;
   notes: string;
   userId?: string | null;
   detailHref?: string | null;
@@ -531,7 +565,6 @@ export type OpsDealRelatedSection = {
 
 export type OpsDealEditDefaults = {
   dealNumber: string;
-  source: string;
   statusKey: OpsDealStatusKey;
   principalAmount: number | null;
   totalAmount: number | null;
@@ -586,12 +619,14 @@ export type OpsClientDocument = {
   status: string;
   documentType: string | null;
   category: string | null;
-  source: "deal" | "application";
+  source: "deal" | "application" | "client";
   bucket: string | null;
   storagePath: string | null;
   uploadedAt: string | null;
   signedAt: string | null;
   url?: string | null;
+  metadata?: Record<string, unknown> | null;
+  context: "personal" | "company";
 };
 
 export type OpsClientNotification = {
@@ -638,7 +673,9 @@ export type OpsClientProfile = {
   fullName: string;
   status: string;
   segment: string | null;
+  clientType: OpsClientType | null;
   memberSince: string | null;
+  source: string | null;
   email: string | null;
   phone: string | null;
   emiratesId: string | null;
@@ -646,6 +683,7 @@ export type OpsClientProfile = {
   nationality: string | null;
   residencyStatus: string | null;
   dateOfBirth: string | null;
+  company: OpsClientCompanyProfile;
   employment: {
     employer?: string | null;
     position?: string | null;
@@ -683,15 +721,54 @@ export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsT
   retired: { label: "Списан", tone: "danger" },
 };
 
+export const VEHICLE_DOCUMENT_TYPES = [
+  { value: "registration", label: "Регистрация" },
+  { value: "insurance", label: "Страховка" },
+  { value: "inspection", label: "Техосмотр" },
+  { value: "maintenance_report", label: "Отчёт об обслуживании" },
+  { value: "handover", label: "Акт приёма-передачи" },
+  { value: "other", label: "Другой документ" },
+] as const;
+
+export type VehicleDocumentTypeValue = (typeof VEHICLE_DOCUMENT_TYPES)[number]["value"];
+
+export const VEHICLE_DOCUMENT_TYPE_LABEL_MAP = VEHICLE_DOCUMENT_TYPES.reduce<Record<string, string>>(
+  (acc, entry) => {
+    acc[entry.value] = entry.label;
+    return acc;
+  },
+  {},
+);
+
+export const CLIENT_DOCUMENT_TYPES = [
+  { value: "emirates_id", label: "Emirates ID" },
+  { value: "passport", label: "Паспорт" },
+  { value: "visa", label: "Виза" },
+  { value: "driving_license", label: "Водительские права" },
+  { value: "company_license", label: "Лицензия компании" },
+] as const;
+
+export type ClientDocumentTypeValue = (typeof CLIENT_DOCUMENT_TYPES)[number]["value"];
+
+export const CLIENT_DOCUMENT_TYPE_LABEL_MAP = CLIENT_DOCUMENT_TYPES.reduce<Record<string, string>>(
+  (acc, entry) => {
+    acc[entry.value] = entry.label;
+    return acc;
+  },
+  {},
+);
+
 export type OpsVehicleDocument = {
   id: string;
   title: string;
   status: string;
   statusTone?: OpsTone;
+  typeCode?: string;
   type?: string;
   date?: string;
   dealNumber?: string | null;
   url: string | null;
+  source?: "deal" | "vehicle";
 };
 
 export type OpsVehicleServiceLogEntry = {
@@ -719,15 +796,6 @@ export type OpsVehicleProfile = {
   features?: string[];
 };
 
-export type OpsVehicleTelematics = {
-  odometer: number | null;
-  batteryHealth: number | null;
-  fuelLevel: number | null;
-  tirePressure: Record<string, number | string>;
-  location: Record<string, number | string>;
-  lastReportedAt: string | null;
-};
-
 export type OpsVehicleData = {
   id: string;
   vin: string | null;
@@ -743,13 +811,9 @@ export type OpsVehicleData = {
   colorExterior: string | null;
   colorInterior: string | null;
   status: string | null;
-  purchasePrice: number | null;
-  currentValue: number | null;
-  residualValue: number | null;
   monthlyLeaseRate: number | null;
   features: string[];
   rawFeatures: unknown;
-  telematics: OpsVehicleTelematics | null;
   createdAt: string | null;
   updatedAt: string | null;
 };
@@ -758,6 +822,7 @@ export type CarDetailResult = {
   slug: string;
   vehicleUuid: string;
   activeDeal: OpsVehicleActiveDeal | null;
+  deals: OpsVehicleDeal[];
   vehicle: OpsVehicleData;
   profile: OpsVehicleProfile;
   documents: OpsVehicleDocument[];
@@ -891,6 +956,7 @@ export type OpsDealDetail = {
   structuredData: OpsDealDetailJsonBlock[];
   paymentSchedule: OpsDealDetailsEntry[];
   editDefaults: OpsDealEditDefaults;
+  clientDocuments: OpsClientDocument[];
   documents: OpsDealDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];

@@ -45,7 +45,6 @@ TRUNCATE TABLE application_documents CASCADE;
 TRUNCATE TABLE applications CASCADE;
 
 -- Автомобили
-TRUNCATE TABLE vehicle_telematics CASCADE;
 TRUNCATE TABLE vehicle_specifications CASCADE;
 TRUNCATE TABLE vehicle_images CASCADE;
 TRUNCATE TABLE vehicles CASCADE;

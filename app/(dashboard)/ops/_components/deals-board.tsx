@@ -494,7 +494,6 @@ export function OpsDealsBoard({
     const vehicleMake = vehicleNameParts[0] ?? selectedVehicle.name;
     const vehicleModel =
       vehicleNameParts.length > 1 ? vehicleNameParts.slice(1).join(" ") : selectedVehicle.name;
-    const vehiclePrice = parseNumericString(selectedVehicle.price);
     const vehicleMileage = parseNumericString(selectedVehicle.mileage);
 
     try {
@@ -512,11 +511,9 @@ export function OpsDealsBoard({
           model: vehicleModel,
           vin: selectedVehicle.vin !== "—" ? selectedVehicle.vin : undefined,
           year: selectedVehicle.year ?? undefined,
-          price: vehiclePrice,
+          price: null,
           mileage: vehicleMileage,
           meta: {
-            price_label: selectedVehicle.price,
-            price_value: vehiclePrice,
             mileage_label: selectedVehicle.mileage,
             mileage_value: vehicleMileage,
             detail_href: selectedVehicle.detailHref,
@@ -539,10 +536,9 @@ export function OpsDealsBoard({
           model: vehicleModel,
           vin: selectedVehicle.vin !== "—" ? selectedVehicle.vin : undefined,
           year: selectedVehicle.year ?? undefined,
-          price: vehiclePrice,
+          price: null,
           mileage: vehicleMileage,
           meta: {
-            price_label: selectedVehicle.price,
             mileage_label: selectedVehicle.mileage,
             detail_href: selectedVehicle.detailHref,
             type_label: selectedVehicle.type,
@@ -732,7 +728,6 @@ export function OpsDealsBoard({
                         <p>
                           {selectedVehicle.year} · {selectedVehicle.type}
                         </p>
-                        <p>{selectedVehicle.price}</p>
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground">

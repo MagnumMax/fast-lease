@@ -8,6 +8,45 @@ import { createClient } from "@supabase/supabase-js";
 import { v5 as uuidv5 } from "uuid";
 import yaml from "yaml";
 
+// Load environment variables from .env.local
+async function loadEnv() {
+  try {
+    const envPath = path.resolve(process.cwd(), '.env.local');
+    const envContent = await fs.readFile(envPath, 'utf-8');
+    const envVars = envContent
+      .split('\n')
+      .filter(line => line.trim() && !line.startsWith('#'))
+      .map(line => {
+        const [key, ...valueParts] = line.split('=');
+        let value = valueParts.join('=').trim();
+        
+        // Remove surrounding quotes if present
+        if ((value.startsWith('"') && value.endsWith('"')) ||
+            (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
+        
+        return {
+          key: key?.trim(),
+          value: value
+        };
+      })
+      .filter(({ key, value }) => key && value);
+
+    for (const { key, value } of envVars) {
+      process.env[key] = value;
+    }
+    console.log(`🔧 Loaded ${envVars.length} environment variables from .env.local`);
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn(`⚠️ Failed to load .env.local: ${error.message}`);
+    }
+  }
+}
+
+// Load environment variables before anything else
+await loadEnv();
+
 const UUID_NAMESPACE = uuidv5.URL;
 
 
@@ -280,6 +319,86 @@ async function fileExists(supabase, bucket, pathKey) {
     res.data.destroy();
   }
   return true;
+}
+
+async function moveFilesBetweenFolders(supabase, bucket, fromFolder, toFolder) {
+  console.info(`📁 Moving files from ${fromFolder} to ${toFolder}`);
+  
+  try {
+    // List files in source folder
+    const { data: files, error: listError } = await supabase.storage
+      .from(bucket)
+      .list(fromFolder, { limit: 1000, offset: 0 });
+    
+    if (listError) {
+      console.warn(`⚠️ Failed to list files in ${fromFolder}: ${listError.message}`);
+      return;
+    }
+
+    if (!files || files.length === 0) {
+      console.info(`📁 Folder ${fromFolder} is empty`);
+      return;
+    }
+
+    console.info(`📄 Found ${files.length} files to move from ${fromFolder}`);
+
+    let movedCount = 0;
+    let errorCount = 0;
+
+    for (const file of files) {
+      const sourcePath = `${fromFolder}/${file.name}`;
+      const destPath = `${toFolder}/${file.name}`;
+
+      try {
+        // Download file from source
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from(bucket)
+          .download(sourcePath);
+
+        if (downloadError) {
+          console.warn(`⚠️ Failed to download ${sourcePath}: ${downloadError.message}`);
+          errorCount++;
+          continue;
+        }
+
+        // Upload to destination
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(destPath, fileData, { upsert: true });
+
+        if (uploadError) {
+          console.warn(`⚠️ Failed to upload ${destPath}: ${uploadError.message}`);
+          errorCount++;
+          continue;
+        }
+
+        console.info(`✅ Moved: ${file.name}`);
+        movedCount++;
+      } catch (error) {
+        console.warn(`⚠️ Failed to move ${file.name}: ${error.message}`);
+        errorCount++;
+      }
+    }
+
+    // Delete source folder after moving all files
+    try {
+      const { error: removeError } = await supabase.storage
+        .from(bucket)
+        .remove([`${fromFolder}/`]);
+      
+      if (removeError) {
+        console.warn(`⚠️ Failed to remove source folder ${fromFolder}: ${removeError.message}`);
+      } else {
+        console.info(`🗑️ Removed empty source folder: ${fromFolder}`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to remove source folder: ${error.message}`);
+    }
+
+    console.info(`📊 Move completed: ${movedCount} moved, ${errorCount} errors`);
+  } catch (error) {
+    console.error(`❌ Failed to move files: ${error.message}`);
+  }
 }
 
 async function processDealFolder({
@@ -708,7 +827,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
   if (aggregatedGemini) {
     const vin = aggregatedGemini.vehicle?.vin || aggregatedGemini.vehicle?.chassis_number;
     const clientName = aggregatedGemini.client?.name || aggregatedGemini.client?.full_name;
-    const dealAmount = aggregatedGemini.deal?.total_amount || aggregatedGemini.deal?.purchase_price;
+    const dealAmount = aggregatedGemini.deal?.total_amount;
 
     if (vin) console.info(`🚗 Deal VIN: ${vin}`);
     if (clientName) console.info(`👤 Deal Client: ${clientName}`);
@@ -724,7 +843,18 @@ async function run() {
   let configPath = "configs/drive_ingest.yaml";
   let rootOverride;
   let onlyFilter;
+  let shouldMigrateFiles = false;
+  
+  // Check for migration flag
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--migrate-storage") {
+      shouldMigrateFiles = true;
+      break;
+    }
+  }
 
+  // Parse remaining command line arguments
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--config") {
@@ -743,11 +873,24 @@ async function run() {
   }
 
   const config = await loadConfig(configPath);
-
-  const rootPath = path.resolve(rootOverride ?? config.local_root ?? "datasets/deals");
   const bucket = config.supabase.storage_bucket ?? "deals";
+  const supabase = createSupabaseClient(config.supabase);
+  const rootPath = path.resolve(rootOverride ?? config.local_root ?? "datasets/deals");
   const prefix = config.supabase.storage_prefix ?? "documents";
   const skipProcessed = config.skip_processed ?? true;
+
+  // Handle file migration if requested
+  if (shouldMigrateFiles) {
+    console.info(`🔄 Starting file migration from deals/deals/documents to deals/documents`);
+    await moveFilesBetweenFolders(
+      supabase,
+      bucket,
+      "deals/deals/documents",
+      "documents"
+    );
+    console.info(`✅ File migration completed`);
+    return; // Exit after migration
+  }
 
   const geminiKeyEnv = config.gemini.api_key_env ?? "GEMINI_API_KEY";
   const geminiApiKey = process.env[geminiKeyEnv];
@@ -760,7 +903,6 @@ async function run() {
     throw new Error(`Local root folder not found: ${rootPath}`);
   }
 
-  const supabase = createSupabaseClient(config.supabase);
   const genAI = new GoogleGenerativeAI(geminiApiKey);
   const configuredModel = config.gemini.model ?? "gemini-2.5-pro";
   const normalizedModel = configuredModel.replace(/^models\//, "");

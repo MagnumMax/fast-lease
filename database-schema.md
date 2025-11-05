@@ -143,9 +143,6 @@ engine_capacity: numeric(10,2)
 mileage: integer
 color_exterior: text
 color_interior: text
-purchase_price: numeric(16,2)
-current_value: numeric(16,2)
-residual_value: numeric(16,2)
 status: vehicle_status ('draft', 'available', 'reserved', 'leased', 'maintenance', 'retired')
 features: jsonb ({}'::jsonb)
 created_at: timestamptz (auto)
@@ -176,19 +173,6 @@ spec_value: text
 unit: text
 sort_order: integer (default 0)
 created_at: timestamptz (auto)
-```
-
-#### `vehicle_telematics`
-Данные телеметрии и мониторинга
-```sql
-id: uuid (PK)
-vehicle_id: uuid → vehicles(id) (CASCADE, unique)
-odometer: integer
-battery_health: numeric(5,2)
-fuel_level: numeric(5,2)
-tire_pressure: jsonb ({}'::jsonb)
-location: jsonb ({}'::jsonb)
-last_reported_at: timestamptz (auto)
 ```
 
 ### 3. Модуль заявок (Applications)
@@ -603,7 +587,6 @@ created_at: timestamptz (auto)
 #### Транспортные средства
 - `vehicle_images.vehicle_id` → `vehicles.id` (CASCADE)
 - `vehicle_specifications.vehicle_id` → `vehicles.id` (CASCADE)
-- `vehicle_telematics.vehicle_id` → `vehicles.id` (CASCADE, UNIQUE)
 
 #### Заявки и документы
 - `applications.user_id` → `auth.users.id` (RESTRICT)
@@ -677,7 +660,6 @@ created_at: timestamptz (auto)
 - `idx_vehicle_images_vehicle` на `vehicle_images.vehicle_id`
 - `uniq_vehicle_primary_image` на `vehicle_images(vehicle_id) WHERE is_primary`
 - `idx_vehicle_specifications_vehicle` на `vehicle_specifications.vehicle_id`
-- `uniq_vehicle_telematics_vehicle` на `vehicle_telematics.vehicle_id`
 
 #### Индексы заявок
 - `idx_applications_user` на `applications.user_id`
@@ -871,9 +853,6 @@ body_type: SUV
 fuel_type: petrol
 transmission: automatic
 mileage: 1200
-purchase_price: 1000000.00
-current_value: 985000.00
-residual_value: 1000000.00
 status: available
 features: {
   "batteryRange": "N/A",
@@ -892,9 +871,6 @@ body_type: SUV
 fuel_type: electric
 transmission: automatic
 mileage: 560
-purchase_price: 150000.00
-current_value: 149000.00
-residual_value: 150000.00
 status: available
 features: {
   "batteryRange": "450 km",

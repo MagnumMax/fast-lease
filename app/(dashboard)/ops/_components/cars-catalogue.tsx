@@ -39,8 +39,6 @@ type OpsCarsCatalogueProps = {
   initialCars: OpsCarRecord[];
 };
 
-const BODY_TYPES = ["Luxury SUV", "Luxury sedan", "Sports car", "Electric car"];
-
 const STATUS_TONE_CLASS: Record<OpsTone, string> = {
   success: "border-emerald-400/80 bg-emerald-500/10 text-emerald-700",
   warning: "border-amber-400/80 bg-amber-500/10 text-amber-700",
@@ -59,20 +57,12 @@ function resolveStatusToneClass(tone: OpsTone | undefined | null) {
 type CarFormState = {
   name: string;
   vin: string;
-  year: string;
-  type: string;
-  price: string;
-  mileage: string;
 };
 
 function createDefaultCarFormState(): CarFormState {
   return {
     name: "",
     vin: "",
-    year: "",
-    type: "Luxury SUV",
-    price: "",
-    mileage: "",
   };
 }
 
@@ -91,7 +81,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   );
 
   const bodyTypeOptions = useMemo(() => {
-    const set = new Set<string>(BODY_TYPES);
+    const set = new Set<string>();
     cars.forEach((car) => {
       if (car.bodyType) {
         set.add(car.bodyType);
@@ -132,10 +122,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
       const result = await createOperationsCar({
         name: formState.name.trim(),
         vin: formState.vin.trim(),
-        year: formState.year.trim() || undefined,
-        type: formState.type,
-        price: formState.price.trim() || undefined,
-        mileage: formState.mileage.trim() || undefined,
       });
 
       if (result.error) {
@@ -249,91 +235,27 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                       className="rounded-xl"
                     />
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label htmlFor="car-year" className="text-sm font-medium text-foreground/80">
-                        Year
-                      </label>
-                      <Input
-                        id="car-year"
-                        type="number"
-                        value={formState.year}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, year: event.target.value }))
-                        }
-                        placeholder="2025"
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label htmlFor="car-type" className="text-sm font-medium text-foreground/80">
-                        Type
-                      </label>
-                      <select
-                        id="car-type"
-                        value={formState.type}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, type: event.target.value }))
-                        }
-                        className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-                      >
-                        {BODY_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="car-price" className="text-sm font-medium text-foreground/80">
-                      Cost
-                    </label>
-                    <Input
-                      id="car-price"
-                      value={formState.price}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, price: event.target.value }))
-                      }
-                      placeholder="AED 1,500,000"
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="car-mileage" className="text-sm font-medium text-foreground/80">
-                      Mileage
-                    </label>
-                    <Input
-                      id="car-mileage"
-                      value={formState.mileage}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, mileage: event.target.value }))
-                      }
-                      placeholder="12,800 km"
-                      className="rounded-xl"
-                    />
-                  </div>
                 </div>
-                {errorMessage ? (
-                  <p className="text-sm text-destructive">{errorMessage}</p>
-                ) : null}
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCreateCar}
-                    className="rounded-xl"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? "Saving..." : "Save"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-      </Card>
+              {errorMessage ? (
+                <p className="text-sm text-destructive">{errorMessage}</p>
+              ) : null}
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateCar}
+                  className="rounded-xl"
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </CardHeader>
+    </Card>
 
       <Card className="hidden border border-border bg-card/60 backdrop-blur md:block">
         <CardContent className="p-0">
@@ -343,9 +265,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 <TableHead>Автомобиль</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Тип</TableHead>
-                <TableHead>Год</TableHead>
-                <TableHead>Пробег</TableHead>
-                <TableHead>Стоимость</TableHead>
                 <TableHead>Активная сделка</TableHead>
               </TableRow>
             </TableHeader>
@@ -376,9 +295,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{car.bodyType ?? "—"}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{car.year ?? "—"}</TableCell>
-                    <TableCell className="text-sm text-foreground">{car.mileage}</TableCell>
-                    <TableCell className="text-sm text-foreground">{car.price}</TableCell>
                     <TableCell className="text-sm">
                       {car.activeDealNumber ? (
                         <div className="flex flex-col gap-1">
@@ -401,9 +317,9 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-                    Автомобили не найдены. Измените фильтры или добавьте новый автомобиль.
-                  </TableCell>
+                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                      Автомобили не найдены. Измените фильтры или добавьте новый автомобиль.
+                    </TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -466,9 +382,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
               </div>
               <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
                 <span>Тип: {car.bodyType ?? "—"}</span>
-                <span>Год: {car.year ?? "—"}</span>
-                <span>Пробег: {car.mileage}</span>
-                <span>Стоимость: {car.price}</span>
                 <span className="col-span-2">
                   {car.activeDealNumber ? (
                     <div className="flex flex-wrap items-center gap-2">

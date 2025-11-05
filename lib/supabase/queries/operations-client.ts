@@ -91,6 +91,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isMissingColumnError(error: unknown, column: string): boolean {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: string }).code;
+  if (code && String(code) === "42703") {
+    return true;
+  }
+  const message = String((error as { message?: string }).message ?? "");
+  const details = String((error as { details?: string }).details ?? "");
+  const needle = `column ${column}`;
+  return message.toLowerCase().includes(needle) || details.toLowerCase().includes(needle);
+}
+
 function getString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
@@ -463,7 +475,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
         customer_id,
         vehicle_id,
         payload,
-        vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, current_value, status)
+        vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, status)
       `,
     )
     .order("updated_at", { ascending: false });
@@ -571,7 +583,6 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
         year,
         body_type,
         mileage,
-        current_value,
         status,
         updated_at,
         deals:deals!deals_vehicle_id_fkey (id, deal_number, status)
@@ -600,11 +611,7 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
     const variant = vehicle.variant ? String(vehicle.variant) : null;
     const yearValue = vehicle.year != null ? Number(vehicle.year) : null;
     const bodyType = vehicle.body_type ? String(vehicle.body_type) : null;
-    const priceValue = vehicle.current_value != null ? Number(vehicle.current_value) : null;
     const mileageValue = vehicle.mileage != null ? Number(vehicle.mileage) : null;
-    const price = priceValue != null
-      ? `AED ${priceValue.toLocaleString("en-US", { minimumFractionDigits: 0 })}`
-      : "—";
     const mileage = mileageValue != null
       ? `${mileageValue.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`
       : "—";
@@ -640,8 +647,6 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
       status: statusRaw,
       statusLabel: statusMeta.label,
       statusTone: statusMeta.tone,
-      price,
-      priceValue,
       mileage,
       mileageValue,
       activeDealNumber,
@@ -655,39 +660,74 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
   });
 }
 
+
 export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
   const supabase = await createSupabaseServerClient();
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(
-      "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata",
-    )
-    .order("full_name", { ascending: true });
+  const profileSelect =
+    "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata, source";
+  let profilesData: SupabaseClientProfileRow[] | null = null;
+  let profilesError: unknown = null;
 
-  if (error) {
-    console.error("[operations] failed to load clients", error);
+  {
+    const response = await supabase
+      .from("profiles")
+      .select(profileSelect)
+      .order("full_name", { ascending: true });
+    profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
+    profilesError = response.error;
+  }
+
+  if (profilesError && isMissingColumnError(profilesError, "source")) {
+    console.warn("[operations-client] profiles.source column missing, retrying without it");
+    const response = await supabase
+      .from("profiles")
+      .select("user_id, full_name, status, phone, nationality, residency_status, created_at, metadata")
+      .order("full_name", { ascending: true });
+    profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
+    profilesError = response.error;
+  }
+
+  if (profilesError) {
+    console.error("[operations] failed to load clients", profilesError);
     return [];
   }
 
-  console.log("[operations] loaded clients count:", data?.length || 0);
+type SupabaseClientProfileRow = {
+  user_id: string;
+  full_name: string | null;
+  status: string | null;
+  phone: string | null;
+  nationality: string | null;
+  residency_status: string | null;
+  created_at: string | null;
+  metadata: unknown;
+};
 
-  if (!data?.length) {
+  const profiles = profilesData ?? [];
+
+  console.log("[operations] loaded clients count:", profiles.length);
+
+  if (!profiles.length) {
     return [];
   }
 
-  return data.map((profile, index) => {
+  return profiles.map((profile, index) => {
     const metadata = isRecord(profile.metadata)
       ? (profile.metadata as Record<string, unknown>)
       : {};
     const statusInfo = normalizeClientStatusLabel(profile.status);
     const emailFromMetadata = getString(metadata?.["ops_email"]);
     const phoneFromMetadata = getString(metadata?.["ops_phone"]);
-    const segment =
+    const rawSegment =
       getString(metadata?.["segment"]) ??
       getString(metadata?.["client_segment"]) ??
       getString(metadata?.["customer_segment"]) ??
       null;
+    const clientTypeValue = getString(metadata?.["client_type"]);
+    const clientType =
+      clientTypeValue === "Company" || clientTypeValue === "Personal" ? clientTypeValue : null;
+    const segment = rawSegment ?? clientType;
 
     const memberSince = profile.created_at
       ? new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(
@@ -702,6 +742,7 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
         [
           statusInfo.display,
           getString(profile.residency_status),
+          clientType,
           segment,
           getString(profile.nationality),
         ]

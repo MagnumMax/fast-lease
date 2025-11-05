@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useCallback,
   useMemo,
   useState,
   useTransition,
@@ -10,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 
 import {
   Dialog,
@@ -23,23 +25,45 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { OpsClientProfile } from "@/lib/supabase/queries/operations";
+import { Badge } from "@/components/ui/badge";
+import type {
+  OpsClientDocument,
+  OpsClientProfile,
+  OpsClientType,
+} from "@/lib/supabase/queries/operations";
+import {
+  CLIENT_DOCUMENT_TYPES,
+  CLIENT_DOCUMENT_TYPE_LABEL_MAP,
+  type ClientDocumentTypeValue,
+} from "@/lib/supabase/queries/operations";
 import {
   type UpdateOperationsClientInput,
   type UpdateOperationsClientResult,
   type DeleteOperationsClientInput,
   type DeleteOperationsClientResult,
-  deleteOperationsClient,
+  type VerifyClientDeletionResult,
+  uploadClientDocuments,
+  verifyClientDeletion,
 } from "@/app/(dashboard)/ops/clients/actions";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 type ClientEditDialogProps = {
   profile: OpsClientProfile;
+  documents: OpsClientDocument[];
   onSubmit: (input: UpdateOperationsClientInput) => Promise<UpdateOperationsClientResult>;
   onDelete: (input: DeleteOperationsClientInput) => Promise<DeleteOperationsClientResult>;
 };
 
+type ClientTypeValue = OpsClientType;
+
+const CLIENT_TYPE_OPTIONS: Array<{ value: ClientTypeValue; label: string }> = [
+  { value: "Personal", label: "Personal" },
+  { value: "Company", label: "Company" },
+];
+
 type FormState = {
   fullName: string;
+  clientType: ClientTypeValue;
   status: "Active" | "Blocked";
   email: string;
   phone: string;
@@ -48,6 +72,10 @@ type FormState = {
   nationality: string;
   residencyStatus: string;
   dateOfBirth: string;
+  companyContactName: string;
+  companyContactEmiratesId: string;
+  companyTrn: string;
+  companyLicenseNumber: string;
   employmentEmployer: string;
   employmentPosition: string;
   employmentYears: string;
@@ -79,9 +107,56 @@ function FormSection({ title, description, children, columns = 2 }: FormSectionP
   );
 }
 
+type DocumentDraft = {
+  id: string;
+  type: ClientDocumentTypeValue | "";
+  file: File | null;
+};
+
+function createDocumentDraft(): DocumentDraft {
+  const identifier =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `doc-${Math.random().toString(36).slice(2, 10)}`;
+  return {
+    id: identifier,
+    type: "",
+    file: null,
+  } satisfies DocumentDraft;
+}
+
+const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+const PERSON_DOCUMENT_OPTIONS = CLIENT_DOCUMENT_TYPES.filter(
+  (option) => option.value !== "company_license",
+);
+const COMPANY_DOCUMENT_OPTIONS = CLIENT_DOCUMENT_TYPES;
+const PERSONAL_DOCUMENT_TYPE_VALUES = new Set<ClientDocumentTypeValue>(
+  PERSON_DOCUMENT_OPTIONS.map((option) => option.value),
+);
+const COMPANY_DOCUMENT_TYPE_VALUES = new Set<ClientDocumentTypeValue>(
+  COMPANY_DOCUMENT_OPTIONS.map((option) => option.value),
+);
+const CLIENT_IDENTITY_KEYWORDS = [
+  "emirates",
+  "passport",
+  "visa",
+  "id",
+  "identity",
+  "nationality",
+  "удостоверение",
+  "паспорт",
+  "виза",
+  "residency",
+  "resident",
+  "license",
+  "driving",
+  "company",
+];
+
 function buildInitialState(profile: OpsClientProfile): FormState {
   return {
     fullName: profile.fullName ?? "",
+    clientType: profile.clientType === "Company" ? "Company" : "Personal",
     status: profile.status === "Blocked" ? "Blocked" : "Active",
     email: profile.email ?? "",
     phone: profile.phone ?? "",
@@ -90,6 +165,10 @@ function buildInitialState(profile: OpsClientProfile): FormState {
     nationality: profile.nationality ?? "",
     residencyStatus: profile.residencyStatus ?? "",
     dateOfBirth: profile.dateOfBirth ?? "",
+    companyContactName: profile.company.contactName ?? "",
+    companyContactEmiratesId: profile.company.contactEmiratesId ?? "",
+    companyTrn: profile.company.trn ?? "",
+    companyLicenseNumber: profile.company.licenseNumber ?? "",
     employmentEmployer: profile.employment.employer ?? "",
     employmentPosition: profile.employment.position ?? "",
     employmentYears: profile.employment.years != null ? String(profile.employment.years) : "",
@@ -100,7 +179,7 @@ function buildInitialState(profile: OpsClientProfile): FormState {
   };
 }
 
-export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDialogProps) {
+export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: ClientEditDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -109,19 +188,284 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCheckingDelete, setIsCheckingDelete] = useState(false);
+  const [canConfirmDelete, setCanConfirmDelete] = useState(false);
+  const [personalDocumentDrafts, setPersonalDocumentDrafts] = useState<DocumentDraft[]>([]);
+  const [companyDocumentDrafts, setCompanyDocumentDrafts] = useState<DocumentDraft[]>([]);
+
+  function resolveDocumentContext(doc: OpsClientDocument): "personal" | "company" {
+    if (doc.context === "company" || doc.context === "personal") {
+      return doc.context;
+    }
+
+    const documentType = (doc.documentType ?? "").toLowerCase();
+    const category = (doc.category ?? "").toLowerCase();
+    const metadataContext =
+      typeof doc.metadata === "object" && doc.metadata !== null
+        ? String((doc.metadata as Record<string, unknown>)["upload_context"] ?? "").toLowerCase()
+        : "";
+
+    if (metadataContext === "company") {
+      return "company";
+    }
+    if (documentType === "company_license" || category === "company") {
+      return "company";
+    }
+
+    const nameLower = (doc.name ?? "").toLowerCase();
+    if (nameLower.includes("company") || nameLower.includes("license")) {
+      return "company";
+    }
+
+    return "personal";
+  }
+
+  const filterDocumentsByTypes = useCallback(
+    (allowedTypes: Set<ClientDocumentTypeValue>, desiredContext: "personal" | "company") => {
+      return documents.filter((doc) => {
+        const context = resolveDocumentContext(doc);
+        if (context !== desiredContext) {
+          return false;
+        }
+
+        const documentType = (doc.documentType ?? "") as ClientDocumentTypeValue | "";
+        if (documentType && allowedTypes.has(documentType)) {
+          return true;
+        }
+
+        const category = (doc.category ?? "").toLowerCase();
+        const typeNormalized = (doc.documentType ?? "").toLowerCase();
+        const name = (doc.name ?? "").toLowerCase();
+
+        return CLIENT_IDENTITY_KEYWORDS.some(
+          (keyword) =>
+            category.includes(keyword) || typeNormalized.includes(keyword) || name.includes(keyword),
+        );
+      });
+    },
+    [documents],
+  );
+
+  const personalDocuments = useMemo(
+    () => filterDocumentsByTypes(PERSONAL_DOCUMENT_TYPE_VALUES, "personal"),
+    [filterDocumentsByTypes],
+  );
+  const companyDocuments = useMemo(
+    () => filterDocumentsByTypes(COMPANY_DOCUMENT_TYPE_VALUES, "company"),
+    [filterDocumentsByTypes],
+  );
+
+  const isDraftIncomplete = useCallback((drafts: DocumentDraft[]) => {
+    return drafts.some((draft) => {
+      const hasType = draft.type !== "";
+      const hasFile = draft.file instanceof File && draft.file.size > 0;
+      return (hasType && !hasFile) || (hasFile && !hasType);
+    });
+  }, []);
+
+  const personalHasIncomplete = useMemo(
+    () => isDraftIncomplete(personalDocumentDrafts),
+    [personalDocumentDrafts, isDraftIncomplete],
+  );
+  const companyHasIncomplete = useMemo(
+    () => isDraftIncomplete(companyDocumentDrafts),
+    [companyDocumentDrafts, isDraftIncomplete],
+  );
+
+  const personalValidationMessage = personalHasIncomplete
+    ? "Укажите тип и файл для каждого документа клиента."
+    : null;
+  const companyValidationMessage = companyHasIncomplete
+    ? "Укажите тип и файл для каждого документа компании."
+    : null;
 
   const canSubmit = useMemo(() => {
-    return form.fullName.trim().length > 0;
-  }, [form.fullName]);
+    return form.fullName.trim().length > 0 && !personalHasIncomplete && !companyHasIncomplete;
+  }, [form.fullName, personalHasIncomplete, companyHasIncomplete]);
 
   useEffect(() => {
     if (!open) {
       setForm(buildInitialState(profile));
       setErrorMessage(null);
       setDeleteErrorMessage(null);
+      setDeleteOpen(false);
+      setIsCheckingDelete(false);
+      setIsDeleting(false);
+      setCanConfirmDelete(false);
+      setPersonalDocumentDrafts([]);
+      setCompanyDocumentDrafts([]);
     }
   }, [open, profile]);
 
+  useEffect(() => {
+    if (form.clientType === "Personal") {
+      if (companyDocumentDrafts.length > 0) {
+        setCompanyDocumentDrafts([]);
+      }
+    }
+  }, [form.clientType, companyDocumentDrafts.length]);
+
+  function renderDocumentManager({
+    existingDocs,
+    drafts,
+    validationMessage,
+    onAddDraft,
+    onTypeChange,
+    onFileChange,
+    onRemoveDraft,
+    title,
+    description,
+    emptyMessage,
+    note,
+    options,
+  }: {
+    existingDocs: OpsClientDocument[];
+    drafts: DocumentDraft[];
+    validationMessage?: string | null;
+    onAddDraft: () => void;
+    onTypeChange: (id: string, type: ClientDocumentTypeValue | "") => void;
+    onFileChange: (id: string, file: File | null) => void;
+    onRemoveDraft: (id: string) => void;
+    title: string;
+    description?: string;
+    emptyMessage: string;
+    note?: string;
+    options: ReadonlyArray<{ value: ClientDocumentTypeValue; label: string }>;
+  }) {
+    return (
+      <div className="sm:col-span-2 space-y-4 border-t border-border/40 pt-4">
+        <div className="space-y-1">
+          <p className="text-sm font-semibold text-foreground">{title}</p>
+          {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+        </div>
+        <div className="space-y-4">
+          {existingDocs.length ? (
+            <div className="space-y-2 rounded-xl border border-border/60 bg-background/70 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Уже загружено
+              </p>
+              <ul className="space-y-2">
+                {existingDocs.map((doc) => {
+                  const typeLabel =
+                    doc.documentType && CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
+                      ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
+                      : doc.documentType ?? "Документ";
+                  const uploadedDisplay = doc.uploadedAt
+                    ? new Date(doc.uploadedAt).toLocaleDateString("ru-RU")
+                    : null;
+
+                  return (
+                    <li
+                      key={doc.id}
+                      className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">{doc.name}</p>
+                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                          {doc.documentType ? <span>Тип: {typeLabel}</span> : null}
+                          {uploadedDisplay ? <span>Загружен: {uploadedDisplay}</span> : null}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="rounded-full px-3 py-1 text-xs capitalize">
+                          {doc.status || "unknown"}
+                        </Badge>
+                        {doc.url ? (
+                          <Button asChild size="sm" variant="outline" className="rounded-lg">
+                            <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                              Скачать
+                            </a>
+                          </Button>
+                        ) : (
+                          <Badge variant="outline" className="rounded-lg text-muted-foreground">
+                            Нет файла
+                          </Badge>
+                        )}
+                      </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      )}
+      <div className="space-y-3">
+        {drafts.map((draft) => (
+            <div
+              key={draft.id}
+              className="space-y-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-3"
+            >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label>Тип документа</Label>
+                    <select
+                      value={draft.type}
+                      onChange={(event) =>
+                        onTypeChange(
+                          draft.id,
+                          event.currentTarget.value as ClientDocumentTypeValue | "",
+                        )
+                      }
+                      className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      <option value="">Выберите тип</option>
+                      {options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Файл</Label>
+                    <Input
+                      type="file"
+                      accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                      onChange={(event) => onFileChange(draft.id, event.currentTarget.files?.[0] ?? null)}
+                      className="cursor-pointer rounded-lg"
+                    />
+                    {draft.file ? (
+                      <p className="text-xs text-muted-foreground">{draft.file.name}</p>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onRemoveDraft(draft.id)}
+                    className="rounded-lg text-muted-foreground hover:text-destructive"
+                  >
+                    Удалить
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onAddDraft}
+                className="flex items-center gap-2 rounded-lg"
+                disabled={isPending}
+              >
+                <Plus className="h-4 w-4" /> Добавить документ
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {note ?? "Допустимые форматы: PDF, JPG, PNG (до 10 МБ)."}
+              </p>
+            </div>
+            {validationMessage ? (
+              <p className="text-xs text-destructive">{validationMessage}</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
   function handleChange<K extends keyof FormState>(key: K) {
     return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const value = event.currentTarget.value;
@@ -129,11 +473,46 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
     };
   }
 
+  function addPersonalDocumentDraft() {
+    setPersonalDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
+  }
+  function changePersonalDocumentType(id: string, nextType: ClientDocumentTypeValue | "") {
+    setPersonalDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, type: nextType } : draft)),
+    );
+  }
+  function changePersonalDocumentFile(id: string, file: File | null) {
+    setPersonalDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, file } : draft)),
+    );
+  }
+  function removePersonalDocumentDraft(id: string) {
+    setPersonalDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
+  }
+
+  function addCompanyDocumentDraft() {
+    setCompanyDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
+  }
+  function changeCompanyDocumentType(id: string, nextType: ClientDocumentTypeValue | "") {
+    setCompanyDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, type: nextType } : draft)),
+    );
+  }
+  function changeCompanyDocumentFile(id: string, file: File | null) {
+    setCompanyDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, file } : draft)),
+    );
+  }
+  function removeCompanyDocumentDraft(id: string) {
+    setCompanyDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
+  }
+
   async function submit() {
     setErrorMessage(null);
     const payload: UpdateOperationsClientInput = {
       userId: profile.userId,
       fullName: form.fullName,
+      clientType: form.clientType,
       status: form.status,
       email: form.email,
       phone: form.phone,
@@ -142,6 +521,11 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
       nationality: form.nationality,
       residencyStatus: form.residencyStatus,
       dateOfBirth: form.dateOfBirth,
+      companyContactName: form.clientType === "Company" ? form.companyContactName : undefined,
+      companyContactEmiratesId:
+        form.clientType === "Company" ? form.companyContactEmiratesId : undefined,
+      companyTrn: form.clientType === "Company" ? form.companyTrn : undefined,
+      companyLicenseNumber: form.clientType === "Company" ? form.companyLicenseNumber : undefined,
       employment: {
         employer: form.employmentEmployer,
         position: form.employmentPosition,
@@ -162,16 +546,108 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
       return;
     }
 
+    const detailSlug = buildSlugWithId(form.fullName, profile.userId) || profile.userId;
+
+    const readyPersonalDrafts = personalDocumentDrafts.filter(
+      (draft): draft is DocumentDraft & { type: ClientDocumentTypeValue; file: File } =>
+        draft.type !== "" &&
+        PERSONAL_DOCUMENT_TYPE_VALUES.has(draft.type) &&
+        draft.file instanceof File,
+    );
+    const readyCompanyDrafts = companyDocumentDrafts.filter(
+      (draft): draft is DocumentDraft & { type: ClientDocumentTypeValue; file: File } =>
+        draft.type !== "" &&
+        COMPANY_DOCUMENT_TYPE_VALUES.has(draft.type) &&
+        draft.file instanceof File,
+    );
+
+    if (readyPersonalDrafts.length > 0 || readyCompanyDrafts.length > 0) {
+      const formData = new FormData();
+      formData.append("clientId", profile.userId);
+      formData.append("slug", detailSlug);
+
+      let documentIndex = 0;
+      const appendDrafts = (
+        drafts: Array<DocumentDraft & { type: ClientDocumentTypeValue; file: File }>,
+        context: "personal" | "company",
+      ) => {
+        drafts.forEach((draft) => {
+          formData.append(`documents[${documentIndex}][type]`, draft.type);
+          formData.append(`documents[${documentIndex}][file]`, draft.file);
+          formData.append(`documents[${documentIndex}][context]`, context);
+          documentIndex += 1;
+        });
+      };
+
+      appendDrafts(readyPersonalDrafts, "personal");
+      appendDrafts(readyCompanyDrafts, "company");
+
+      const uploadResult = await uploadClientDocuments(formData);
+
+      if (!uploadResult.success) {
+        setErrorMessage(uploadResult.error);
+        return;
+      }
+    }
+
+    setPersonalDocumentDrafts([]);
+    setCompanyDocumentDrafts([]);
+
     setOpen(false);
     router.refresh();
   }
 
-  async function handleDelete() {
+  async function handleDeleteClick() {
+    if (isPending || isCheckingDelete || isDeleting) {
+      return;
+    }
+
+    setDeleteErrorMessage(null);
+    setCanConfirmDelete(false);
+    setIsCheckingDelete(true);
+
+    try {
+      const checkResult: VerifyClientDeletionResult = await verifyClientDeletion({
+        userId: profile.userId,
+      });
+
+      if (!checkResult.canDelete) {
+        setDeleteErrorMessage(
+          checkResult.reason ?? "Клиента нельзя удалить, пока у него есть активные сделки.",
+        );
+        setDeleteOpen(true);
+        return;
+      }
+
+      setCanConfirmDelete(true);
+      setDeleteOpen(true);
+    } catch (error) {
+      console.error("[operations] unexpected error during client deletion check", error);
+      setDeleteErrorMessage("Не удалось проверить возможность удаления клиента.");
+    } finally {
+      setIsCheckingDelete(false);
+    }
+  }
+
+  function closeDeleteDialog() {
+    if (isDeleting) return;
+    setDeleteOpen(false);
+    setDeleteErrorMessage(null);
+    setCanConfirmDelete(false);
+  }
+
+  async function confirmDelete() {
+    if (isDeleting || !canConfirmDelete) {
+      return;
+    }
+
     setDeleteErrorMessage(null);
     setIsDeleting(true);
 
     try {
-      const result = await onDelete({ userId: profile.userId });
+      const result: DeleteOperationsClientResult = await onDelete({
+        userId: profile.userId,
+      });
 
       if (!result.success) {
         setDeleteErrorMessage(result.error);
@@ -180,8 +656,10 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
 
       setDeleteOpen(false);
       setOpen(false);
-      router.push("/ops/clients");
+      router.replace("/ops/clients");
+      router.refresh();
     } catch (error) {
+      console.error("[operations] unexpected error during client deletion", error);
       setDeleteErrorMessage("Произошла ошибка при удалении клиента.");
     } finally {
       setIsDeleting(false);
@@ -223,6 +701,21 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
                 />
               </div>
               <div>
+                <Label htmlFor="client-type">Тип клиента</Label>
+                <select
+                  id="client-type"
+                  value={form.clientType}
+                  onChange={handleChange("clientType")}
+                  className="mt-2 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+                >
+                  {CLIENT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <Label htmlFor="client-status">Статус</Label>
                 <select
                   id="client-status"
@@ -234,9 +727,6 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
                   <option value="Blocked">Blocked</option>
                 </select>
               </div>
-            </FormSection>
-
-            <FormSection title="Контактная информация" columns={2}>
               <div>
                 <Label htmlFor="client-phone">Телефон</Label>
                 <Input
@@ -256,27 +746,6 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
                   onChange={handleChange("email")}
                   className="mt-2"
                   placeholder="client@example.com"
-                />
-              </div>
-            </FormSection>
-
-            <FormSection title="Документы и идентификация" columns={3}>
-              <div>
-                <Label htmlFor="client-emirates">Emirates ID</Label>
-                <Input
-                  id="client-emirates"
-                  value={form.emiratesId}
-                  onChange={handleChange("emiratesId")}
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="client-passport">Паспорт</Label>
-                <Input
-                  id="client-passport"
-                  value={form.passportNumber}
-                  onChange={handleChange("passportNumber")}
-                  className="mt-2"
                 />
               </div>
               <div>
@@ -307,7 +776,100 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
                   className="mt-2"
                 />
               </div>
+              <div>
+                <Label htmlFor="client-emirates">Emirates ID</Label>
+                <Input
+                  id="client-emirates"
+                  value={form.emiratesId}
+                  onChange={handleChange("emiratesId")}
+                  className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="client-passport">Паспорт</Label>
+                <Input
+                  id="client-passport"
+                  value={form.passportNumber}
+                  onChange={handleChange("passportNumber")}
+                  className="mt-2"
+                />
+              </div>
+              {renderDocumentManager({
+                existingDocs: personalDocuments,
+                drafts: personalDocumentDrafts,
+                validationMessage: personalValidationMessage,
+                onAddDraft: addPersonalDocumentDraft,
+                onTypeChange: changePersonalDocumentType,
+                onFileChange: changePersonalDocumentFile,
+                onRemoveDraft: removePersonalDocumentDraft,
+                title: "Документы клиента",
+                description: "Загрузка документов клиента для идентификации.",
+                emptyMessage: "Документы клиента пока не загружены.",
+                options: PERSON_DOCUMENT_OPTIONS,
+              })}
             </FormSection>
+
+            {form.clientType === "Company"
+              ? (
+                <FormSection
+                  title="Компания"
+                  description="Основные сведения о компании и контактном лице."
+                  columns={2}
+                >
+                  <div>
+                    <Label htmlFor="company-contact-name">Контактное лицо</Label>
+                    <Input
+                      id="company-contact-name"
+                      value={form.companyContactName}
+                      onChange={handleChange("companyContactName")}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company-contact-emirates">Emirates ID контактного лица</Label>
+                    <Input
+                      id="company-contact-emirates"
+                      value={form.companyContactEmiratesId}
+                      onChange={handleChange("companyContactEmiratesId")}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company-trn">TRN</Label>
+                    <Input
+                      id="company-trn"
+                      value={form.companyTrn}
+                      onChange={handleChange("companyTrn")}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="company-license">Номер лицензии</Label>
+                    <Input
+                      id="company-license"
+                      value={form.companyLicenseNumber}
+                      onChange={handleChange("companyLicenseNumber")}
+                      className="mt-2"
+                    />
+                  </div>
+                  {renderDocumentManager({
+                    existingDocs: companyDocuments,
+                    drafts: companyDocumentDrafts,
+                    validationMessage: companyValidationMessage,
+                    onAddDraft: addCompanyDocumentDraft,
+                    onTypeChange: changeCompanyDocumentType,
+                    onFileChange: changeCompanyDocumentFile,
+                    onRemoveDraft: removeCompanyDocumentDraft,
+                    title: "Документы компании и контактного лица",
+                    description: "Загрузите корпоративные документы и документы ответственного лица.",
+                    emptyMessage:
+                      "Документы компании пока не загружены. Добавьте идентификационные документы и лицензию компании.",
+                    note: "Допустимые форматы: PDF, JPG, PNG (до 10 МБ).",
+                    options: COMPANY_DOCUMENT_OPTIONS,
+                  })}
+                </FormSection>
+              )
+              : null}
 
             <FormSection
               title="Финансовая информация"
@@ -380,53 +942,24 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
               </div>
             </FormSection>
 
-            <FormSection
-              title="Документы"
-              description="Загрузка документов клиента для идентификации"
-              columns={1}
-            >
-              <div className="space-y-4">
-                <div className="border-2 border-dashed border-border/60 rounded-xl p-6 text-center">
-                  <div className="space-y-2">
-                    <div className="mx-auto h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center">
-                      <svg className="h-6 w-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-foreground">Перетащите файлы сюда или нажмите для выбора</p>
-                      <p className="text-xs text-muted-foreground">Поддерживаются: PDF, JPG, PNG, DOC (макс. 10MB)</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Добавляйте документы удостоверения личности: Emirates ID, паспорт, виза, удостоверение личности
-                      </p>
-                    </div>
-                    <Button type="button" variant="outline" size="sm" className="mt-2" disabled>
-                      <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      Выбрать файлы
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </FormSection>
-
             {errorMessage ? (
               <p className="text-sm text-red-500">{errorMessage}</p>
             ) : null}
 
-            <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="rounded-xl order-2 sm:order-1"
-                onClick={() => setDeleteOpen(true)}
-                disabled={isPending}
-              >
-                Удалить клиента
-              </Button>
-              <div className="flex gap-2 order-1 sm:order-2">
+            <DialogFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="order-2 flex flex-col gap-3 sm:order-1">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="rounded-xl"
+                  onClick={handleDeleteClick}
+                  disabled={isPending || isCheckingDelete || isDeleting}
+                >
+                  {isCheckingDelete ? "Проверяем..." : "Удалить клиента"}
+                </Button>
+              </div>
+              <div className="order-1 flex gap-2 sm:order-2">
                 <Button
                   type="button"
                   variant="ghost"
@@ -449,29 +982,31 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
         </DialogContent>
       </Dialog>
 
-      {/* Dialog подтверждения удаления */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <Dialog open={deleteOpen} onOpenChange={(next) => (next ? setDeleteOpen(true) : closeDeleteDialog())}>
         <DialogContent className="rounded-3xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-destructive">Удалить клиента</DialogTitle>
-            <DialogDescription>
-              Вы уверены, что хотите удалить клиента <strong>{profile.fullName}</strong>?
-              Это действие нельзя отменить.
-              <br /><br />
-              <div>
-                Будут удалены:
-                <ul className="text-xs mt-2 list-disc list-inside">
-                  <li>Профиль клиента</li>
-                  <li>Все документы клиента</li>
-                  <li>Связанные сделки (завершенные/отмененные)</li>
-                  <li>Пользователь из системы</li>
-                </ul>
+            <DialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Вы уверены, что хотите удалить клиента <strong>{profile.fullName}</strong>? Это действие
+                  необратимо.
+                </p>
+                <div className="space-y-1">
+                  <p className="text-xs">Будут удалены:</p>
+                  <ul className="text-xs mt-1 list-disc list-inside">
+                    <li>Профиль клиента</li>
+                    <li>Все документы клиента</li>
+                    <li>Связанные завершённые сделки</li>
+                    <li>Запись пользователя</li>
+                  </ul>
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>
 
           {deleteErrorMessage ? (
-            <p className="text-sm text-red-500">{deleteErrorMessage}</p>
+            <p className="text-sm text-destructive">{deleteErrorMessage}</p>
           ) : null}
 
           <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
@@ -479,7 +1014,7 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
               type="button"
               variant="ghost"
               className="rounded-xl"
-              onClick={() => setDeleteOpen(false)}
+              onClick={closeDeleteDialog}
               disabled={isDeleting}
             >
               Отмена
@@ -488,10 +1023,10 @@ export function ClientEditDialog({ profile, onSubmit, onDelete }: ClientEditDial
               type="button"
               variant="destructive"
               className="rounded-xl"
-              onClick={handleDelete}
-              disabled={isDeleting}
+              onClick={confirmDelete}
+              disabled={isDeleting || !canConfirmDelete}
             >
-              {isDeleting ? "Удаление..." : "Удалить клиента"}
+              {isDeleting ? "Удаляем..." : "Удалить клиента"}
             </Button>
           </DialogFooter>
         </DialogContent>

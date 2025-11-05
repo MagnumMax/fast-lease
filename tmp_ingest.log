@@ -1,0 +1,536 @@
+🔧 Loaded 8 environment variables from .env.local
+🚀 Starting local deal ingestion process...
+📂 Found 27 deal folders to process
+⏭️ Skipping #1 G800 BRABUS 2022 (6982) 14.04.2025 — not included in --only filter.
+⏭️ Skipping #10 - MB S580 Maybach 2022 (4874) — not included in --only filter.
+⏭️ Skipping #11-2 Mercedes G63 Gold 2025 (1051) — not included in --only filter.
+⏭️ Skipping #12 Brabus G800 2022 (5386) — not included in --only filter.
+⏭️ Skipping #12 MB G63 Black 2022 (1508) — not included in --only filter.
+⏭️ Skipping #13 Mercedes GLS 600 (5609) — not included in --only filter.
+⏭️ Skipping #14 MB G63 2024 Yellow (0247) — not included in --only filter.
+⏭️ Skipping #2 MB G63 2025 (5333) 22.04.25 — not included in --only filter.
+⏭️ Skipping #3 Cadillac Escalade SP 2023 (6864) — not included in --only filter.
+⏭️ Skipping #4 BMW M8 2022 (2550) — not included in --only filter.
+⏭️ Skipping #5 Porsche Cayman GT4 RS 2025 (1082) — not included in --only filter.
+⏭️ Skipping #6 Lamborghini Urus 2022 (6681) — not included in --only filter.
+⏭️ Skipping #7 BMW M4 2024 (6847) — not included in --only filter.
+⏭️ Skipping #8 Porsche 911 Turbo S 2022 (4239) — not included in --only filter.
+⏭️ Skipping #9 Lamborghini Urus Perf 2024 (9647) — not included in --only filter.
+⏭️ Skipping BMW 420i 2024 China (9232) — not included in --only filter.
+⏭️ Skipping Cad Esc 2022 (8169) — not included in --only filter.
+⏭️ Skipping Chevrolet Corvette 2022 (3280) — not included in --only filter.
+⏭️ Skipping LAMBORGHINI - HURACAN GREEN 2023 (5219) 15.11.25 — not included in --only filter.
+⏭️ Skipping LOAN AGREEMENT (Aleksandr Pankratov - Sunday Car Rental LLC) — not included in --only filter.
+📁 Starting processing folder: Land Rover Vogue (0240)
+📄 Found 14 PDF files in Land Rover Vogue (0240)
+🔍 Processing file: 1. 8BA Motors TL-25.pdf
+[Gemini] 1. 8BA Motors TL-25.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 1. 8BA Motors TL-25.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 1. 8BA Motors TL-25.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (22ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/1_8BA_Motors_TL_25_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/1_8BA_Motors_TL_25_pdf.json: fetch failed
+🔍 Processing file: 11. Vehicle Purchase Agreement_(Land Rover Vogue (0240)).pdf
+[Gemini] 11. Vehicle Purchase Agreement_(Land Rover Vogue (0240)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 11. Vehicle Purchase Agreement_(Land Rover Vogue (0240)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 11. Vehicle Purchase Agreement_(Land Rover Vogue (0240)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (135ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/11_Vehicle_Purchase_Agreement_Land_Rover_Vogue_0240_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/11_Vehicle_Purchase_Agreement_Land_Rover_Vogue_0240_pdf.json: fetch failed
+🔍 Processing file: 12. MEMORANDUM OF UNDERSTANDING RENTAL (Land Rover Vogue (0240))_new.pdf
+[Gemini] 12. MEMORANDUM OF UNDERSTANDING RENTAL (Land Rover Vogue (0240))_new.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 12. MEMORANDUM OF UNDERSTANDING RENTAL (Land Rover Vogue (0240))_new.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 12. MEMORANDUM OF UNDERSTANDING RENTAL (Land Rover Vogue (0240))_new.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (376ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/12_MEMORANDUM_OF_UNDERSTANDING_RENTAL_Land_Rover_Vogue_0240_new_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/12_MEMORANDUM_OF_UNDERSTANDING_RENTAL_Land_Rover_Vogue_0240_new_pdf.json: fetch failed
+🔍 Processing file: 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 19.09.2025.pdf
+[Gemini] 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 19.09.2025.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 19.09.2025.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 19.09.2025.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (116ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/13_Termination_Contract_to_the_LONG_TERM_RENTAL_VEHICLE_AGREEMENT_dated_19_09_2025_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/13_Termination_Contract_to_the_LONG_TERM_RENTAL_VEHICLE_AGREEMENT_dated_19_09_2025_pdf.json: fetch failed
+🔍 Processing file: 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 19.09.2025.pdf
+[Gemini] 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 19.09.2025.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 19.09.2025.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 19.09.2025.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (134ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/14_Termination_Contract_to_the_Preliminary_Vehicle_Purchase_Agreement_dated_19_09_2025_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/14_Termination_Contract_to_the_Preliminary_Vehicle_Purchase_Agreement_dated_19_09_2025_pdf.json: fetch failed
+🔍 Processing file: 15. Insurance_ 0842_001 (1).pdf
+[Gemini] 15. Insurance_ 0842_001 (1).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 15. Insurance_ 0842_001 (1).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 15. Insurance_ 0842_001 (1).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (10ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/15_Insurance_0842_001_1_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/15_Insurance_0842_001_1_pdf.json: fetch failed
+🔍 Processing file: 16. GPS - (Land Rover Vogue (0240)).pdf
+[Gemini] 16. GPS - (Land Rover Vogue (0240)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 16. GPS - (Land Rover Vogue (0240)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 16. GPS - (Land Rover Vogue (0240)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (5ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/16_GPS_Land_Rover_Vogue_0240_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/16_GPS_Land_Rover_Vogue_0240_pdf.json: fetch failed
+🔍 Processing file: 2. Tax Invoice.pdf
+[Gemini] 2. Tax Invoice.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 2. Tax Invoice.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 2. Tax Invoice.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (6ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/2_Tax_Invoice_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/2_Tax_Invoice_pdf.json: fetch failed
+🔍 Processing file: 3. Inspection Certificate_(Land Rover Vogue (0240)).pdf
+[Gemini] 3. Inspection Certificate_(Land Rover Vogue (0240)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 3. Inspection Certificate_(Land Rover Vogue (0240)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 3. Inspection Certificate_(Land Rover Vogue (0240)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (6ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/3_Inspection_Certificate_Land_Rover_Vogue_0240_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/3_Inspection_Certificate_Land_Rover_Vogue_0240_pdf.json: fetch failed
+🔍 Processing file: 4. Vehicle Information (Land Rover Vogue (0240)).pdf
+[Gemini] 4. Vehicle Information (Land Rover Vogue (0240)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 4. Vehicle Information (Land Rover Vogue (0240)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 4. Vehicle Information (Land Rover Vogue (0240)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (4ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/4_Vehicle_Information_Land_Rover_Vogue_0240_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/4_Vehicle_Information_Land_Rover_Vogue_0240_pdf.json: fetch failed
+🔍 Processing file: 5. Authorization Letter.pdf
+[Gemini] 5. Authorization Letter.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 5. Authorization Letter.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 5. Authorization Letter.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (173ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/5_Authorization_Letter_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/5_Authorization_Letter_pdf.json: fetch failed
+🔍 Processing file: 6. Dealer Vehicle Purchase Agreement (Land Rover Vogue (0240).pdf
+[Gemini] 6. Dealer Vehicle Purchase Agreement (Land Rover Vogue (0240).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 6. Dealer Vehicle Purchase Agreement (Land Rover Vogue (0240).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 6. Dealer Vehicle Purchase Agreement (Land Rover Vogue (0240).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (35ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/6_Dealer_Vehicle_Purchase_Agreement_Land_Rover_Vogue_0240_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/6_Dealer_Vehicle_Purchase_Agreement_Land_Rover_Vogue_0240_pdf.json: fetch failed
+🔍 Processing file: 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf
+[Gemini] 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (13ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/7_Client_OVER_DRIVE_CAR_RENTAL_L_L_C_Manager_TIN_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/7_Client_OVER_DRIVE_CAR_RENTAL_L_L_C_Manager_TIN_pdf.json: fetch failed
+🔍 Processing file: 8.-10. Long Term Rental Vehicle Agreement_Schedule A, B (Land Rover Vogue (0240)).pdf
+[Gemini] 8.-10. Long Term Rental Vehicle Agreement_Schedule A, B (Land Rover Vogue (0240)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 8.-10. Long Term Rental Vehicle Agreement_Schedule A, B (Land Rover Vogue (0240)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 8.-10. Long Term Rental Vehicle Agreement_Schedule A, B (Land Rover Vogue (0240)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (1234ms)
+⚠️ Failed to upload PDF /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/8_10_Long_Term_Rental_Vehicle_Agreement_Schedule_A_B_Land_Rover_Vogue_0240_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/8_10_Long_Term_Rental_Vehicle_Agreement_Schedule_A_B_Land_Rover_Vogue_0240_pdf.json: fetch failed
+📊 Starting aggregate analysis for Land Rover Vogue (0240)...
+📦 Split 14 documents into 4 chunks of max 4 documents each
+🔄 Processing chunk 1/4 (4 documents)
+[Gemini] chunk 1 Land Rover Vogue (0240) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 1 Land Rover Vogue (0240): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 1 analysis failed for Land Rover Vogue (0240): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔄 Processing chunk 2/4 (4 documents)
+[Gemini] chunk 2 Land Rover Vogue (0240) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 2 Land Rover Vogue (0240): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 2 analysis failed for Land Rover Vogue (0240): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔄 Processing chunk 3/4 (4 documents)
+[Gemini] chunk 3 Land Rover Vogue (0240) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 3 Land Rover Vogue (0240): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 3 analysis failed for Land Rover Vogue (0240): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔄 Processing chunk 4/4 (2 documents)
+[Gemini] chunk 4 Land Rover Vogue (0240) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 4 Land Rover Vogue (0240): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 4 analysis failed for Land Rover Vogue (0240): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔀 Aggregating 4 chunk results into final analysis...
+⚠️ 4 chunks failed, proceeding with 0 successful chunks
+❌ Final aggregate analysis failed: all chunks failed
+⚠️ Failed to upload aggregated JSON /77e6ac4e-f532-5f6a-ac9d-58631511fc9f/aggregated.json: fetch failed
+✅ Completed processing Land Rover Vogue (0240) → deal 77e6ac4e-f532-5f6a-ac9d-58631511fc9f
+📊 Statistics: 0 successful, 14 failed, 0 total fields, 2476ms total
+⏭️ Skipping MB G63 2022 (2738) — not included in --only filter.
+⏭️ Skipping MB G63 2025 (3091) 01.12.25 — not included in --only filter.
+⏭️ Skipping MB G63 Brabus 2024 (1059) 15.11.25 — not included in --only filter.
+⏭️ Skipping MB S63 AMG 2024 (7678) — not included in --only filter.
+📁 Starting processing folder: Mercedes G63 Brabus 2025 (1170)
+📄 Found 14 PDF files in Mercedes G63 Brabus 2025 (1170)
+🔍 Processing file: 1. 8BA Motors TL-25.pdf
+[Gemini] 1. 8BA Motors TL-25.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 1. 8BA Motors TL-25.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 1. 8BA Motors TL-25.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (7ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/1_8BA_Motors_TL_25_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/1_8BA_Motors_TL_25_pdf.json: fetch failed
+🔍 Processing file: 11. Vehicle Purchase Agreement_(Mercedes G63 Brabus 2025 (1170))_new.pdf
+[Gemini] 11. Vehicle Purchase Agreement_(Mercedes G63 Brabus 2025 (1170))_new.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 11. Vehicle Purchase Agreement_(Mercedes G63 Brabus 2025 (1170))_new.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 11. Vehicle Purchase Agreement_(Mercedes G63 Brabus 2025 (1170))_new.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (103ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/11_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_new_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/11_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_new_pdf.json: fetch failed
+🔍 Processing file: 12. MEMORANDUM OF UNDERSTANDING RENTAL (Mercedes G63 Brabus 2025 (1170))_new.pdf
+[Gemini] 12. MEMORANDUM OF UNDERSTANDING RENTAL (Mercedes G63 Brabus 2025 (1170))_new.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 12. MEMORANDUM OF UNDERSTANDING RENTAL (Mercedes G63 Brabus 2025 (1170))_new.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 12. MEMORANDUM OF UNDERSTANDING RENTAL (Mercedes G63 Brabus 2025 (1170))_new.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (404ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/12_MEMORANDUM_OF_UNDERSTANDING_RENTAL_Mercedes_G63_Brabus_2025_1170_new_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/12_MEMORANDUM_OF_UNDERSTANDING_RENTAL_Mercedes_G63_Brabus_2025_1170_new_pdf.json: fetch failed
+🔍 Processing file: 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 30.09.2025_.pdf
+[Gemini] 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 30.09.2025_.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 30.09.2025_.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 13. Termination Contract to the LONG-TERM RENTAL VEHICLE AGREEMENT dated 30.09.2025_.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (106ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/13_Termination_Contract_to_the_LONG_TERM_RENTAL_VEHICLE_AGREEMENT_dated_30_09_2025_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/13_Termination_Contract_to_the_LONG_TERM_RENTAL_VEHICLE_AGREEMENT_dated_30_09_2025_pdf.json: fetch failed
+🔍 Processing file: 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 30.09.2025.pdf
+[Gemini] 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 30.09.2025.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 30.09.2025.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 14. Termination Contract to the Preliminary Vehicle Purchase Agreement dated 30.09.2025.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (116ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/14_Termination_Contract_to_the_Preliminary_Vehicle_Purchase_Agreement_dated_30_09_2025_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/14_Termination_Contract_to_the_Preliminary_Vehicle_Purchase_Agreement_dated_30_09_2025_pdf.json: fetch failed
+🔍 Processing file: 15. Страховка (Mercedes G63 Brabus 2025 (1170)).pdf
+[Gemini] 15. Страховка (Mercedes G63 Brabus 2025 (1170)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 15. Страховка (Mercedes G63 Brabus 2025 (1170)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 15. Страховка (Mercedes G63 Brabus 2025 (1170)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (9ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/15_Mercedes_G63_Brabus_2025_1170_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/15_Mercedes_G63_Brabus_2025_1170_pdf.json: fetch failed
+🔍 Processing file: 16. GPS - 1170(SUNDAY RENTAL).pdf
+[Gemini] 16. GPS - 1170(SUNDAY RENTAL).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 16. GPS - 1170(SUNDAY RENTAL).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 16. GPS - 1170(SUNDAY RENTAL).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (4ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/16_GPS_1170_SUNDAY_RENTAL_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/16_GPS_1170_SUNDAY_RENTAL_pdf.json: fetch failed
+🔍 Processing file: 2. Tax Invoice.pdf
+[Gemini] 2. Tax Invoice.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 2. Tax Invoice.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 2. Tax Invoice.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (6ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/2_Tax_Invoice_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/2_Tax_Invoice_pdf.json: fetch failed
+🔍 Processing file: 3. Inspection Certificate.pdf
+[Gemini] 3. Inspection Certificate.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 3. Inspection Certificate.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 3. Inspection Certificate.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (4ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/3_Inspection_Certificate_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/3_Inspection_Certificate_pdf.json: fetch failed
+🔍 Processing file: 4. Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed.pdf
+[Gemini] 4. Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 4. Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 4. Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (24ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/4_Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/4_Dealer_Vehicle_Purchase_Agreement_Mercedes_G63_Brabus_2025_1170_signed_pdf.json: fetch failed
+🔍 Processing file: 5. Vehicle Information (Mercedes G63 Brabus 2025 (1170)).pdf
+[Gemini] 5. Vehicle Information (Mercedes G63 Brabus 2025 (1170)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 5. Vehicle Information (Mercedes G63 Brabus 2025 (1170)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 5. Vehicle Information (Mercedes G63 Brabus 2025 (1170)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (34ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/5_Vehicle_Information_Mercedes_G63_Brabus_2025_1170_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/5_Vehicle_Information_Mercedes_G63_Brabus_2025_1170_pdf.json: fetch failed
+🔍 Processing file: 6. Authorization Letter (Mercedes G63 Brabus 2025 (1170)).pdf
+[Gemini] 6. Authorization Letter (Mercedes G63 Brabus 2025 (1170)).pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 6. Authorization Letter (Mercedes G63 Brabus 2025 (1170)).pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 6. Authorization Letter (Mercedes G63 Brabus 2025 (1170)).pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (5ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/6_Authorization_Letter_Mercedes_G63_Brabus_2025_1170_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/6_Authorization_Letter_Mercedes_G63_Brabus_2025_1170_pdf.json: fetch failed
+🔍 Processing file: 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf
+[Gemini] 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 7. Client - OVER DRIVE CAR RENTAL L.L.C_Manager_TIN.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (12ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/7_Client_OVER_DRIVE_CAR_RENTAL_L_L_C_Manager_TIN_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/7_Client_OVER_DRIVE_CAR_RENTAL_L_L_C_Manager_TIN_pdf.json: fetch failed
+🔍 Processing file: 8-10. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_(Mercedes G63 Brabus 2025 (1170))_Schedule A,B.pdf
+[Gemini] 8-10. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_(Mercedes G63 Brabus 2025 (1170))_Schedule A,B.pdf [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async recognizeDocument (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:259:45)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:465:25)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] 8-10. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_(Mercedes G63 Brabus 2025 (1170))_Schedule A,B.pdf: attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Failed to analyze 8-10. LONG_TERM_RENTAL_VEHICLE_AGREEMENT_(Mercedes G63 Brabus 2025 (1170))_Schedule A,B.pdf: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed (1144ms)
+⚠️ Failed to upload PDF /b66a7bcc-f902-5f59-9b38-d35e3d154d72/8_10_LONG_TERM_RENTAL_VEHICLE_AGREEMENT_Mercedes_G63_Brabus_2025_1170_Schedule_A_B_pdf.pdf: fetch failed
+⚠️ Failed to upload JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/8_10_LONG_TERM_RENTAL_VEHICLE_AGREEMENT_Mercedes_G63_Brabus_2025_1170_Schedule_A_B_pdf.json: fetch failed
+📊 Starting aggregate analysis for Mercedes G63 Brabus 2025 (1170)...
+📦 Split 14 documents into 4 chunks of max 4 documents each
+🔄 Processing chunk 1/4 (4 documents)
+[Gemini] chunk 1 Mercedes G63 Brabus 2025 (1170) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 1 Mercedes G63 Brabus 2025 (1170): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 1 analysis failed for Mercedes G63 Brabus 2025 (1170): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔄 Processing chunk 2/4 (4 documents)
+[Gemini] chunk 2 Mercedes G63 Brabus 2025 (1170) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 2 Mercedes G63 Brabus 2025 (1170): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 2 analysis failed for Mercedes G63 Brabus 2025 (1170): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔄 Processing chunk 3/4 (4 documents)
+[Gemini] chunk 3 Mercedes G63 Brabus 2025 (1170) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 3 Mercedes G63 Brabus 2025 (1170): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 3 analysis failed for Mercedes G63 Brabus 2025 (1170): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔄 Processing chunk 4/4 (2 documents)
+[Gemini] chunk 4 Mercedes G63 Brabus 2025 (1170) [attempt 1]: TypeError: fetch failed
+    at Object.fetch (node:internal/deps/undici/undici:11576:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async makeRequest (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:244:20)
+    at async generateContent (file:///Users/maksymholovakhin/fast-lease/node_modules/@google/generative-ai/dist/index.mjs:653:22)
+    at async sendGeminiRequest (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:166:20)
+    at async processDealFolder (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:616:49)
+    at async run (file:///Users/maksymholovakhin/fast-lease/scripts/ingest_local_deals.mjs:970:7)
+[Gemini] chunk 4 Mercedes G63 Brabus 2025 (1170): attempt 1 error — [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+❌ Chunk 4 analysis failed for Mercedes G63 Brabus 2025 (1170): [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent: fetch failed
+🔀 Aggregating 4 chunk results into final analysis...
+⚠️ 4 chunks failed, proceeding with 0 successful chunks
+❌ Final aggregate analysis failed: all chunks failed
+⚠️ Failed to upload aggregated JSON /b66a7bcc-f902-5f59-9b38-d35e3d154d72/aggregated.json: fetch failed
+✅ Completed processing Mercedes G63 Brabus 2025 (1170) → deal b66a7bcc-f902-5f59-9b38-d35e3d154d72
+📊 Statistics: 0 successful, 14 failed, 0 total fields, 2076ms total
+⏭️ Skipping RR Spectre 2024 (3802) 01.04.25 — not included in --only filter.
+🎉 Local deal ingestion completed!
+📊 Final Statistics:
+   📂 Folders processed: 2/27
+   📄 Total files: 0
+   ✅ Successful analyses: 0
+   ❌ Failed analyses: 0
+   📋 Total fields extracted: 0
+   ⏱️ Total processing time: 4591ms

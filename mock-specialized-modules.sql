@@ -424,7 +424,7 @@ SELECT
             'make', v.make,
             'model', v.model,
             'vin', v.vin,
-            'purchase_price', v.purchase_price
+            'initial_value_estimate', NULL
         ),
         'delivery_terms', 'DDP Dubai',
         'payment_terms', '30 days after delivery',
@@ -619,7 +619,7 @@ SELECT
         'debt_to_income', a.financial_info->>'debt_to_income',
         'employment_stability', a.employment_info->>'years_employed',
         'payment_history', 'good',
-        'collateral_value', v.current_value
+        'collateral_value', NULL
     ),
     CASE
         WHEN (a.scoring_results->>'score')::numeric > 800 THEN jsonb_build_array('standard_approval')

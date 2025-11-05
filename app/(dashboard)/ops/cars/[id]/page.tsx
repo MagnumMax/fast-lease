@@ -19,6 +19,7 @@ export default async function OpsCarDetailsPage({ params }: OpsCarDetailsProps) 
     <CarDetailView
       slug={detail.slug}
       activeDeal={detail.activeDeal}
+      deals={detail.deals}
       vehicle={detail.vehicle}
       profile={detail.profile}
       documents={detail.documents}

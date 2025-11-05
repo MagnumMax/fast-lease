@@ -44,11 +44,7 @@ export default async function ClientVehiclePage() {
 
   return (
     <div className="space-y-8">
-      <VehicleOverviewCard
-        vehicle={snapshot.vehicle}
-        vehicleImages={snapshot.vehicleImages}
-        telematics={snapshot.vehicleTelematics}
-      />
+      <VehicleOverviewCard vehicle={snapshot.vehicle} vehicleImages={snapshot.vehicleImages} />
 
       <Card className="border border-border bg-card shadow-linear">
         <CardHeader className="pb-4">

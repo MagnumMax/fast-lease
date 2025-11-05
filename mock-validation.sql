@@ -200,11 +200,9 @@ SELECT
     COUNT(*) as total_vehicles,
     COUNT(CASE WHEN vin IS NOT NULL AND length(vin) >= 17 THEN 1 END) as valid_vins,
     COUNT(CASE WHEN make IS NOT NULL AND model IS NOT NULL THEN 1 END) as valid_make_model,
-    COUNT(CASE WHEN purchase_price > 0 THEN 1 END) as valid_prices,
     CASE
         WHEN COUNT(*) = COUNT(CASE WHEN vin IS NOT NULL AND length(vin) >= 17 THEN 1 END)
         AND COUNT(*) = COUNT(CASE WHEN make IS NOT NULL AND model IS NOT NULL THEN 1 END)
-        AND COUNT(*) = COUNT(CASE WHEN purchase_price > 0 THEN 1 END)
         THEN 'PASS: All required fields present'
         ELSE 'FAIL: Missing required fields'
     END as status

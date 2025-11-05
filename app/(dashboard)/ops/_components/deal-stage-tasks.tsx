@@ -154,6 +154,7 @@ export function DealStageTasks({ tasks, onUploadDocument }: DealStageTasksProps)
           const statusMeta = getStatusVariant(task.status);
           const guardLabel = task.guardLabel ?? task.title;
           const note = task.note?.trim() ? task.note.trim() : null;
+          const hasMeta = Boolean(note || task.attachmentUrl);
 
           return (
             <div
@@ -179,36 +180,27 @@ export function DealStageTasks({ tasks, onUploadDocument }: DealStageTasksProps)
                     ) : null}
                   </div>
                   <p className="text-sm font-semibold text-foreground">{guardLabel}</p>
-                  {task.guardLabel && task.guardLabel !== task.title ? (
-                    <p className="text-xs text-muted-foreground">{task.title}</p>
-                  ) : null}
                 </div>
                 <Button asChild size="sm" variant="outline" className="rounded-lg">
                   <Link href={`/ops/tasks/${task.id}`}>Перейти к задаче</Link>
                 </Button>
               </div>
 
-              <div className="mt-3 space-y-2">
-                {task.slaDueAt
-                  ? renderMetaLine(
-                      task.status === "DONE" ? "Завершена" : "SLA",
-                      new Date(
-                        task.status === "DONE" && task.completedAt ? task.completedAt : task.slaDueAt,
-                      ).toLocaleString(),
-                    )
-                  : null}
-                {note ? renderMetaLine("Комментарий", note) : null}
-                {task.attachmentUrl ? (
-                  <Link
-                    href={task.attachmentUrl}
-                    target="_blank"
-                    className="inline-flex items-center gap-2 text-xs font-medium text-brand-600 underline underline-offset-2"
-                  >
-                    <Paperclip className="h-3 w-3" />
-                    Просмотреть вложение
-                  </Link>
-                ) : null}
-              </div>
+              {hasMeta ? (
+                <div className="mt-3 space-y-2">
+                  {note ? renderMetaLine("Комментарий", note) : null}
+                  {task.attachmentUrl ? (
+                    <Link
+                      href={task.attachmentUrl}
+                      target="_blank"
+                      className="inline-flex items-center gap-2 text-xs font-medium text-brand-600 underline underline-offset-2"
+                    >
+                      <Paperclip className="h-3 w-3" />
+                      Просмотреть вложение
+                    </Link>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           );
         })}

@@ -1,12 +1,12 @@
 # Конфигурация импорта PDF из локальной папки
 local_root: "datasets/deals"
-skip_processed: false
+skip_processed: true
 
 supabase:
   url_env: "NEXT_PUBLIC_SUPABASE_URL"
   service_role_key_env: "SUPABASE_SERVICE_ROLE_KEY"
   storage_bucket: "deals"
-  storage_prefix: "deals/documents"
+  storage_prefix: ""
 
 gemini:
   enabled: true
@@ -77,7 +77,7 @@ gemini:
     - engine: object|null with capacity, fuel_type, transmission
     - colors: object|null with exterior, interior
     - features: array|null of strings
-    - valuation: object|null with purchase_price, current_value, residual_value
+    - valuation: object|null (optional legacy payload)
     - license_plate: string|null
     - modifications: array|null of modifications
 
@@ -99,7 +99,6 @@ gemini:
     - lease_end: string|null
     - monthly_payment: number|null
     - down_payment: number|null
-    - vehicle_purchase_price: number|null
     - total_lease_value: number|null
     - interest_rate: number|null
     - balloon_payment: number|null

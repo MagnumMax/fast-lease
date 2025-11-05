@@ -214,11 +214,7 @@ function normalizeAggregated(raw) {
     } : null,
     colors: vehicle.colors || null,
     features: vehicle.features || null,
-    valuation: vehicle.valuation ? {
-      purchasePrice: normalizeNumber(vehicle.valuation.purchase_price),
-      currentValue: normalizeNumber(vehicle.valuation.current_value),
-      residualValue: normalizeNumber(vehicle.valuation.residual_value)
-    } : null,
+    valuation: null,
     raw: vehicle,
   };
 
@@ -247,7 +243,6 @@ function normalizeAggregated(raw) {
     interestRate: normalizeNumber(deal.interest_rate),
     balloonPayment: normalizeNumber(deal.balloon_payment),
     currency: trimString(deal.currency) ?? "AED",
-    vehiclePurchasePrice: normalizeNumber(deal.vehicle_purchase_price),
     totalLeaseValue: normalizeNumber(deal.total_lease_value),
     fees: deal.fees || null,
     paymentSchedule: deal.payment_schedule || null,
@@ -494,7 +489,7 @@ async function ensureUserAndProfile(supabase, normalized, options) {
   return { userId, profileId: upsertedProfile?.id ?? null, created: Boolean(createdUser) };
 }
 
-function buildVehiclePayload(normalizedVehicle, dealContext) {
+function buildVehiclePayload(normalizedVehicle, dealId) {
   const payload = {
     vin: normalizedVehicle.vin,
     make: normalizedVehicle.make,
@@ -507,15 +502,12 @@ function buildVehiclePayload(normalizedVehicle, dealContext) {
     color_interior: normalizedVehicle.colorInterior,
     status: "leased",
     features: {},
-    purchase_price: dealContext.vehiclePurchasePrice ?? null,
-    current_value: normalizedVehicle.valuation?.currentValue ?? null,
-    residual_value: dealContext.finalPurchasePrice ?? normalizedVehicle.valuation?.residualValue ?? null,
   };
   
   const features = {
     import_info: {
       source: "aggregated",
-      deal_id: dealContext.dealId,
+      deal_id: dealId ?? null,
       raw_vehicle: normalizedVehicle.raw,
       external_id: normalizedVehicle.externalId,
     },
@@ -542,12 +534,12 @@ function buildVehiclePayload(normalizedVehicle, dealContext) {
   return payload;
 }
 
-async function ensureVehicle(supabase, normalizedVehicle, dealContext) {
+async function ensureVehicle(supabase, normalizedVehicle, dealId) {
   if (!normalizedVehicle.vin) {
     throw new Error("Vehicle VIN is required for import");
   }
 
-  const payload = buildVehiclePayload(normalizedVehicle, dealContext);
+  const payload = buildVehiclePayload(normalizedVehicle, dealId);
 
   const { data, error } = await supabase
     .from("vehicles")
@@ -571,7 +563,7 @@ async function ensureApplication(supabase, normalized, userId, vehicleId) {
     user_id: userId,
     vehicle_id: vehicleId,
     status: normalized.deal.leaseStart ? "converted" : "approved",
-    requested_amount: normalized.deal.vehiclePurchasePrice,
+    requested_amount: normalized.deal.totalLeaseValue,
     term_months: normalized.deal.termMonths,
     down_payment: normalized.deal.downPayment,
     monthly_payment: normalized.deal.monthlyPayment,
@@ -630,7 +622,7 @@ async function ensureDeal(supabase, normalized, applicationId, vehicleId, client
     vehicle_id: vehicleId,
     client_id: clientUserId,
     status: determineDealStatus(normalized.deal),
-    principal_amount: normalized.deal.vehiclePurchasePrice,
+    principal_amount: normalized.deal.totalLeaseValue,
     total_amount: normalized.deal.totalLeaseValue,
     monthly_payment: normalized.deal.monthlyPayment,
     monthly_lease_rate: normalized.deal.monthlyPayment,
@@ -763,12 +755,7 @@ async function run() {
   const { userId } = await ensureUserAndProfile(supabase, normalized.client, { dealId: normalized.dealId });
   console.log(`Client user_id: ${userId}`);
 
-  const vehicleId = await ensureVehicle(supabase, normalized.vehicle, {
-    dealId: normalized.dealId,
-    vehiclePurchasePrice: normalized.deal.vehiclePurchasePrice,
-    totalLeaseValue: normalized.deal.totalLeaseValue,
-    finalPurchasePrice: normalized.deal.finalPurchasePrice,
-  });
+  const vehicleId = await ensureVehicle(supabase, normalized.vehicle, normalized.dealId);
   console.log(`Vehicle id: ${vehicleId}`);
 
   const applicationId = await ensureApplication(supabase, normalized, userId, vehicleId);
