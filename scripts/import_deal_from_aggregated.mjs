@@ -53,6 +53,39 @@ function trimString(value) {
   return typeof value === "string" ? value.trim() || null : null;
 }
 
+function stripBucketPrefix(storagePath, bucket) {
+  if (typeof storagePath !== "string" || storagePath.length === 0) {
+    return null;
+  }
+
+  let normalized = storagePath.trim().replace(/^\/+/, "");
+
+  if (bucket) {
+    const bucketPrefix = `${bucket}/`;
+    if (normalized.startsWith(bucketPrefix)) {
+      normalized = normalized.slice(bucketPrefix.length);
+    }
+  }
+
+  const legacyPrefixes = [
+    "deals/deals/documents/",
+    "deals/deals/",
+    "deals/documents/",
+    "deals/",
+    "documents/",
+    "deal-documents/",
+  ];
+
+  for (const legacy of legacyPrefixes) {
+    if (normalized.startsWith(legacy)) {
+      normalized = normalized.slice(legacy.length);
+      break;
+    }
+  }
+
+  return normalized.replace(/^\/+/, "").replace(/\/+/g, "/");
+}
+
 function normalizeEmail(value) {
   const trimmed = trimString(value);
   if (!trimmed) return null;
@@ -144,6 +177,9 @@ function normalizeAggregated(raw) {
   console.log("✓ Aggregated shape validated");
 
   const dealId = raw.deal_id;
+  const storageBucket = trimString(raw.storage?.bucket) ?? "deal-documents";
+  const storageBasePrefix = stripBucketPrefix(trimString(raw.storage?.base_prefix) ?? dealId, storageBucket) ?? dealId;
+  const aggregatedStoragePath = stripBucketPrefix(raw.storage?.aggregated_json ?? null, storageBucket);
   const gemini = raw.gemini ?? {};
   const client = gemini.client ?? {};
   const vehicle = gemini.vehicle ?? {};
@@ -153,6 +189,11 @@ function normalizeAggregated(raw) {
   console.log(`👤 Client data fields: ${Object.keys(client).join(', ') || 'none'}`);
   console.log(`🚗 Vehicle data fields: ${Object.keys(vehicle).join(', ') || 'none'}`);
   console.log(`📋 Deal data fields: ${Object.keys(deal).join(', ') || 'none'}`);
+  console.log("📦 Storage metadata:", JSON.stringify({
+    bucket: storageBucket,
+    base_prefix: storageBasePrefix,
+    aggregated_json: aggregatedStoragePath,
+  }, null, 2));
 
   const fullName = trimString(client.full_name || client.name);
   const legalName = trimString(client.legal_name);
@@ -252,13 +293,17 @@ function normalizeAggregated(raw) {
 
   const normalizedDocuments = (raw.documents ?? []).map((doc) => {
     const analysis = doc.analysis ?? null;
+    const storagePdf = stripBucketPrefix(doc.storage?.pdf ?? null, storageBucket);
+    const storageJson = stripBucketPrefix(doc.storage?.json ?? null, storageBucket);
+    const category = trimString(doc.category ?? doc.storage?.category);
     return {
       filename: trimString(doc.filename) ?? trimString(doc.drive_file_id) ?? "document",
       sizeBytes: normalizeNumber(doc.size_bytes),
       createdTime: trimString(doc.created_time),
       modifiedTime: trimString(doc.modified_time),
-      storagePdf: doc.storage?.pdf ?? null,
-      storageJson: doc.storage?.json ?? null,
+      storagePdf,
+      storageJson,
+      category,
       analysis,
       documentType: trimString(analysis?.document_type),
       title: trimString(analysis?.title) ?? trimString(doc.filename),
@@ -278,7 +323,11 @@ function normalizeAggregated(raw) {
   return {
     dealId,
     folder: raw.folder ?? null,
-    storage: raw.storage,
+    storage: {
+      bucket: storageBucket,
+      base_prefix: storageBasePrefix,
+      aggregated_json: aggregatedStoragePath,
+    },
     client: normalizedClient,
     vehicle: normalizedVehicle,
     deal: normalizedDeal,
@@ -661,27 +710,18 @@ async function ensureDealDocuments(supabase, dealId, documents) {
     return { inserted: 0, skipped: 0 };
   }
 
-  let inserted = 0;
-  let skipped = 0;
-  for (const doc of documents) {
-    if (!doc.storagePdf) {
-      skipped += 1;
-      continue;
-    }
-    const { data: existing, error: existingError } = await supabase
-      .from("deal_documents")
-      .select("id")
-      .eq("deal_id", dealId)
-      .eq("storage_path", doc.storagePdf)
-      .maybeSingle();
-    if (existingError) {
-      throw new Error(`Failed to check existing deal_document: ${existingError.message}`);
-    }
-    if (existing?.id) {
-      skipped += 1;
-      continue;
-    }
+  const sanitizedDocuments = documents.filter((doc) => doc.storagePdf);
 
+  const { error: deleteError } = await supabase
+    .from("deal_documents")
+    .delete()
+    .eq("deal_id", dealId);
+  if (deleteError) {
+    throw new Error(`Failed to clear existing deal documents: ${deleteError.message}`);
+  }
+
+  let inserted = 0;
+  for (const doc of sanitizedDocuments) {
     const payload = {
       deal_id: dealId,
       title: doc.title ?? doc.filename,
@@ -697,7 +737,7 @@ async function ensureDealDocuments(supabase, dealId, documents) {
     inserted += 1;
   }
 
-  return { inserted, skipped };
+  return { inserted, skipped: documents.length - sanitizedDocuments.length };
 }
 
 async function recordDealEvent(supabase, dealId, normalized) {

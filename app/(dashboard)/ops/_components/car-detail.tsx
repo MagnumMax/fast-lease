@@ -31,6 +31,7 @@ import type {
   OpsVehicleServiceLogEntry,
 } from "@/lib/supabase/queries/operations";
 import { CarEditDialog } from "./car-edit-dialog";
+import { DocumentList } from "./document-list";
 
 type InfoCellProps = {
   label: string;
@@ -146,6 +147,17 @@ export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, docum
     typeof profile.image === "string" && profile.image.length > 0
       ? profile.image
       : "/assets/vehicle-placeholder.svg";
+
+  const vehicleDocumentItems = useMemo(
+    () =>
+      documents.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        uploadedAt: doc.uploadedAt ?? doc.date ?? null,
+        url: doc.url ?? null,
+      })),
+    [documents],
+  );
 
   return (
     <div className="space-y-6">
@@ -399,41 +411,10 @@ export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, docum
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {documents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Документы по автомобилю ещё не загружены.</p>
-          ) : (
-            documents.map((document) => (
-              <div
-                key={document.id}
-                className="flex flex-col gap-3 rounded-xl border border-border bg-background/60 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
-              >
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-foreground">{document.title}</p>
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {document.type ? <span>Тип: {document.type}</span> : null}
-                    {document.date ? <span>{document.date}</span> : null}
-                    {document.dealNumber ? <span>Сделка: {document.dealNumber}</span> : null}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveToneClass(document.statusTone)}`}>
-                    {document.status}
-                  </Badge>
-                  {document.url ? (
-                    <Button asChild size="sm" variant="outline" className="rounded-lg">
-                      <Link href={document.url} target="_blank" rel="noopener noreferrer">
-                        Скачать
-                      </Link>
-                    </Button>
-                  ) : (
-                    <Badge variant="outline" className="rounded-lg text-muted-foreground">
-                      Нет файла
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
+          <DocumentList
+            documents={vehicleDocumentItems}
+            emptyMessage="Документы по автомобилю ещё не загружены."
+          />
         </CardContent>
       </Card>
 

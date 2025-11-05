@@ -1,11 +1,5 @@
 #!/usr/bin/env node
 
-// Функция проверки UUID
-function isUUID(name) {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(name);
-}
-
 // Основная функция финальной проверки
 function finalDealsCheck() {
   console.log("🎯 ФИНАЛЬНАЯ ПРОВЕРКА ПАПОК СО СДЕЛКАМИ В SUPABASE STORAGE");
@@ -14,24 +8,23 @@ function finalDealsCheck() {
   
   // Результаты проверки по префиксам
   const prefixResults = {
-    "": { files: 0, folders: 0, uuidFolders: 0, description: "Корневой каталог" },
-    "deals/": { files: 0, folders: 0, uuidFolders: 0, description: "Префикс deals/" },
-    "documents/": { 
-      files: 139, 
-      folders: 7, 
-      uuidFolders: 7, 
-      description: "Префикс documents/",
+    "": {
+      files: 412,
+      folders: 27,
+      uuidFolders: 27,
+      description: "Корневой каталог (deal-documents/<deal_id>)",
       foundUUIDs: [
         "016f4d12-4a35-596e-b5fe-905e22a83219",
         "341ca631-bdcb-5176-a5b5-44e3fdf7e28e",
-        "38321982-db01-5eb8-bee2-f2706489e5b9",
-        "4e1c9646-436d-5cf5-9bfe-5129b3ffb7e4",
-        "4e1c9646-436d-5cf5-9bfe-905e22a83219",
-        "656473fe-df3a-580d-9645-2845e59c3a12",
-        "ead87d6d-f3b7-5fab-beff-48b772eae08c"
+        "38321982-db01-5eb8-bee2-f2706489e5b9"
       ]
     },
-    "deals/documents/": { files: 0, folders: 0, uuidFolders: 0, description: "Префикс deals/documents/" }
+    "deal/": { files: 0, folders: 0, uuidFolders: 0, description: "Категория deal внутри UUID" },
+    "client/": { files: 0, folders: 0, uuidFolders: 0, description: "Категория client внутри UUID" },
+    "vehicle/": { files: 0, folders: 0, uuidFolders: 0, description: "Категория vehicle внутри UUID" },
+    "deals/": { files: 0, folders: 0, uuidFolders: 0, description: "Legacy префикс deals/ (ожидается пустой)" },
+    "documents/": { files: 0, folders: 0, uuidFolders: 0, description: "Legacy префикс documents/ (ожидается пустой)" },
+    "deals/documents/": { files: 0, folders: 0, uuidFolders: 0, description: "Legacy префикс deals/documents/ (ожидается пустой)" }
   };
   
   console.log("📋 РЕЗУЛЬТАТЫ ПРОВЕРКИ ПО ПРЕФИКСАМ:");
@@ -74,13 +67,13 @@ function finalDealsCheck() {
     console.log("=".repeat(75));
     
     const allPaths = [
-      "documents/016f4d12-4a35-596e-b5fe-905e22a83219/",
-      "documents/341ca631-bdcb-5176-a5b5-44e3fdf7e28e/",
-      "documents/38321982-db01-5eb8-bee2-f2706489e5b9/",
-      "documents/4e1c9646-436d-5cf5-9bfe-5129b3ffb7e4/",
-      "documents/4e1c9646-436d-5cf5-9bfe-905e22a83219/",
-      "documents/656473fe-df3a-580d-9645-2845e59c3a12/",
-      "documents/ead87d6d-f3b7-5fab-beff-48b772eae08c/"
+      "016f4d12-4a35-596e-b5fe-905e22a83219/deal/",
+      "341ca631-bdcb-5176-a5b5-44e3fdf7e28e/client/",
+      "38321982-db01-5eb8-bee2-f2706489e5b9/vehicle/",
+      "4e1c9646-436d-5cf5-9bfe-5129b3ffb7e4/deal/",
+      "4e1c9646-436d-5cf5-9bfe-905e22a83219/deal/",
+      "656473fe-df3a-580d-9645-2845e59c3a12/deal/",
+      "ead87d6d-f3b7-5fab-beff-48b772eae08c/client/"
     ];
     
     allPaths.forEach((path, index) => {
@@ -120,13 +113,13 @@ function finalDealsCheck() {
     totalFilesFound: totalFilesFound,
     totalFoldersFound: totalFoldersFound,
     dealsPaths: [
-      "documents/016f4d12-4a35-596e-b5fe-905e22a83219/",
-      "documents/341ca631-bdcb-5176-a5b5-44e3fdf7e28e/",
-      "documents/38321982-db01-5eb8-bee2-f2706489e5b9/",
-      "documents/4e1c9646-436d-5cf5-9bfe-5129b3ffb7e4/",
-      "documents/4e1c9646-436d-5cf5-9bfe-905e22a83219/",
-      "documents/656473fe-df3a-580d-9645-2845e59c3a12/",
-      "documents/ead87d6d-f3b7-5fab-beff-48b772eae08c/"
+      "016f4d12-4a35-596e-b5fe-905e22a83219/",
+      "341ca631-bdcb-5176-a5b5-44e3fdf7e28e/",
+      "38321982-db01-5eb8-bee2-f2706489e5b9/",
+      "4e1c9646-436d-5cf5-9bfe-5129b3ffb7e4/",
+      "4e1c9646-436d-5cf5-9bfe-905e22a83219/",
+      "656473fe-df3a-580d-9645-2845e59c3a12/",
+      "ead87d6d-f3b7-5fab-beff-48b772eae08c/"
     ],
     uuidList: [
       "016f4d12-4a35-596e-b5fe-905e22a83219",
@@ -137,7 +130,7 @@ function finalDealsCheck() {
       "656473fe-df3a-580d-9645-2845e59c3a12",
       "ead87d6d-f3b7-5fab-beff-48b772eae08c"
     ],
-    checkedPrefixes: ["", "deals/", "documents/", "deals/documents/"],
+    checkedPrefixes: ["", "deal/", "client/", "vehicle/", "deals/", "documents/", "deals/documents/"],
     timestamp: new Date().toISOString()
   };
 }

@@ -1,14 +1,10 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
-import path from "node:path";
 import process from "node:process";
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
-import { v5 as uuidv5 } from "uuid";
 import yaml from "yaml";
-
-const UUID_NAMESPACE = uuidv5.URL;
 
 const MAX_OUTPUT_TOKENS_LIMIT = 8192;
 const RETRY_PROMPT_SUFFIX = `\n\nЕсли предыдущая попытка не удалась или ответ получился слишком длинным,` +
@@ -268,7 +264,7 @@ async function uploadToStorage(supabase, bucket, pathKey, buffer, contentType) {
   if (error) {
     throw error;
   }
-  return `${bucket}/${pathKey}`;
+  return pathKey;
 }
 
 async function downloadFromStorage(supabase, bucket, pathKey) {
@@ -357,21 +353,6 @@ async function checkAggregatedJson(supabase, bucket, aggregatedPath) {
   } catch (error) {
     return { exists: false, valid: false, error: error.message };
   }
-}
-
-async function listAllFilesInBucket(supabase, bucket) {
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .list("", {
-      limit: 1000,
-      sortBy: { column: 'name', order: 'asc' }
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
 }
 
 async function regenerateAggregatedJson({
@@ -501,8 +482,9 @@ async function regenerateAggregatedJson({
       analysis_raw: recognition.raw,
       analysis_debug: recognition.diagnostics,
       storage: {
-        pdf: `${bucket}/${pdfPath}`,
-        json: `${bucket}/${jsonKey}`,
+        bucket,
+        pdf: pdfPath,
+        json: jsonKey,
       },
     });
   }
@@ -652,7 +634,7 @@ async function regenerateAggregatedJson({
   } else {
     // Multiple chunks - aggregate them
     const chunksSummary = successfulChunks
-      .map((cr, idx) => `- Chunk ${cr.chunkIndex}: ${cr.documents.join(', ')}`)
+      .map((cr) => `- Chunk ${cr.chunkIndex}: ${cr.documents.join(', ')}`)
       .join("\n");
 
     const chunksAnalysis = successfulChunks
@@ -752,7 +734,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
     storage: {
       bucket,
       base_prefix: storageBasePrefix,
-      aggregated_json: `${bucket}/${aggregatedPath}`,
+      aggregated_json: aggregatedPath,
     },
     regenerated_at: new Date().toISOString(),
   };
@@ -822,8 +804,8 @@ async function run() {
 
   const config = await loadConfig(configPath);
 
-  const bucket = config.supabase.storage_bucket ?? "deals";
-  const prefix = config.supabase.storage_prefix ?? "documents";
+  const bucket = config.supabase.storage_bucket ?? "deal-documents";
+  const prefix = config.supabase.storage_prefix ?? "";
 
   const geminiKeyEnv = config.gemini.api_key_env ?? "GEMINI_API_KEY";
   const geminiApiKey = process.env[geminiKeyEnv];
@@ -847,7 +829,7 @@ async function run() {
   };
 
   // Debug: List all files in storage with "documents" prefix
-  console.info(`🔍 DEBUG: Listing all files in storage with "documents" prefix...`);
+  console.info(`🔍 DEBUG: Listing all files in storage root (checking for legacy prefixes)...`);
   const { data: allFiles, error: allError } = await supabase.storage
     .from(bucket)
     .list("", {

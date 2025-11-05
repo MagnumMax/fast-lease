@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   AlertTriangle,
@@ -11,8 +11,6 @@ import {
   CalendarDays,
   CalendarRange,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Clock3,
   Download,
   FileText,
@@ -22,8 +20,6 @@ import {
   MessageCircle,
   Send,
   Phone,
-  Paperclip,
-  UploadCloud,
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -31,10 +27,10 @@ import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/supabase/queries/operations";
 import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
 import { DealStageTasks } from "@/app/(dashboard)/ops/_components/deal-stage-tasks";
 import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dialog";
+import { DocumentList } from "./document-list";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 
 type DealDetailProps = {
@@ -65,34 +61,6 @@ function getInvoiceStatusMeta(status: string): { icon: LucideIcon; variant: Invo
   }
 
   return { icon: CheckCircle2, variant: "success" };
-}
-
-const DOCUMENT_STATUS_VARIANT_MAP: Record<string, ComponentProps<typeof Badge>["variant"]> = {
-  signed: "success",
-  "подписано": "success",
-  pending_signature: "info",
-  "ожидает подписи": "info",
-  pending: "warning",
-  recorded: "secondary",
-  active: "success",
-  archived: "outline",
-  uploaded: "secondary",
-  "в архиве": "outline",
-};
-
-const DEAL_DOCUMENT_CATEGORY_LABEL_MAP: Record<string, string> = {
-  required: "Обязательный",
-  signature: "Подписание",
-  archived: "Архив",
-  other: "Другое",
-};
-
-function resolveDocumentStatusVariant(rawStatus?: string | null): ComponentProps<typeof Badge>["variant"] {
-  if (!rawStatus) {
-    return "outline";
-  }
-  const normalized = rawStatus.toLowerCase();
-  return DOCUMENT_STATUS_VARIANT_MAP[normalized] ?? "outline";
 }
 
 function getVehicleInfoIcon(label: string): LucideIcon {
@@ -129,42 +97,6 @@ function parseCurrencyValue(value: string | null | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function formatRelativeDuration(toDate: Date, fromDate = new Date()) {
-  const diffMs = toDate.getTime() - fromDate.getTime();
-  const absMs = Math.abs(diffMs);
-  const hours = Math.floor(absMs / (1000 * 60 * 60));
-  const minutes = Math.round((absMs % (1000 * 60 * 60)) / (1000 * 60));
-  const direction = diffMs >= 0 ? "осталось" : "просрочено";
-  if (hours <= 0) {
-    return `${direction} ${minutes} мин.`;
-  }
-  return `${direction} ${hours} ч. ${minutes} мин.`;
-}
-
-function calculateSlaProgress(dueAt: Date | null, slaLabel: string | null): {
-  progress: number;
-  startedAt: Date | null;
-  overdue: boolean;
-} {
-  if (!dueAt || !slaLabel) {
-    return { progress: 0, startedAt: null, overdue: false };
-  }
-
-  const match = slaLabel.match(/(\d+)\s*(h|ч)/i);
-  const hours = match ? Number(match[1]) : null;
-  if (!hours || Number.isNaN(hours)) {
-    return { progress: 0, startedAt: null, overdue: false };
-  }
-
-  const startedAt = new Date(dueAt.getTime() - hours * 60 * 60 * 1000);
-  const now = new Date();
-  const total = dueAt.getTime() - startedAt.getTime();
-  const elapsed = now.getTime() - startedAt.getTime();
-  const raw = Math.min(Math.max(elapsed / total, 0), 1);
-  const overdue = now.getTime() > dueAt.getTime();
-  return { progress: overdue ? 1 : raw, startedAt, overdue };
-}
-
 type TimelineTone = "default" | "legal" | "status" | "task";
 
 function resolveTimelineTone(text: string): TimelineTone {
@@ -196,12 +128,9 @@ export function DealDetailView({ detail }: DealDetailProps) {
     timeline,
     workflowTasks,
     guardStatuses,
-    dealUuid,
-    statusKey,
     slug,
   } = detail;
 
-  const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
   const hasPendingTasks = workflowTasks.some((task) => !task.fulfilled);
   const dealTitle = slug.startsWith("deal-")
     ? `Deal-${slug.slice("deal-".length)}`
@@ -259,12 +188,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [invoiceFilter, setInvoiceFilter] = useState<"all" | "overdue" | "pending" | "paid">("all");
-  const [documentSectionsOpen, setDocumentSectionsOpen] = useState({
-    required: true,
-    signature: true,
-    archived: false,
-    other: false,
-  });
   const orderedTimeline = [...timeline].sort((a, b) => {
     const parse = (value: string): number => {
       const match = value.match(
@@ -298,9 +221,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
     () => workflowTasks.find((task) => !task.fulfilled),
     [workflowTasks],
   );
-  const slaDueAt = nextTask?.slaDueAt ? new Date(nextTask.slaDueAt) : null;
-  const slaMeta = calculateSlaProgress(slaDueAt ?? null, statusMeta?.slaLabel ?? null);
-  const slaStatusLabel = slaDueAt ? formatRelativeDuration(slaDueAt) : "Нет SLA";
   const dueAmountValue = parseCurrencyValue(profile.dueAmount);
   const hasDebt = (dueAmountValue ?? 0) > 0 || overdueInvoices.length > 0;
   const paidInvoices = useMemo(
@@ -365,26 +285,31 @@ export function DealDetailView({ detail }: DealDetailProps) {
     }
     return list;
   }, [hasDebt, profile.dueAmount, overdueInvoices, workflowTasks]);
-  const documentBuckets = useMemo(() => {
-    return documents.reduce(
-      (acc, doc) => {
-        const key = doc.category ?? "other";
-        acc[key] = acc[key] ? [...acc[key], doc] : [doc];
-        return acc;
-      },
-      {
-        required: [] as typeof documents,
-        signature: [] as typeof documents,
-        archived: [] as typeof documents,
-        other: [] as typeof documents,
-      },
-    );
-  }, [documents]);
   const companyDocuments = useMemo(
     () => clientDocuments.filter((doc) => doc.context === "company"),
     [clientDocuments],
   );
   const dealDocumentsPreview = useMemo(() => documents.slice(0, 5), [documents]);
+  const companyDocumentItems = useMemo(
+    () =>
+      companyDocuments.map((doc) => ({
+        id: doc.id,
+        title: doc.name,
+        uploadedAt: doc.uploadedAt,
+        url: doc.url ?? null,
+      })),
+    [companyDocuments],
+  );
+  const dealDocumentItems = useMemo(
+    () =>
+      dealDocumentsPreview.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        uploadedAt: doc.uploadedAt,
+        url: doc.url ?? null,
+      })),
+    [dealDocumentsPreview],
+  );
   const vehicleChecklist = useMemo(
     () =>
       guardStatuses
@@ -416,16 +341,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
       ? `${clientDisplayName} * ${vehicleDescriptor}`
       : clientDisplayName ?? vehicleDescriptor ?? "—";
   const nextActionLabel = nextTask ? nextTask.guardLabel ?? nextTask.title : "Нет активных задач";
-  const slaProgressPercent = Math.round((slaMeta.progress || 0) * 100);
-  const slaBadgeVariant = (() => {
-    if (!slaDueAt) return "outline" as const;
-    if (slaMeta.overdue) return "danger" as const;
-    if (slaProgressPercent >= 80) return "warning" as const;
-    return "success" as const;
-  })();
-  const slaBadgeText = slaDueAt || slaMeta.overdue
-    ? `SLA: ${Math.max(0, slaProgressPercent)}% — ${slaStatusLabel}`
-    : `SLA: ${slaStatusLabel}`;
   const summaryCards: Array<{
     id: string;
     label: string;
@@ -488,118 +403,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
       setActionError("Не удалось скопировать шаблон. Скопируйте вручную.");
     }
   }
-
-  const toggleDocumentSection = (key: keyof typeof documentSectionsOpen) => {
-    setDocumentSectionsOpen((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-  };
-
-  const renderDocumentSection = (
-    bucketKey: keyof typeof documentSectionsOpen,
-    title: string,
-    docs: typeof documents,
-    tone: "default" | "warning" | "info" | "success",
-  ) => {
-    if (!docs.length) {
-      return null;
-    }
-
-    const isOpen = documentSectionsOpen[bucketKey];
-    const toneClasses =
-      tone === "warning"
-        ? "bg-amber-50/70 border-amber-200 dark:bg-amber-500/10 dark:border-amber-400/40"
-        : tone === "info"
-          ? "bg-brand-50/70 border-brand-200 dark:bg-brand-500/10 dark:border-brand-400/40"
-          : tone === "success"
-            ? "bg-emerald-50/70 border-emerald-200 dark:bg-emerald-500/10 dark:border-emerald-400/40"
-            : "bg-card/70 border-border/60";
-
-    return (
-      <div
-        key={bucketKey}
-        className={`overflow-hidden rounded-xl border ${toneClasses}`}
-      >
-        <button
-          type="button"
-          onClick={() => toggleDocumentSection(bucketKey)}
-          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-        >
-          <div>
-            <p className="text-sm font-semibold text-foreground">{title}</p>
-            <p className="text-xs text-muted-foreground">Документов: {docs.length}</p>
-          </div>
-          {isOpen ? (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-        {isOpen ? (
-          <ul className="divide-y divide-border/60">
-            {docs.map((doc) => {
-              const signatureMeta =
-                doc.signaturesRequired != null && doc.signaturesCollected != null
-                  ? `${doc.signaturesCollected}/${doc.signaturesRequired} подписей`
-                  : null;
-              const statusParts = doc.status
-                ? doc.status.split("•").map((part) => part.trim()).filter(Boolean)
-                : [];
-              const [statusLabelText, ...statusExtraParts] = statusParts;
-              const statusDetailText = statusExtraParts.join(" • ");
-              const statusBadgeVariant = resolveDocumentStatusVariant(doc.rawStatus);
-              return (
-                <li
-                  key={doc.id}
-                  className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">{doc.title}</p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {statusLabelText ? (
-                        <Badge
-                          variant={statusBadgeVariant}
-                          className="rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide"
-                        >
-                          {statusLabelText}
-                        </Badge>
-                      ) : null}
-                      {statusDetailText ? (
-                        <span className="text-xs text-muted-foreground">{statusDetailText}</span>
-                      ) : null}
-                      {!statusLabelText && !statusDetailText ? (
-                        <span className="text-xs text-muted-foreground">{doc.status}</span>
-                      ) : null}
-                    </div>
-                    {signatureMeta ? (
-                      <p className="text-xs text-muted-foreground">{signatureMeta}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {doc.url ? (
-                      <Button asChild size="sm" variant="outline" className="rounded-lg">
-                        <Link href={doc.url} target="_blank">
-                          <FileText className="mr-2 h-3.5 w-3.5" />
-                          Открыть
-                        </Link>
-                      </Button>
-                    ) : null}
-                    <Button size="sm" variant="outline" className="rounded-lg" asChild>
-                      <Link href={`/ops/deals/${slug}/documents?focus=${doc.id}`}>
-                        <UploadCloud className="mr-2 h-3.5 w-3.5" />
-                        Обновить
-                      </Link>
-                    </Button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6 pb-10">
@@ -919,19 +722,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
             </Card>
           ) : null}
 
-          <Card className="bg-card/60 backdrop-blur" id="documents">
-            <CardHeader>
-              <CardTitle>Документы</CardTitle>
-              <CardDescription>Статус подписей и загруженных файлов</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {renderDocumentSection("required", "Обязательные документы", documentBuckets.required, "warning")}
-              {renderDocumentSection("signature", "В ожидании подписи", documentBuckets.signature, "info")}
-              {renderDocumentSection("archived", "В архиве", documentBuckets.archived, "default")}
-              {renderDocumentSection("other", "Дополнительные файлы", documentBuckets.other, "default")}
-            </CardContent>
-          </Card>
-
         </div>
 
         <aside className="space-y-6 xl:sticky xl:top-24">
@@ -997,101 +787,38 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                   Документы компании
                 </p>
-                {companyDocuments.length ? (
-                  <ul className="space-y-2 text-sm">
-                    {companyDocuments.map((doc) => {
-                      const uploadedDisplay = doc.uploadedAt
-                        ? new Date(doc.uploadedAt).toLocaleDateString("ru-RU")
-                        : null;
-                      const signedDisplay = doc.signedAt
-                        ? new Date(doc.signedAt).toLocaleDateString("ru-RU")
-                        : null;
-                      const metaParts: string[] = [];
-                      if (uploadedDisplay) {
-                        metaParts.push(`Загружен: ${uploadedDisplay}`);
-                      }
-                      if (signedDisplay) {
-                        metaParts.push(`Подписан: ${signedDisplay}`);
-                      }
-                      const metaText = metaParts.join(" • ");
-                      return (
-                        <li
-                          key={doc.id}
-                          className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="space-y-1">
-                            <p className="font-medium text-foreground">{doc.name}</p>
-                            <p className="text-xs text-muted-foreground">{metaText || ""}</p>
-                          </div>
-                          {doc.url ? (
-                            <Button asChild size="sm" variant="outline" className="rounded-lg">
-                              <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                <Download className="mr-2 h-4 w-4" /> Скачать
-                              </a>
-                            </Button>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Корпоративные документы ещё не загружены.
-                  </p>
-                )}
+                <DocumentList
+                  documents={companyDocumentItems}
+                  emptyMessage="Корпоративные документы ещё не загружены."
+                />
               </div>
             </CardContent>
-          </Card>
+        </Card>
 
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-              <div>
-                <CardTitle>Документы сделки</CardTitle>
-                <CardDescription>Быстрый доступ к последним файлам</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" asChild className="rounded-lg">
-                <a href="#documents">Все документы</a>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {dealDocumentsPreview.length ? (
-                <ul className="space-y-2 text-sm">
-                  {dealDocumentsPreview.map((doc) => (
-                    <li
-                      key={`preview-${doc.id}`}
-                      className="flex flex-col gap-2 rounded-xl border border-border/60 bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="space-y-1">
-                        <p className="font-medium text-foreground">{doc.title}</p>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          {doc.status ? <span>{doc.status}</span> : null}
-                          <Badge variant="outline" className="rounded-lg">
-                            {DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category] ?? doc.category}
-                          </Badge>
-                        </div>
-                      </div>
-                      {doc.url ? (
-                        <Button asChild size="sm" variant="ghost" className="gap-1 rounded-lg text-xs">
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                            <Paperclip className="h-3.5 w-3.5" /> Открыть
-                          </a>
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">Документы сделки ещё не загружены.</p>
-              )}
-            </CardContent>
-          </Card>
+        <Card className="bg-card/60 backdrop-blur">
+          <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+            <div>
+              <CardTitle>Документы сделки</CardTitle>
+              <CardDescription>Быстрый доступ к последним файлам</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" asChild className="rounded-lg">
+              <Link href={`/ops/deals/${slug}/documents`}>Все документы</Link>
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <DocumentList
+              documents={dealDocumentItems}
+              emptyMessage="Документы сделки ещё не загружены."
+            />
+          </CardContent>
+        </Card>
 
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader>
-              <CardTitle>Шаблоны коммуникаций</CardTitle>
-              <CardDescription>Скопируйте текст и отправьте клиенту</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        <Card className="bg-card/60 backdrop-blur">
+          <CardHeader>
+            <CardTitle>Шаблоны коммуникаций</CardTitle>
+            <CardDescription>Скопируйте текст и отправьте клиенту</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
               {actionMessage ? (
                 <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
                   {actionMessage}

@@ -45,13 +45,11 @@ export type UploadClientDocumentsResult =
   | { success: true; uploaded: number }
   | { success: false; error: string };
 
-const CLIENT_DOCUMENT_CATEGORY_MAP: Record<ClientDocumentTypeValue, string> = {
-  emirates_id: "identity",
-  passport: "identity",
-  visa: "identity",
-  driving_license: "identity",
-  company_license: "company",
-};
+const CLIENT_DOCUMENT_CATEGORY_MAP: Record<ClientDocumentTypeValue, string> =
+  CLIENT_DOCUMENT_TYPES.reduce<Record<ClientDocumentTypeValue, string>>((acc, entry) => {
+    acc[entry.value] = entry.context === "company" ? "company" : "identity";
+    return acc;
+  }, {} as Record<ClientDocumentTypeValue, string>);
 
 type ProfileMetadata = Record<string, unknown> & {
   ops_email?: string;

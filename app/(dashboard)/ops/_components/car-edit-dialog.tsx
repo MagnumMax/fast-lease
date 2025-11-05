@@ -150,39 +150,47 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
     [documents],
   );
 
-  const existingImages = useMemo(
-    () =>
-      (gallery ?? [])
-        .filter(
-          (
-            image,
-          ): image is {
-            id: string;
-            url: string;
-            label?: string | null;
-            isPrimary?: boolean | null;
-          } => {
-            if (!image || typeof image !== "object") {
-              return false;
-            }
-            if (typeof image.id !== "string" || image.id.length === 0) {
-              return false;
-            }
-            if (typeof (image as { url?: unknown }).url !== "string") {
-              return false;
-            }
-            const url = (image as { url?: unknown }).url;
-            return typeof url === "string" && url.length > 0;
-          },
-        )
-        .map((image) => ({
-          id: image.id,
-          url: image.url,
-          label: image.label ?? null,
-          isPrimary: Boolean(image.isPrimary),
-        })),
-    [gallery],
-  );
+  const existingImages = useMemo(() => {
+    if (!Array.isArray(gallery)) {
+      return [];
+    }
+
+    return gallery.reduce<
+      Array<{
+        id: string;
+        url: string;
+        label: string | null;
+        isPrimary: boolean;
+      }>
+    >((acc, image) => {
+      if (!image || typeof image !== "object") {
+        return acc;
+      }
+
+      const id = (image as { id?: unknown }).id;
+      const url = (image as { url?: unknown }).url;
+
+      if (typeof id !== "string" || id.length === 0) {
+        return acc;
+      }
+
+      if (typeof url !== "string" || url.length === 0) {
+        return acc;
+      }
+
+      const label = (image as { label?: string | null }).label ?? null;
+      const isPrimary = Boolean((image as { isPrimary?: unknown }).isPrimary);
+
+      acc.push({
+        id,
+        url,
+        label,
+        isPrimary,
+      });
+
+      return acc;
+    }, []);
+  }, [gallery]);
 
   const documentTypeOptions = VEHICLE_DOCUMENT_TYPES;
 

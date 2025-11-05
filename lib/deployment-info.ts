@@ -34,7 +34,7 @@ function formatDateRu(date: Date): string {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(date);
-  } catch (error) {
+  } catch {
     const iso = date.toISOString();
     return iso.replace("T", " ").slice(0, 16);
   }

@@ -48,14 +48,13 @@ dealUUIDs.forEach((uuid, index) => {
 });
 
 console.log(`\n📂 ПРОВЕРКА В SUPABASE STORAGE:`);
-console.log(`   🎯 Бакет: "deals"`);
+console.log(`   🎯 Бакет: "deal-documents"`);
 console.log(`   🔍 Ожидаемые пути для проверки файлов:`);
 
 dealUUIDs.forEach((uuid) => {
-  const deal = DEALS_FROM_DATABASE.find(d => d.id === uuid);
-  console.log(`      - deals/${uuid}/`);
-  console.log(`      - deals/documents/${uuid}/`);
-  console.log(`      - documents/${uuid}/`);
+  console.log(`      - ${uuid}/deal/`);
+  console.log(`      - ${uuid}/client/`);
+  console.log(`      - ${uuid}/vehicle/`);
 });
 
 console.log("\n" + "=".repeat(60));

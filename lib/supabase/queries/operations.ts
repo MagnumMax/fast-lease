@@ -722,11 +722,19 @@ export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsT
 };
 
 export const VEHICLE_DOCUMENT_TYPES = [
-  { value: "registration", label: "Регистрация" },
-  { value: "insurance", label: "Страховка" },
-  { value: "inspection", label: "Техосмотр" },
-  { value: "maintenance_report", label: "Отчёт об обслуживании" },
-  { value: "handover", label: "Акт приёма-передачи" },
+  { value: "vehicle_license", label: "Регистрация транспортного средства" },
+  { value: "vehicle_registration", label: "Регистрационные данные транспортного средства" },
+  { value: "vehicle_inspection_certificate", label: "Сертификат техосмотра" },
+  { value: "vehicle_possession_certificate", label: "Сертификат владения транспортным средством" },
+  { value: "vehicle_test_certificate", label: "Сертификат тестирования транспортного средства" },
+  { value: "vehicle_transfer_certificate", label: "Сертификат передачи транспортного средства" },
+  { value: "certificate", label: "Общий сертификат" },
+  { value: "certificate_of_installation", label: "Сертификат установки" },
+  { value: "delivery_form", label: "Акт приёма-передачи" },
+  { value: "insurance_policy", label: "Страховой полис" },
+  { value: "insurance_policy_with_tax_invoice", label: "Страховка с налоговым инвойсом" },
+  { value: "motor_insurance_policy", label: "Страховой полис на транспорт" },
+  { value: "motor_insurance_policy_schedule", label: "График страхового покрытия" },
   { value: "other", label: "Другой документ" },
 ] as const;
 
@@ -740,17 +748,82 @@ export const VEHICLE_DOCUMENT_TYPE_LABEL_MAP = VEHICLE_DOCUMENT_TYPES.reduce<Rec
   {},
 );
 
+export type ClientDocumentContext = "personal" | "company" | "any";
+
 export const CLIENT_DOCUMENT_TYPES = [
-  { value: "emirates_id", label: "Emirates ID" },
-  { value: "passport", label: "Паспорт" },
-  { value: "visa", label: "Виза" },
-  { value: "driving_license", label: "Водительские права" },
-  { value: "company_license", label: "Лицензия компании" },
+  { value: "emirates_id", label: "Emirates ID", context: "personal" as const },
+  { value: "passport", label: "Паспорт", context: "personal" as const },
+  { value: "visa", label: "Виза", context: "personal" as const },
+  { value: "driving_license", label: "Водительские права", context: "personal" as const },
+  { value: "id_card", label: "ID Card", context: "personal" as const },
+  { value: "identity_card", label: "Identity Card", context: "personal" as const },
+  { value: "identity_document", label: "Identity Document", context: "personal" as const },
+  { value: "identity_documents", label: "Identity Documents", context: "personal" as const },
+  { value: "identification", label: "Identification", context: "personal" as const },
+  { value: "identification_document", label: "Identification Document", context: "personal" as const },
+  { value: "identification_documents", label: "Identification Documents", context: "personal" as const },
+  { value: "personal_identification", label: "Personal Identification", context: "personal" as const },
+  { value: "company_license", label: "Лицензия компании", context: "company" as const },
 ] as const;
 
 export type ClientDocumentTypeValue = (typeof CLIENT_DOCUMENT_TYPES)[number]["value"];
 
 export const CLIENT_DOCUMENT_TYPE_LABEL_MAP = CLIENT_DOCUMENT_TYPES.reduce<Record<string, string>>(
+  (acc, entry) => {
+    acc[entry.value] = entry.label;
+    return acc;
+  },
+  {},
+);
+
+export type DealDocumentCategory = "required" | "signature" | "archived" | "other";
+
+export const DEAL_DOCUMENT_TYPES = [
+  { value: "account_confirmation_letter", label: "Справка об открытии счёта", category: "other" as const },
+  { value: "addendum", label: "Дополнительное соглашение", category: "other" as const },
+  { value: "additional_agreement", label: "Дополнительное соглашение (другое)", category: "other" as const },
+  { value: "assigning_letter", label: "Письмо об уступке прав", category: "signature" as const },
+  { value: "authorization_letter", label: "Письмо-доверенность", category: "signature" as const },
+  { value: "bank_account_details", label: "Банковские реквизиты", category: "other" as const },
+  { value: "business_registration_documents", label: "Регистрационные документы бизнеса", category: "other" as const },
+  { value: "commercial_license", label: "Коммерческая лицензия", category: "required" as const },
+  { value: "company_and_transaction_documents", label: "Документы по компании и сделке", category: "other" as const },
+  { value: "company_registration_documents", label: "Регистрационные документы компании", category: "other" as const },
+  { value: "contract", label: "Контракт", category: "required" as const },
+  { value: "corporate_documents", label: "Корпоративные документы", category: "other" as const },
+  { value: "estimation", label: "Смета/оценка", category: "other" as const },
+  { value: "investment_agreement", label: "Инвестиционный договор", category: "required" as const },
+  { value: "invoice", label: "Инвойс", category: "other" as const },
+  { value: "lease_agreement", label: "Договор аренды", category: "required" as const },
+  { value: "long_term_rental_agreement", label: "Долгосрочный договор аренды", category: "required" as const },
+  { value: "long_term_rental_vehicle_agreement", label: "Долгосрочный договор аренды авто", category: "required" as const },
+  { value: "long_term_vehicle_rental_agreement", label: "Долгосрочный договор аренды транспорта", category: "required" as const },
+  { value: "memorandum_of_understanding", label: "Меморандум о взаимопонимании", category: "signature" as const },
+  { value: "other", label: "Документ сделки", category: "other" as const },
+  { value: "payment_schedule", label: "Платёжный график", category: "required" as const },
+  { value: "preliminary_vehicle_purchase_agreement", label: "Предварительный договор покупки авто", category: "required" as const },
+  { value: "proforma_invoice", label: "Проформа-инвойс", category: "other" as const },
+  { value: "purchase_agreement", label: "Договор купли-продажи", category: "required" as const },
+  { value: "receipt", label: "Квитанция", category: "other" as const },
+  { value: "receipt_voucher", label: "Приходный ордер", category: "archived" as const },
+  { value: "rent_payment_schedule", label: "График арендных платежей", category: "required" as const },
+  { value: "sale_confirmation", label: "Подтверждение продажи", category: "signature" as const },
+  { value: "sale_confirmation_letter", label: "Письмо-подтверждение продажи", category: "signature" as const },
+  { value: "schedule", label: "График платежей (общее)", category: "required" as const },
+  { value: "tax_credit_note", label: "Корректировочный налоговый документ", category: "archived" as const },
+  { value: "tax_invoice", label: "Налоговый инвойс", category: "other" as const },
+  { value: "termination_contract", label: "Договор расторжения", category: "archived" as const },
+  { value: "vat_registration_certificate", label: "Сертификат регистрации VAT", category: "required" as const },
+  { value: "vehicle_purchase_agreement", label: "Договор покупки транспортного средства", category: "required" as const },
+  { value: "vehicle_rental_agreement", label: "Договор аренды транспортного средства", category: "required" as const },
+  { value: "vehicle_sale_contract", label: "Контракт продажи транспортного средства", category: "required" as const },
+  { value: "vehicle_sales_agreement", label: "Договор продажи транспортного средства", category: "required" as const },
+  { value: "statement", label: "Statement of Account", category: "other" as const },
+] as const;
+
+export type DealDocumentTypeValue = (typeof DEAL_DOCUMENT_TYPES)[number]["value"];
+
+export const DEAL_DOCUMENT_TYPE_LABEL_MAP = DEAL_DOCUMENT_TYPES.reduce<Record<string, string>>(
   (acc, entry) => {
     acc[entry.value] = entry.label;
     return acc;
@@ -766,6 +839,7 @@ export type OpsVehicleDocument = {
   typeCode?: string;
   type?: string;
   date?: string;
+  uploadedAt?: string | null;
   dealNumber?: string | null;
   url: string | null;
   source?: "deal" | "vehicle";

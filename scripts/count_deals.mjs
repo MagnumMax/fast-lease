@@ -27,22 +27,6 @@ function createSupabaseClient() {
   });
 }
 
-// Получение всех файлов в бакете
-async function listAllFilesInBucket(supabase, bucket) {
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .list("", {
-      limit: 1000,
-      sortBy: { column: 'name', order: 'asc' }
-    });
-
-  if (error) {
-    throw error;
-  }
-
-  return data;
-}
-
 // Рекурсивное получение всех файлов с пагинацией
 async function listAllFilesRecursive(supabase, bucket, prefix = "", limit = 1000) {
   let allFiles = [];
@@ -92,7 +76,8 @@ function extractDealUUIDs(files) {
     const patterns = [
       /^deals\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i,
       /^documents\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i,
-      /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i
+      /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i,
+      /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
     ];
     
     for (const pattern of patterns) {
@@ -113,7 +98,7 @@ async function countDeals() {
   
   try {
     const supabase = createSupabaseClient();
-    const bucket = "deals";
+    const bucket = "deal-documents";
     
     console.log(`📂 Получаю список всех файлов в бакете "${bucket}"...`);
     

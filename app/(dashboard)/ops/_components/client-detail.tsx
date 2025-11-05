@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useCallback, useMemo } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Download, Mail, Phone } from "lucide-react";
+import { ArrowLeft, Mail, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import {
   deleteOperationsClient,
 } from "@/app/(dashboard)/ops/clients/actions";
 import { buildSlugWithId } from "@/lib/utils/slugs";
+import { DocumentList } from "./document-list";
 
 function formatDateDisplay(value: string | null | undefined, withTime = false): string {
   if (!value) return "—";
@@ -164,8 +165,6 @@ export function ClientDetailView({
     [documents, resolveDocumentContext],
   );
   const hasAnyDocuments = documents.length > 0;
-  const hasPersonalDocuments = personalDocuments.length > 0;
-  const hasCompanyDocuments = companyDocumentsList.length > 0;
   const companyInfo = profile.company;
   const clientTypeLabel = profile.clientType === "Company" ? "Company" : "Personal";
 
@@ -176,39 +175,27 @@ export function ClientDetailView({
     ? "Документы компании не найдены. Загрузите документы через кнопку «Редактировать»."
     : "Документы компании отсутствуют. Нажмите «Редактировать» для загрузки документов.";
 
-  const renderDocumentItems = useCallback((docs: OpsClientDocument[]) => {
-    if (!docs.length) {
-      return null;
-    }
+  const personalDocumentItems = useMemo(
+    () =>
+      personalDocuments.map((doc) => ({
+        id: doc.id,
+        title: doc.name,
+        uploadedAt: doc.uploadedAt,
+        url: doc.url ?? null,
+      })),
+    [personalDocuments],
+  );
 
-    return (
-      <div className="space-y-3">
-        {docs.map((doc) => (
-          <div
-            key={doc.id}
-            className="flex flex-col gap-2 rounded-xl border border-border bg-background/70 p-4 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div>
-              <p className="text-sm font-medium text-foreground">{doc.name}</p>
-              <p className="text-xs text-muted-foreground">
-                Загружен: {formatDateDisplay(doc.uploadedAt)}
-                {doc.signedAt ? ` • Подписан: ${formatDateDisplay(doc.signedAt)}` : ""}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {doc.url ? (
-                <Button asChild size="sm" className="rounded-lg">
-                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                    <Download className="mr-2 h-4 w-4" /> Скачать
-                  </a>
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }, []);
+  const companyDocumentItems = useMemo(
+    () =>
+      companyDocumentsList.map((doc) => ({
+        id: doc.id,
+        title: doc.name,
+        uploadedAt: doc.uploadedAt,
+        url: doc.url ?? null,
+      })),
+    [companyDocumentsList],
+  );
 
   const financialHighlights = [
     { label: "Скоринг", value: profile.metrics.scoring },
@@ -301,11 +288,10 @@ export function ClientDetailView({
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">Документы клиента</p>
             </div>
-            {hasPersonalDocuments ? (
-              renderDocumentItems(personalDocuments)
-            ) : (
-              <p className="text-sm text-muted-foreground">{personalEmptyMessage}</p>
-            )}
+            <DocumentList
+              documents={personalDocumentItems}
+              emptyMessage={personalEmptyMessage}
+            />
           </div>
 
           {profile.clientType === "Company" ? (
@@ -315,11 +301,10 @@ export function ClientDetailView({
                   Документы компании и контактного лица
                 </p>
               </div>
-              {hasCompanyDocuments ? (
-                renderDocumentItems(companyDocumentsList)
-              ) : (
-                <p className="text-sm text-muted-foreground">{companyEmptyMessage}</p>
-              )}
+              <DocumentList
+                documents={companyDocumentItems}
+                emptyMessage={companyEmptyMessage}
+              />
             </div>
           ) : null}
         </div>

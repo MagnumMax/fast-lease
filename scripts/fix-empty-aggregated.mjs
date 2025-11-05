@@ -9,9 +9,31 @@ import { v5 as uuidv5 } from "uuid";
 
 const UUID_NAMESPACE = uuidv5.URL;
 const CONFIG_PATH = "configs/drive_ingest.yaml";
-const DEALS_BUCKET = "deals";
+const DEALS_BUCKET = "deal-documents";
 const LOCAL_DATASETS_DIR = path.resolve("datasets");
 const LOCAL_DEALS_ROOT = path.resolve("datasets/deals");
+
+function parseCliArgs(argv) {
+  const options = {
+    only: new Set(),
+    force: false,
+  };
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--only") {
+      const value = argv[i + 1];
+      if (value) {
+        value.split(",").map((item) => item.trim()).filter(Boolean).forEach((item) => options.only.add(item));
+      }
+      i += 1;
+    } else if (arg === "--force") {
+      options.force = true;
+    }
+  }
+
+  return options;
+}
 
 async function loadEnvFile(filePath) {
   const raw = await fs.readFile(filePath, "utf8").catch(() => null);
@@ -62,18 +84,15 @@ function resolveDealId(folderName) {
 }
 
 function aggregatedPathCandidates(dealId) {
-  return [
+  const candidates = new Set([
     `${dealId}/aggregated.json`,
-    `/${dealId}/aggregated.json`,
     `documents/${dealId}/aggregated.json`,
-    `/documents/${dealId}/aggregated.json`,
     `deals/${dealId}/aggregated.json`,
-    `/deals/${dealId}/aggregated.json`,
     `deals/documents/${dealId}/aggregated.json`,
-    `/deals/documents/${dealId}/aggregated.json`,
     `deals/deals/${dealId}/aggregated.json`,
     `deals/deals/documents/${dealId}/aggregated.json`,
-  ];
+  ]);
+  return Array.from(candidates);
 }
 
 async function downloadAggregatedJson(supabase, dealId) {
@@ -109,12 +128,35 @@ function hasVehicleVin(json) {
   return Boolean(vehicle.vin || vehicle.chassis_number);
 }
 
-async function removeExistingAggregated(supabase, dealId) {
-  const paths = aggregatedPathCandidates(dealId);
-  const { error } = await supabase.storage.from(DEALS_BUCKET).remove(paths);
-  if (error) {
-    console.warn(`⚠️ Failed to remove existing aggregated.json variants for ${dealId}: ${error.message}`);
+async function ensureAggregatedRemoved(supabase, dealId, { maxAttempts = 3, existingPath } = {}) {
+  const pathSet = new Set(aggregatedPathCandidates(dealId));
+  if (existingPath) {
+    pathSet.add(existingPath);
   }
+  const paths = Array.from(pathSet);
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const { error } = await supabase.storage.from(DEALS_BUCKET).remove(paths);
+    if (error) {
+      console.warn(`⚠️ Attempt ${attempt}: failed to remove aggregated variants for ${dealId}: ${error.message}`);
+    }
+
+    let stillExists = false;
+    for (const path of paths) {
+      const { error: downloadError } = await supabase.storage.from(DEALS_BUCKET).download(path);
+      if (!downloadError) {
+        stillExists = true;
+        break;
+      }
+    }
+
+    if (!stillExists) {
+      return;
+    }
+
+    console.warn(`⚠️ aggregated.json still present for ${dealId}, retrying removal (attempt ${attempt}/${maxAttempts})`);
+    await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+  }
+  throw new Error(`Failed to remove aggregated.json for ${dealId} after ${maxAttempts} attempts`);
 }
 
 function runCommand(command, args, options = {}) {
@@ -138,63 +180,97 @@ async function saveAggregatedLocally(dealId, buffer) {
   return localPath;
 }
 
-async function detectDealsNeedingRegeneration(supabase, folderNames) {
+async function detectDealsNeedingRegeneration(supabase, folderNames, { force = false, filters = new Set() } = {}) {
   const needsRegeneration = [];
   for (const folderName of folderNames) {
     const dealId = resolveDealId(folderName);
+    const inFilter = filters.size === 0 || filters.has(folderName) || filters.has(dealId);
+    if (!inFilter) {
+      continue;
+    }
+
     const result = await downloadAggregatedJson(supabase, dealId);
     if (result.error) {
       needsRegeneration.push({ dealId, folderName, reason: result.error.message });
       continue;
     }
+    if (force) {
+      needsRegeneration.push({ dealId, folderName, reason: "force reprocessing requested", storagePath: result.storagePath });
+      continue;
+    }
     if (!hasGeminiPayload(result.json)) {
-      needsRegeneration.push({ dealId, folderName, reason: "missing gemini payload" });
+      needsRegeneration.push({ dealId, folderName, reason: "missing gemini payload", storagePath: result.storagePath });
       continue;
     }
     if (!hasVehicleVin(result.json)) {
-      needsRegeneration.push({ dealId, folderName, reason: "missing vehicle VIN" });
+      needsRegeneration.push({ dealId, folderName, reason: "missing vehicle VIN", storagePath: result.storagePath });
     }
   }
   return needsRegeneration;
 }
 
-async function regenerateDeal({ dealId, folderName }, supabase) {
+async function regenerateDeal({ dealId, folderName, storagePath }, supabase, { maxAttempts = 3 } = {}) {
   console.info(`\n🚧 Processing deal ${dealId} (${folderName})`);
 
-  await removeExistingAggregated(supabase, dealId);
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      if (attempt > 1) {
+        console.info(`🔁 Retry ${attempt}/${maxAttempts} for ${dealId}`);
+      }
 
-  await runCommand(process.execPath, [
-    "scripts/ingest_local_deals.mjs",
-    "--config",
-    CONFIG_PATH,
-    "--only",
-    folderName,
-  ], { env: process.env, cwd: process.cwd() });
+      await ensureAggregatedRemoved(supabase, dealId, { maxAttempts: 5, existingPath: storagePath });
 
-  const regenerated = await downloadAggregatedJson(supabase, dealId);
-  if (regenerated.error) {
-    throw new Error(`Failed to download regenerated aggregated.json: ${regenerated.error.message}`);
+      await runCommand(process.execPath, [
+        "scripts/ingest_local_deals.mjs",
+        "--config",
+        CONFIG_PATH,
+        "--only",
+        folderName,
+      ], {
+        env: {
+          ...process.env,
+          INGEST_CHUNK_SIZE: process.env.INGEST_CHUNK_SIZE ?? "2",
+          INGEST_MAX_OUTPUT_TOKENS: process.env.INGEST_MAX_OUTPUT_TOKENS ?? "6000",
+        },
+        cwd: process.cwd(),
+      });
+
+      const regenerated = await downloadAggregatedJson(supabase, dealId);
+      if (regenerated.error) {
+        throw new Error(`Failed to download regenerated aggregated.json: ${regenerated.error.message}`);
+      }
+      if (!hasGeminiPayload(regenerated.json)) {
+        throw new Error("Regenerated aggregated.json still missing gemini payload");
+      }
+      if (!hasVehicleVin(regenerated.json)) {
+        throw new Error("Regenerated aggregated.json missing vehicle VIN");
+      }
+
+      const localPath = await saveAggregatedLocally(dealId, regenerated.buffer);
+
+      await runCommand(process.execPath, [
+        "scripts/import_deal_from_aggregated.mjs",
+        "--file",
+        localPath,
+        "--apply",
+      ], { env: process.env, cwd: process.cwd() });
+
+      return { localPath };
+    } catch (error) {
+      lastError = error;
+      console.error(`❌ Attempt ${attempt} failed for ${dealId}: ${error.message}`);
+      if (attempt < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 2000 * attempt));
+      }
+    }
   }
-  if (!hasGeminiPayload(regenerated.json)) {
-    throw new Error("Regenerated aggregated.json still missing gemini payload");
-  }
-  if (!hasVehicleVin(regenerated.json)) {
-    throw new Error("Regenerated aggregated.json missing vehicle VIN");
-  }
 
-  const localPath = await saveAggregatedLocally(dealId, regenerated.buffer);
-
-  await runCommand(process.execPath, [
-    "scripts/import_deal_from_aggregated.mjs",
-    "--file",
-    localPath,
-    "--apply",
-  ], { env: process.env, cwd: process.cwd() });
-
-  return { localPath };
+  throw lastError ?? new Error(`Failed to regenerate deal ${dealId}`);
 }
 
 async function main() {
+  const options = parseCliArgs(process.argv.slice(2));
   const supabase = await buildSupabaseClient();
 
   const folderNames = await listLocalDealFolders();
@@ -203,9 +279,16 @@ async function main() {
     return;
   }
 
-  console.info(`📂 Detected ${folderNames.length} local deal folders`);
+  const targetFolders = options.only.size
+    ? folderNames.filter((name) => options.only.has(name) || options.only.has(resolveDealId(name)))
+    : folderNames;
 
-  const candidates = await detectDealsNeedingRegeneration(supabase, folderNames);
+  console.info(`📂 Detected ${targetFolders.length} local deal folders${options.only.size ? " (filtered)" : ""}`);
+
+  const candidates = await detectDealsNeedingRegeneration(supabase, targetFolders, {
+    force: options.force,
+    filters: options.only,
+  });
 
   if (candidates.length === 0) {
     console.info("✅ All aggregated.json files contain gemini payload with VIN. Nothing to do.");
@@ -220,9 +303,15 @@ async function main() {
   const summary = {
     processed: [],
     failed: [],
+    skipped: [],
   };
 
   for (const candidate of candidates) {
+    if (candidate.reason && candidate.reason.includes("VIN")) {
+      summary.skipped.push({ ...candidate, reason: candidate.reason });
+      console.warn(`⏭️ Skipping ${candidate.dealId} (${candidate.folderName}) — ${candidate.reason}`);
+      continue;
+    }
     try {
       const result = await regenerateDeal(candidate, supabase);
       summary.processed.push({ ...candidate, localPath: result.localPath });
@@ -236,11 +325,19 @@ async function main() {
   console.info("\n📊 Regeneration summary:");
   console.info(`   ✅ Successful: ${summary.processed.length}`);
   console.info(`   ❌ Failed: ${summary.failed.length}`);
+  console.info(`   ⏭️ Skipped: ${summary.skipped.length}`);
 
   if (summary.processed.length > 0) {
     console.info("\n   Updated deals:");
     for (const item of summary.processed) {
       console.info(`      • ${item.dealId} (${item.folderName}) → ${path.relative(process.cwd(), item.localPath)}`);
+    }
+  }
+
+  if (summary.skipped.length > 0) {
+    console.info("\n   Skipped deals:");
+    for (const item of summary.skipped) {
+      console.info(`      • ${item.dealId} (${item.folderName}) → ${item.reason}`);
     }
   }
 

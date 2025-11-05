@@ -5,7 +5,12 @@ import { Buffer } from "node:buffer";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/supabase/queries/operations";
+import {
+  OPS_WORKFLOW_STATUS_MAP,
+  DEAL_DOCUMENT_TYPES,
+  type DealDocumentCategory,
+  type DealDocumentTypeValue,
+} from "@/lib/supabase/queries/operations";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 
@@ -18,24 +23,19 @@ const inputSchema = z.object({
 });
 
 const STORAGE_BUCKET = "deal-documents";
-export type DealDocumentCategory = "required" | "signature" | "archived" | "other";
-export type DealDocumentTypeValue = "contract" | "invoice" | "statement" | "schedule" | "other";
 
-const DEAL_DOCUMENT_TYPE_META: Record<DealDocumentTypeValue, { title: string; category: DealDocumentCategory }> = {
-  contract: { title: "Договор", category: "required" },
-  invoice: { title: "Инвойс", category: "other" },
-  statement: { title: "Statement of Account", category: "other" },
-  schedule: { title: "График платежей", category: "required" },
-  other: { title: "Документ сделки", category: "other" },
-};
+const DEAL_DOCUMENT_TYPE_META: Record<DealDocumentTypeValue, { title: string; category: DealDocumentCategory }> =
+  DEAL_DOCUMENT_TYPES.reduce(
+    (acc, entry) => {
+      acc[entry.value] = { title: entry.label, category: entry.category };
+      return acc;
+    },
+    {} as Record<DealDocumentTypeValue, { title: string; category: DealDocumentCategory }>,
+  );
 
-const DEAL_DOCUMENT_TYPE_VALUES = new Set<DealDocumentTypeValue>([
-  "contract",
-  "invoice",
-  "statement",
-  "schedule",
-  "other",
-]);
+const DEAL_DOCUMENT_TYPE_VALUES = new Set<DealDocumentTypeValue>(
+  DEAL_DOCUMENT_TYPES.map((entry) => entry.value),
+);
 
 const uploadDealDocumentsSchema = z.object({
   dealId: z.string().uuid(),

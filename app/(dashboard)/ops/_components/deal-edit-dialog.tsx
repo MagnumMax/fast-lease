@@ -18,14 +18,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
+import {
+  DEAL_DOCUMENT_TYPES,
+  type DealDocumentCategory,
+  type DealDocumentTypeValue,
+  type OpsDealDetail,
+} from "@/lib/supabase/queries/operations";
 import {
   updateOperationsDeal,
   uploadDealDocuments,
   verifyDealDeletion,
   deleteOperationsDeal,
-  type DealDocumentTypeValue,
-  type DealDocumentCategory,
   type DealDeletionBlockerType,
   type VerifyDealDeletionResult,
   type DeleteOperationsDealResult,
@@ -68,14 +71,6 @@ type DealDocumentDraft = {
   type: DealDocumentTypeValue | "";
   file: File | null;
 };
-
-const DEAL_DOCUMENT_TYPE_OPTIONS: Array<{ value: DealDocumentTypeValue; label: string }> = [
-  { value: "contract", label: "Договор" },
-  { value: "invoice", label: "Инвойс" },
-  { value: "statement", label: "Statement of Account" },
-  { value: "schedule", label: "График платежей" },
-  { value: "other", label: "Другой документ" },
-];
 
 const DEAL_DOCUMENT_CATEGORY_LABEL_MAP: Record<DealDocumentCategory, string> = {
   required: "Обязательный",
@@ -489,7 +484,7 @@ export function DealEditDialog({
                             className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm"
                           >
                             <option value="">Выберите тип</option>
-                            {DEAL_DOCUMENT_TYPE_OPTIONS.map((option) => (
+                            {DEAL_DOCUMENT_TYPES.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>

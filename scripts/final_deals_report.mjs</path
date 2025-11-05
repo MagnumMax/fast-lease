@@ -3,7 +3,7 @@
 // Финальный скрипт для подсчета сделок в Supabase Storage
 // Использует данные из базы данных и проверяет наличие файлов в Storage
 
-const BUCKET_NAME = "deals";
+const BUCKET_NAME = "deal-documents";
 
 // UUID всех сделок из базы данных (получено через MCP сервер Supabase)
 const DEALS_FROM_DATABASE = [
@@ -57,10 +57,10 @@ function createDealsReport() {
   console.log(`   🔍 Ожидаемые пути для проверки файлов:`);
   
   dealUUIDs.forEach((uuid) => {
-    const deal = DEALS_FROM_DATABASE.find(d => d.id === uuid);
-    console.log(`      - ${BUCKET_NAME}/${uuid}/`);
-    console.log(`      - deals/documents/${uuid}/`);
-    console.log(`      - documents/${uuid}/`);
+  const deal = DEALS_FROM_DATABASE.find(d => d.id === uuid);
+    console.log(`      - ${uuid}/deal/`);
+    console.log(`      - ${uuid}/client/`);
+    console.log(`      - ${uuid}/vehicle/`);
   });
   
   // Итоговый отчет
@@ -71,9 +71,9 @@ function createDealsReport() {
     statusStatistics: statusStats,
     storageBucket: BUCKET_NAME,
     expectedFilePatterns: [
-      `${BUCKET_NAME}/{uuid}/`,
-      `deals/documents/{uuid}/`,
-      `documents/{uuid}/`
+      `{uuid}/deal/`,
+      `{uuid}/client/`,
+      `{uuid}/vehicle/`
     ],
     summary: {
       newDeals: statusStats.NEW || 0,

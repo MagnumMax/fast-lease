@@ -72,11 +72,13 @@
 
 ## 6. Формат выходных данных
 
-После запуска `npm run ingest:deals` все результаты складываются в Supabase Storage:
+После запуска `npm run ingest:deals` все результаты складываются в Supabase Storage (bucket `deal-documents`):
 
-- `deals/documents/<deal_id>/<slug>.pdf` — исходный файл из папки сделки.
-- `deals/documents/<deal_id>/<slug>.json` — распознанный ответ Gemini и метаданные по конкретному документу (включая `recognition_error`, если распознать не удалось).
-- `deals/documents/<deal_id>/aggregated.json` — сводная информация по сделке (ссылки на файлы, агрегированный ответ Gemini, статусы распознавания).
+- `<deal_id>/deal/<slug>.pdf` — исходный файл из папки сделки.
+- `<deal_id>/deal/<slug>.json` — распознанный ответ Gemini и метаданные по конкретному документу (включая `recognition_error`, если распознать не удалось).
+- `<deal_id>/client/<slug>.pdf` / `<deal_id>/client/<slug>.json` — документы, относящиеся к клиенту.
+- `<deal_id>/vehicle/<slug>.pdf` / `<deal_id>/vehicle/<slug>.json` — документы, относящиеся к автомобилю.
+- `<deal_id>/aggregated.json` — сводная информация по сделке (ссылки на файлы, агрегированный ответ Gemini, статусы распознавания).
 
 `deal_id` рассчитывается детерминированно (UUIDv5 от имени локальной папки сделки), поэтому повторный запуск создаёт тот же префикс в Storage.
 
@@ -90,9 +92,9 @@ npm run ingest:deals -- --root datasets/deals --config configs/drive_ingest.yaml
 npm run ingest:deals -- --root datasets/deals --only "#1 G800 BRABUS 2022 (6982) 14.04.2025"
 ```
 
-Перед запуском убедитесь, что подготовлена локальная структура с PDF, заданы переменные окружения `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, а в Supabase Storage существует bucket `deals`.
+Перед запуском убедитесь, что подготовлена локальная структура с PDF, заданы переменные окружения `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, а в Supabase Storage существует bucket `deal-documents`.
 
-**Переменные окружения:** для запуска скрипта необходимы `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, а также доступ к bucket `deals` в Supabase Storage.
+**Переменные окружения:** для запуска скрипта необходимы `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, а также доступ к bucket `deal-documents` в Supabase Storage.
 
 ## 7. Правила парсинга
 

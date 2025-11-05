@@ -1669,29 +1669,6 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     status: string | null;
   };
 
-  type SupabaseDealDocumentRow = {
-    id: string;
-    deal_id: string;
-    title: string | null;
-    document_type: string | null;
-    status: string | null;
-    storage_path: string | null;
-    signed_at: string | null;
-    created_at: string | null;
-  };
-
-  type SupabaseApplicationDocumentRow = {
-    id: string;
-    document_type: string | null;
-    document_category: string | null;
-    original_filename: string | null;
-    stored_filename: string | null;
-    storage_path: string | null;
-    status: string | null;
-    uploaded_at: string | null;
-    verified_at: string | null;
-  };
-
   const [
     { data: applicationRow, error: applicationError },
     { data: dealsData, error: dealsError },
@@ -1782,7 +1759,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     ),
   );
 
-  const [managerProfilesResult, schedulesResult, dealDocumentsResult, applicationDocumentsResult] = await Promise.all([
+  const [managerProfilesResult, schedulesResult] = await Promise.all([
     managerIds.length
       ? supabase
           .from("profiles")
@@ -1794,22 +1771,6 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
           .from("payment_schedules")
           .select("id, deal_id, due_date, amount, status")
           .in("deal_id", dealIds)
-      : Promise.resolve({ data: [], error: null } as const),
-    dealIds.length
-      ? supabase
-          .from("deal_documents")
-          .select("id, deal_id, title, document_type, status, storage_path, signed_at, created_at")
-          .in("deal_id", dealIds)
-          .order("created_at", { ascending: false })
-      : Promise.resolve({ data: [], error: null } as const),
-    applicationRow?.id
-      ? supabase
-          .from("application_documents")
-          .select(
-            "id, document_type, document_category, original_filename, stored_filename, storage_path, status, uploaded_at, verified_at",
-          )
-          .eq("application_id", applicationRow.id)
-          .order("uploaded_at", { ascending: false })
       : Promise.resolve({ data: [], error: null } as const),
   ]);
 
@@ -1828,14 +1789,6 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
 
   if (schedulesResult && "error" in schedulesResult && schedulesResult.error) {
     console.error("[SERVER-OPS] failed to load payment schedules", schedulesResult.error);
-  }
-
-  if (dealDocumentsResult && "error" in dealDocumentsResult && dealDocumentsResult.error) {
-    console.error("[SERVER-OPS] failed to load deal documents", dealDocumentsResult.error);
-  }
-
-  if (applicationDocumentsResult && "error" in applicationDocumentsResult && applicationDocumentsResult.error) {
-    console.error("[SERVER-OPS] failed to load application documents", applicationDocumentsResult.error);
   }
 
   const schedules = (schedulesResult?.data ?? []) as SupabaseScheduleRow[];
@@ -1954,72 +1907,20 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     activeDeals: activeDealsCount,
   };
 
-  const applicationDocuments = (applicationDocumentsResult?.data ?? []) as SupabaseApplicationDocumentRow[];
-  const dealDocuments = (dealDocumentsResult?.data ?? []) as SupabaseDealDocumentRow[];
   const clientDocumentsRows = (clientDocumentsData ?? []) as SupabaseClientDocumentRow[];
 
   const documentDescriptors = (await Promise.all(
-    [
-      ...applicationDocuments.map(async (document) => {
-        const url = await createSignedStorageUrl({
-          bucket: "application-documents",
-          path: document.storage_path,
-        });
-        if (!url) return null;
-        return {
-          id: document.id,
-          name: getString(document.original_filename) ?? getString(document.document_type) ?? "Документ",
-          status: getString(document.status) ?? "unknown",
-          documentType: getString(document.document_type),
-          category: getString(document.document_category),
-          source: "application" as const,
-          bucket: "application-documents",
-          storagePath: document.storage_path ?? null,
-          uploadedAt: document.uploaded_at ?? null,
-          signedAt: document.verified_at ?? null,
-          metadata: null,
-          context: "personal" as const,
-          url,
-        } satisfies OpsClientDocument;
-      }),
-      ...dealDocuments.map(async (document) => {
-        const url = await createSignedStorageUrl({
-          bucket: "deal-documents",
-          path: document.storage_path,
-        });
-        if (!url) return null;
-        return {
-          id: document.id,
-          name: getString(document.title) ?? getString(document.document_type) ?? "Документ",
-          status: getString(document.status) ?? "unknown",
-          documentType: getString(document.document_type),
-          category: null,
-          source: "deal" as const,
-          bucket: "deal-documents",
-          storagePath: document.storage_path ?? null,
-          uploadedAt: document.created_at ?? null,
-          signedAt: document.signed_at ?? null,
-          metadata: null,
-          context: "personal" as const,
-          url,
-        } satisfies OpsClientDocument;
-      }),
-      ...clientDocumentsRows.map(async (document) => {
-        const url = await createSignedStorageUrl({
-          bucket: "client-documents",
-          path: document.storage_path,
-        });
-        if (!url) return null;
+    clientDocumentsRows.map(async (document) => {
+      const metadata = (document.metadata ?? {}) as Record<string, unknown>;
+      const preferredName =
+        getString(document.title) ??
+        getString(metadata?.["label"]) ??
+        getString(document.document_type) ??
+        "Документ";
 
-        const metadata = (document.metadata ?? {}) as Record<string, unknown>;
-        const preferredName =
-          getString(document.title) ??
-          getString(metadata?.["label"]) ??
-          getString(document.document_type) ??
-          "Документ";
-
-        const contextRaw = getString(metadata?.["upload_context"]);
-        const context = contextRaw === "company"
+      const contextRaw = getString(metadata?.["upload_context"]);
+      const context =
+        contextRaw === "company"
           ? ("company" as const)
           : contextRaw === "personal"
             ? ("personal" as const)
@@ -2027,23 +1928,22 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
               ? ("company" as const)
               : ("personal" as const);
 
-        return {
-          id: document.id,
-          name: preferredName,
-          status: getString(document.status) ?? "uploaded",
-          documentType: getString(document.document_type),
-          category: getString(document.document_category),
-          source: "client" as const,
-          bucket: "client-documents",
-          storagePath: document.storage_path ?? null,
-          uploadedAt: document.uploaded_at ?? null,
-          signedAt: document.verified_at ?? null,
-          metadata,
-          context,
-          url,
-        } satisfies OpsClientDocument;
-      }),
-    ],
+      return {
+        id: document.id,
+        name: preferredName,
+        status: getString(document.status) ?? "uploaded",
+        documentType: getString(document.document_type),
+        category: getString(document.document_category),
+        source: "client" as const,
+        bucket: "client-documents",
+        storagePath: document.storage_path ?? null,
+        uploadedAt: document.uploaded_at ?? null,
+        signedAt: document.verified_at ?? null,
+        metadata,
+        context,
+        url: null,
+      } satisfies OpsClientDocument;
+    }),
   )) as Array<OpsClientDocument | null>;
 
   const notifications: OpsClientNotification[] = (notificationsData ?? []).map((row) => ({
@@ -3665,16 +3565,6 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     return `${formatNumber(value)} км`;
   };
 
-  const formatPercentage = (value: number | null | undefined): string => {
-    if (value == null || Number.isNaN(Number(value))) {
-      return "—";
-    }
-    return `${Number(value).toLocaleString("ru-RU", {
-      maximumFractionDigits: 1,
-      minimumFractionDigits: 0,
-    })} %`;
-  };
-
   const humanizeKey = (key: string): string => {
     return key
       .replace(/[_\-]+/g, " ")
@@ -4112,82 +4002,21 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     updatedAt: vehicleDetail.updated_at ?? null,
   };
 
-  const dealDocumentRows = deals.flatMap((deal) =>
-    (deal?.deal_documents ?? []).map((doc) => ({ doc, dealNumber: deal?.deal_number ?? null })),
-  );
-
-  const dealDocuments: OpsVehicleDocument[] = await Promise.all(
-    dealDocumentRows.map(async ({ doc, dealNumber }) => {
-      const url = doc?.storage_path
-        ? await createSignedStorageUrl({ bucket: "deal-documents", path: doc.storage_path })
-        : null;
-      const statusRaw = typeof doc?.status === "string" ? doc.status : "";
-      const statusTone: OpsTone = (() => {
-        switch (statusRaw) {
-          case "signed":
-            return "success";
-          case "active":
-            return "info";
-          case "pending_signature":
-            return "warning";
-          case "recorded":
-            return "success";
-          default:
-            return "muted";
-        }
-      })();
-      const status = (() => {
-        switch (statusRaw) {
-          case "signed":
-            return "Подписан";
-          case "active":
-            return "Активен";
-          case "pending_signature":
-            return "Ожидает подписи";
-          case "recorded":
-            return "Зафиксирован";
-          default:
-            if (!statusRaw) {
-              return "Не указан";
-            }
-            return statusRaw.charAt(0).toUpperCase() + statusRaw.slice(1);
-        }
-      })();
-      const typeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
-      const typeLabel = typeCode
-        ? VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode] ?? humanizeKey(typeCode.replace(/\./g, " "))
-        : undefined;
-      const dateLabel = formatShortDate(doc?.signed_at ?? doc?.created_at ?? null);
-      const documentId = doc?.id ?? `doc-${Math.random().toString(36).slice(2)}`;
-      return {
-        id: documentId,
-        title: doc?.title ?? typeLabel ?? "Документ",
-        status,
-        statusTone,
-        typeCode,
-        type: typeLabel,
-        date: dateLabel !== "—" ? dateLabel : undefined,
-        dealNumber,
-        url,
-        source: "deal",
-      } satisfies OpsVehicleDocument;
-    }),
-  );
-
   const vehicleDocumentRows = Array.isArray(vehicleDetail.vehicle_documents)
     ? vehicleDetail.vehicle_documents
     : [];
 
-  const vehicleDocuments: OpsVehicleDocument[] = await Promise.all(
-    vehicleDocumentRows.map(async (doc) => {
-      const url = doc?.storage_path
-        ? await createSignedStorageUrl({ bucket: "vehicle-documents", path: doc.storage_path })
-        : null;
-      const statusRaw = typeof doc?.status === "string" ? doc.status : "uploaded";
-      const statusTone: OpsTone = (() => {
-        switch (statusRaw) {
-          case "uploaded":
-            return "info";
+  const vehicleDocuments: OpsVehicleDocument[] = (
+    await Promise.all(
+      vehicleDocumentRows.map(async (doc) => {
+        const url = doc?.storage_path
+          ? await createSignedStorageUrl({ bucket: "vehicle-documents", path: doc.storage_path })
+          : null;
+        const statusRaw = typeof doc?.status === "string" ? doc.status : "uploaded";
+        const statusTone: OpsTone = (() => {
+          switch (statusRaw) {
+            case "uploaded":
+              return "info";
           case "verified":
             return "success";
           case "expired":
@@ -4216,10 +4045,14 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
         }
       })();
       const typeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
-      const typeLabel = typeCode
-        ? VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode] ?? humanizeKey(typeCode.replace(/\./g, " "))
-        : undefined;
-      const dateLabel = formatShortDate(doc?.uploaded_at ?? null);
+      const typeLabel =
+        typeCode && VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode]
+          ? VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode]
+          : typeCode
+            ? humanizeKey(typeCode.replace(/\./g, " "))
+            : undefined;
+      const uploadedAtIso = typeof doc?.uploaded_at === "string" ? doc.uploaded_at : null;
+      const dateLabel = formatShortDate(uploadedAtIso);
       const documentId = doc?.id ?? `vehicle-doc-${Math.random().toString(36).slice(2)}`;
       return {
         id: documentId,
@@ -4229,18 +4062,20 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
         typeCode,
         type: typeLabel,
         date: dateLabel !== "—" ? dateLabel : undefined,
+        uploadedAt: uploadedAtIso,
         dealNumber: null,
         url,
         source: "vehicle",
       } satisfies OpsVehicleDocument;
-    }),
+      }),
+    )
   );
 
-  const documents: OpsVehicleDocument[] = [...vehicleDocuments, ...dealDocuments];
+  const documents: OpsVehicleDocument[] = vehicleDocuments;
 
   documents.sort((a, b) => {
-    const left = a.date ?? "";
-    const right = b.date ?? "";
+    const left = a.uploadedAt ?? a.date ?? "";
+    const right = b.uploadedAt ?? b.date ?? "";
     return right.localeCompare(left, "ru");
   });
 

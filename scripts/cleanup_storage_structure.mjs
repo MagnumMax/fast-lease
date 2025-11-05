@@ -66,7 +66,7 @@ async function cleanupStorageStructure() {
   const configPath = "configs/drive_ingest.yaml";
   const configRaw = await fs.readFile(configPath, "utf-8");
   const config = yaml.parse(configRaw);
-  const bucket = config.supabase.storage_bucket ?? "deals";
+  const bucket = config.supabase.storage_bucket ?? "deal-documents";
 
   const supabase = createSupabaseClient(config.supabase);
 

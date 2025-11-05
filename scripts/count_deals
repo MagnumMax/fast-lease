@@ -3,13 +3,14 @@
 // Скрипт для подсчета сделок в Supabase Storage
 // Использует MCP сервер Supabase для работы с проектом
 
-const BUCKET_NAME = "deals";
+const BUCKET_NAME = "deal-documents";
 
 // Регулярные выражения для извлечения UUID
 const UUID_PATTERNS = [
   /^deals\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i,
   /^documents\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i,
-  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\//i,
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
 ];
 
 // Функция для извлечения UUID из пути файла
@@ -61,22 +62,22 @@ async function countDealsUsingSQL() {
   // Используем прямое подключение к Storage через execute_sql
   // Если у нас нет доступа к MCP серверу, создаем mock данные
   
-  console.log("📂 Анализ файлов в бакете 'deals'...");
+  console.log(`📂 Анализ файлов в бакете '${BUCKET_NAME}'...`);
   
   // Здесь будет реальный код для работы с MCP сервером Supabase
   // Для демонстрации используем данные из локального файлового каталога
   
   const mockFiles = [
-    { name: "deals/123e4567-e89b-12d3-a456-426614174000/contract.pdf" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174000/documents.json" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174001/contract.pdf" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174001/invoice.pdf" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174002/contract.pdf" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174002/documents.json" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174003/contract.pdf" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174003/invoice.pdf" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174003/documents.json" },
-    { name: "deals/123e4567-e89b-12d3-a456-426614174004/contract.pdf" }
+    { name: "123e4567-e89b-12d3-a456-426614174000/deal/contract.pdf" },
+    { name: "123e4567-e89b-12d3-a456-426614174000/deal/aggregated.json" },
+    { name: "123e4567-e89b-12d3-a456-426614174001/deal/contract.pdf" },
+    { name: "123e4567-e89b-12d3-a456-426614174001/client/id.pdf" },
+    { name: "123e4567-e89b-12d3-a456-426614174002/deal/contract.pdf" },
+    { name: "123e4567-e89b-12d3-a456-426614174002/vehicle/inspection.pdf" },
+    { name: "123e4567-e89b-12d3-a456-426614174003/deal/contract.pdf" },
+    { name: "123e4567-e89b-12d3-a456-426614174003/deal/invoice.pdf" },
+    { name: "123e4567-e89b-12d3-a456-426614174003/deal/documents.json" },
+    { name: "123e4567-e89b-12d3-a456-426614174004/deal/contract.pdf" }
   ];
   
   const dealUUIDs = extractDealUUIDs(mockFiles);

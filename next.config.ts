@@ -10,11 +10,11 @@ const supabaseHostname = (() => {
   }
 })();
 
-const imagesConfig = supabaseHostname
+const imagesConfig: NextConfig["images"] = supabaseHostname
   ? {
       remotePatterns: [
         {
-          protocol: "https",
+          protocol: "https" as const,
           hostname: supabaseHostname,
           pathname: "/storage/v1/object/**",
         },
@@ -25,6 +25,14 @@ const imagesConfig = supabaseHostname
 const nextConfig: NextConfig = {
   serverExternalPackages: [],
   ...(imagesConfig ? { images: imagesConfig } : {}),
+  turbopack: {
+    resolveAlias: {
+      fs: {
+        // Recreate the webpack `fs: false` fallback for browser bundles.
+        browser: "./configs/browser-fs-shim.ts",
+      },
+    },
+  },
   async headers() {
     return [
       {

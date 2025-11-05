@@ -127,7 +127,7 @@ function createDocumentDraft(): DocumentDraft {
 
 const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
 const PERSON_DOCUMENT_OPTIONS = CLIENT_DOCUMENT_TYPES.filter(
-  (option) => option.value !== "company_license",
+  (option) => option.context !== "company",
 );
 const COMPANY_DOCUMENT_OPTIONS = CLIENT_DOCUMENT_TYPES;
 const PERSONAL_DOCUMENT_TYPE_VALUES = new Set<ClientDocumentTypeValue>(

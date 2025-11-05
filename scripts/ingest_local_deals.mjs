@@ -58,6 +58,77 @@ const GEMINI_DEBUG_SNIPPET_LENGTH = Math.max(
   Number.parseInt(process.env.GEMINI_DEBUG_SNIPPET ?? "800", 10) || 800,
 );
 
+const DOCUMENT_CATEGORY_KEYWORDS = {
+  client: [
+    "passport",
+    "emirates id",
+    "emirates_id",
+    "emirates-id",
+    "emiratesid",
+    "client id",
+    "clientid",
+    "driver",
+    "license",
+    "driving",
+    "customer",
+    "buyer id",
+    "personal",
+    "visa",
+    "residence",
+    "contact",
+  ],
+  vehicle: [
+    "mulkia",
+    "vehicle information",
+    "vehicle inspection",
+    "inspection",
+    "passing",
+    "gps",
+    "registration",
+    "license plate",
+    "plate",
+    "insurance",
+    "valuation",
+    "certificate",
+    "vin",
+    "chassis",
+    "odometer",
+    "service",
+    "maintenance",
+    "vehicle certificate",
+  ],
+  deal: [
+    "agreement",
+    "contract",
+    "schedule",
+    "invoice",
+    "quotation",
+    "addendum",
+    "authorization",
+    "purchase",
+    "loan",
+    "term sheet",
+    "payment",
+    "offer",
+  ],
+};
+
+function categorizeDocument({ documentType, title, filename }) {
+  const haystack = `${documentType ?? ""} ${title ?? ""} ${filename ?? ""}`.toLowerCase();
+
+  const matchesCategory = (category) => DOCUMENT_CATEGORY_KEYWORDS[category].some((keyword) => haystack.includes(keyword));
+
+  if (matchesCategory("client")) return "client";
+  if (matchesCategory("vehicle")) return "vehicle";
+  if (matchesCategory("deal")) return "deal";
+
+  // fallback heuristics: if it contains "vehicle" prefer vehicle, "client" prefer client
+  if (haystack.includes("vehicle")) return "vehicle";
+  if (haystack.includes("client")) return "client";
+
+  return "deal";
+}
+
 function logGeminiDebug(label, rawText, diagnostics) {
   if (rawText && rawText.length > 0) {
     const truncated = rawText.length > GEMINI_DEBUG_SNIPPET_LENGTH
@@ -307,7 +378,15 @@ async function uploadToStorage(supabase, bucket, pathKey, buffer, contentType) {
   if (error) {
     throw error;
   }
-  return `${bucket}/${pathKey}`;
+  return pathKey;
+}
+
+async function removeLegacyDocumentCopies(supabase, bucket, basePrefix, slug) {
+  const legacyPaths = [`${basePrefix}/${slug}.pdf`, `${basePrefix}/${slug}.json`];
+  const { error } = await supabase.storage.from(bucket).remove(legacyPaths);
+  if (error && error.message && !error.message.includes("not found")) {
+    console.warn(`⚠️ Failed to remove legacy copies for ${slug}: ${error.message}`);
+  }
 }
 
 async function fileExists(supabase, bucket, pathKey) {
@@ -416,7 +495,8 @@ async function processDealFolder({
   console.info(`📁 Starting processing folder: ${folderName}`);
 
   const dealId = uuidv5(folderName, UUID_NAMESPACE);
-  const storageBasePrefix = `${prefix}/${dealId}`;
+  const normalizedPrefix = (prefix ?? "").replace(/^\/+|\/+$/g, "");
+  const storageBasePrefix = normalizedPrefix ? `${normalizedPrefix}/${dealId}` : `${dealId}`;
   const aggregatedPath = `${storageBasePrefix}/aggregated.json`;
 
   // Skip processing check - only if skipProcessed is true and file exists
@@ -494,8 +574,16 @@ async function processDealFolder({
     }
 
     const slug = entry.name.replace(/[^0-9a-zA-Z]+/g, "_") || "document";
-    const pdfKey = `${storageBasePrefix}/${slug}.pdf`;
-    const jsonKey = `${storageBasePrefix}/${slug}.json`;
+    const category = categorizeDocument({
+      documentType: recognition.data?.document_type,
+      title: recognition.data?.title,
+      filename: entry.name,
+    });
+    const categoryFolder = category || "deal";
+    const pdfKey = `${storageBasePrefix}/${categoryFolder}/${slug}.pdf`;
+    const jsonKey = `${storageBasePrefix}/${categoryFolder}/${slug}.json`;
+
+    await removeLegacyDocumentCopies(supabase, bucket, storageBasePrefix, slug);
 
     let pdfStorage = null;
     let jsonStorage = null;
@@ -548,9 +636,12 @@ async function processDealFolder({
       analysis_error: recognition.error,
       analysis_raw: recognition.raw,
       analysis_debug: recognition.diagnostics,
+      category: categoryFolder,
       storage: {
+        bucket,
         pdf: pdfStorage,
         json: jsonStorage,
+        category: categoryFolder,
       },
     });
   }
@@ -558,7 +649,8 @@ async function processDealFolder({
   console.info(`📊 Starting aggregate analysis for ${folderName}...`);
 
   // Chunking implementation to handle large document sets
-  const CHUNK_SIZE = 4; // Process 4 documents at a time to stay within token limits
+  const envChunkSize = Number.parseInt(process.env.INGEST_CHUNK_SIZE ?? "", 10);
+  const CHUNK_SIZE = Number.isFinite(envChunkSize) && envChunkSize > 0 ? envChunkSize : 4; // Process documents in manageable chunks
   const documentChunks = [];
   for (let i = 0; i < documents.length; i += CHUNK_SIZE) {
     documentChunks.push(documents.slice(i, i + CHUNK_SIZE));
@@ -700,7 +792,7 @@ async function processDealFolder({
   } else {
     // Multiple chunks - aggregate them
     const chunksSummary = successfulChunks
-      .map((cr, idx) => `- Chunk ${cr.chunkIndex}: ${cr.documents.join(', ')}`)
+      .map((cr) => `- Chunk ${cr.chunkIndex}: ${cr.documents.join(', ')}`)
       .join("\n");
 
     const chunksAnalysis = successfulChunks
@@ -787,6 +879,16 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
     }
   }
 
+  if (!aggregatedGemini && successfulChunks.length > 0) {
+    const fallback = successfulChunks[0];
+    aggregatedGemini = fallback.result ?? null;
+    aggregatedRaw = fallback.raw ?? null;
+    aggregatedDiagnostics = fallback.diagnostics ?? null;
+    const reason = aggregatedError ?? "final aggregation missing";
+    aggregatedError = `${reason}; using chunk ${fallback.chunkIndex} fallback`;
+    console.warn(`⚠️ Using fallback chunk ${fallback.chunkIndex} for aggregated result due to: ${reason}`);
+  }
+
   const aggregatedPayload = {
     deal_id: dealId,
     folder: {
@@ -801,7 +903,7 @@ Respond strictly with valid JSON matching the comprehensive schema. Do not inclu
     storage: {
       bucket,
       base_prefix: storageBasePrefix,
-      aggregated_json: `${bucket}/${aggregatedPath}`,
+      aggregated_json: aggregatedPath,
     },
   };
 
@@ -873,15 +975,15 @@ async function run() {
   }
 
   const config = await loadConfig(configPath);
-  const bucket = config.supabase.storage_bucket ?? "deals";
+  const bucket = config.supabase.storage_bucket ?? "deal-documents";
   const supabase = createSupabaseClient(config.supabase);
   const rootPath = path.resolve(rootOverride ?? config.local_root ?? "datasets/deals");
-  const prefix = config.supabase.storage_prefix ?? "documents";
+  const prefix = config.supabase.storage_prefix ?? "";
   const skipProcessed = config.skip_processed ?? true;
 
   // Handle file migration if requested
   if (shouldMigrateFiles) {
-    console.info(`🔄 Starting file migration from deals/deals/documents to deals/documents`);
+    console.info(`🔄 Starting legacy file migration from deals/deals/documents to documents/`);
     await moveFilesBetweenFolders(
       supabase,
       bucket,
@@ -910,11 +1012,14 @@ async function run() {
     model: normalizedModel,
   });
 
+  const envMaxTokens = Number.parseInt(process.env.INGEST_MAX_OUTPUT_TOKENS ?? "", 10);
   const generationConfig = {
     temperature: config.gemini.temperature ?? 0.1,
     topP: config.gemini.top_p ?? 0.95,
     topK: config.gemini.top_k ?? 32,
-    maxOutputTokens: config.gemini.max_output_tokens ?? 6000,
+    maxOutputTokens: Number.isFinite(envMaxTokens) && envMaxTokens > 0
+      ? envMaxTokens
+      : config.gemini.max_output_tokens ?? 6000,
   };
 
   const entries = await fs.readdir(rootPath, { withFileTypes: true });

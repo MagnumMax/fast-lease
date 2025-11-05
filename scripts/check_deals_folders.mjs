@@ -1,15 +1,43 @@
 #!/usr/bin/env node
 
-import { createClient } from "@supabase/supabase-js";
+import fs from "node:fs/promises";
+import path from "node:path";
 import process from "node:process";
 
-// Прямые ключи для подключения к Supabase
-const SUPABASE_URL = "https://sfekjkzuionqapecccwf.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmZWtqa3p1aW9ucWFwZWNjd2YiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzM0MjQyNzYzLCJleHAiOjIwNDk4MTg3NjN9.7sUhJGqO5ZjeUDJJLfOKyDpP8qXqKl_t3vZ4LAZQAGc";
+import { createClient } from "@supabase/supabase-js";
+
+async function loadEnv(filePath = ".env.local") {
+  try {
+    const envPath = path.resolve(process.cwd(), filePath);
+    const content = await fs.readFile(envPath, "utf8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const [key, ...rest] = trimmed.split("=");
+      if (!key) continue;
+      let value = rest.join("=").trim();
+      if (!value) continue;
+      if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      process.env[key.trim()] = value;
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn(`⚠️ Failed to load ${filePath}: ${error.message}`);
+    }
+  }
+}
 
 // Создание Supabase клиента
-function createSupabaseClient() {
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+async function createSupabaseClient() {
+  await loadEnv();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET;
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("NEXT_PUBLIC_SUPABASE_URL/SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SECRET are required");
+  }
+  return createClient(supabaseUrl, serviceRoleKey, {
     global: {
       headers: {
         "X-Client-Info": "check-deals-folders",
@@ -87,8 +115,8 @@ async function checkDealsFolders() {
   console.log("=".repeat(65));
   
   try {
-    const supabase = createSupabaseClient();
-    const bucket = "deals";
+    const supabase = await createSupabaseClient();
+    const bucket = "deal-documents";
     
     // Префиксы для проверки
     const prefixes = [
