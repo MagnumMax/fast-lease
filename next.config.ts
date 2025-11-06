@@ -25,11 +25,9 @@ const imagesConfig: NextConfig["images"] = supabaseHostname
 const nextConfig: NextConfig = {
   serverExternalPackages: [],
   ...(imagesConfig ? { images: imagesConfig } : {}),
-  experimental: {
+  outputFileTracingIncludes: {
     // Ensure workflow template YAML ships with the serverless bundle so runtime fs access succeeds.
-    outputFileTracingIncludes: {
-      "lib/workflow/http/**": ["./docs/workflow_template.yaml"],
-    },
+    "lib/workflow/http/**": ["./docs/workflow_template.yaml"],
   },
   turbopack: {
     resolveAlias: {
