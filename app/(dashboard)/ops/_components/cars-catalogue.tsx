@@ -6,14 +6,7 @@ import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +28,7 @@ import {
 import { OPS_VEHICLE_STATUS_META, type OpsCarRecord, type OpsTone } from "@/lib/supabase/queries/operations";
 import { formatLicensePlateDisplay } from "@/lib/utils/license-plate";
 import { createOperationsCar } from "@/app/(dashboard)/ops/cars/actions";
+import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 
 type OpsCarsCatalogueProps = {
   initialCars: OpsCarRecord[];
@@ -92,6 +86,20 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   const [formState, setFormState] = useState<CarFormState>(() =>
     createDefaultCarFormState(),
   );
+
+  const summary = useMemo(() => {
+    const total = cars.length;
+    const available = cars.filter((car) => car.status === "available").length;
+    const leased = cars.filter((car) => car.status === "leased").length;
+    const maintenance = cars.filter((car) => car.status === "maintenance").length;
+
+    return {
+      total,
+      available,
+      leased,
+      maintenance,
+    };
+  }, [cars]);
 
   const resolveLicensePlateLabel = (car: OpsCarRecord): string | null =>
     car.licensePlateDisplay ?? formatLicensePlateDisplay(car.licensePlate) ?? null;
@@ -183,229 +191,224 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
     });
   }
 
+  const createDialog = (
+    <Dialog
+      open={isModalOpen}
+      onOpenChange={(open) => {
+        setIsModalOpen(open);
+        if (!open) {
+          setErrorMessage(null);
+          setFormState(createDefaultCarFormState());
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button variant="outline" className="rounded-xl">
+          <Plus className="mr-2 h-4 w-4" />
+          Добавить автомобиль
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl rounded-3xl">
+        <DialogHeader>
+          <DialogTitle>Добавить автомобиль</DialogTitle>
+          <DialogDescription>
+            Заполните основные характеристики, чтобы пополнить каталог.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-make">
+                Марка<span className="text-destructive">*</span>
+              </label>
+              <Input
+                id="car-make"
+                value={formState.make}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, make: event.target.value }))
+                }
+                placeholder="Rolls-Royce"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-model">
+                Модель<span className="text-destructive">*</span>
+              </label>
+              <Input
+                id="car-model"
+                value={formState.model}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, model: event.target.value }))
+                }
+                placeholder="Cullinan"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-vin">
+                VIN<span className="text-destructive">*</span>
+              </label>
+              <Input
+                id="car-vin"
+                value={formState.vin}
+                onChange={(event) =>
+                  setFormState((prev) => ({
+                    ...prev,
+                    vin: event.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="WDC12345678900001"
+                className="rounded-xl uppercase"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-body-type">
+                Тип кузова<span className="text-destructive">*</span>
+              </label>
+              <Input
+                id="car-body-type"
+                value={formState.bodyType}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, bodyType: event.target.value }))
+                }
+                placeholder="SUV"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-year">
+                Год выпуска
+              </label>
+              <Input
+                id="car-year"
+                value={formState.year}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, year: event.target.value }))
+                }
+                placeholder="2024"
+                inputMode="numeric"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-mileage">
+                Пробег (км)
+              </label>
+              <Input
+                id="car-mileage"
+                value={formState.mileage}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, mileage: event.target.value }))
+                }
+                placeholder="1200"
+                inputMode="numeric"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-fuel-type">
+                Тип топлива
+              </label>
+              <Input
+                id="car-fuel-type"
+                value={formState.fuelType}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, fuelType: event.target.value }))
+                }
+                placeholder="Petrol"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80" htmlFor="car-transmission">
+                Трансмиссия
+              </label>
+              <Input
+                id="car-transmission"
+                value={formState.transmission}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, transmission: event.target.value }))
+                }
+                placeholder="Automatic"
+                className="rounded-xl"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Поля, отмеченные <span className="text-destructive">*</span>, обязательны для заполнения.
+          </p>
+          {errorMessage ? (
+            <p className="text-sm text-destructive">{errorMessage}</p>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
+            Отмена
+          </Button>
+          <Button
+            onClick={handleCreateCar}
+            className="rounded-xl"
+            disabled={isSaving || !canCreateCar}
+          >
+            {isSaving ? "Сохранение..." : "Сохранить"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   return (
     <div className="space-y-6">
+      <WorkspaceListHeader
+        title="Автопарк"
+        stats={[
+          { label: "Всего", value: summary.total },
+          { label: "Доступны", value: summary.available },
+          { label: "В лизинге", value: summary.leased },
+          { label: "На обслуживании", value: summary.maintenance },
+        ]}
+        action={createDialog}
+      />
+
       <Card className="bg-card/60 backdrop-blur">
-        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardDescription>Fleet</CardDescription>
-            <CardTitle>Vehicles</CardTitle>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Поиск (VIN, марка, модель)"
-                  className="h-10 w-64 rounded-xl pl-9 pr-3"
-                />
-              </div>
-              <select
-                value={bodyTypeFilter}
-                onChange={(event) => setBodyTypeFilter(event.target.value)}
-                className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-              >
-                <option value="">Все типы</option>
-                {bodyTypeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-              >
-                <option value="">Все статусы</option>
-                {Object.entries(OPS_VEHICLE_STATUS_META).map(([status, meta]) => (
-                  <option key={status} value={status}>
-                    {meta.label}
-                  </option>
-                ))}
-              </select>
+        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Поиск (VIN, марка, модель)"
+                className="h-10 w-full rounded-xl pl-9 pr-3"
+              />
             </div>
-            <Dialog
-              open={isModalOpen}
-              onOpenChange={(open) => {
-                setIsModalOpen(open);
-                if (!open) {
-                  setErrorMessage(null);
-                  setFormState(createDefaultCarFormState());
-                }
-              }}
+            <select
+              value={bodyTypeFilter}
+              onChange={(event) => setBodyTypeFilter(event.target.value)}
+              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
             >
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-xl">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add car
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl rounded-3xl">
-                <DialogHeader>
-                  <DialogTitle>Добавить автомобиль</DialogTitle>
-                  <DialogDescription>
-                    Заполните основные характеристики, чтобы пополнить каталог.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-5">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-make">
-                        Марка<span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        id="car-make"
-                        value={formState.make}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, make: event.target.value }))
-                        }
-                        placeholder="Rolls-Royce"
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-model">
-                        Модель<span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        id="car-model"
-                        value={formState.model}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, model: event.target.value }))
-                        }
-                        placeholder="Cullinan"
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-vin">
-                        VIN<span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        id="car-vin"
-                        value={formState.vin}
-                        onChange={(event) =>
-                          setFormState((prev) => ({
-                            ...prev,
-                            vin: event.target.value.toUpperCase(),
-                          }))
-                        }
-                        placeholder="WDC12345678900001"
-                        className="rounded-xl uppercase"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium text-foreground/80"
-                        htmlFor="car-body-type"
-                      >
-                        Тип кузова<span className="text-destructive">*</span>
-                      </label>
-                      <Input
-                        id="car-body-type"
-                        value={formState.bodyType}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, bodyType: event.target.value }))
-                        }
-                        placeholder="SUV"
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-year">
-                        Год выпуска
-                      </label>
-                      <Input
-                        id="car-year"
-                        value={formState.year}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, year: event.target.value }))
-                        }
-                        placeholder="2024"
-                        inputMode="numeric"
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium text-foreground/80"
-                        htmlFor="car-mileage"
-                      >
-                        Пробег (км)
-                      </label>
-                      <Input
-                        id="car-mileage"
-                        value={formState.mileage}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, mileage: event.target.value }))
-                        }
-                        placeholder="1200"
-                        inputMode="numeric"
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium text-foreground/80"
-                        htmlFor="car-fuel-type"
-                      >
-                        Тип топлива
-                      </label>
-                      <Input
-                        id="car-fuel-type"
-                        value={formState.fuelType}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, fuelType: event.target.value }))
-                        }
-                        placeholder="Petrol"
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label
-                        className="text-sm font-medium text-foreground/80"
-                        htmlFor="car-transmission"
-                      >
-                        Трансмиссия
-                      </label>
-                      <Input
-                        id="car-transmission"
-                        value={formState.transmission}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, transmission: event.target.value }))
-                        }
-                        placeholder="Automatic"
-                        className="rounded-xl"
-                      />
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Поля, отмеченные <span className="text-destructive">*</span>, обязательны для
-                    заполнения.
-                  </p>
-                  {errorMessage ? (
-                    <p className="text-sm text-destructive">{errorMessage}</p>
-                  ) : null}
-                </div>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleCreateCar}
-                    className="rounded-xl"
-                    disabled={isSaving || !canCreateCar}
-                  >
-                    {isSaving ? "Saving..." : "Save"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+              <option value="">Все типы</option>
+              {bodyTypeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              <option value="">Все статусы</option>
+              {Object.entries(OPS_VEHICLE_STATUS_META).map(([status, meta]) => (
+                <option key={status} value={status}>
+                  {meta.label}
+                </option>
+              ))}
+            </select>
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
 
       <Card className="hidden border border-border bg-card/60 backdrop-blur md:block">

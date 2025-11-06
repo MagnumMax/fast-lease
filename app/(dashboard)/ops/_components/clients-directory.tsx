@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { createOperationsClient } from "@/app/(dashboard)/ops/clients/actions";
 import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
+import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 
 const CLIENT_STATUS_TONE_CLASS: Record<string, string> = {
   success: "border-emerald-400/80 bg-emerald-500/10 text-emerald-700",
@@ -229,17 +230,15 @@ function handleCreateClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">Клиенты</h1>
-          <p className="text-sm text-muted-foreground">
-            Всего: {summary.total} · Активных: {summary.active} · Заблокированы: {summary.blocked}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {createDialog}
-        </div>
-      </div>
+      <WorkspaceListHeader
+        title="Клиенты"
+        stats={[
+          { label: "Всего", value: summary.total },
+          { label: "Активных", value: summary.active },
+          { label: "Заблокированы", value: summary.blocked },
+        ]}
+        action={createDialog}
+      />
 
       <Card className="bg-card/60 backdrop-blur">
         <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">

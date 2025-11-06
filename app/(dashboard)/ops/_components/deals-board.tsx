@@ -27,12 +27,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +63,7 @@ import { type OpsCarRecord, type OpsClientRecord } from "@/lib/supabase/queries/
 import { cn } from "@/lib/utils";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
+import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 
 // Обновляем тип для включения deal_number
 type DealRowWithDealNumber = DealRow & {
@@ -317,6 +313,20 @@ export function OpsDealsBoard({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT);
+
+  const summary = useMemo(() => {
+    const total = deals.length;
+    const active = deals.filter((deal) => deal.statusKey === "ACTIVE").length;
+    const cancelled = deals.filter((deal) => deal.statusKey === "CANCELLED").length;
+    const inPipeline = Math.max(0, total - active - cancelled);
+
+    return {
+      total,
+      active,
+      cancelled,
+      inPipeline,
+    };
+  }, [deals]);
 
   const sourceOptions = useMemo(() => {
     const merged = new Set<string>(BASE_SOURCE_OPTIONS);
@@ -713,33 +723,196 @@ export function OpsDealsBoard({
     }
   }
 
-  return (
-    <div className="space-y-6">
-      <Card className="bg-card/60 backdrop-blur">
-        <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-1">
-            <CardTitle>Deals</CardTitle>
-            <p
-              className={cn(
-                "text-sm",
-                feedback
-                  ? "text-rose-600"
-                  : "text-muted-foreground",
-              )}
-            >
-              {feedback
-                ? feedback.message
-                : "Этап сделки меняется автоматически после закрытия соответствующих задач."}
+  const createDealDialog = (
+    <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="rounded-xl">
+          <Plus className="mr-2 h-4 w-4" />
+          Добавить сделку
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl rounded-3xl">
+        <DialogHeader>
+          <DialogTitle>Create deal</DialogTitle>
+        </DialogHeader>
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleCreateDeal();
+          }}
+        >
+          <div className="space-y-2">
+            <label htmlFor="deal-reference" className="text-sm font-medium text-foreground/80">
+              Reference (опционально)
+            </label>
+            <Input
+              id="deal-reference"
+              value={formState.reference}
+              onChange={(event) =>
+                setFormState((prev) => ({ ...prev, reference: event.target.value }))
+              }
+              placeholder="FL-3301"
+              className="rounded-xl"
+            />
+            <p className="text-xs text-muted-foreground">
+              Укажите внутренний номер, если нужно синхронизировать с внешней системой.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative">
+
+          <div className="space-y-2">
+            <label htmlFor="deal-client" className="text-sm font-medium text-foreground/80">
+              Клиент
+            </label>
+            <select
+              id="deal-client"
+              value={formState.clientId}
+              onChange={(event) =>
+                setFormState((prev) => ({ ...prev, clientId: event.target.value }))
+              }
+              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60"
+              disabled={clientDirectory.length === 0}
+            >
+              {clientDirectory.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+            {selectedClient ? (
+              <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+                <p>{selectedClient.email || "—"}</p>
+                <p>{selectedClient.phone}</p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Нет доступных клиентов. Добавьте запись в разделе Clients.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="deal-vehicle" className="text-sm font-medium text-foreground/80">
+              Автомобиль
+            </label>
+            <select
+              id="deal-vehicle"
+              value={formState.vehicleVin}
+              onChange={(event) =>
+                setFormState((prev) => ({ ...prev, vehicleVin: event.target.value }))
+              }
+              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60"
+              disabled={vehicleOptions.length === 0}
+            >
+              {vehicleOptions.map((vehicle) => (
+                <option key={vehicle.optionValue} value={vehicle.optionValue}>
+                  {vehicle.name}
+                </option>
+              ))}
+            </select>
+            {selectedVehicle ? (
+              <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground/70">{selectedVehicle.name}</p>
+                <p>VIN: {selectedVehicle.vin}</p>
+                <p>
+                  {selectedVehicle.year} · {selectedVehicle.type}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Нет доступных автомобилей. Обновите каталог в разделе Cars.
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="deal-source" className="text-sm font-medium text-foreground/80">
+              Источник сделки
+            </label>
+            <select
+              id="deal-source"
+              value={showCustomSource ? "__custom" : formState.source}
+              onChange={(event) => {
+                const selected = event.target.value;
+                if (selected === "__custom") {
+                  setShowCustomSource(true);
+                  setFormState((prev) => ({ ...prev, source: "" }));
+                } else {
+                  setShowCustomSource(false);
+                  setFormState((prev) => ({ ...prev, source: selected }));
+                }
+              }}
+              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+            >
+              {sourceOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+              <option value="__custom">Другое...</option>
+            </select>
+            {showCustomSource ? (
+              <Input
+                id="deal-source-custom"
+                value={formState.source}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, source: event.target.value }))
+                }
+                placeholder="Укажите источник"
+                className="rounded-xl"
+              />
+            ) : null}
+          </div>
+
+          {feedback?.type === "error" ? (
+            <p className="text-sm text-rose-600">{feedback.message}</p>
+          ) : null}
+
+          <DialogFooter>
+            <Button type="submit" className="rounded-xl" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Создание...
+                </>
+              ) : (
+                "Add to workflow"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+
+  const headerHelperText = feedback ? feedback.message : undefined;
+  const headerHelperTone = feedback ? "danger" : "muted";
+
+  return (
+    <div className="space-y-6">
+      <WorkspaceListHeader
+        title="Сделки"
+        stats={[
+          { label: "Всего", value: summary.total },
+          { label: "В воронке", value: summary.inPipeline },
+          { label: "Активные", value: summary.active },
+          { label: "Отменены", value: summary.cancelled },
+        ]}
+        helperText={headerHelperText}
+        helperTone={headerHelperTone}
+        action={createDealDialog}
+      />
+
+      <Card className="bg-card/60 backdrop-blur">
+        <CardContent className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <div className="relative w-full sm:w-72">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search: client, vehicle, ID"
-                className="h-10 w-64 rounded-xl pl-9"
+                placeholder="Поиск (клиент, авто, ID)"
+                className="h-10 w-full rounded-xl pl-9"
               />
             </div>
             <select
@@ -747,172 +920,15 @@ export function OpsDealsBoard({
               onChange={(event) => setStatusFilter(event.target.value as OpsDealStatusKey | "all")}
               className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
             >
-              <option value="all">All statuses</option>
+              <option value="all">Все статусы</option>
               {STATUS_ORDER.map((status) => (
                 <option key={status} value={status}>
                   {STATUS_LABELS[status]}
                 </option>
               ))}
             </select>
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-xl">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create deal
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-xl rounded-3xl">
-                <DialogHeader>
-                  <DialogTitle>Create deal</DialogTitle>
-                </DialogHeader>
-                <form
-                  className="space-y-4"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void handleCreateDeal();
-                  }}
-                >
-                  <div className="space-y-2">
-                    <label htmlFor="deal-reference" className="text-sm font-medium text-foreground/80">
-                      Reference (опционально)
-                    </label>
-                    <Input
-                      id="deal-reference"
-                      value={formState.reference}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, reference: event.target.value }))
-                      }
-                      placeholder="FL-3301"
-                      className="rounded-xl"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Укажите внутренний номер, если нужно синхронизировать с внешней системой.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="deal-client" className="text-sm font-medium text-foreground/80">
-                      Клиент
-                    </label>
-                    <select
-                      id="deal-client"
-                      value={formState.clientId}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, clientId: event.target.value }))
-                      }
-                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60"
-                      disabled={clientDirectory.length === 0}
-                    >
-                      {clientDirectory.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedClient ? (
-                      <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-                        <p>{selectedClient.email || "—"}</p>
-                        <p>{selectedClient.phone}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Нет доступных клиентов. Добавьте запись в разделе Clients.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="deal-vehicle" className="text-sm font-medium text-foreground/80">
-                      Автомобиль
-                    </label>
-                    <select
-                      id="deal-vehicle"
-                      value={formState.vehicleVin}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, vehicleVin: event.target.value }))
-                      }
-                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60"
-                      disabled={vehicleOptions.length === 0}
-                    >
-                      {vehicleOptions.map((vehicle) => (
-                        <option key={vehicle.optionValue} value={vehicle.optionValue}>
-                          {vehicle.name}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedVehicle ? (
-                      <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-                        <p className="font-medium text-foreground/70">{selectedVehicle.name}</p>
-                        <p>VIN: {selectedVehicle.vin}</p>
-                        <p>
-                          {selectedVehicle.year} · {selectedVehicle.type}
-                        </p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        Нет доступных автомобилей. Обновите каталог в разделе Cars.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label htmlFor="deal-source" className="text-sm font-medium text-foreground/80">
-                      Источник сделки
-                    </label>
-                    <select
-                      id="deal-source"
-                      value={showCustomSource ? "__custom" : formState.source}
-                      onChange={(event) => {
-                        const selected = event.target.value;
-                        if (selected === "__custom") {
-                          setShowCustomSource(true);
-                          setFormState((prev) => ({ ...prev, source: "" }));
-                        } else {
-                          setShowCustomSource(false);
-                          setFormState((prev) => ({ ...prev, source: selected }));
-                        }
-                      }}
-                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-                    >
-                      {sourceOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                      <option value="__custom">Другое...</option>
-                    </select>
-                    {showCustomSource ? (
-                      <Input
-                        id="deal-source-custom"
-                        value={formState.source}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, source: event.target.value }))
-                        }
-                        placeholder="Укажите источник"
-                        className="rounded-xl"
-                      />
-                    ) : null}
-                  </div>
-
-                  {feedback?.type === "error" ? (
-                    <p className="text-sm text-rose-600">{feedback.message}</p>
-                  ) : null}
-
-                  <DialogFooter>
-                    <Button type="submit" className="rounded-xl" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Создание...
-                        </>
-                      ) : (
-                        "Add to workflow"
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background p-1 text-sm shadow-sm">
               <button
                 type="button"
@@ -942,7 +958,7 @@ export function OpsDealsBoard({
               </button>
             </div>
           </div>
-        </CardHeader>
+        </CardContent>
       </Card>
 
       {view === "kanban" ? (
