@@ -10,6 +10,9 @@ import {
   type KeyboardEvent,
 } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   AlertTriangle,
   Check,
   Clock,
@@ -81,8 +84,17 @@ type VehicleOption = OpsCarRecord & { optionValue: string };
 
 type Feedback = { type: "error"; message: string };
 
+type SortField = "dealId" | "client" | "vehicle" | "status" | "owner" | "nextAction" | "updatedAt";
+type SortDirection = "asc" | "desc";
+type SortState = { field: SortField; direction: SortDirection };
+const DEFAULT_SORT: SortState = { field: "updatedAt", direction: "desc" };
+
 const STATUS_ORDER = OPS_DEAL_STATUS_ORDER;
 const STATUS_LABELS = OPS_DEAL_STATUS_LABELS;
+const STATUS_POSITION = STATUS_ORDER.reduce<Record<OpsDealStatusKey, number>>((acc, status, index) => {
+  acc[status] = index;
+  return acc;
+}, {} as Record<OpsDealStatusKey, number>);
 
 const STATUS_BADGES: Record<OpsDealStatusKey, ComponentProps<typeof Badge>["variant"]> = {
   NEW: "info",
@@ -173,6 +185,15 @@ function formatSlaLabel(deal: OpsDealSummary | undefined, meta: WorkflowStatusIt
   }
 
   return meta.slaLabel ?? "SLA —";
+}
+
+function resolveDealOwnerLabel(deal: OpsDealSummary): string {
+  return (
+    deal.ownerName ??
+    deal.ownerRoleLabel ??
+    WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
+    deal.ownerRole
+  );
 }
 
 type DealFormState = {
@@ -296,12 +317,13 @@ export function OpsDealsBoard({
 
   const [deals, setDeals] = useState<OpsDealSummary[]>(() => initialDeals);
 
-  const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [view, setView] = useState<"kanban" | "table">("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OpsDealStatusKey | "all">("all");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT);
 
   const sourceOptions = useMemo(() => {
     const merged = new Set<string>(BASE_SOURCE_OPTIONS);
@@ -447,6 +469,69 @@ export function OpsDealsBoard({
     });
   }, [deals, searchQuery, statusFilter]);
 
+  const sortedDeals = useMemo(() => {
+    const { field, direction } = sortState;
+    const directionMultiplier = direction === "asc" ? 1 : -1;
+
+    return [...filteredDeals].sort((a, b) => {
+      let comparison = 0;
+
+      switch (field) {
+        case "dealId":
+          comparison = (a.dealId ?? "").localeCompare(b.dealId ?? "", undefined, {
+            sensitivity: "base",
+          });
+          break;
+        case "client":
+          comparison = (a.client ?? "").localeCompare(b.client ?? "", undefined, {
+            sensitivity: "base",
+          });
+          break;
+        case "vehicle": {
+          comparison = (a.vehicle ?? "").localeCompare(b.vehicle ?? "", undefined, {
+            sensitivity: "base",
+          });
+          if (comparison === 0) {
+            comparison = (a.source ?? "").localeCompare(b.source ?? "", undefined, {
+              sensitivity: "base",
+            });
+          }
+          break;
+        }
+        case "status":
+          comparison =
+            (STATUS_POSITION[a.statusKey] ?? Number.MAX_SAFE_INTEGER) -
+            (STATUS_POSITION[b.statusKey] ?? Number.MAX_SAFE_INTEGER);
+          break;
+        case "owner":
+          comparison = resolveDealOwnerLabel(a).localeCompare(resolveDealOwnerLabel(b), undefined, {
+            sensitivity: "base",
+          });
+          break;
+        case "nextAction":
+          comparison = (a.nextAction ?? "").localeCompare(b.nextAction ?? "", undefined, {
+            sensitivity: "base",
+          });
+          break;
+        case "updatedAt": {
+          const aTime = new Date(a.updatedAt).getTime();
+          const bTime = new Date(b.updatedAt).getTime();
+          const safeATime = Number.isNaN(aTime) ? 0 : aTime;
+          const safeBTime = Number.isNaN(bTime) ? 0 : bTime;
+          comparison = safeATime - safeBTime;
+          break;
+        }
+        default:
+          comparison = 0;
+      }
+
+      if (comparison === 0) {
+        return 0;
+      }
+      return comparison * directionMultiplier;
+    });
+  }, [filteredDeals, sortState]);
+
   const groupedDeals = useMemo(() => {
     const seed = STATUS_ORDER.reduce((acc, status) => {
       acc[status] = [] as OpsDealSummary[];
@@ -462,6 +547,52 @@ export function OpsDealsBoard({
 
     return seed;
   }, [filteredDeals]);
+
+  const handleSort = (field: SortField) => {
+    setSortState((prev) => {
+      if (prev.field === field) {
+        return {
+          field,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+
+      return { field, direction: "asc" };
+    });
+  };
+
+  const getAriaSort = (field: SortField): "none" | "ascending" | "descending" => {
+    if (sortState.field !== field) {
+      return "none";
+    }
+
+    return sortState.direction === "asc" ? "ascending" : "descending";
+  };
+
+  const renderSortButton = (field: SortField, label: string) => {
+    const isActive = sortState.field === field;
+    const SortIcon = isActive
+      ? sortState.direction === "asc"
+        ? ArrowUp
+        : ArrowDown
+      : ArrowUpDown;
+
+    return (
+      <button
+        type="button"
+        onClick={() => handleSort(field)}
+        className={cn(
+          "inline-flex w-full items-center gap-1 rounded-md text-left text-sm font-medium transition",
+          "hover:text-foreground",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          isActive ? "text-foreground" : "text-muted-foreground",
+        )}
+      >
+        <span>{label}</span>
+        <SortIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      </button>
+    );
+  };
 
   async function handleCreateDeal() {
     if (isSubmitting) {
@@ -1002,19 +1133,34 @@ export function OpsDealsBoard({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Deal ID</TableHead>
-                  <TableHead>Client</TableHead>
-                  <TableHead>Vehicle</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Owner</TableHead>
-                  <TableHead>Next action</TableHead>
-                  <TableHead>Updated</TableHead>
+                  <TableHead aria-sort={getAriaSort("dealId")}>
+                    {renderSortButton("dealId", "Deal ID")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("client")}>
+                    {renderSortButton("client", "Client")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("vehicle")}>
+                    {renderSortButton("vehicle", "Vehicle")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("status")}>
+                    {renderSortButton("status", "Status")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("owner")}>
+                    {renderSortButton("owner", "Owner")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("nextAction")}>
+                    {renderSortButton("nextAction", "Next action")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("updatedAt")}>
+                    {renderSortButton("updatedAt", "Updated")}
+                  </TableHead>
                   <TableHead>Links</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDeals.map((deal) => {
+                {sortedDeals.map((deal) => {
                   const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
+                  const ownerLabel = resolveDealOwnerLabel(deal);
 
                   return (
                     <TableRow key={deal.id}>
@@ -1038,12 +1184,7 @@ export function OpsDealsBoard({
                           {STATUS_LABELS[deal.statusKey]}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {deal.ownerName ??
-                          deal.ownerRoleLabel ??
-                          WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
-                          deal.ownerRole}
-                      </TableCell>
+                      <TableCell>{ownerLabel}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{deal.nextAction}</TableCell>
                       <TableCell>{formatDateLabel(deal.updatedAt)}</TableCell>
                       <TableCell>

@@ -41,8 +41,20 @@ const uploadClientDocumentsSchema = z.object({
   slug: z.string().min(1),
 });
 
+const deleteClientDocumentSchema = z.object({
+  clientId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  slug: z.string().min(1),
+});
+
 export type UploadClientDocumentsResult =
   | { success: true; uploaded: number }
+  | { success: false; error: string };
+
+type DeleteClientDocumentInput = z.infer<typeof deleteClientDocumentSchema>;
+
+export type DeleteClientDocumentResult =
+  | { success: true }
   | { success: false; error: string };
 
 const CLIENT_DOCUMENT_CATEGORY_MAP: Record<ClientDocumentTypeValue, string> =
@@ -830,6 +842,78 @@ export async function uploadClientDocuments(
   } catch (error) {
     console.error("[operations] unexpected error while uploading client documents", error);
     return { success: false, error: "Произошла ошибка при загрузке документов." };
+  }
+}
+
+export async function deleteClientDocument(
+  input: DeleteClientDocumentInput,
+): Promise<DeleteClientDocumentResult> {
+  const parsed = deleteClientDocumentSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid client document delete payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные для удаления документа." };
+  }
+
+  const { clientId, documentId, slug } = parsed.data;
+
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+
+    const { data: documentRecord, error: lookupError } = await serviceClient
+      .from("client_documents")
+      .select("id, client_id, storage_path")
+      .eq("id", documentId)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error("[operations] failed to load client document before deletion", lookupError);
+      return { success: false, error: "Не удалось найти документ клиента." };
+    }
+
+    if (!documentRecord || String(documentRecord.client_id) !== clientId) {
+      return { success: false, error: "Документ не найден или принадлежит другому клиенту." };
+    }
+
+    const storagePath =
+      typeof documentRecord.storage_path === "string" && documentRecord.storage_path.length > 0
+        ? documentRecord.storage_path
+        : null;
+
+    if (storagePath) {
+      const { error: storageError } = await serviceClient.storage
+        .from(CLIENT_DOCUMENT_BUCKET)
+        .remove([storagePath]);
+
+      if (storageError && !String(storageError.message ?? "").toLowerCase().includes("not found")) {
+        console.error("[operations] failed to remove client document file", storageError);
+        return { success: false, error: "Не удалось удалить файл документа." };
+      }
+    }
+
+    const { error: deleteError } = await serviceClient
+      .from("client_documents")
+      .delete()
+      .eq("id", documentId)
+      .eq("client_id", clientId);
+
+    if (deleteError) {
+      console.error("[operations] failed to delete client document", deleteError);
+      return { success: false, error: "Не удалось удалить запись документа." };
+    }
+
+    for (const path of getWorkspacePaths("clients")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/clients/${slug}`);
+    if (slug !== clientId) {
+      revalidatePath(`/ops/clients/${clientId}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while deleting client document", error);
+    return { success: false, error: "Произошла ошибка при удалении документа." };
   }
 }
 

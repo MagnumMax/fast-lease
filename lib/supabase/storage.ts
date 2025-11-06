@@ -1,4 +1,6 @@
-import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 
 type SignedUrlOptions = {
   bucket: string;
@@ -20,50 +22,88 @@ export async function createSignedStorageUrl({
     return null;
   }
 
-  try {
-    const supabase = await createSupabaseServiceClient();
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .createSignedUrl(normalizedPath, expiresIn, { download: true });
+  const attempts: Array<{
+    label: "service" | "server";
+    factory: () => Promise<SupabaseClient>;
+  }> = [
+    {
+      label: "service",
+      factory: () => createSupabaseServiceClient(),
+    },
+    {
+      label: "server",
+      factory: () => createSupabaseServerClient(),
+    },
+  ];
 
-    if (error) {
-      const normalizedError = error as {
-        status?: number;
-        statusCode?: string | number;
-        message?: string;
-      };
-      const statusCodeValue = normalizedError.statusCode ?? normalizedError.status;
-      const statusCode = typeof statusCodeValue === "string"
-        ? Number(statusCodeValue)
-        : Number(statusCodeValue ?? NaN);
-      const isNotFound =
-        statusCode === 404 ||
-        /not found/i.test(normalizedError.message ?? "") ||
-        /object .+ does not exist/i.test(normalizedError.message ?? "");
+  for (const attempt of attempts) {
+    let client: SupabaseClient;
+    try {
+      client = await attempt.factory();
+    } catch (factoryError) {
+      console.warn("[storage] unable to create", attempt.label, "supabase client for signed url", {
+        bucket,
+        path: normalizedPath,
+        error: factoryError,
+      });
+      continue;
+    }
 
-      if (isNotFound) {
-        console.warn("[storage] object not found, returning null URL", {
+    try {
+      const { data, error } = await client.storage
+        .from(bucket)
+        .createSignedUrl(normalizedPath, expiresIn, { download: true });
+
+      if (error) {
+        const normalizedError = error as {
+          status?: number;
+          statusCode?: string | number;
+          message?: string;
+        };
+        const statusCodeValue = normalizedError.statusCode ?? normalizedError.status;
+        const statusCode = typeof statusCodeValue === "string"
+          ? Number(statusCodeValue)
+          : Number(statusCodeValue ?? NaN);
+        const isNotFound =
+          statusCode === 404 ||
+          /not found/i.test(normalizedError.message ?? "") ||
+          /object .+ does not exist/i.test(normalizedError.message ?? "");
+
+        if (isNotFound) {
+          console.warn("[storage] object not found, returning null URL", {
+            bucket,
+            path: normalizedPath,
+          });
+          return null;
+        }
+
+        console.error("[storage] failed to create signed url", {
           bucket,
           path: normalizedPath,
+          error,
+          clientType: attempt.label,
         });
-        return null;
+        continue;
       }
 
-      console.error("[storage] failed to create signed url", {
+      if (data?.signedUrl) {
+        return data.signedUrl;
+      }
+
+      console.warn("[storage] createSignedUrl returned empty data", {
+        bucket,
+        path: normalizedPath,
+        clientType: attempt.label,
+      });
+    } catch (error) {
+      console.error("[storage] unexpected error generating signed url", {
         bucket,
         path: normalizedPath,
         error,
+        clientType: attempt.label,
       });
-      return null;
     }
-
-    return data?.signedUrl ?? null;
-  } catch (error) {
-    console.error("[storage] unexpected error generating signed url", {
-      bucket,
-      path: normalizedPath,
-      error,
-    });
-    return null;
   }
+
+  return null;
 }

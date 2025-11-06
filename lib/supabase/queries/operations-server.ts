@@ -2,11 +2,17 @@ import { z } from "zod";
 
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
+import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 import { buildSlugWithId, extractIdFromSlug, slugify } from "@/lib/utils/slugs";
 import {
   OPS_DEAL_STATUS_META,
   OPS_VEHICLE_STATUS_META,
-  VEHICLE_DOCUMENT_TYPE_LABEL_MAP,
+  getClientDocumentLabel,
+  getDealDocumentLabel,
+  getVehicleDocumentLabel,
+  normalizeClientDocumentType,
+  normalizeDealDocumentType,
+  normalizeVehicleDocumentType,
 } from "@/lib/supabase/queries/operations";
 import type {
   OpsClientRecord,
@@ -41,6 +47,15 @@ import type {
 import { mapTaskRow, TASK_SELECT } from "@/lib/supabase/queries/tasks";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
+
+const humanizeKey = (key: string): string => {
+  return key
+    .replace(/[_\-]+/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/^./, (char) => char.toUpperCase());
+};
 
 // Константы workflow ролей и статусов
 export const WORKFLOW_ROLES = [
@@ -1911,11 +1926,19 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
 
   const documentDescriptors = (await Promise.all(
     clientDocumentsRows.map(async (document) => {
+      const signedUrl = document.storage_path
+        ? await createSignedStorageUrl({ bucket: "client-documents", path: document.storage_path })
+        : null;
       const metadata = (document.metadata ?? {}) as Record<string, unknown>;
+      const rawDocumentType = getString(document.document_type);
+      const normalizedDocumentType = normalizeClientDocumentType(rawDocumentType);
+      const typeLabel = getClientDocumentLabel(rawDocumentType);
       const preferredName =
         getString(document.title) ??
         getString(metadata?.["label"]) ??
-        getString(document.document_type) ??
+        typeLabel ??
+        normalizedDocumentType ??
+        rawDocumentType ??
         "Документ";
 
       const contextRaw = getString(metadata?.["upload_context"]);
@@ -1924,7 +1947,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
           ? ("company" as const)
           : contextRaw === "personal"
             ? ("personal" as const)
-            : document.document_type === "company_license"
+            : normalizedDocumentType === "company_license" || normalizedDocumentType === "corporate_documents"
               ? ("company" as const)
               : ("personal" as const);
 
@@ -1932,7 +1955,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
         id: document.id,
         name: preferredName,
         status: getString(document.status) ?? "uploaded",
-        documentType: getString(document.document_type),
+        documentType: normalizedDocumentType ?? rawDocumentType,
         category: getString(document.document_category),
         source: "client" as const,
         bucket: "client-documents",
@@ -1941,7 +1964,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
         signedAt: document.verified_at ?? null,
         metadata,
         context,
-        url: null,
+        url: signedUrl,
       } satisfies OpsClientDocument;
     }),
   )) as Array<OpsClientDocument | null>;
@@ -2035,6 +2058,7 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
       `
         id,
         vin,
+        license_plate,
         make,
         model,
         variant,
@@ -2067,6 +2091,11 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
   return data.map((vehicle) => {
     const id = (vehicle.id as string) ?? `${vehicle.vin ?? "vehicle"}`;
     const vin = ((vehicle.vin as string) ?? "—").toUpperCase();
+    const licensePlateInfo = normalizeLicensePlate(
+      (vehicle.license_plate as string | null | undefined) ?? null,
+    );
+    const licensePlateNormalized = licensePlateInfo.normalized;
+    const licensePlateDisplay = licensePlateInfo.display ?? licensePlateNormalized ?? null;
     const make = String(vehicle.make ?? "").trim() || "Vehicle";
     const model = String(vehicle.model ?? "").trim();
     const name = `${make} ${model}`.trim();
@@ -2109,6 +2138,9 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
     return {
       id,
       vin,
+      licensePlate: licensePlateNormalized,
+      licensePlateDisplay,
+      licensePlateEmirate: licensePlateInfo.emirate ?? null,
       name,
       make,
       model: model || make,
@@ -2396,11 +2428,33 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const statusKey = mapStatusToWorkflow(dealRow.status);
 
   // Загружаем данные клиента отдельным запросом
-  const { data: clientData, error: clientError } = await supabase
+  let {
+    data: clientData,
+    error: clientError,
+  } = await supabase
     .from("profiles")
     .select("id, user_id, full_name, phone, status, nationality, metadata, source")
     .eq("user_id", dealRow.client_id)
     .maybeSingle();
+
+  if (clientError && isMissingColumnError(clientError, "source")) {
+    console.warn("[SERVER-OPS] profiles.source column missing, retrying client lookup without it", {
+      clientId: dealRow.client_id,
+    });
+    ({ data: clientData, error: clientError } = await supabase
+      .from("profiles")
+      .select("id, user_id, full_name, phone, status, nationality, metadata")
+      .eq("user_id", dealRow.client_id)
+      .maybeSingle());
+  }
+
+  if (clientError) {
+    console.error("[SERVER-OPS] failed to load client profile for deal", {
+      dealId: dealRow.id,
+      clientId: dealRow.client_id,
+      error: clientError,
+    });
+  }
 
   const contactRecord = Array.isArray(dealRow.customer_contact)
     ? (dealRow.customer_contact[0] ?? null)
@@ -2476,10 +2530,15 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
           ? await createSignedStorageUrl({ bucket: "client-documents", path: document.storage_path })
           : null;
         const metadata = (document.metadata ?? {}) as Record<string, unknown>;
+        const rawDocumentType = getString(document.document_type);
+        const normalizedDocumentType = normalizeClientDocumentType(rawDocumentType);
+        const typeLabel = getClientDocumentLabel(rawDocumentType);
         const preferredName =
           getString(document.title) ??
           getString(metadata?.["label"]) ??
-          getString(document.document_type) ??
+          typeLabel ??
+          normalizedDocumentType ??
+          rawDocumentType ??
           "Документ";
 
         const contextRaw = getString(metadata?.["upload_context"]);
@@ -2488,7 +2547,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
             ? ("company" as const)
             : contextRaw === "personal"
               ? ("personal" as const)
-              : document.document_type === "company_license"
+              : normalizedDocumentType === "company_license" || normalizedDocumentType === "corporate_documents"
                 ? ("company" as const)
                 : ("personal" as const);
 
@@ -2496,7 +2555,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
           id: document.id,
           name: preferredName,
           status: getString(document.status) ?? "uploaded",
-          documentType: getString(document.document_type),
+          documentType: normalizedDocumentType ?? rawDocumentType,
           category: getString(document.document_category),
           source: "client" as const,
           bucket: "client-documents",
@@ -2721,10 +2780,30 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       const signedUrl = doc.storage_path
         ? await createSignedStorageUrl({ bucket: "deal-documents", path: doc.storage_path })
         : null;
-      const documentType = doc.document_type ?? null;
-      const normalizedType = documentType?.toLowerCase() ?? "";
-      const title = doc.title || `${doc.document_type ?? "Document"}`.trim();
+      const rawDocumentType = typeof doc.document_type === "string" ? doc.document_type : null;
+      const normalizedDocumentType = normalizeDealDocumentType(rawDocumentType ?? undefined);
+      const resolvedDocumentType = normalizedDocumentType ?? (rawDocumentType ? rawDocumentType.trim() : null);
+      const typeLabel = getDealDocumentLabel(rawDocumentType ?? undefined);
+      const title = (() => {
+        const explicit = typeof doc.title === "string" ? doc.title.trim() : "";
+        if (explicit.length > 0) {
+          return doc.title as string;
+        }
+        if (typeLabel) {
+          return typeLabel;
+        }
+        if (resolvedDocumentType) {
+          return resolvedDocumentType
+            .replace(/[_\.]+/g, " ")
+            .split(" ")
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+            .join(" ");
+        }
+        return "Document";
+      })();
       const normalizedTitle = title.toLowerCase();
+      const normalizedType = (resolvedDocumentType ?? "").toLowerCase();
       let category: "required" | "signature" | "archived" | "other" = "required";
       if (
         normalizedType.includes("sign") ||
@@ -2835,7 +2914,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         status: statusDisplay,
         rawStatus: statusRaw,
         url: signedUrl,
-        documentType,
+        documentType: resolvedDocumentType,
         category,
         signaturesCollected,
         signaturesRequired,
@@ -2911,12 +2990,35 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     return parts.length > 0 ? parts.join(" ") : null;
   })();
 
-  const images = vehicleData?.vehicle_images ?? [];
-  const primaryImage = images.find((img) => img.is_primary) ?? images[0];
-  const signedUrl = primaryImage?.storage_path
-    ? await createSignedStorageUrl({ bucket: "vehicle-images", path: primaryImage.storage_path })
-    : null;
-  const imageUrl = signedUrl || "/assets/vehicle-placeholder.svg";
+  const rawImages = Array.isArray(vehicleData?.vehicle_images) ? vehicleData.vehicle_images : [];
+  const sortedImages = [...rawImages].sort(
+    (a, b) => (a?.sort_order ?? Number.MAX_SAFE_INTEGER) - (b?.sort_order ?? Number.MAX_SAFE_INTEGER),
+  );
+  const galleryEntries = await Promise.all(
+    sortedImages.map(async (img, index) => {
+      if (!img || typeof img.storage_path !== "string" || img.storage_path.length === 0) {
+        return {
+          id: img?.id ?? `vehicle-image-${index}`,
+          url: null,
+          label: img?.label ?? null,
+          isPrimary: Boolean(img?.is_primary),
+        };
+      }
+      const url = await createSignedStorageUrl({ bucket: "vehicle-images", path: img.storage_path });
+      return {
+        id: img.id ?? `vehicle-image-${index}`,
+        url,
+        label: img.label ?? null,
+        isPrimary: Boolean(img.is_primary),
+      };
+    }),
+  );
+  const vehicleGallery = galleryEntries.filter((entry) => entry.url);
+  const primaryGalleryImage =
+    vehicleGallery.find((img) => img?.isPrimary && img?.url) ??
+    vehicleGallery.find((img) => img?.url) ??
+    null;
+  const imageUrl = primaryGalleryImage?.url ?? "/assets/vehicle-placeholder.svg";
 
   const profileMetadata = (clientData?.metadata as Record<string, unknown> | null) ?? null;
   const metadataEmailCandidates = ["ops_email", "work_email", "email"];
@@ -3006,6 +3108,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     status: statusKey,
     description: profileDescription,
     image: imageUrl,
+    gallery: vehicleGallery.length > 0 ? vehicleGallery : undefined,
     monthlyPayment: formatCurrency(dealRow.monthly_payment),
     nextPayment: nextPaymentDisplay,
     dueAmount: outstandingAmountDisplay,
@@ -3462,6 +3565,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
       `
         id,
         vin,
+        license_plate,
         make,
         model,
         variant,
@@ -3565,15 +3669,6 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     return `${formatNumber(value)} км`;
   };
 
-  const humanizeKey = (key: string): string => {
-    return key
-      .replace(/[_\-]+/g, " ")
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/\s+/g, " ")
-      .trim()
-      .replace(/^./, (char) => char.toUpperCase());
-  };
-
   type GalleryEntry = { id: string; url: string | null; label: string | null; isPrimary: boolean };
   const rawImages = Array.isArray(vehicleDetail.vehicle_images) ? vehicleDetail.vehicle_images : [];
   const sortedImages = [...rawImages].sort((a, b) => (a?.sort_order ?? 0) - (b?.sort_order ?? 0));
@@ -3598,9 +3693,58 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     ?? null;
   const imageUrl = primaryGalleryImage?.url ?? "/assets/vehicle-placeholder.svg";
 
+  const rawFeatureList = (() => {
+    const raw = vehicleDetail.features;
+    if (!raw) {
+      return [] as string[];
+    }
+    if (Array.isArray(raw)) {
+      return raw
+        .map((item) => (typeof item === "string" ? item.trim() : String(item)))
+        .filter((value) => value.length > 0);
+    }
+    if (typeof raw === "object") {
+      return Object.entries(raw as JsonRecord)
+        .map(([key, value]) => {
+          if (value == null) {
+            return null;
+          }
+          const label = humanizeKey(key);
+          if (typeof value === "object") {
+            return `${label}: ${JSON.stringify(value)}`;
+          }
+          return `${label}: ${String(value)}`;
+        })
+        .filter((entry): entry is string => Boolean(entry));
+    }
+    return [String(raw)];
+  })();
+
+  const licensePlateFromFeatures = (() => {
+    for (const entry of rawFeatureList) {
+      const match = entry.match(/license\s*plate\s*[:\-–]?\s*(.+)/i);
+      if (match?.[1]) {
+        const value = match[1].trim();
+        if (value.length > 0) {
+          return value;
+        }
+      }
+    }
+    return null;
+  })();
+
+  const licensePlateColumn = getString((vehicleDetail as { license_plate?: unknown })?.license_plate);
+  const licensePlateSource = licensePlateColumn ?? licensePlateFromFeatures;
+  const licensePlateInfo = normalizeLicensePlate(licensePlateSource);
+  const licensePlateNormalized = licensePlateInfo.normalized;
+  const licensePlateDisplay = licensePlateInfo.display ?? licensePlateNormalized ?? null;
+
+  const featureList = rawFeatureList.filter((entry) => !/^license\s*plate\b/i.test(entry));
+
   const generalSpecs = [
     { label: "Статус", value: vehicleStatusLabel },
     { label: "VIN", value: vehicleDetail.vin ?? "—" },
+    { label: "Госномер", value: licensePlateDisplay ?? "—" },
     { label: "Марка", value: vehicleDetail.make ?? "—" },
     { label: "Модель", value: vehicleDetail.model ?? "—" },
     { label: "Комплектация", value: vehicleDetail.variant ?? "—" },
@@ -3651,33 +3795,6 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     specGroups.push(...specificationGroups);
   }
   specGroups.push({ title: "Учёт", specs: lifecycleSpecs });
-
-  const featureList = (() => {
-    const raw = vehicleDetail.features;
-    if (!raw) {
-      return [];
-    }
-    if (Array.isArray(raw)) {
-      return raw
-        .map((item) => (typeof item === "string" ? item.trim() : String(item)))
-        .filter((value) => value.length > 0);
-    }
-    if (typeof raw === "object") {
-      return Object.entries(raw as JsonRecord)
-        .map(([key, value]) => {
-          if (value == null) {
-            return null;
-          }
-          const label = humanizeKey(key);
-          if (typeof value === "object") {
-            return `${label}: ${JSON.stringify(value)}`;
-          }
-          return `${label}: ${String(value)}`;
-        })
-        .filter((entry): entry is string => Boolean(entry));
-    }
-    return [String(raw)];
-  })();
 
   type SupabaseVehicleDealRow = {
     id: string;
@@ -3972,6 +4089,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
   const highlightCandidates = (
     [
       { label: "VIN", value: vehicleDetail.vin ?? "—" },
+      { label: "Госномер", value: licensePlateDisplay ?? "—" },
       { label: "Год выпуска", value: vehicleDetail.year ? String(vehicleDetail.year) : "—" },
       { label: "Пробег", value: formatMileage(vehicleDetail.mileage) },
       ] satisfies VehicleHighlight[]
@@ -3982,6 +4100,9 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
   const vehicleRecord: OpsVehicleData = {
     id: vehicleDetail.id,
     vin: vehicleDetail.vin ?? null,
+    licensePlate: licensePlateNormalized,
+    licensePlateDisplay,
+    licensePlateEmirate: licensePlateInfo.emirate ?? null,
     make: vehicleDetail.make ?? null,
     model: vehicleDetail.model ?? null,
     variant: vehicleDetail.variant ?? null,
@@ -4044,13 +4165,12 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
             return humanizeKey(statusRaw.replace(/[_\.]+/g, " "));
         }
       })();
-      const typeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
+      const rawTypeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
+      const normalizedTypeCode = normalizeVehicleDocumentType(rawTypeCode);
+      const resolvedTypeCode = normalizedTypeCode ?? (rawTypeCode ? rawTypeCode.trim() : undefined);
       const typeLabel =
-        typeCode && VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode]
-          ? VEHICLE_DOCUMENT_TYPE_LABEL_MAP[typeCode]
-          : typeCode
-            ? humanizeKey(typeCode.replace(/\./g, " "))
-            : undefined;
+        getVehicleDocumentLabel(rawTypeCode) ??
+        (resolvedTypeCode ? humanizeKey(resolvedTypeCode.replace(/\./g, " ")) : undefined);
       const uploadedAtIso = typeof doc?.uploaded_at === "string" ? doc.uploaded_at : null;
       const dateLabel = formatShortDate(uploadedAtIso);
       const documentId = doc?.id ?? `vehicle-doc-${Math.random().toString(36).slice(2)}`;
@@ -4059,7 +4179,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
         title: doc?.title ?? typeLabel ?? "Документ",
         status,
         statusTone,
-        typeCode,
+        typeCode: resolvedTypeCode,
         type: typeLabel,
         date: dateLabel !== "—" ? dateLabel : undefined,
         uploadedAt: uploadedAtIso,

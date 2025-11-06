@@ -1,3 +1,5 @@
+import type { EmiratesCode } from "@/lib/utils/license-plate";
+
 // Типы и константы для операций
 // Серверные функции перемещены в operations-server.ts
 
@@ -373,6 +375,9 @@ export type OpsClientCompanyProfile = {
 export type OpsCarRecord = {
   id: string;
   vin: string;
+  licensePlate: string | null;
+  licensePlateDisplay?: string | null;
+  licensePlateEmirate?: EmiratesCode | null;
   name: string;
   make: string;
   model: string;
@@ -524,6 +529,7 @@ export type OpsDealProfile = {
   status: string;
   description: string;
   image: string;
+  gallery?: Array<{ id: string; url: string | null; label?: string | null; isPrimary?: boolean }>;
   monthlyPayment: string;
   nextPayment: string;
   dueAmount: string;
@@ -712,6 +718,60 @@ export type OpsClientProfile = {
 
 export type OpsTone = "success" | "warning" | "info" | "danger" | "muted";
 
+const normalizeDocumentTypeKey = (value: string) => value.trim().toLowerCase();
+
+function createDocumentTypeRegistry<
+  TValue extends string,
+  TEntry extends { value: TValue; label: string }
+>(
+  entries: readonly TEntry[],
+  aliasEntries: ReadonlyArray<[string, TValue]>,
+) {
+  const canonicalIndex = entries.reduce<Record<string, TValue>>((acc, entry) => {
+    acc[normalizeDocumentTypeKey(entry.value)] = entry.value;
+    return acc;
+  }, {});
+
+  const aliasIndex = aliasEntries.reduce<Record<string, TValue>>((acc, [alias, target]) => {
+    acc[normalizeDocumentTypeKey(alias)] = target;
+    return acc;
+  }, {});
+
+  const labelMap = entries.reduce<Record<string, string>>((acc, entry) => {
+    acc[entry.value] = entry.label;
+    acc[normalizeDocumentTypeKey(entry.value)] = entry.label;
+    return acc;
+  }, {});
+
+  for (const [alias, target] of aliasEntries) {
+    const normalizedAlias = normalizeDocumentTypeKey(alias);
+    const targetLabel = labelMap[target] ?? labelMap[normalizeDocumentTypeKey(target)];
+    if (!targetLabel) {
+      continue;
+    }
+    labelMap[alias] = targetLabel;
+    labelMap[normalizedAlias] = targetLabel;
+  }
+
+  const normalizeValue = (value?: string | null): TValue | undefined => {
+    if (!value) return undefined;
+    const key = normalizeDocumentTypeKey(value);
+    return canonicalIndex[key] ?? aliasIndex[key] ?? undefined;
+  };
+
+  const resolveLabel = (value?: string | null): string | undefined => {
+    if (!value) return undefined;
+    const normalized = normalizeDocumentTypeKey(value);
+    return labelMap[value] ?? labelMap[normalized];
+  };
+
+  return {
+    labelMap,
+    normalizeValue,
+    resolveLabel,
+  } as const;
+}
+
 export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsTone }> = {
   draft: { label: "Черновик", tone: "muted" },
   available: { label: "Доступен", tone: "success" },
@@ -722,31 +782,37 @@ export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsT
 };
 
 export const VEHICLE_DOCUMENT_TYPES = [
-  { value: "vehicle_license", label: "Регистрация транспортного средства" },
   { value: "vehicle_registration", label: "Регистрационные данные транспортного средства" },
   { value: "vehicle_inspection_certificate", label: "Сертификат техосмотра" },
   { value: "vehicle_possession_certificate", label: "Сертификат владения транспортным средством" },
-  { value: "vehicle_test_certificate", label: "Сертификат тестирования транспортного средства" },
   { value: "vehicle_transfer_certificate", label: "Сертификат передачи транспортного средства" },
-  { value: "certificate", label: "Общий сертификат" },
   { value: "certificate_of_installation", label: "Сертификат установки" },
   { value: "delivery_form", label: "Акт приёма-передачи" },
   { value: "insurance_policy", label: "Страховой полис" },
   { value: "insurance_policy_with_tax_invoice", label: "Страховка с налоговым инвойсом" },
-  { value: "motor_insurance_policy", label: "Страховой полис на транспорт" },
-  { value: "motor_insurance_policy_schedule", label: "График страхового покрытия" },
   { value: "other", label: "Другой документ" },
 ] as const;
 
 export type VehicleDocumentTypeValue = (typeof VEHICLE_DOCUMENT_TYPES)[number]["value"];
 
-export const VEHICLE_DOCUMENT_TYPE_LABEL_MAP = VEHICLE_DOCUMENT_TYPES.reduce<Record<string, string>>(
-  (acc, entry) => {
-    acc[entry.value] = entry.label;
-    return acc;
-  },
-  {},
-);
+const VEHICLE_DOCUMENT_TYPE_ALIAS_ENTRIES = [
+  ["vehicle_license", "vehicle_registration"],
+  ["vehicle_test_certificate", "vehicle_inspection_certificate"],
+  ["certificate", "vehicle_inspection_certificate"],
+  ["motor_insurance_policy", "insurance_policy"],
+  ["motor_insurance_policy_schedule", "insurance_policy"],
+] as const satisfies ReadonlyArray<[string, VehicleDocumentTypeValue]>;
+
+const VEHICLE_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<
+  VehicleDocumentTypeValue,
+  (typeof VEHICLE_DOCUMENT_TYPES)[number]
+>(VEHICLE_DOCUMENT_TYPES, VEHICLE_DOCUMENT_TYPE_ALIAS_ENTRIES);
+
+export const VEHICLE_DOCUMENT_TYPE_LABEL_MAP = VEHICLE_DOCUMENT_TYPE_REGISTRY.labelMap;
+
+export const normalizeVehicleDocumentType = VEHICLE_DOCUMENT_TYPE_REGISTRY.normalizeValue;
+
+export const getVehicleDocumentLabel = VEHICLE_DOCUMENT_TYPE_REGISTRY.resolveLabel;
 
 export type ClientDocumentContext = "personal" | "company" | "any";
 
@@ -755,81 +821,116 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "passport", label: "Паспорт", context: "personal" as const },
   { value: "visa", label: "Виза", context: "personal" as const },
   { value: "driving_license", label: "Водительские права", context: "personal" as const },
-  { value: "id_card", label: "ID Card", context: "personal" as const },
-  { value: "identity_card", label: "Identity Card", context: "personal" as const },
-  { value: "identity_document", label: "Identity Document", context: "personal" as const },
-  { value: "identity_documents", label: "Identity Documents", context: "personal" as const },
-  { value: "identification", label: "Identification", context: "personal" as const },
-  { value: "identification_document", label: "Identification Document", context: "personal" as const },
-  { value: "identification_documents", label: "Identification Documents", context: "personal" as const },
-  { value: "personal_identification", label: "Personal Identification", context: "personal" as const },
+  { value: "identity_document", label: "Документ, удостоверяющий личность", context: "personal" as const },
+  { value: "salary_certificate", label: "Справка о доходах", context: "personal" as const },
+  { value: "bank_statement", label: "Банковская выписка", context: "personal" as const },
+  { value: "proof_of_address", label: "Подтверждение адреса", context: "personal" as const },
   { value: "company_license", label: "Лицензия компании", context: "company" as const },
+  { value: "corporate_documents", label: "Корпоративные документы", context: "company" as const },
+  { value: "company_bank_statement", label: "Банковская выписка компании", context: "company" as const },
+  { value: "other", label: "Другой документ", context: "any" as const },
 ] as const;
 
 export type ClientDocumentTypeValue = (typeof CLIENT_DOCUMENT_TYPES)[number]["value"];
 
-export const CLIENT_DOCUMENT_TYPE_LABEL_MAP = CLIENT_DOCUMENT_TYPES.reduce<Record<string, string>>(
-  (acc, entry) => {
-    acc[entry.value] = entry.label;
-    return acc;
-  },
-  {},
-);
+const CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES = [
+  ["id_card", "identity_document"],
+  ["identity_card", "identity_document"],
+  ["identity_documents", "identity_document"],
+  ["identification", "identity_document"],
+  ["identification_document", "identity_document"],
+  ["identification_documents", "identity_document"],
+  ["personal_identification", "identity_document"],
+  ["national_id", "identity_document"],
+  ["passport_copy", "passport"],
+  ["bank_statements", "bank_statement"],
+  ["proof_of_income", "salary_certificate"],
+  ["salary_cert", "salary_certificate"],
+  ["eid", "emirates_id"],
+  ["emirates_id_card", "emirates_id"],
+  ["trade_license", "company_license"],
+  ["commercial_license", "company_license"],
+  ["company_registration_documents", "corporate_documents"],
+  ["business_registration_documents", "corporate_documents"],
+  ["company_and_transaction_documents", "corporate_documents"],
+  ["company_documents", "corporate_documents"],
+  ["company_corporate_documents", "corporate_documents"],
+  ["corporate_document", "corporate_documents"],
+  ["company_bank_statements", "company_bank_statement"],
+] as const satisfies ReadonlyArray<[string, ClientDocumentTypeValue]>;
+
+const CLIENT_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<
+  ClientDocumentTypeValue,
+  (typeof CLIENT_DOCUMENT_TYPES)[number]
+>(CLIENT_DOCUMENT_TYPES, CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES);
+
+export const CLIENT_DOCUMENT_TYPE_LABEL_MAP = CLIENT_DOCUMENT_TYPE_REGISTRY.labelMap;
+
+export const normalizeClientDocumentType = CLIENT_DOCUMENT_TYPE_REGISTRY.normalizeValue;
+
+export const getClientDocumentLabel = CLIENT_DOCUMENT_TYPE_REGISTRY.resolveLabel;
 
 export type DealDocumentCategory = "required" | "signature" | "archived" | "other";
 
 export const DEAL_DOCUMENT_TYPES = [
   { value: "account_confirmation_letter", label: "Справка об открытии счёта", category: "other" as const },
   { value: "addendum", label: "Дополнительное соглашение", category: "other" as const },
-  { value: "additional_agreement", label: "Дополнительное соглашение (другое)", category: "other" as const },
   { value: "assigning_letter", label: "Письмо об уступке прав", category: "signature" as const },
   { value: "authorization_letter", label: "Письмо-доверенность", category: "signature" as const },
   { value: "bank_account_details", label: "Банковские реквизиты", category: "other" as const },
-  { value: "business_registration_documents", label: "Регистрационные документы бизнеса", category: "other" as const },
   { value: "commercial_license", label: "Коммерческая лицензия", category: "required" as const },
-  { value: "company_and_transaction_documents", label: "Документы по компании и сделке", category: "other" as const },
-  { value: "company_registration_documents", label: "Регистрационные документы компании", category: "other" as const },
-  { value: "contract", label: "Контракт", category: "required" as const },
   { value: "corporate_documents", label: "Корпоративные документы", category: "other" as const },
+  { value: "contract", label: "Контракт", category: "required" as const },
   { value: "estimation", label: "Смета/оценка", category: "other" as const },
   { value: "investment_agreement", label: "Инвестиционный договор", category: "required" as const },
   { value: "invoice", label: "Инвойс", category: "other" as const },
   { value: "lease_agreement", label: "Договор аренды", category: "required" as const },
-  { value: "long_term_rental_agreement", label: "Долгосрочный договор аренды", category: "required" as const },
-  { value: "long_term_rental_vehicle_agreement", label: "Долгосрочный договор аренды авто", category: "required" as const },
-  { value: "long_term_vehicle_rental_agreement", label: "Долгосрочный договор аренды транспорта", category: "required" as const },
   { value: "memorandum_of_understanding", label: "Меморандум о взаимопонимании", category: "signature" as const },
-  { value: "other", label: "Документ сделки", category: "other" as const },
   { value: "payment_schedule", label: "Платёжный график", category: "required" as const },
-  { value: "preliminary_vehicle_purchase_agreement", label: "Предварительный договор покупки авто", category: "required" as const },
   { value: "proforma_invoice", label: "Проформа-инвойс", category: "other" as const },
-  { value: "purchase_agreement", label: "Договор купли-продажи", category: "required" as const },
   { value: "receipt", label: "Квитанция", category: "other" as const },
   { value: "receipt_voucher", label: "Приходный ордер", category: "archived" as const },
-  { value: "rent_payment_schedule", label: "График арендных платежей", category: "required" as const },
   { value: "sale_confirmation", label: "Подтверждение продажи", category: "signature" as const },
-  { value: "sale_confirmation_letter", label: "Письмо-подтверждение продажи", category: "signature" as const },
-  { value: "schedule", label: "График платежей (общее)", category: "required" as const },
+  { value: "statement", label: "Statement of Account", category: "other" as const },
   { value: "tax_credit_note", label: "Корректировочный налоговый документ", category: "archived" as const },
   { value: "tax_invoice", label: "Налоговый инвойс", category: "other" as const },
   { value: "termination_contract", label: "Договор расторжения", category: "archived" as const },
   { value: "vat_registration_certificate", label: "Сертификат регистрации VAT", category: "required" as const },
   { value: "vehicle_purchase_agreement", label: "Договор покупки транспортного средства", category: "required" as const },
-  { value: "vehicle_rental_agreement", label: "Договор аренды транспортного средства", category: "required" as const },
   { value: "vehicle_sale_contract", label: "Контракт продажи транспортного средства", category: "required" as const },
-  { value: "vehicle_sales_agreement", label: "Договор продажи транспортного средства", category: "required" as const },
-  { value: "statement", label: "Statement of Account", category: "other" as const },
+  { value: "other", label: "Документ сделки", category: "other" as const },
 ] as const;
 
 export type DealDocumentTypeValue = (typeof DEAL_DOCUMENT_TYPES)[number]["value"];
 
-export const DEAL_DOCUMENT_TYPE_LABEL_MAP = DEAL_DOCUMENT_TYPES.reduce<Record<string, string>>(
-  (acc, entry) => {
-    acc[entry.value] = entry.label;
-    return acc;
-  },
-  {},
-);
+const DEAL_DOCUMENT_TYPE_ALIAS_ENTRIES = [
+  ["additional_agreement", "addendum"],
+  ["business_registration_documents", "corporate_documents"],
+  ["company_registration_documents", "corporate_documents"],
+  ["company_and_transaction_documents", "corporate_documents"],
+  ["company_documents", "corporate_documents"],
+  ["long_term_rental_agreement", "lease_agreement"],
+  ["long_term_rental_vehicle_agreement", "lease_agreement"],
+  ["long_term_vehicle_rental_agreement", "lease_agreement"],
+  ["vehicle_rental_agreement", "lease_agreement"],
+  ["rent_payment_schedule", "payment_schedule"],
+  ["schedule", "payment_schedule"],
+  ["preliminary_vehicle_purchase_agreement", "vehicle_purchase_agreement"],
+  ["purchase_agreement", "vehicle_purchase_agreement"],
+  ["vehicle_sales_agreement", "vehicle_sale_contract"],
+  ["sale_confirmation_letter", "sale_confirmation"],
+] as const satisfies ReadonlyArray<[string, DealDocumentTypeValue]>;
+
+const DEAL_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<
+  DealDocumentTypeValue,
+  (typeof DEAL_DOCUMENT_TYPES)[number]
+>(DEAL_DOCUMENT_TYPES, DEAL_DOCUMENT_TYPE_ALIAS_ENTRIES);
+
+export const DEAL_DOCUMENT_TYPE_LABEL_MAP = DEAL_DOCUMENT_TYPE_REGISTRY.labelMap;
+
+export const normalizeDealDocumentType = DEAL_DOCUMENT_TYPE_REGISTRY.normalizeValue;
+
+export const getDealDocumentLabel = DEAL_DOCUMENT_TYPE_REGISTRY.resolveLabel;
 
 export type OpsVehicleDocument = {
   id: string;
@@ -873,6 +974,9 @@ export type OpsVehicleProfile = {
 export type OpsVehicleData = {
   id: string;
   vin: string | null;
+  licensePlate: string | null;
+  licensePlateDisplay?: string | null;
+  licensePlateEmirate?: EmiratesCode | null;
   make: string | null;
   model: string | null;
   variant: string | null;

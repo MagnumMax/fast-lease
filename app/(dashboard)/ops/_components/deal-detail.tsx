@@ -1,17 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  AlertTriangle,
   BellRing,
-  CalendarClock,
   CalendarDays,
   CalendarRange,
-  CheckCircle2,
-  Clock3,
   Download,
   FileText,
   Gauge,
@@ -31,6 +26,7 @@ import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
 import { DealStageTasks } from "@/app/(dashboard)/ops/_components/deal-stage-tasks";
 import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dialog";
 import { DocumentList } from "./document-list";
+import { VehicleGallery } from "./vehicle-gallery";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 
 type DealDetailProps = {
@@ -45,22 +41,6 @@ function slugifyRouteSegment(value: string): string {
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()
     .replace(/\s+/g, "-");
-}
-
-type InvoiceStatusVariant = "danger" | "warning" | "success";
-
-function getInvoiceStatusMeta(status: string): { icon: LucideIcon; variant: InvoiceStatusVariant } {
-  const normalized = status.toLowerCase();
-
-  if (normalized.includes("overdue") || normalized.includes("просроч")) {
-    return { icon: AlertTriangle, variant: "danger" };
-  }
-
-  if (normalized.includes("pending") || normalized.includes("ожида")) {
-    return { icon: Clock3, variant: "warning" };
-  }
-
-  return { icon: CheckCircle2, variant: "success" };
 }
 
 function getVehicleInfoIcon(label: string): LucideIcon {
@@ -122,7 +102,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
     overview = [],
     financials = [],
     contract = [],
-    paymentSchedule = [],
     documents,
     invoices,
     timeline,
@@ -171,23 +150,17 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const filteredKeyInformation = keyInformation.filter(
     (item) => item.label.toLowerCase() !== "odoo card",
   );
-  const statementHref = `/ops/deals/${slug}/statement`;
   const briefHref = `/ops/deals/${slug}/brief.pdf`;
   const overdueInvoices = invoices.filter((invoice) =>
     invoice.status.toLowerCase().includes("overdue"),
   );
-  const pendingInvoices = invoices.filter((invoice) =>
-    !invoice.status.toLowerCase().includes("overdue") &&
-    invoice.status.toLowerCase().includes("pending"),
-  );
-  const vehicleImageSrc = profile.image?.trim();
-  const hasVehicleImage = Boolean(vehicleImageSrc && vehicleImageSrc.length > 0);
-  const vehicleImageAlt = profile.vehicleName || "Изображение автомобиля";
-  const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
+  const VEHICLE_PLACEHOLDER_PATH = "/assets/vehicle-placeholder.svg";
+  const galleryPreview = useMemo(() => (profile.gallery ?? []).slice(0, 4), [profile.gallery]);
+  const galleryFallbackImage =
+    profile.image && profile.image !== VEHICLE_PLACEHOLDER_PATH ? profile.image : null;
+  const hasMoreGalleryImages = (profile.gallery?.length ?? 0) > galleryPreview.length;
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [invoiceFilter, setInvoiceFilter] = useState<"all" | "overdue" | "pending" | "paid">("all");
   const orderedTimeline = [...timeline].sort((a, b) => {
     const parse = (value: string): number => {
       const match = value.match(
@@ -223,35 +196,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
   );
   const dueAmountValue = parseCurrencyValue(profile.dueAmount);
   const hasDebt = (dueAmountValue ?? 0) > 0 || overdueInvoices.length > 0;
-  const paidInvoices = useMemo(
-    () =>
-      invoices.filter((invoice) =>
-        /paid|оплач/i.test(invoice.status),
-      ),
-    [invoices],
-  );
-  const lastPaidInvoice = paidInvoices.length > 0 ? paidInvoices[0] : null;
-  const filteredInvoices = useMemo(() => {
-    switch (invoiceFilter) {
-      case "overdue":
-        return overdueInvoices;
-      case "pending":
-        return pendingInvoices;
-      case "paid":
-        return paidInvoices;
-      default:
-        return invoices;
-    }
-  }, [invoiceFilter, invoices, overdueInvoices, pendingInvoices, paidInvoices]);
-  const invoiceFilterCounts = useMemo(
-    () => ({
-      all: invoices.length,
-      overdue: overdueInvoices.length,
-      pending: pendingInvoices.length,
-      paid: paidInvoices.length,
-    }),
-    [invoices.length, overdueInvoices.length, pendingInvoices.length, paidInvoices.length],
-  );
   const warnings = useMemo(() => {
     const list: Array<{ id: string; text: string; href?: string }> = [];
     if (hasDebt) {
@@ -322,14 +266,8 @@ export function DealDetailView({ detail }: DealDetailProps) {
     [guardStatuses],
   );
   const dealCostEntry = keyInformation.find((item) => item.label.toLowerCase().includes("стоим"));
-  const dealCostValue = parseCurrencyValue(dealCostEntry?.value ?? null);
-  const termEntry = keyInformation.find((item) => item.label.toLowerCase().includes("срок"));
-  const termMonths = termEntry?.value ? Number(termEntry.value.replace(/[^\d]/g, "")) || null : null;
-  const monthlyPaymentValue = parseCurrencyValue(profile.monthlyPayment);
-  const investorRoi =
-    termMonths && monthlyPaymentValue && dealCostValue
-      ? ((monthlyPaymentValue * termMonths) / dealCostValue - 1) * 100
-      : null;
+  const contractTermEntry = contract.find((item) => item.label.toLowerCase().includes("term"));
+  const contractStartEntry = contract.find((item) => item.label.toLowerCase().includes("contract start"));
   const normalizedClientName = client.name?.trim() ?? "";
   const clientDisplayName = normalizedClientName.length > 0 ? normalizedClientName : null;
   const normalizedVehicleName = profile.vehicleName?.trim() ?? "";
@@ -340,6 +278,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
     clientDisplayName && vehicleDescriptor
       ? `${clientDisplayName} * ${vehicleDescriptor}`
       : clientDisplayName ?? vehicleDescriptor ?? "—";
+  const nextPaymentDisplay = profile.nextPayment?.trim() ?? "";
   const nextActionLabel = nextTask ? nextTask.guardLabel ?? nextTask.title : "Нет активных задач";
   const summaryCards: Array<{
     id: string;
@@ -353,14 +292,19 @@ export function DealDetailView({ detail }: DealDetailProps) {
       value: dealCostEntry?.value ?? "—",
     },
     {
-      id: "roi",
-      label: "ROI (оценка)",
-      value: investorRoi != null ? `${investorRoi.toFixed(1)}%` : "—",
+      id: "term",
+      label: "Term (months)",
+      value: contractTermEntry?.value ?? "—",
     },
     {
-      id: "term",
-      label: "Срок",
-      value: termMonths ? `${termMonths} мес.` : "—",
+      id: "contract-start",
+      label: "Contract start",
+      value: contractStartEntry?.value ?? "—",
+    },
+    {
+      id: "next-payment",
+      label: "Следующий платёж",
+      value: nextPaymentDisplay.length > 0 ? nextPaymentDisplay : "—",
     },
     {
       id: "debt",
@@ -456,23 +400,19 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 </Button>
               </div>
             </div>
-            <div className="relative h-48 w-full overflow-hidden rounded-xl border border-border/60 bg-muted sm:h-56">
-              <Image
-                src={
-                  hasVehicleImage && !imageError ? (vehicleImageSrc as string) : "/assets/vehicle-placeholder.svg"
-                }
-                alt={vehicleImageAlt}
-                fill
-                className={`object-cover ${hasVehicleImage && !imageError ? "" : "opacity-60"}`}
-                sizes="(min-width: 1280px) 22rem, (min-width: 1024px) 18rem, 100vw"
-                priority
-                onError={() => setImageError(true)}
-                onLoad={() => setImageLoading(false)}
+            <div className="space-y-2">
+              <VehicleGallery
+                images={galleryPreview}
+                fallbackImageSrc={galleryFallbackImage ?? undefined}
+                emptyMessage="Фото автомобиля пока недоступны."
+                className="rounded-xl border border-border/60 bg-background/60 p-2"
+                gridClassName="grid gap-2 sm:grid-cols-2"
+                showLabels={false}
               />
-              {imageLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                </div>
+              {hasMoreGalleryImages ? (
+                <p className="text-xs text-muted-foreground">
+                  Показаны первые фотографии. Полную галерею смотрите в карточке автомобиля.
+                </p>
               ) : null}
             </div>
           </div>
@@ -577,113 +517,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
               ) : null}
             </CardContent>
           </Card>
-
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-              <CardTitle>Финансы</CardTitle>
-              <Button variant="outline" size="sm" asChild className="rounded-lg">
-                <Link href={statementHref}>Открыть карточку</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-xl border border-border/60 bg-card/60 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Задолженность</p>
-                  <p className={`mt-2 text-2xl font-semibold ${hasDebt ? "text-rose-600" : "text-emerald-600"}`}>
-                    {profile.dueAmount}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-card/60 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Следующий платёж</p>
-                  <p className="mt-2 flex items-center gap-2 text-sm text-foreground">
-                    <CalendarClock className="h-4 w-4 text-muted-foreground" /> {profile.nextPayment}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-card/60 p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Последний платёж</p>
-                  <p className="mt-2 text-sm font-semibold text-foreground">
-                    {lastPaidInvoice ? `${lastPaidInvoice.totalAmount} · ${lastPaidInvoice.dueDate}` : "—"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {(["all", "overdue", "pending", "paid"] as const).map((filterKey) => (
-                  <Button
-                    key={filterKey}
-                    size="sm"
-                    variant={invoiceFilter === filterKey ? "default" : "outline"}
-                    className="rounded-lg"
-                    onClick={() => setInvoiceFilter(filterKey)}
-                  >
-                    {filterKey === "all"
-                      ? "Все"
-                      : filterKey === "overdue"
-                        ? "Просрочено"
-                        : filterKey === "pending"
-                          ? "Ожидает"
-                          : "Оплачено"}
-                    <Badge variant="outline" className="ml-2 rounded-md">
-                      {invoiceFilterCounts[filterKey]}
-                    </Badge>
-                  </Button>
-                ))}
-              </div>
-
-              {filteredInvoices.length ? (
-                <div className="space-y-2">
-                  {filteredInvoices.map((invoice) => {
-                    const { icon: InvoiceStatusIcon, variant } = getInvoiceStatusMeta(invoice.status);
-                    return (
-                      <div
-                        key={invoice.id}
-                        className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card/70 px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{invoice.invoiceNumber}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {invoice.type} · {invoice.dueDate}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <span className="text-sm font-medium text-foreground">{invoice.totalAmount}</span>
-                          <Badge variant={variant} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1">
-                            <InvoiceStatusIcon className="h-3.5 w-3.5" />
-                            {invoice.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Инвойсы по выбранному фильтру отсутствуют.</p>
-              )}
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" asChild className="rounded-lg">
-                  <Link href={statementHref}>Скачать Statement of Account</Link>
-                </Button>
-              </div>
-              {paymentSchedule.length ? (
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">График платежей</p>
-                  <ul className="space-y-2 text-sm">
-                    {paymentSchedule.map((entry, index) => (
-                      <li
-                        key={`${entry.label}-${index}`}
-                        className="rounded-lg border border-border/60 bg-card/60 px-3 py-2"
-                      >
-                        <p className="font-medium text-foreground">{entry.label}</p>
-                        <p className="text-xs text-muted-foreground">{entry.value}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-
           {financials.length ? (
             <Card className="bg-card/60 backdrop-blur">
               <CardHeader>

@@ -9,18 +9,23 @@ import {
   OPS_VEHICLE_STATUS_META,
   VEHICLE_DOCUMENT_TYPES,
   VEHICLE_DOCUMENT_TYPE_LABEL_MAP,
+  normalizeVehicleDocumentType,
   type VehicleDocumentTypeValue,
   type OpsCarRecord,
 } from "@/lib/supabase/queries/operations";
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
+import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 
-const inputSchema = z.object({
-  name: z.string().min(1),
-  vin: z.string().min(1),
+const createVehicleSchema = z.object({
+  vin: z.string().min(3),
+  make: z.string().min(1),
+  model: z.string().min(1),
   year: z.string().optional(),
-  type: z.string().optional(),
+  bodyType: z.string().min(1),
+  fuelType: z.string().optional(),
+  transmission: z.string().optional(),
   mileage: z.string().optional(),
 });
 
@@ -52,6 +57,7 @@ const updateVehicleSchema = z.object({
   vehicleId: z.string().uuid(),
   slug: z.string().min(1),
   vin: z.string().min(3),
+  licensePlate: z.string().optional(),
   make: z.string().min(1),
   model: z.string().min(1),
   variant: z.string().optional(),
@@ -88,7 +94,39 @@ const deleteVehicleSchema = z.object({
   slug: z.string().min(1),
 });
 
-type CreateOperationsCarInput = z.infer<typeof inputSchema>;
+const updateVehicleImageMetaSchema = z.object({
+  vehicleId: z.string().uuid(),
+  imageId: z.string().uuid(),
+  slug: z.string().min(1),
+  label: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .nullable(),
+  setPrimary: z.boolean().optional(),
+});
+
+const updateVehicleDocumentSchema = z.object({
+  vehicleId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  slug: z.string().min(1),
+  title: z
+    .string()
+    .trim()
+    .min(1)
+    .max(160)
+    .optional(),
+  type: z.string().optional(),
+});
+
+const deleteVehicleDocumentSchema = z.object({
+  vehicleId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  slug: z.string().min(1),
+});
+
+type CreateOperationsCarInput = z.infer<typeof createVehicleSchema>;
 
 export type CreateOperationsCarResult =
   | { data: OpsCarRecord; error?: undefined }
@@ -103,6 +141,9 @@ export type UploadVehicleImagesResult =
   | { success: false; error: string };
 
 type DeleteVehicleImageInput = z.infer<typeof deleteVehicleImageSchema>;
+type UpdateVehicleImageMetaInput = z.infer<typeof updateVehicleImageMetaSchema>;
+type UpdateVehicleDocumentInput = z.infer<typeof updateVehicleDocumentSchema>;
+type DeleteVehicleDocumentInput = z.infer<typeof deleteVehicleDocumentSchema>;
 
 export type DeleteVehicleImageResult =
   | { success: true }
@@ -117,6 +158,18 @@ export type DeleteOperationsCarResult =
 export type VerifyVehicleDeletionResult =
   | { canDelete: true }
   | { canDelete: false; reason?: string };
+
+export type UpdateVehicleImageMetaResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export type UpdateVehicleDocumentResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export type DeleteVehicleDocumentResult =
+  | { success: true }
+  | { success: false; error: string };
 
 function parseYear(value?: string) {
   if (!value) return null;
@@ -150,17 +203,20 @@ function normalizeString(value?: string) {
 export async function createOperationsCar(
   input: CreateOperationsCarInput,
 ): Promise<CreateOperationsCarResult> {
-  const parsed = inputSchema.safeParse(input);
+  const parsed = createVehicleSchema.safeParse(input);
 
   if (!parsed.success) {
     return { error: "Введите корректные данные автомобиля." };
   }
 
-  const { name, vin, year, type, mileage } = parsed.data;
-  const normalizedName = name.trim().replace(/\s+/g, " ");
-  const [make, ...rest] = normalizedName.split(" ");
-  const model = rest.join(" ") || make;
+  const { vin, make, model, year, bodyType, mileage, fuelType, transmission } = parsed.data;
   const normalizedVin = vin.trim().toUpperCase();
+  const normalizedMake = make.trim().replace(/\s+/g, " ");
+  const normalizedModel = model.trim().replace(/\s+/g, " ");
+  const normalizedBodyType = bodyType.trim().replace(/\s+/g, " ");
+  const normalizedFuel = fuelType ? fuelType.trim().replace(/\s+/g, " ") : null;
+  const normalizedTransmission = transmission ? transmission.trim().replace(/\s+/g, " ") : null;
+  const displayName = `${normalizedMake} ${normalizedModel}`.trim();
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -169,14 +225,16 @@ export async function createOperationsCar(
       .from("vehicles")
       .insert({
         vin: normalizedVin,
-        make,
-        model,
+        make: normalizedMake,
+        model: normalizedModel,
         year: parseYear(year),
-        body_type: type?.trim() || null,
+        body_type: normalizedBodyType,
+        fuel_type: normalizedFuel,
+        transmission: normalizedTransmission,
         mileage: parseMileage(mileage),
         status: "available",
       })
-      .select("id, vin, make, model, variant, year, body_type, mileage")
+      .select("id, vin, license_plate, make, model, variant, year, body_type, mileage, status")
       .single();
 
     if (error) {
@@ -189,24 +247,43 @@ export async function createOperationsCar(
     }
 
     const vehicleId = data.id ?? normalizedVin;
-    const detailSlug = buildSlugWithId(normalizedName, vehicleId) || buildSlugWithId(normalizedVin, vehicleId) || vehicleId;
-    const statusMeta = OPS_VEHICLE_STATUS_META.available;
+    const detailSlug =
+      buildSlugWithId(displayName, vehicleId) ||
+      buildSlugWithId(normalizedVin, vehicleId) ||
+      vehicleId;
+    const statusKey = typeof data.status === "string" ? data.status : "available";
+    const statusMeta = OPS_VEHICLE_STATUS_META[statusKey] ?? OPS_VEHICLE_STATUS_META.available;
     const mileageValue = data.mileage != null ? Number(data.mileage) : null;
+    const parsedMileageLabel =
+      mileageValue != null
+        ? `${mileageValue.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`
+        : (() => {
+            const parsedMileage = parseMileage(mileage);
+            return parsedMileage != null
+              ? `${parsedMileage.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`
+              : "0 km";
+          })();
+
+    const licensePlateInfo = normalizeLicensePlate(
+      (data.license_plate as string | null | undefined) ?? null,
+    );
+
     const formatted: OpsCarRecord = {
       id: vehicleId,
       vin: data.vin ?? normalizedVin,
-      name: `${data.make ?? make} ${data.model ?? model}`.trim(),
-      make: data.make ?? make,
-      model: data.model ?? model,
+      licensePlate: licensePlateInfo.normalized,
+      licensePlateDisplay: licensePlateInfo.display ?? licensePlateInfo.normalized ?? null,
+      licensePlateEmirate: licensePlateInfo.emirate ?? null,
+      name: `${data.make ?? normalizedMake} ${data.model ?? normalizedModel}`.trim(),
+      make: data.make ?? normalizedMake,
+      model: data.model ?? normalizedModel,
       variant: data.variant ?? null,
-      year: data.year ?? parseYear(year) ?? null,
-      bodyType: (data.body_type as string) ?? type ?? null,
-      status: "available",
+      year: data.year != null ? Number(data.year) : parseYear(year),
+      bodyType: (data.body_type as string) ?? normalizedBodyType,
+      status: statusKey,
       statusLabel: statusMeta.label,
       statusTone: statusMeta.tone,
-      mileage: mileageValue != null
-        ? `${mileageValue.toLocaleString("en-US", { maximumFractionDigits: 0 })} km`
-        : mileage || "0 km",
+      mileage: parsedMileageLabel,
       mileageValue,
       activeDealNumber: null,
       activeDealStatus: null,
@@ -214,7 +291,7 @@ export async function createOperationsCar(
       activeDealStatusTone: null,
       activeDealHref: null,
       detailHref: `/ops/cars/${detailSlug}`,
-      type: (data.body_type as string) ?? type ?? "—",
+      type: (data.body_type as string) ?? normalizedBodyType,
     };
 
     return { data: formatted };
@@ -244,6 +321,7 @@ export async function updateOperationsCar(
     vehicleId,
     slug,
     vin,
+    licensePlate,
     make,
     model,
     variant,
@@ -272,8 +350,12 @@ export async function updateOperationsCar(
         .filter((line) => line.length > 0)
     : [];
 
+  const licensePlateInfo = normalizeLicensePlate(licensePlate);
+  const normalizedLicensePlate = licensePlateInfo.normalized;
+
   const vehicleUpdatePayload = {
     vin: normalizedVin,
+    license_plate: normalizeString(normalizedLicensePlate ?? undefined),
     make: normalizedMake,
     model: normalizedModel,
     variant: normalizeString(variant),
@@ -334,10 +416,13 @@ export async function uploadVehicleDocuments(
 
   const { vehicleId, slug } = parsed.data;
 
-  const documentsMap = new Map<number, { type?: VehicleDocumentTypeValue | ""; file?: File }>();
+  const documentsMap = new Map<
+    number,
+    { type?: VehicleDocumentTypeValue | ""; file?: File; title?: string }
+  >();
 
   for (const [key, value] of formData.entries()) {
-    const match = /^documents\[(\d+)\]\[(type|file)\]$/.exec(key);
+    const match = /^documents\[(\d+)\]\[(type|file|title)\]$/.exec(key);
     if (!match) continue;
 
     const index = Number.parseInt(match[1] ?? "", 10);
@@ -350,6 +435,9 @@ export async function uploadVehicleDocuments(
     if (match[2] === "file" && value instanceof File) {
       existing.file = value;
     }
+    if (match[2] === "title" && typeof value === "string") {
+      existing.title = value;
+    }
     documentsMap.set(index, existing);
   }
 
@@ -358,18 +446,34 @@ export async function uploadVehicleDocuments(
   const hasIncompleteDocument = rawDocuments.some((entry) => {
     const hasType = Boolean(entry.type);
     const hasFile = entry.file instanceof File && entry.file.size > 0;
-    return (hasType && !hasFile) || (hasFile && !hasType);
+    const requiresTitle = entry.type === "other";
+    const hasTitle = typeof entry.title === "string" && entry.title.trim().length > 0;
+    return (
+      (hasType && !hasFile) ||
+      (hasFile && !hasType) ||
+      (requiresTitle && hasFile && !hasTitle)
+    );
   });
 
   if (hasIncompleteDocument) {
     return { success: false, error: "Заполните тип и выберите файл для каждого документа." };
   }
 
-  const documents = rawDocuments.filter((entry): entry is { type: VehicleDocumentTypeValue; file: File } => {
+  const documents = rawDocuments.filter((entry): entry is {
+    type: VehicleDocumentTypeValue;
+    file: File;
+    title?: string;
+  } => {
     if (!entry.type || !entry.file) {
       return false;
     }
     if (!VEHICLE_DOCUMENT_TYPE_VALUES.has(entry.type)) {
+      return false;
+    }
+    if (
+      entry.type === "other" &&
+      (typeof entry.title !== "string" || entry.title.trim().length === 0)
+    ) {
       return false;
     }
     return entry.file.size > 0;
@@ -404,7 +508,11 @@ export async function uploadVehicleDocuments(
         return { success: false, error: "Не удалось загрузить документ." };
       }
 
-      const defaultTitle = VEHICLE_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? doc.file.name;
+      const trimmedTitle = (doc.title ?? "").trim();
+      const defaultTitle =
+        doc.type === "other"
+          ? trimmedTitle || doc.file.name
+          : VEHICLE_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? doc.file.name;
 
       const { error: insertError } = await supabase.from("vehicle_documents").insert({
         vehicle_id: vehicleId,
@@ -619,6 +727,81 @@ export async function uploadVehicleImages(formData: FormData): Promise<UploadVeh
   }
 }
 
+export async function updateVehicleImageMeta(
+  input: UpdateVehicleImageMetaInput,
+): Promise<UpdateVehicleImageMetaResult> {
+  const parsed = updateVehicleImageMetaSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid vehicle image meta payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные для обновления изображения." };
+  }
+
+  const { vehicleId, imageId, slug, label, setPrimary } = parsed.data;
+  const nextLabel = (() => {
+    if (label === undefined) {
+      return undefined;
+    }
+    if (label === null) {
+      return null;
+    }
+    const trimmed = label.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  })();
+
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+
+    if (nextLabel !== undefined) {
+      const { error: labelError } = await serviceClient
+        .from("vehicle_images")
+        .update({ label: nextLabel })
+        .eq("id", imageId)
+        .eq("vehicle_id", vehicleId);
+
+      if (labelError) {
+        console.error("[operations] failed to update vehicle image label", labelError);
+        return { success: false, error: "Не удалось обновить подпись изображения." };
+      }
+    }
+
+    if (setPrimary) {
+      const { error: resetError } = await serviceClient
+        .from("vehicle_images")
+        .update({ is_primary: false })
+        .eq("vehicle_id", vehicleId);
+
+      if (resetError) {
+        console.error("[operations] failed to reset vehicle image primary flags", resetError);
+        return { success: false, error: "Не удалось обновить основное изображение." };
+      }
+
+      const { error: primaryError } = await serviceClient
+        .from("vehicle_images")
+        .update({ is_primary: true })
+        .eq("vehicle_id", vehicleId)
+        .eq("id", imageId);
+
+      if (primaryError) {
+        console.error("[operations] failed to set primary vehicle image", primaryError);
+        return { success: false, error: "Не удалось назначить основное изображение." };
+      }
+    }
+
+    if (nextLabel !== undefined || setPrimary) {
+      for (const path of getWorkspacePaths("cars")) {
+        revalidatePath(path);
+      }
+      revalidatePath(`/ops/cars/${slug}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while updating vehicle image metadata", error);
+    return { success: false, error: "Произошла ошибка при обновлении изображения." };
+  }
+}
+
 export async function deleteVehicleImage(
   input: DeleteVehicleImageInput,
 ): Promise<DeleteVehicleImageResult> {
@@ -686,6 +869,138 @@ export async function deleteVehicleImage(
   } catch (error) {
     console.error("[operations] unexpected error while deleting vehicle image", error);
     return { success: false, error: "Произошла ошибка при удалении изображения." };
+  }
+}
+
+export async function updateVehicleDocument(
+  input: UpdateVehicleDocumentInput,
+): Promise<UpdateVehicleDocumentResult> {
+  const parsed = updateVehicleDocumentSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid vehicle document update payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные для обновления документа." };
+  }
+
+  const { vehicleId, documentId, slug, title, type } = parsed.data;
+
+  const normalizedType = type ? normalizeVehicleDocumentType(type) : undefined;
+
+  if (type && !normalizedType) {
+    return { success: false, error: "Выберите корректный тип документа." };
+  }
+
+  const updates: Record<string, unknown> = {};
+
+  if (title !== undefined) {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      return { success: false, error: "Название документа не может быть пустым." };
+    }
+    updates.title = trimmedTitle;
+  }
+
+  if (type !== undefined) {
+    updates.document_type = normalizedType ?? type;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return { success: true };
+  }
+
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+
+    const { error: updateError } = await serviceClient
+      .from("vehicle_documents")
+      .update(updates)
+      .eq("id", documentId)
+      .eq("vehicle_id", vehicleId);
+
+    if (updateError) {
+      console.error("[operations] failed to update vehicle document", updateError);
+      return { success: false, error: "Не удалось сохранить изменения документа." };
+    }
+
+    for (const path of getWorkspacePaths("cars")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/cars/${slug}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while updating vehicle document", error);
+    return { success: false, error: "Произошла ошибка при обновлении документа." };
+  }
+}
+
+export async function deleteVehicleDocument(
+  input: DeleteVehicleDocumentInput,
+): Promise<DeleteVehicleDocumentResult> {
+  const parsed = deleteVehicleDocumentSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid vehicle document delete payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные для удаления документа." };
+  }
+
+  const { vehicleId, documentId, slug } = parsed.data;
+
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+
+    const { data: documentRecord, error: lookupError } = await serviceClient
+      .from("vehicle_documents")
+      .select("id, storage_path")
+      .eq("id", documentId)
+      .eq("vehicle_id", vehicleId)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error("[operations] failed to load vehicle document before deletion", lookupError);
+      return { success: false, error: "Не удалось найти документ автомобиля." };
+    }
+
+    if (!documentRecord) {
+      return { success: false, error: "Документ уже удалён или не найден." };
+    }
+
+    const storagePath =
+      typeof documentRecord.storage_path === "string" && documentRecord.storage_path.length > 0
+        ? documentRecord.storage_path
+        : null;
+
+    if (storagePath) {
+      const { error: storageError } = await serviceClient.storage
+        .from(VEHICLE_DOCUMENT_BUCKET)
+        .remove([storagePath]);
+
+      if (storageError && !storageError.message?.toLowerCase().includes("not found")) {
+        console.error("[operations] failed to remove vehicle document file", storageError);
+        return { success: false, error: "Не удалось удалить файл документа." };
+      }
+    }
+
+    const { error: deleteError } = await serviceClient
+      .from("vehicle_documents")
+      .delete()
+      .eq("id", documentId)
+      .eq("vehicle_id", vehicleId);
+
+    if (deleteError) {
+      console.error("[operations] failed to delete vehicle document", deleteError);
+      return { success: false, error: "Не удалось удалить запись документа." };
+    }
+
+    for (const path of getWorkspacePaths("cars")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/cars/${slug}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while deleting vehicle document", error);
+    return { success: false, error: "Произошла ошибка при удалении документа." };
   }
 }
 

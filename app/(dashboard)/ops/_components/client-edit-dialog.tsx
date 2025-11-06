@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 
 import {
   Dialog,
@@ -42,7 +42,9 @@ import {
   type DeleteOperationsClientInput,
   type DeleteOperationsClientResult,
   type VerifyClientDeletionResult,
+  type DeleteClientDocumentResult,
   uploadClientDocuments,
+  deleteClientDocument,
   verifyClientDeletion,
 } from "@/app/(dashboard)/ops/clients/actions";
 import { buildSlugWithId } from "@/lib/utils/slugs";
@@ -192,6 +194,9 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   const [canConfirmDelete, setCanConfirmDelete] = useState(false);
   const [personalDocumentDrafts, setPersonalDocumentDrafts] = useState<DocumentDraft[]>([]);
   const [companyDocumentDrafts, setCompanyDocumentDrafts] = useState<DocumentDraft[]>([]);
+  const [documentActionError, setDocumentActionError] = useState<string | null>(null);
+  const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
+  const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
 
   function resolveDocumentContext(doc: OpsClientDocument): "personal" | "company" {
     if (doc.context === "company" || doc.context === "personal") {
@@ -255,6 +260,23 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     [filterDocumentsByTypes],
   );
 
+  const isDocumentDeleting = useCallback(
+    (documentId: string) => deletingDocumentIds.has(documentId),
+    [deletingDocumentIds],
+  );
+
+  const setDocumentDeleting = useCallback((documentId: string, deleting: boolean) => {
+    setDeletingDocumentIds((prev) => {
+      const next = new Set(prev);
+      if (deleting) {
+        next.add(documentId);
+      } else {
+        next.delete(documentId);
+      }
+      return next;
+    });
+  }, []);
+
   const isDraftIncomplete = useCallback((drafts: DocumentDraft[]) => {
     return drafts.some((draft) => {
       const hasType = draft.type !== "";
@@ -272,6 +294,11 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     [companyDocumentDrafts, isDraftIncomplete],
   );
 
+  const detailSlug = useMemo(
+    () => buildSlugWithId(profile.fullName, profile.userId) || profile.userId,
+    [profile.fullName, profile.userId],
+  );
+
   const personalValidationMessage = personalHasIncomplete
     ? "Укажите тип и файл для каждого документа клиента."
     : null;
@@ -282,6 +309,41 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   const canSubmit = useMemo(() => {
     return form.fullName.trim().length > 0 && !personalHasIncomplete && !companyHasIncomplete;
   }, [form.fullName, personalHasIncomplete, companyHasIncomplete]);
+
+  const handleDeleteExistingDocument = useCallback(
+    async (doc: OpsClientDocument) => {
+      const documentId = doc.id;
+      if (!documentId || isDocumentDeleting(documentId)) {
+        return;
+      }
+
+      setDocumentActionError(null);
+      setDocumentActionMessage(null);
+      setDocumentDeleting(documentId, true);
+
+      try {
+        const result: DeleteClientDocumentResult = await deleteClientDocument({
+          clientId: profile.userId,
+          documentId,
+          slug: detailSlug,
+        });
+
+        if (!result.success) {
+          setDocumentActionError(result.error);
+          return;
+        }
+
+        setDocumentActionMessage("Документ удалён.");
+        router.refresh();
+      } catch (error) {
+        console.error("[operations] client document delete error", error);
+        setDocumentActionError("Не удалось удалить документ. Попробуйте ещё раз.");
+      } finally {
+        setDocumentDeleting(documentId, false);
+      }
+    },
+    [detailSlug, isDocumentDeleting, profile.userId, router, setDocumentDeleting],
+  );
 
   useEffect(() => {
     if (!open) {
@@ -294,6 +356,9 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
       setCanConfirmDelete(false);
       setPersonalDocumentDrafts([]);
       setCompanyDocumentDrafts([]);
+      setDocumentActionError(null);
+      setDocumentActionMessage(null);
+      setDeletingDocumentIds(new Set());
     }
   }, [open, profile]);
 
@@ -313,11 +378,15 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     onTypeChange,
     onFileChange,
     onRemoveDraft,
+    onDeleteExisting,
+    isDeleting,
     title,
     description,
     emptyMessage,
     note,
     options,
+    actionError,
+    actionMessage,
   }: {
     existingDocs: OpsClientDocument[];
     drafts: DocumentDraft[];
@@ -326,11 +395,15 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     onTypeChange: (id: string, type: ClientDocumentTypeValue | "") => void;
     onFileChange: (id: string, file: File | null) => void;
     onRemoveDraft: (id: string) => void;
+    onDeleteExisting?: (doc: OpsClientDocument) => void;
+    isDeleting?: (id: string) => boolean;
     title: string;
     description?: string;
     emptyMessage: string;
     note?: string;
     options: ReadonlyArray<{ value: ClientDocumentTypeValue; label: string }>;
+    actionError?: string | null;
+    actionMessage?: string | null;
   }) {
     return (
       <div className="sm:col-span-2 space-y-4 border-t border-border/40 pt-4">
@@ -353,6 +426,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                   const uploadedDisplay = doc.uploadedAt
                     ? new Date(doc.uploadedAt).toLocaleDateString("ru-RU")
                     : null;
+                  const isRemoving = isDeleting ? isDeleting(doc.id) : false;
 
                   return (
                     <li
@@ -381,6 +455,19 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                             Нет файла
                           </Badge>
                         )}
+                        {onDeleteExisting ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onDeleteExisting(doc)}
+                            disabled={isRemoving}
+                            className="rounded-lg text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+                            {isRemoving ? "Удаление..." : "Удалить"}
+                          </Button>
+                        ) : null}
                       </div>
                 </li>
               );
@@ -390,6 +477,8 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
       ) : (
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       )}
+      {actionError ? <p className="text-xs text-destructive">{actionError}</p> : null}
+      {actionMessage ? <p className="text-xs text-muted-foreground">{actionMessage}</p> : null}
       <div className="space-y-3">
         {drafts.map((draft) => (
             <div
@@ -802,10 +891,14 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                 onTypeChange: changePersonalDocumentType,
                 onFileChange: changePersonalDocumentFile,
                 onRemoveDraft: removePersonalDocumentDraft,
+                onDeleteExisting: handleDeleteExistingDocument,
+                isDeleting: isDocumentDeleting,
                 title: "Документы клиента",
                 description: "Загрузка документов клиента для идентификации.",
                 emptyMessage: "Документы клиента пока не загружены.",
                 options: PERSON_DOCUMENT_OPTIONS,
+                actionError: documentActionError,
+                actionMessage: documentActionMessage,
               })}
             </FormSection>
 
@@ -860,12 +953,16 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                     onTypeChange: changeCompanyDocumentType,
                     onFileChange: changeCompanyDocumentFile,
                     onRemoveDraft: removeCompanyDocumentDraft,
+                    onDeleteExisting: handleDeleteExistingDocument,
+                    isDeleting: isDocumentDeleting,
                     title: "Документы компании и контактного лица",
                     description: "Загрузите корпоративные документы и документы ответственного лица.",
                     emptyMessage:
                       "Документы компании пока не загружены. Добавьте идентификационные документы и лицензию компании.",
                     note: "Допустимые форматы: PDF, JPG, PNG (до 10 МБ).",
                     options: COMPANY_DOCUMENT_OPTIONS,
+                    actionError: documentActionError,
+                    actionMessage: documentActionMessage,
                   })}
                 </FormSection>
               )

@@ -29,9 +29,11 @@ import {
   uploadDealDocuments,
   verifyDealDeletion,
   deleteOperationsDeal,
+  deleteDealDocument,
   type DealDeletionBlockerType,
   type VerifyDealDeletionResult,
   type DeleteOperationsDealResult,
+  type DeleteDealDocumentResult,
 } from "@/app/(dashboard)/ops/deals/[id]/actions";
 
 type DealEditDialogProps = {
@@ -166,6 +168,9 @@ export function DealEditDialog({
   const [isCheckingDelete, setIsCheckingDelete] = useState(false);
   const [canConfirmDelete, setCanConfirmDelete] = useState(false);
   const [deleteBlockers, setDeleteBlockers] = useState<Array<{ type: DealDeletionBlockerType; count: number }>>([]);
+  const [documentActionError, setDocumentActionError] = useState<string | null>(null);
+  const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
+  const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
   const deleteTargetLabel =
     typeof detail.editDefaults.dealNumber === "string" && detail.editDefaults.dealNumber.trim().length > 0
       ? detail.editDefaults.dealNumber.trim()
@@ -206,6 +211,20 @@ export function DealEditDialog({
     : null;
   const existingDealDocuments = detail.documents ?? [];
 
+  const isDocumentDeleting = (documentId: string) => deletingDocumentIds.has(documentId);
+
+  function setDocumentDeleting(documentId: string, deleting: boolean) {
+    setDeletingDocumentIds((prev) => {
+      const next = new Set(prev);
+      if (deleting) {
+        next.add(documentId);
+      } else {
+        next.delete(documentId);
+      }
+      return next;
+    });
+  }
+
   const canSubmit = useMemo(() => {
     return !isPending && !dealDocumentsHasIncomplete;
   }, [isPending, dealDocumentsHasIncomplete]);
@@ -214,6 +233,9 @@ export function DealEditDialog({
     setForm(initialState);
     setErrorMessage(null);
     setDealDocumentDrafts([]);
+    setDocumentActionError(null);
+    setDocumentActionMessage(null);
+    setDeletingDocumentIds(new Set());
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -249,6 +271,37 @@ export function DealEditDialog({
 
   function removeDealDocumentDraft(id: string) {
     setDealDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
+  }
+
+  function handleDeleteExistingDocument(documentId: string) {
+    if (!documentId || isDocumentDeleting(documentId)) {
+      return;
+    }
+
+    setDocumentActionError(null);
+    setDocumentActionMessage(null);
+    setDocumentDeleting(documentId, true);
+
+    deleteDealDocument({
+      dealId: detail.dealUuid,
+      documentId,
+      slug: detail.slug,
+    })
+      .then((result: DeleteDealDocumentResult) => {
+        if (!result.success) {
+          setDocumentActionError(result.error);
+          return;
+        }
+        setDocumentActionMessage("Документ удалён.");
+        router.refresh();
+      })
+      .catch((error) => {
+        console.error("[operations] deal document delete error", error);
+        setDocumentActionError("Не удалось удалить документ. Попробуйте ещё раз.");
+      })
+      .finally(() => {
+        setDocumentDeleting(documentId, false);
+      });
   }
 
   async function handleDeleteClick() {
@@ -435,37 +488,59 @@ export function DealEditDialog({
                       Уже загружено
                     </p>
                     <ul className="space-y-2">
-                      {existingDealDocuments.map((doc) => (
-                        <li
-                          key={doc.id}
-                          className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground">{doc.title}</p>
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                              <span>{DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category] ?? "Документ"}</span>
-                              {doc.status ? <span>{doc.status}</span> : null}
+                      {existingDealDocuments.map((doc) => {
+                        const isRemoving = isDocumentDeleting(doc.id);
+
+                        return (
+                          <li
+                            key={doc.id}
+                            className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="space-y-1">
+                              <p className="text-sm font-semibold text-foreground">{doc.title}</p>
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                <span>{DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category] ?? "Документ"}</span>
+                                {doc.status ? <span>{doc.status}</span> : null}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="rounded-lg text-xs capitalize">
-                              {DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category]}
-                            </Badge>
-                            {doc.url ? (
-                              <Button asChild size="sm" variant="outline" className="rounded-lg">
-                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                  <Paperclip className="mr-2 h-3.5 w-3.5" /> Открыть
-                                </a>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className="rounded-lg text-xs capitalize">
+                                {DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category]}
+                              </Badge>
+                              {doc.url ? (
+                                <Button asChild size="sm" variant="outline" className="rounded-lg">
+                                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                    <Paperclip className="mr-2 h-3.5 w-3.5" /> Открыть
+                                  </a>
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteExistingDocument(doc.id)}
+                                disabled={isRemoving}
+                                className="rounded-lg text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
+                                {isRemoving ? "Удаление..." : "Удалить"}
                               </Button>
-                            ) : null}
-                          </div>
-                        </li>
-                      ))}
+                            </div>
+                          </li>
+                        );
+                      })}
                     </ul>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Документы сделки ещё не загружены.</p>
                 )}
+
+                {documentActionError ? (
+                  <p className="text-xs text-destructive">{documentActionError}</p>
+                ) : null}
+                {documentActionMessage ? (
+                  <p className="text-xs text-muted-foreground">{documentActionMessage}</p>
+                ) : null}
 
                 <div className="space-y-3 rounded-2xl border border-dashed border-border/60 bg-background/50 p-3">
                   {dealDocumentDrafts.map((draft) => (

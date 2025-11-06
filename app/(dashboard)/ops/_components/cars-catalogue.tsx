@@ -33,6 +33,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { OPS_VEHICLE_STATUS_META, type OpsCarRecord, type OpsTone } from "@/lib/supabase/queries/operations";
+import { formatLicensePlateDisplay } from "@/lib/utils/license-plate";
 import { createOperationsCar } from "@/app/(dashboard)/ops/cars/actions";
 
 type OpsCarsCatalogueProps = {
@@ -55,14 +56,26 @@ function resolveStatusToneClass(tone: OpsTone | undefined | null) {
 }
 
 type CarFormState = {
-  name: string;
+  make: string;
+  model: string;
   vin: string;
+  bodyType: string;
+  year: string;
+  mileage: string;
+  fuelType: string;
+  transmission: string;
 };
 
 function createDefaultCarFormState(): CarFormState {
   return {
-    name: "",
+    make: "",
+    model: "",
     vin: "",
+    bodyType: "",
+    year: "",
+    mileage: "",
+    fuelType: "",
+    transmission: "",
   };
 }
 
@@ -80,6 +93,9 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
     createDefaultCarFormState(),
   );
 
+  const resolveLicensePlateLabel = (car: OpsCarRecord): string | null =>
+    car.licensePlateDisplay ?? formatLicensePlateDisplay(car.licensePlate) ?? null;
+
   const bodyTypeOptions = useMemo(() => {
     const set = new Set<string>();
     cars.forEach((car) => {
@@ -93,9 +109,12 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   const filteredCars = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return cars.filter((car) => {
+      const licensePlateLabel = resolveLicensePlateLabel(car);
       const matchesQuery =
         !query ||
-        `${car.name} ${car.vin} ${car.variant ?? ""}`.toLowerCase().includes(query);
+        `${car.name} ${car.vin} ${car.variant ?? ""} ${car.licensePlate ?? ""} ${licensePlateLabel ?? ""}`
+          .toLowerCase()
+          .includes(query);
       const matchesBodyType = !bodyTypeFilter || (car.bodyType ?? "").toLowerCase() === bodyTypeFilter.toLowerCase();
       const matchesStatus = !statusFilter || car.status === statusFilter;
       return matchesQuery && matchesBodyType && matchesStatus;
@@ -111,17 +130,40 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
     setPage(0);
   }, [searchQuery, bodyTypeFilter, statusFilter, cars]);
 
+  const canCreateCar =
+    formState.make.trim().length > 0 &&
+    formState.model.trim().length > 0 &&
+    formState.vin.trim().length > 0 &&
+    formState.bodyType.trim().length > 0;
+
   function handleCreateCar() {
-    if (!formState.name.trim() || !formState.vin.trim()) {
+    if (!canCreateCar) {
+      setErrorMessage("Заполните обязательные поля: марка, модель, VIN и тип кузова.");
+      return;
+    }
+
+    const vinValue = formState.vin.trim().toUpperCase();
+    if (vinValue.length < 5) {
+      setErrorMessage("VIN должен содержать минимум 5 символов.");
       return;
     }
 
     setErrorMessage(null);
 
     startTransition(async () => {
+      const payload = {
+        vin: vinValue,
+        make: formState.make.trim(),
+        model: formState.model.trim(),
+        bodyType: formState.bodyType.trim(),
+        year: formState.year.trim(),
+        mileage: formState.mileage.trim(),
+        fuelType: formState.fuelType.trim(),
+        transmission: formState.transmission.trim(),
+      };
+
       const result = await createOperationsCar({
-        name: formState.name.trim(),
-        vin: formState.vin.trim(),
+        ...payload,
       });
 
       if (result.error) {
@@ -201,61 +243,170 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                   Add car
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg rounded-3xl">
+              <DialogContent className="max-w-2xl rounded-3xl">
                 <DialogHeader>
-                  <DialogTitle>Add vehicle</DialogTitle>
-                  <DialogDescription>Extend the fleet catalogue.</DialogDescription>
+                  <DialogTitle>Добавить автомобиль</DialogTitle>
+                  <DialogDescription>
+                    Заполните основные характеристики, чтобы пополнить каталог.
+                  </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="car-name" className="text-sm font-medium text-foreground/80">
-                      Name
-                    </label>
-                    <Input
-                      id="car-name"
-                      value={formState.name}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, name: event.target.value }))
-                      }
-                      placeholder="Rolls-Royce Cullinan"
-                      className="rounded-xl"
-                    />
+                <div className="space-y-5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-make">
+                        Марка<span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="car-make"
+                        value={formState.make}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, make: event.target.value }))
+                        }
+                        placeholder="Rolls-Royce"
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-model">
+                        Модель<span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="car-model"
+                        value={formState.model}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, model: event.target.value }))
+                        }
+                        placeholder="Cullinan"
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-vin">
+                        VIN<span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="car-vin"
+                        value={formState.vin}
+                        onChange={(event) =>
+                          setFormState((prev) => ({
+                            ...prev,
+                            vin: event.target.value.toUpperCase(),
+                          }))
+                        }
+                        placeholder="WDC12345678900001"
+                        className="rounded-xl uppercase"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium text-foreground/80"
+                        htmlFor="car-body-type"
+                      >
+                        Тип кузова<span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        id="car-body-type"
+                        value={formState.bodyType}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, bodyType: event.target.value }))
+                        }
+                        placeholder="SUV"
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground/80" htmlFor="car-year">
+                        Год выпуска
+                      </label>
+                      <Input
+                        id="car-year"
+                        value={formState.year}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, year: event.target.value }))
+                        }
+                        placeholder="2024"
+                        inputMode="numeric"
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium text-foreground/80"
+                        htmlFor="car-mileage"
+                      >
+                        Пробег (км)
+                      </label>
+                      <Input
+                        id="car-mileage"
+                        value={formState.mileage}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, mileage: event.target.value }))
+                        }
+                        placeholder="1200"
+                        inputMode="numeric"
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium text-foreground/80"
+                        htmlFor="car-fuel-type"
+                      >
+                        Тип топлива
+                      </label>
+                      <Input
+                        id="car-fuel-type"
+                        value={formState.fuelType}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, fuelType: event.target.value }))
+                        }
+                        placeholder="Petrol"
+                        className="rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-medium text-foreground/80"
+                        htmlFor="car-transmission"
+                      >
+                        Трансмиссия
+                      </label>
+                      <Input
+                        id="car-transmission"
+                        value={formState.transmission}
+                        onChange={(event) =>
+                          setFormState((prev) => ({ ...prev, transmission: event.target.value }))
+                        }
+                        placeholder="Automatic"
+                        className="rounded-xl"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label htmlFor="car-vin" className="text-sm font-medium text-foreground/80">
-                      VIN
-                    </label>
-                    <Input
-                      id="car-vin"
-                      value={formState.vin}
-                      onChange={(event) =>
-                        setFormState((prev) => ({ ...prev, vin: event.target.value }))
-                      }
-                      placeholder="AAX-341"
-                      className="rounded-xl"
-                    />
-                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Поля, отмеченные <span className="text-destructive">*</span>, обязательны для
+                    заполнения.
+                  </p>
+                  {errorMessage ? (
+                    <p className="text-sm text-destructive">{errorMessage}</p>
+                  ) : null}
                 </div>
-              {errorMessage ? (
-                <p className="text-sm text-destructive">{errorMessage}</p>
-              ) : null}
-              <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleCreateCar}
-                  className="rounded-xl"
-                  disabled={isSaving}
-                >
-                  {isSaving ? "Saving..." : "Save"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </CardHeader>
-    </Card>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setIsModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateCar}
+                    className="rounded-xl"
+                    disabled={isSaving || !canCreateCar}
+                  >
+                    {isSaving ? "Saving..." : "Save"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+      </Card>
 
       <Card className="hidden border border-border bg-card/60 backdrop-blur md:block">
         <CardContent className="p-0">
@@ -263,6 +414,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Автомобиль</TableHead>
+                <TableHead>Госномер</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Тип</TableHead>
                 <TableHead>Активная сделка</TableHead>
@@ -288,6 +440,9 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                         {car.variant ? ` • ${car.variant}` : ""}
                         {car.year ? ` • ${car.year}` : ""}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {resolveLicensePlateLabel(car) ?? "—"}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.statusTone)}`}>
@@ -317,7 +472,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 ))
               ) : (
                 <TableRow>
-                    <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
                       Автомобили не найдены. Измените фильтры или добавьте новый автомобиль.
                     </TableCell>
                 </TableRow>
@@ -375,6 +530,9 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                     <p className="text-sm font-semibold text-foreground">{car.name}</p>
                   )}
                   <p className="text-xs text-muted-foreground">VIN: {car.vin}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Госномер: {resolveLicensePlateLabel(car) ?? "—"}
+                  </p>
                 </div>
                 <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.statusTone)}`}>
                   {car.statusLabel}

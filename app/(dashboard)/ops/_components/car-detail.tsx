@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, type ReactNode } from "react";
 
@@ -32,6 +31,7 @@ import type {
 } from "@/lib/supabase/queries/operations";
 import { CarEditDialog } from "./car-edit-dialog";
 import { DocumentList } from "./document-list";
+import { VehicleGallery } from "./vehicle-gallery";
 
 type InfoCellProps = {
   label: string;
@@ -57,7 +57,8 @@ type CarDetailProps = {
   serviceLog: OpsVehicleServiceLogEntry[];
 };
 
-export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, documents, serviceLog }: CarDetailProps) {
+export function CarDetailView({ slug, deals, vehicle, profile, documents, serviceLog }: CarDetailProps) {
+  const VEHICLE_PLACEHOLDER_PATH = "/assets/vehicle-placeholder.svg";
   const toneClassMap: Record<OpsTone, string> = {
     success: "border-emerald-400/80 bg-emerald-500/10 text-emerald-700",
     warning: "border-amber-400/80 bg-amber-500/10 text-amber-700",
@@ -86,6 +87,7 @@ export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, docum
     "Комплектация",
     "Год выпуска",
     "VIN",
+    "Госномер",
     "Пробег",
     "Тип топлива",
     "Трансмиссия",
@@ -105,7 +107,7 @@ export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, docum
   });
   const primarySpecLabels = new Set(primarySpecs.map((spec) => spec.label));
   const highlightItems = (profile.highlights ?? []).filter((item) => !primarySpecLabels.has(item.label));
-  const hasPrimaryDetails = primarySpecs.length > 0 || Boolean(activeDeal?.number);
+  const hasPrimaryDetails = primarySpecs.length > 0;
   const vehicleYearLabel = vehicle.year != null ? String(vehicle.year) : null;
   const resolvedSubtitle = (() => {
     if (!profile.subtitle) {
@@ -124,29 +126,12 @@ export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, docum
     return filtered.join(" • ");
   })();
 
-  const galleryImages = useMemo(
-    () =>
-      (profile.gallery ?? [])
-        .filter((image): image is { id: string; url: string; label: string | null; isPrimary: boolean } => {
-          if (!image || typeof image.url !== "string" || image.url.length === 0) {
-            return false;
-          }
-          return true;
-        })
-        .map((image, index) => ({
-          id: image.id ?? `gallery-${index}`,
-          url: image.url as string,
-          label: image.label ?? null,
-          isPrimary: Boolean(image.isPrimary),
-        })),
-    [profile.gallery],
-  );
-
-  const hasGalleryImages = galleryImages.length > 0;
   const fallbackImage =
-    typeof profile.image === "string" && profile.image.length > 0
+    typeof profile.image === "string" &&
+    profile.image.length > 0 &&
+    profile.image !== VEHICLE_PLACEHOLDER_PATH
       ? profile.image
-      : "/assets/vehicle-placeholder.svg";
+      : null;
 
   const vehicleDocumentItems = useMemo(
     () =>
@@ -211,17 +196,6 @@ export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, docum
                     {spec.value}
                   </InfoCell>
                 ))}
-                {activeDeal?.number ? (
-                  <InfoCell label="Сделка">
-                    {activeDeal.href ? (
-                      <Link href={activeDeal.href} className="text-primary hover:underline">
-                        {activeDeal.number}
-                      </Link>
-                    ) : (
-                      <span className="text-primary">{activeDeal.number}</span>
-                    )}
-                  </InfoCell>
-                ) : null}
               </div>
             </div>
           ) : null}
@@ -234,51 +208,7 @@ export function CarDetailView({ slug, activeDeal, deals, vehicle, profile, docum
           <CardDescription>Предпросмотр галереи автомобиля</CardDescription>
         </CardHeader>
         <CardContent>
-          {hasGalleryImages ? (
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {galleryImages.map((image) => (
-                <div
-                  key={image.id}
-                  className="space-y-2 rounded-xl border border-border/60 bg-background/60 p-2"
-                >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
-                    <Image
-                      src={image.url}
-                      alt={image.label ?? "Фото автомобиля"}
-                      fill
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      className="object-cover"
-                    />
-                    {image.isPrimary ? (
-                      <span className="absolute left-2 top-2 rounded bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
-                        Основное
-                      </span>
-                    ) : null}
-                  </div>
-                  {image.label ? (
-                    <p className="truncate text-xs text-muted-foreground" title={image.label}>
-                      {image.label}
-                    </p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-6 text-center">
-              <div className="relative h-28 w-40 overflow-hidden rounded-lg border border-border/60 bg-background/60">
-                <Image
-                  src={fallbackImage}
-                  alt="Предпросмотр автомобиля"
-                  fill
-                  sizes="160px"
-                  className="object-cover"
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Фото ещё не загружены. Добавьте изображения в окне редактирования автомобиля.
-              </p>
-            </div>
-          )}
+          <VehicleGallery images={profile.gallery ?? []} fallbackImageSrc={fallbackImage} />
         </CardContent>
       </Card>
 

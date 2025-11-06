@@ -42,8 +42,20 @@ const uploadDealDocumentsSchema = z.object({
   slug: z.string().min(1),
 });
 
+const deleteDealDocumentSchema = z.object({
+  dealId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  slug: z.string().min(1),
+});
+
 export type UploadDealDocumentsResult =
   | { success: true; uploaded: number }
+  | { success: false; error: string };
+
+type DeleteDealDocumentInput = z.infer<typeof deleteDealDocumentSchema>;
+
+export type DeleteDealDocumentResult =
+  | { success: true }
   | { success: false; error: string };
 
 export async function uploadDealDocuments(formData: FormData): Promise<UploadDealDocumentsResult> {
@@ -166,6 +178,78 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
   } catch (error) {
     console.error("[operations] unexpected error while uploading deal documents", error);
     return { success: false, error: "Произошла ошибка при загрузке документов." };
+  }
+}
+
+export async function deleteDealDocument(
+  input: DeleteDealDocumentInput,
+): Promise<DeleteDealDocumentResult> {
+  const parsed = deleteDealDocumentSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid deal document delete payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные для удаления документа." };
+  }
+
+  const { dealId, documentId, slug } = parsed.data;
+
+  try {
+    const supabase = await createSupabaseServiceClient();
+
+    const { data: documentRecord, error: lookupError } = await supabase
+      .from("deal_documents")
+      .select("id, deal_id, storage_path")
+      .eq("id", documentId)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error("[operations] failed to load deal document before deletion", lookupError);
+      return { success: false, error: "Не удалось найти документ сделки." };
+    }
+
+    if (!documentRecord || String(documentRecord.deal_id) !== dealId) {
+      return { success: false, error: "Документ не найден или принадлежит другой сделке." };
+    }
+
+    const storagePath =
+      typeof documentRecord.storage_path === "string" && documentRecord.storage_path.length > 0
+        ? documentRecord.storage_path
+        : null;
+
+    if (storagePath) {
+      const { error: storageError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .remove([storagePath]);
+
+      if (storageError && !String(storageError.message ?? "").toLowerCase().includes("not found")) {
+        console.error("[operations] failed to remove deal document file", storageError);
+        return { success: false, error: "Не удалось удалить файл документа." };
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from("deal_documents")
+      .delete()
+      .eq("id", documentId)
+      .eq("deal_id", dealId);
+
+    if (deleteError) {
+      console.error("[operations] failed to delete deal document", deleteError);
+      return { success: false, error: "Не удалось удалить запись документа." };
+    }
+
+    for (const path of getWorkspacePaths("deals")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/deals/${slug}`);
+    if (slug !== dealId) {
+      revalidatePath(`/ops/deals/${dealId}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[operations] unexpected error while deleting deal document", error);
+    return { success: false, error: "Произошла ошибка при удалении документа." };
   }
 }
 

@@ -22,6 +22,7 @@ import {
   type OpsAutomationMetric,
 } from "./operations";
 import { buildSlugWithId } from "@/lib/utils/slugs";
+import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 
 // Локальные типы для данных дашборда
 type SupabaseInvoiceRow = {
@@ -577,6 +578,7 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
       `
         id,
         vin,
+        license_plate,
         make,
         model,
         variant,
@@ -605,6 +607,11 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
   return data.map((vehicle) => {
     const id = (vehicle.id as string) ?? `${vehicle.vin ?? "vehicle"}`;
     const vin = ((vehicle.vin as string) ?? "—").toUpperCase();
+    const licensePlateInfo = normalizeLicensePlate(
+      (vehicle.license_plate as string | null | undefined) ?? null,
+    );
+    const licensePlateNormalized = licensePlateInfo.normalized;
+    const licensePlateDisplay = licensePlateInfo.display ?? licensePlateNormalized ?? null;
     const make = String(vehicle.make ?? "").trim() || "Vehicle";
     const model = String(vehicle.model ?? "").trim();
     const name = `${make} ${model}`.trim();
@@ -638,6 +645,9 @@ export async function getOperationsCarsClient(): Promise<OpsCarRecord[]> {
     return {
       id,
       vin,
+      licensePlate: licensePlateNormalized,
+      licensePlateDisplay,
+      licensePlateEmirate: licensePlateInfo.emirate ?? null,
       name,
       make,
       model: model || make,
