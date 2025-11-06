@@ -26,8 +26,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: [],
   ...(imagesConfig ? { images: imagesConfig } : {}),
   outputFileTracingIncludes: {
-    // Ensure workflow template YAML ships with the serverless bundle so runtime fs access succeeds.
-    "lib/workflow/http/**": ["./docs/workflow_template.yaml"],
+    // Ensure workflow template YAML ships with every serverless bundle so runtime fs access succeeds.
+    "/*": ["./docs/workflow_template.yaml"],
   },
   turbopack: {
     resolveAlias: {
