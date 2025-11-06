@@ -131,9 +131,6 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
     const sessionClient = await createSupabaseServerClient();
     const { data: authData } = await sessionClient.auth.getUser();
     const uploadedBy = authData?.user?.id ?? null;
-    const sessionClient = await createSupabaseServerClient();
-    const { data: authData } = await sessionClient.auth.getUser();
-    const uploadedBy = authData?.user?.id ?? null;
 
     const candidates: DocumentUploadCandidate<DealDocumentTypeValue>[] = documents.map((doc) => {
       const meta = DEAL_DOCUMENT_TYPE_META[doc.type];
@@ -389,6 +386,9 @@ export async function completeDealGuardAction(
 
   try {
     const supabase = await createSupabaseServiceClient();
+    const sessionClient = await createSupabaseServerClient();
+    const { data: authData } = await sessionClient.auth.getUser();
+    const uploadedBy = authData?.user?.id ?? null;
 
     const { data: dealRow, error: dealError } = await supabase
       .from("deals")
@@ -488,7 +488,7 @@ export type UpdateOperationsDealResult =
   | { success: true }
   | { success: false; error: string };
 
-export type DealDeletionBlockerType = "payments" | "invoices" | "tasks";
+export type DealDeletionBlockerType = "payments" | "invoices";
 
 export type VerifyDealDeletionResult =
   | { canDelete: true }
@@ -636,25 +636,10 @@ export async function verifyDealDeletion(
       blockers.push({ type: "invoices", count: invoicesCount ?? 0 });
     }
 
-    const { count: tasksCount, error: tasksError } = await supabase
-      .from("tasks")
-      .select("id", { head: true, count: "exact" })
-      .eq("deal_id", dealId);
-
-    if (tasksError) {
-      console.error("[operations] failed to check deal tasks", tasksError);
-      return { canDelete: false, reason: "Не удалось проверить задачи сделки." };
-    }
-
-    if ((tasksCount ?? 0) > 0) {
-      blockers.push({ type: "tasks", count: tasksCount ?? 0 });
-    }
-
     if (blockers.length > 0) {
       const blockerLabels: Record<DealDeletionBlockerType, string> = {
         payments: "платежи",
         invoices: "счета",
-        tasks: "задачи",
       };
       const parts = blockers
         .map((blocker) => `${blockerLabels[blocker.type]} — ${blocker.count}`)

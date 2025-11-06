@@ -2437,30 +2437,47 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const statusKey = mapStatusToWorkflow(dealRow.status);
 
   // Загружаем данные клиента отдельным запросом
-  let {
-    data: clientData,
-    error: clientError,
-  } = await supabase
-    .from("profiles")
-    .select("id, user_id, full_name, phone, status, nationality, metadata, source")
-    .eq("user_id", dealRow.client_id)
-    .maybeSingle();
+  const clientIdRaw = typeof dealRow.client_id === "string" ? dealRow.client_id.trim() : "";
+  const clientId = clientIdRaw.length > 0 ? clientIdRaw : null;
+  let clientData: {
+    id?: string | null;
+    user_id?: string | null;
+    full_name?: string | null;
+    phone?: string | null;
+    status?: string | null;
+    nationality?: string | null;
+    metadata?: unknown;
+    source?: string | null;
+  } | null = null;
+  let clientError: unknown = null;
 
-  if (clientError && isMissingColumnError(clientError, "source")) {
-    console.warn("[SERVER-OPS] profiles.source column missing, retrying client lookup without it", {
-      clientId: dealRow.client_id,
-    });
+  if (clientId) {
     ({ data: clientData, error: clientError } = await supabase
       .from("profiles")
-      .select("id, user_id, full_name, phone, status, nationality, metadata")
-      .eq("user_id", dealRow.client_id)
+      .select("id, user_id, full_name, phone, status, nationality, metadata, source")
+      .eq("user_id", clientId)
       .maybeSingle());
+
+    if (clientError && isMissingColumnError(clientError, "source")) {
+      console.warn("[SERVER-OPS] profiles.source column missing, retrying client lookup without it", {
+        clientId,
+      });
+      ({ data: clientData, error: clientError } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, phone, status, nationality, metadata")
+        .eq("user_id", clientId)
+        .maybeSingle());
+    }
+  } else {
+    console.warn("[SERVER-OPS] deal has no linked client, skipping profile lookup", {
+      dealId: dealRow.id,
+    });
   }
 
   if (clientError) {
     console.error("[SERVER-OPS] failed to load client profile for deal", {
       dealId: dealRow.id,
-      clientId: dealRow.client_id,
+      clientId,
       error: clientError,
     });
   }
@@ -2471,10 +2488,10 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   // Загружаем email из auth.users (если есть клиент)
   let authUser: Awaited<ReturnType<typeof supabase.auth.admin.getUserById>>["data"] | null = null;
-  if (dealRow.client_id) {
+  if (clientId) {
     try {
       const { data: fetchedAuthUser, error: authUserError } = await supabase.auth.admin.getUserById(
-        dealRow.client_id,
+        clientId,
       );
 
       if (authUserError) {
@@ -2491,14 +2508,14 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         if (!isMissing && !isForbidden) {
           console.warn("[SERVER-OPS] unexpected failure while loading auth user for deal client", {
             dealId: dealRow.id,
-            clientId: dealRow.client_id,
+            clientId,
             status,
             message,
           });
         } else {
           console.debug("[SERVER-OPS] auth user lookup skipped", {
             dealId: dealRow.id,
-            clientId: dealRow.client_id,
+            clientId,
             status,
             message,
           });
@@ -2509,26 +2526,26 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     } catch (error) {
       console.warn("[SERVER-OPS] auth user lookup threw", {
         dealId: dealRow.id,
-        clientId: dealRow.client_id,
+        clientId,
         error,
       });
     }
   }
 
   let clientDocuments: OpsClientDocument[] = [];
-  if (dealRow.client_id) {
+  if (clientId) {
     const { data: clientDocumentsRows, error: clientDocumentsError } = await supabase
       .from("client_documents")
       .select(
         "id, document_type, document_category, title, storage_path, status, uploaded_at, verified_at, metadata",
       )
-      .eq("client_id", dealRow.client_id)
+      .eq("client_id", clientId)
       .order("uploaded_at", { ascending: false });
 
     if (clientDocumentsError) {
       console.error("[SERVER-OPS] failed to load client documents for deal", {
         dealId: dealRow.id,
-        clientId: dealRow.client_id,
+        clientId,
         error: clientDocumentsError,
       });
     }
@@ -2586,13 +2603,17 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   }
 
   // Загружаем scoring из applications
-  const { data: applicationScoringData } = await supabase
-    .from("applications")
-    .select("scoring_results")
-    .eq("user_id", dealRow.client_id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const applicationScoringData = clientId
+    ? (
+        await supabase
+          .from("applications")
+          .select("scoring_results")
+          .eq("user_id", clientId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ).data
+    : null;
 
   // Загружаем график платежей
   type SupabasePaymentScheduleRow = { due_date: string | null; amount: number | null; status: string | null };
@@ -2742,7 +2763,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     });
   }
 
-  console.log(`[DEBUG] Client data query result:`, { clientData, clientError, clientId: dealRow.client_id });
+  console.log(`[DEBUG] Client data query result:`, { clientData, clientError, clientId });
   console.log(`[DEBUG] Client full_name: "${clientData?.full_name}"`);
   console.log(`[DEBUG] Client phone: "${clientData?.phone}"`);
   console.log(`[DEBUG] Auth user email: "${authUser?.user?.email}"`);
@@ -3077,15 +3098,13 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const scoringDisplay =
     scoringValue != null ? `${Math.round(scoringValue)}/100` : "—";
 
-  const clientSlug = dealRow.client_id
-    ? buildSlugWithId(resolvedClientName ?? null, dealRow.client_id)
-    : null;
+  const clientSlug = clientId ? buildSlugWithId(resolvedClientName ?? null, clientId) : null;
 
   const clientDetailHref =
     clientSlug && clientSlug.length
       ? `/ops/clients/${clientSlug}`
-      : dealRow.client_id
-        ? `/ops/clients/${dealRow.client_id}`
+      : clientId
+        ? `/ops/clients/${clientId}`
         : null;
 
   const clientProfile: DealDetailResult["client"] = {
@@ -3095,7 +3114,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     scoring: scoringDisplay,
     source: resolvedClientSource,
     notes: clientNotesParts.length > 0 ? clientNotesParts.join(" • ") : "—",
-    userId: dealRow.client_id ?? null,
+    userId: clientId,
     detailHref: clientDetailHref,
   };
 

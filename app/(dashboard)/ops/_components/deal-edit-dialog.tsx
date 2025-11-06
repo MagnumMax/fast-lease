@@ -85,7 +85,6 @@ const DEAL_DOCUMENT_CATEGORY_LABEL_MAP: Record<DealDocumentCategory, string> = {
 const DEAL_BLOCKER_LABELS: Record<DealDeletionBlockerType, string> = {
   payments: "Платежи",
   invoices: "Счета",
-  tasks: "Задачи",
 };
 
 function createDealDocumentDraft(): DealDocumentDraft {

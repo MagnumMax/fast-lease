@@ -140,14 +140,14 @@ export async function uploadDocumentsBatch<TType extends string = string>(
       }
 
       const label = typeLabelMap?.[candidate.type] ?? candidate.file.name;
-      const metadata = {
+      const metadata: Record<string, unknown> = {
         original_filename: candidate.file.name,
         ...(metadataBuilder ? metadataBuilder(candidate) : {}),
         ...coerceMetadata(candidate.metadata),
       };
 
-      if (candidate.context && typeof metadata.upload_context !== "string") {
-        metadata.upload_context = candidate.context;
+      if (candidate.context && typeof metadata["upload_context"] !== "string") {
+        metadata["upload_context"] = candidate.context;
       }
 
       const insertPayload: Record<string, unknown> = {
