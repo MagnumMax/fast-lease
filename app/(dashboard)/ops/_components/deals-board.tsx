@@ -84,10 +84,10 @@ type VehicleOption = OpsCarRecord & { optionValue: string };
 
 type Feedback = { type: "error"; message: string };
 
-type SortField = "dealId" | "client" | "vehicle" | "status" | "owner" | "nextAction" | "updatedAt";
+type SortField = "dealId" | "vehicle" | "client" | "status" | "nextAction" | "contractStartDate";
 type SortDirection = "asc" | "desc";
 type SortState = { field: SortField; direction: SortDirection };
-const DEFAULT_SORT: SortState = { field: "updatedAt", direction: "desc" };
+const DEFAULT_SORT: SortState = { field: "contractStartDate", direction: "desc" };
 
 const STATUS_ORDER = OPS_DEAL_STATUS_ORDER;
 const STATUS_LABELS = OPS_DEAL_STATUS_LABELS;
@@ -151,6 +151,7 @@ function formatDateLabel(value: string) {
   return date.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
+    year: "numeric",
   });
 }
 
@@ -185,15 +186,6 @@ function formatSlaLabel(deal: OpsDealSummary | undefined, meta: WorkflowStatusIt
   }
 
   return meta.slaLabel ?? "SLA —";
-}
-
-function resolveDealOwnerLabel(deal: OpsDealSummary): string {
-  return (
-    deal.ownerName ??
-    deal.ownerRoleLabel ??
-    WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
-    deal.ownerRole
-  );
 }
 
 type DealFormState = {
@@ -296,6 +288,7 @@ function mapDealRowToSummary(
     nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
     slaDueAt,
     guardStatuses,
+    contractStartDate: null,
   };
 }
 
@@ -461,7 +454,7 @@ export function OpsDealsBoard({
     return deals.filter((deal) => {
       const matchesQuery =
         !query ||
-        `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.source}`
+        `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.source} ${deal.contractStartDate ?? ""}`
           .toLowerCase()
           .includes(query);
       const matchesStatus = statusFilter === "all" || deal.statusKey === statusFilter;
@@ -482,11 +475,6 @@ export function OpsDealsBoard({
             sensitivity: "base",
           });
           break;
-        case "client":
-          comparison = (a.client ?? "").localeCompare(b.client ?? "", undefined, {
-            sensitivity: "base",
-          });
-          break;
         case "vehicle": {
           comparison = (a.vehicle ?? "").localeCompare(b.vehicle ?? "", undefined, {
             sensitivity: "base",
@@ -498,24 +486,24 @@ export function OpsDealsBoard({
           }
           break;
         }
+        case "client":
+          comparison = (a.client ?? "").localeCompare(b.client ?? "", undefined, {
+            sensitivity: "base",
+          });
+          break;
         case "status":
           comparison =
             (STATUS_POSITION[a.statusKey] ?? Number.MAX_SAFE_INTEGER) -
             (STATUS_POSITION[b.statusKey] ?? Number.MAX_SAFE_INTEGER);
-          break;
-        case "owner":
-          comparison = resolveDealOwnerLabel(a).localeCompare(resolveDealOwnerLabel(b), undefined, {
-            sensitivity: "base",
-          });
           break;
         case "nextAction":
           comparison = (a.nextAction ?? "").localeCompare(b.nextAction ?? "", undefined, {
             sensitivity: "base",
           });
           break;
-        case "updatedAt": {
-          const aTime = new Date(a.updatedAt).getTime();
-          const bTime = new Date(b.updatedAt).getTime();
+        case "contractStartDate": {
+          const aTime = new Date(a.contractStartDate ?? "").getTime();
+          const bTime = new Date(b.contractStartDate ?? "").getTime();
           const safeATime = Number.isNaN(aTime) ? 0 : aTime;
           const safeBTime = Number.isNaN(bTime) ? 0 : bTime;
           comparison = safeATime - safeBTime;
@@ -1136,23 +1124,20 @@ export function OpsDealsBoard({
                   <TableHead aria-sort={getAriaSort("dealId")}>
                     {renderSortButton("dealId", "Deal ID")}
                   </TableHead>
-                  <TableHead aria-sort={getAriaSort("client")}>
-                    {renderSortButton("client", "Client")}
-                  </TableHead>
                   <TableHead aria-sort={getAriaSort("vehicle")}>
                     {renderSortButton("vehicle", "Vehicle")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("client")}>
+                    {renderSortButton("client", "Client")}
                   </TableHead>
                   <TableHead aria-sort={getAriaSort("status")}>
                     {renderSortButton("status", "Status")}
                   </TableHead>
-                  <TableHead aria-sort={getAriaSort("owner")}>
-                    {renderSortButton("owner", "Owner")}
-                  </TableHead>
                   <TableHead aria-sort={getAriaSort("nextAction")}>
                     {renderSortButton("nextAction", "Next action")}
                   </TableHead>
-                  <TableHead aria-sort={getAriaSort("updatedAt")}>
-                    {renderSortButton("updatedAt", "Updated")}
+                  <TableHead aria-sort={getAriaSort("contractStartDate")}>
+                    {renderSortButton("contractStartDate", "Contract start")}
                   </TableHead>
                   <TableHead>Links</TableHead>
                 </TableRow>
@@ -1160,8 +1145,6 @@ export function OpsDealsBoard({
               <TableBody>
                 {sortedDeals.map((deal) => {
                   const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
-                  const ownerLabel = resolveDealOwnerLabel(deal);
-
                   return (
                     <TableRow key={deal.id}>
                       <TableCell className="font-medium">
@@ -1172,21 +1155,20 @@ export function OpsDealsBoard({
                           {deal.dealId}
                         </Link>
                       </TableCell>
-                      <TableCell>{deal.client}</TableCell>
                       <TableCell>
                         <div className="flex flex-col">
                           <span>{deal.vehicle}</span>
                           <span className="text-xs text-muted-foreground">{deal.source}</span>
                         </div>
                       </TableCell>
+                      <TableCell>{deal.client}</TableCell>
                       <TableCell>
                         <Badge variant={STATUS_BADGES[deal.statusKey]} className="rounded-lg">
                           {STATUS_LABELS[deal.statusKey]}
                         </Badge>
                       </TableCell>
-                      <TableCell>{ownerLabel}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{deal.nextAction}</TableCell>
-                      <TableCell>{formatDateLabel(deal.updatedAt)}</TableCell>
+                      <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Link className="hover:text-foreground" href="/ops/clients">

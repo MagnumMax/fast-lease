@@ -469,6 +469,7 @@ export type OpsDealSummary = {
   ownerUserId?: string | null;
   guardStatuses: OpsDealGuardStatus[];
   amount?: string;
+  contractStartDate?: string | null;
 };
 
 export type OpsDealGuardStatus = {

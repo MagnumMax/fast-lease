@@ -923,6 +923,7 @@ type OperationsDeal = {
   nextAction: string;
   guardStatuses: OpsDealGuardStatus[];
   amount?: string;
+  contractStartDate?: string | null;
 };
 
 export async function getOperationsDeals(): Promise<OperationsDeal[]> {
@@ -942,6 +943,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       client_id,
       customer_id,
       vehicle_id,
+      contract_start_date,
       total_amount,
       payload,
       vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, status)
@@ -1218,6 +1220,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
       guardStatuses,
       amount: row.total_amount ? `AED ${Number(row.total_amount).toLocaleString("en-US")}` : undefined,
+      contractStartDate: getString((row as Record<string, unknown>).contract_start_date),
     };
     if (index < 3) {
       console.log("[SERVER-OPS] deal assignment snapshot:", {
