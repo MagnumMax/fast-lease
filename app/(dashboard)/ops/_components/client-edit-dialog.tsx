@@ -47,6 +47,7 @@ import {
   deleteClientDocument,
   verifyClientDeletion,
 } from "@/app/(dashboard)/ops/clients/actions";
+import { sortDocumentOptions } from "@/lib/documents/options";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 
 type ClientEditDialogProps = {
@@ -128,10 +129,10 @@ function createDocumentDraft(): DocumentDraft {
 }
 
 const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
-const PERSON_DOCUMENT_OPTIONS = CLIENT_DOCUMENT_TYPES.filter(
-  (option) => option.context !== "company",
+const PERSON_DOCUMENT_OPTIONS = sortDocumentOptions(
+  CLIENT_DOCUMENT_TYPES.filter((option) => option.context !== "company"),
 );
-const COMPANY_DOCUMENT_OPTIONS = CLIENT_DOCUMENT_TYPES;
+const COMPANY_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 const PERSONAL_DOCUMENT_TYPE_VALUES = new Set<ClientDocumentTypeValue>(
   PERSON_DOCUMENT_OPTIONS.map((option) => option.value),
 );

@@ -35,6 +35,7 @@ import {
   type DeleteOperationsDealResult,
   type DeleteDealDocumentResult,
 } from "@/app/(dashboard)/ops/deals/[id]/actions";
+import { sortDocumentOptions } from "@/lib/documents/options";
 
 type DealEditDialogProps = {
   detail: OpsDealDetail;
@@ -210,6 +211,10 @@ export function DealEditDialog({
     ? "Выберите тип и загрузите файл для каждого документа."
     : null;
   const existingDealDocuments = detail.documents ?? [];
+  const documentTypeOptions = useMemo(
+    () => sortDocumentOptions(DEAL_DOCUMENT_TYPES),
+    [],
+  );
 
   const isDocumentDeleting = (documentId: string) => deletingDocumentIds.has(documentId);
 
@@ -563,7 +568,7 @@ export function DealEditDialog({
                             className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm"
                           >
                             <option value="">Выберите тип</option>
-                            {DEAL_DOCUMENT_TYPES.map((option) => (
+                            {documentTypeOptions.map((option) => (
                               <option key={option.value} value={option.value}>
                                 {option.label}
                               </option>

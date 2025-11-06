@@ -26,6 +26,7 @@ import type {
   VehicleDocumentTypeValue,
 } from "@/lib/supabase/queries/operations";
 import { VEHICLE_DOCUMENT_TYPES } from "@/lib/supabase/queries/operations";
+import { sortDocumentOptions } from "@/lib/documents/options";
 import {
   type UpdateOperationsCarInput,
   type UpdateOperationsCarResult,
@@ -205,7 +206,10 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
     }, []);
   }, [gallery]);
 
-  const documentTypeOptions = VEHICLE_DOCUMENT_TYPES;
+  const documentTypeOptions = useMemo(
+    () => sortDocumentOptions(VEHICLE_DOCUMENT_TYPES),
+    [],
+  );
 
   const documentInitialState = useMemo(() => {
     const state: Record<string, { title: string; type: string }> = {};
