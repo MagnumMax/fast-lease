@@ -10,9 +10,14 @@ import {
   DEAL_DOCUMENT_TYPES,
   type DealDocumentCategory,
   type DealDocumentTypeValue,
+  DEAL_DOCUMENT_TYPE_LABEL_MAP,
 } from "@/lib/supabase/queries/operations";
-import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
+import {
+  uploadDocumentsBatch,
+  type DocumentUploadCandidate,
+} from "@/lib/documents/upload";
 
 const inputSchema = z.object({
   dealId: z.string().uuid(),
@@ -123,47 +128,49 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
 
   try {
     const supabase = await createSupabaseServiceClient();
-    let uploadedCount = 0;
+    const sessionClient = await createSupabaseServerClient();
+    const { data: authData } = await sessionClient.auth.getUser();
+    const uploadedBy = authData?.user?.id ?? null;
+    const sessionClient = await createSupabaseServerClient();
+    const { data: authData } = await sessionClient.auth.getUser();
+    const uploadedBy = authData?.user?.id ?? null;
 
-    for (const doc of documents) {
-      const sanitizedName = doc.file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-") || "document";
-      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const objectPath = `${dealId}/${uniqueSuffix}-${sanitizedName}`;
-      const buffer = Buffer.from(await doc.file.arrayBuffer());
-
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(objectPath, buffer, {
-          contentType: doc.file.type || "application/octet-stream",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error("[operations] failed to upload deal document", uploadError);
-        return { success: false, error: "Не удалось загрузить документ." };
-      }
-
+    const candidates: DocumentUploadCandidate<DealDocumentTypeValue>[] = documents.map((doc) => {
       const meta = DEAL_DOCUMENT_TYPE_META[doc.type];
-      const documentType = doc.type;
       const originalName = doc.file.name;
-      const displayTitle = meta.title;
-      const finalTitle = originalName ? `${displayTitle} (${originalName})` : displayTitle;
+      const baseTitle = meta?.title ?? originalName;
+      const finalTitle = originalName && baseTitle ? `${baseTitle} (${originalName})` : baseTitle ?? originalName;
 
-      const { error: insertError } = await supabase.from("deal_documents").insert({
-        deal_id: dealId,
+      return {
+        type: doc.type,
+        file: doc.file,
+        category: meta?.category ?? "required",
         title: finalTitle,
-        document_type: documentType,
-        status: "uploaded",
-        storage_path: objectPath,
-      });
+        metadata: {
+          label: meta?.title ?? doc.file.name,
+        },
+      };
+    });
 
-      if (insertError) {
-        console.error("[operations] failed to insert deal document metadata", insertError);
-        await supabase.storage.from(STORAGE_BUCKET).remove([objectPath]);
-        return { success: false, error: "Документ не сохранился. Попробуйте ещё раз." };
-      }
+    const uploadResult = await uploadDocumentsBatch<DealDocumentTypeValue>(candidates, {
+      supabase,
+      bucket: STORAGE_BUCKET,
+      table: "deal_documents",
+      entityColumn: "deal_id",
+      entityId: dealId,
+      allowedTypes: DEAL_DOCUMENT_TYPE_VALUES,
+      typeLabelMap: DEAL_DOCUMENT_TYPE_LABEL_MAP,
+      categoryColumn: "document_category",
+      uploadedBy,
+      logPrefix: "[operations] deal document",
+      messages: {
+        upload: "Не удалось загрузить документ.",
+        insert: "Документ не сохранился. Попробуйте ещё раз.",
+      },
+    });
 
-      uploadedCount += 1;
+    if (!uploadResult.success) {
+      return { success: false, error: uploadResult.error };
     }
 
     for (const path of getWorkspacePaths("deals")) {
@@ -174,7 +181,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
       revalidatePath(`/ops/deals/${dealId}`);
     }
 
-    return { success: true, uploaded: uploadedCount };
+    return { success: true, uploaded: uploadResult.uploaded };
   } catch (error) {
     console.error("[operations] unexpected error while uploading deal documents", error);
     return { success: false, error: "Произошла ошибка при загрузке документов." };
@@ -426,8 +433,17 @@ export async function completeDealGuardAction(
         deal_id: dealId,
         title: guardMeta.label,
         document_type: guardKey,
+        document_category: "other",
         status: "uploaded",
         storage_path: attachmentPath,
+        mime_type: file.type || null,
+        file_size: file.size ?? null,
+        metadata: {
+          upload_context: "guard_task",
+          guard_key: guardKey,
+          label: guardMeta.label,
+        },
+        uploaded_by: uploadedBy,
       });
 
       if (insertDocError) {

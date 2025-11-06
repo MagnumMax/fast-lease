@@ -17,6 +17,10 @@ import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/s
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { normalizeLicensePlate } from "@/lib/utils/license-plate";
+import {
+  uploadDocumentsBatch,
+  type DocumentUploadCandidate,
+} from "@/lib/documents/upload";
 
 const createVehicleSchema = z.object({
   vin: z.string().min(3),
@@ -488,55 +492,39 @@ export async function uploadVehicleDocuments(
     const { data: authData } = await supabase.auth.getUser();
     const uploadedBy = authData?.user?.id ?? null;
 
-    let uploadedCount = 0;
-
-    for (const doc of documents) {
-      const sanitizedName = doc.file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-") || "document";
-      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const objectPath = `${vehicleId}/${uniqueSuffix}-${sanitizedName}`;
-      const buffer = Buffer.from(await doc.file.arrayBuffer());
-
-      const { error: uploadError } = await supabase.storage
-        .from(VEHICLE_DOCUMENT_BUCKET)
-        .upload(objectPath, buffer, {
-          contentType: doc.file.type || "application/octet-stream",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error("[operations] failed to upload vehicle document", uploadError);
-        return { success: false, error: "Не удалось загрузить документ." };
-      }
-
+    const candidates: DocumentUploadCandidate<VehicleDocumentTypeValue>[] = documents.map((doc) => {
       const trimmedTitle = (doc.title ?? "").trim();
       const defaultTitle =
         doc.type === "other"
           ? trimmedTitle || doc.file.name
           : VEHICLE_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? doc.file.name;
 
-      const { error: insertError } = await supabase.from("vehicle_documents").insert({
-        vehicle_id: vehicleId,
-        document_type: doc.type,
+      return {
+        type: doc.type,
+        file: doc.file,
         title: defaultTitle,
-        storage_path: objectPath,
-        mime_type: doc.file.type || null,
-        file_size: doc.file.size ?? null,
-        status: "uploaded",
-        metadata: {
-          original_filename: doc.file.name,
-        },
-        uploaded_by: uploadedBy,
-      });
+        metadata: trimmedTitle ? { custom_title: trimmedTitle } : undefined,
+      };
+    });
 
-      if (insertError) {
-        console.error("[operations] failed to insert vehicle document record", insertError);
-        await supabase.storage
-          .from(VEHICLE_DOCUMENT_BUCKET)
-          .remove([objectPath]);
-        return { success: false, error: "Документ не сохранился. Попробуйте ещё раз." };
-      }
+    const uploadResult = await uploadDocumentsBatch<VehicleDocumentTypeValue>(candidates, {
+      supabase,
+      bucket: VEHICLE_DOCUMENT_BUCKET,
+      table: "vehicle_documents",
+      entityColumn: "vehicle_id",
+      entityId: vehicleId,
+      allowedTypes: VEHICLE_DOCUMENT_TYPE_VALUES,
+      typeLabelMap: VEHICLE_DOCUMENT_TYPE_LABEL_MAP,
+      uploadedBy,
+      logPrefix: "[operations] vehicle document",
+      messages: {
+        upload: "Не удалось загрузить документ.",
+        insert: "Документ не сохранился. Попробуйте ещё раз.",
+      },
+    });
 
-      uploadedCount += 1;
+    if (!uploadResult.success) {
+      return { success: false, error: uploadResult.error };
     }
 
     for (const path of getWorkspacePaths("cars")) {
@@ -544,7 +532,7 @@ export async function uploadVehicleDocuments(
     }
     revalidatePath(`/ops/cars/${slug}`);
 
-    return { success: true, uploaded: uploadedCount };
+    return { success: true, uploaded: uploadResult.uploaded };
   } catch (error) {
     console.error("[operations] unexpected error while uploading vehicle documents", error);
     return { success: false, error: "Произошла ошибка при загрузке документа." };

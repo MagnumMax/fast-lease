@@ -367,6 +367,12 @@ export type SupabaseDealDocument = {
   status?: string | null;
   signed_at?: string | null;
   created_at: string | null;
+  document_category?: string | null;
+  metadata?: unknown;
+  mime_type?: string | null;
+  file_size?: number | null;
+  uploaded_at?: string | null;
+  uploaded_by?: string | null;
 };
 
 export type SupabaseClientDocumentRow = {
@@ -2238,7 +2244,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     asset_id,
     vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
     customer_contact:customer_id(id, full_name, email, phone, emirates_id),
-    deal_documents(id, document_type, title, storage_path, status, signed_at, created_at)
+    deal_documents(id, document_type, title, storage_path, status, signed_at, created_at, document_category, metadata, mime_type, file_size, uploaded_at, uploaded_by)
   `;
 
   type SupabaseDealDetailRow = {
@@ -2807,8 +2813,11 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       })();
       const normalizedTitle = title.toLowerCase();
       const normalizedType = (resolvedDocumentType ?? "").toLowerCase();
-      let category: "required" | "signature" | "archived" | "other" = "required";
-      if (
+      const categoryCandidate = typeof doc.document_category === "string" ? doc.document_category.toLowerCase() : null;
+      let category: "required" | "signature" | "archived" | "other";
+      if (categoryCandidate && ["required", "signature", "archived", "other"].includes(categoryCandidate)) {
+        category = categoryCandidate as "required" | "signature" | "archived" | "other";
+      } else if (
         normalizedType.includes("sign") ||
         normalizedTitle.includes("signature") ||
         normalizedTitle.includes("подпис")
@@ -2837,6 +2846,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         normalizedTitle.includes("проч")
       ) {
         category = "other";
+      } else {
+        category = "required";
       }
 
       const signaturePattern = /(\d+)\s*\/*\s*(из|from)?\s*(\d+)/i;
@@ -2851,7 +2862,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         signaturesRequired = 2;
       }
 
-      const createdAtIso = doc.created_at ?? null;
+      const createdAtIso = doc.uploaded_at ?? doc.created_at ?? null;
       const signedAtIso = doc.signed_at ?? null;
       const statusRaw = typeof doc.status === "string" ? doc.status.trim() : null;
 
@@ -3605,7 +3616,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
           contract_end_date,
           first_payment_date,
           source,
-          deal_documents(id, title, document_type, status, storage_path, signed_at, created_at)
+          deal_documents(id, title, document_type, status, storage_path, signed_at, created_at, document_category, metadata, mime_type, file_size, uploaded_at, uploaded_by)
         )
       `,
     )
@@ -3825,6 +3836,12 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
           storage_path: string | null;
           signed_at: string | null;
           created_at: string | null;
+          document_category?: string | null;
+          metadata?: unknown;
+          mime_type?: string | null;
+          file_size?: number | null;
+          uploaded_at?: string | null;
+          uploaded_by?: string | null;
         }>
       | null;
   };

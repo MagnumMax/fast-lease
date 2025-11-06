@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Download, Loader2, Plus, Trash2 } from "lucide-react";
 
 import {
   Dialog,
@@ -441,13 +441,16 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="rounded-full px-3 py-1 text-xs capitalize">
-                          {doc.status || "unknown"}
-                        </Badge>
                         {doc.url ? (
                           <Button asChild size="sm" variant="outline" className="rounded-lg">
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                              Скачать
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label="Скачать документ"
+                              className="flex items-center justify-center"
+                            >
+                              <Download className="h-4 w-4" aria-hidden="true" />
                             </a>
                           </Button>
                         ) : (
@@ -463,9 +466,13 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                             onClick={() => onDeleteExisting(doc)}
                             disabled={isRemoving}
                             className="rounded-lg text-muted-foreground hover:text-destructive"
+                            aria-label="Удалить документ"
                           >
-                            <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
-                            {isRemoving ? "Удаление..." : "Удалить"}
+                            {isRemoving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            )}
                           </Button>
                         ) : null}
                       </div>

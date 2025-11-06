@@ -1,7 +1,5 @@
 "use server";
 
-import { Buffer } from "node:buffer";
-
 import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
@@ -18,6 +16,10 @@ import {
 } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
+import {
+  uploadDocumentsBatch,
+  type DocumentUploadCandidate,
+} from "@/lib/documents/upload";
 
 const inputSchema = z.object({
   name: z.string().min(1),
@@ -780,54 +782,43 @@ export async function uploadClientDocuments(
     const { data: authData } = await supabase.auth.getUser();
     const uploadedBy = authData?.user?.id ?? null;
 
-    let uploadedCount = 0;
-
-    for (const doc of documents) {
-      const sanitizedName = doc.file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-") || "document";
-      const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const objectPath = `${clientId}/${uniqueSuffix}-${sanitizedName}`;
-      const buffer = Buffer.from(await doc.file.arrayBuffer());
-
-      const { error: uploadError } = await supabase.storage
-        .from(CLIENT_DOCUMENT_BUCKET)
-        .upload(objectPath, buffer, {
-          contentType: doc.file.type || "application/octet-stream",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        console.error("[operations] failed to upload client document", uploadError);
-        return { success: false, error: "Не удалось загрузить документ." };
-      }
-
-      const category = CLIENT_DOCUMENT_CATEGORY_MAP[doc.type] ?? (doc.context === "company" ? "company" : "identity");
+    const candidates: DocumentUploadCandidate<ClientDocumentTypeValue>[] = documents.map((doc) => {
+      const category =
+        CLIENT_DOCUMENT_CATEGORY_MAP[doc.type] ?? (doc.context === "company" ? "company" : "identity");
       const defaultLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? doc.file.name;
 
-      const { error: insertError } = await supabase.from("client_documents").insert({
-        client_id: clientId,
-        document_type: doc.type,
-        document_category: category,
+      return {
+        type: doc.type,
+        file: doc.file,
+        context: doc.context,
+        category,
         title: defaultLabel,
-        storage_path: objectPath,
-        mime_type: doc.file.type || null,
-        file_size: doc.file.size ?? null,
-        status: "uploaded",
         metadata: {
-          original_filename: doc.file.name,
-          uploaded_via: "ops_dashboard",
           label: defaultLabel,
-          upload_context: doc.context,
+          uploaded_via: "ops_dashboard",
         },
-        uploaded_by: uploadedBy,
-      });
+      };
+    });
 
-      if (insertError) {
-        console.error("[operations] failed to insert client document metadata", insertError);
-        await supabase.storage.from(CLIENT_DOCUMENT_BUCKET).remove([objectPath]);
-        return { success: false, error: "Документ не сохранился. Попробуйте ещё раз." };
-      }
+    const uploadResult = await uploadDocumentsBatch<ClientDocumentTypeValue>(candidates, {
+      supabase,
+      bucket: CLIENT_DOCUMENT_BUCKET,
+      table: "client_documents",
+      entityColumn: "client_id",
+      entityId: clientId,
+      allowedTypes: CLIENT_DOCUMENT_TYPE_VALUES,
+      typeLabelMap: CLIENT_DOCUMENT_TYPE_LABEL_MAP,
+      categoryColumn: "document_category",
+      uploadedBy,
+      logPrefix: "[operations] client document",
+      messages: {
+        upload: "Не удалось загрузить документ.",
+        insert: "Документ не сохранился. Попробуйте ещё раз.",
+      },
+    });
 
-      uploadedCount += 1;
+    if (!uploadResult.success) {
+      return { success: false, error: uploadResult.error };
     }
 
     for (const path of getWorkspacePaths("clients")) {
@@ -838,7 +829,7 @@ export async function uploadClientDocuments(
       revalidatePath(`/ops/clients/${clientId}`);
     }
 
-    return { success: true, uploaded: uploadedCount };
+    return { success: true, uploaded: uploadResult.uploaded };
   } catch (error) {
     console.error("[operations] unexpected error while uploading client documents", error);
     return { success: false, error: "Произошла ошибка при загрузке документов." };

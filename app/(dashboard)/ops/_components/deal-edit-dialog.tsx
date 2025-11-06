@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 
-import { Pencil, Plus, Paperclip, Trash2 } from "lucide-react";
+import { Loader2, Paperclip, Pencil, Plus, Trash2 } from "lucide-react";
 
 import {
   Dialog,
@@ -521,9 +521,13 @@ export function DealEditDialog({
                                 onClick={() => handleDeleteExistingDocument(doc.id)}
                                 disabled={isRemoving}
                                 className="rounded-lg text-muted-foreground hover:text-destructive"
+                                aria-label="Удалить документ"
                               >
-                                <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
-                                {isRemoving ? "Удаление..." : "Удалить"}
+                                {isRemoving ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                )}
                               </Button>
                             </div>
                           </li>

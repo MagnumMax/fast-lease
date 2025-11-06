@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, useTransition } from "reac
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
-import { Plus, Trash2, X } from "lucide-react";
+import { Loader2, Plus, Trash2, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1164,9 +1164,6 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                                 <p className="text-xs text-muted-foreground">
                                   {doc.date ? `Загружен: ${doc.date}` : "Дата не указана"}
                                 </p>
-                                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                  {doc.status ? <Badge variant="outline">{doc.status}</Badge> : null}
-                                </div>
                                 {requiresTitle ? (
                                   <div className="space-y-1 pt-2">
                                     <Label htmlFor={`document-title-${doc.id}`}>Название</Label>
@@ -1236,9 +1233,13 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                                 onClick={() => handleExistingDocumentDelete(doc.id)}
                                 disabled={isBusy}
                                 className="rounded-lg text-muted-foreground hover:text-destructive"
+                                aria-label="Удалить документ"
                               >
-                                <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" />
-                                {isDocumentDeleting(doc.id) ? "Удаление..." : "Удалить"}
+                                {isDocumentDeleting(doc.id) ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                )}
                               </Button>
                             </div>
                           </div>
