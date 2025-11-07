@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import {
   BellRing,
@@ -12,8 +12,6 @@ import {
   Gauge,
   Hash,
   Mail,
-  MessageCircle,
-  Send,
   Phone,
   Wrench,
 } from "lucide-react";
@@ -159,8 +157,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const galleryFallbackImage =
     profile.image && profile.image !== VEHICLE_PLACEHOLDER_PATH ? profile.image : null;
   const hasMoreGalleryImages = (profile.gallery?.length ?? 0) > galleryPreview.length;
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
   const orderedTimeline = [...timeline].sort((a, b) => {
     const parse = (value: string): number => {
       const match = value.match(
@@ -189,10 +185,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
         tone: resolveTimelineTone(event.text),
       })),
     [orderedTimeline],
-  );
-  const nextTask = useMemo(
-    () => workflowTasks.find((task) => !task.fulfilled),
-    [workflowTasks],
   );
   const dueAmountValue = parseCurrencyValue(profile.dueAmount);
   const hasDebt = (dueAmountValue ?? 0) > 0 || overdueInvoices.length > 0;
@@ -279,7 +271,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
       ? `${clientDisplayName} * ${vehicleDescriptor}`
       : clientDisplayName ?? vehicleDescriptor ?? "—";
   const nextPaymentDisplay = profile.nextPayment?.trim() ?? "";
-  const nextActionLabel = nextTask ? nextTask.guardLabel ?? nextTask.title : "Нет активных задач";
   const summaryCards: Array<{
     id: string;
     label: string;
@@ -318,35 +309,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
       value: createdAtEntry?.value ?? "—",
     },
   ];
-
-  useEffect(() => {
-    if (!actionMessage && !actionError) {
-      return;
-    }
-    const timeout = window.setTimeout(() => {
-      setActionMessage(null);
-      setActionError(null);
-    }, 4000);
-    return () => window.clearTimeout(timeout);
-  }, [actionMessage, actionError]);
-
-  async function handleTemplateAction(kind: "reminder" | "requestDocs") {
-    const templates: Record<typeof kind, string> = {
-      reminder: `Добрый день! Напоминаем, что по сделке ${dealTitle} ожидается действие: ${nextActionLabel}. Дайте знать, если нужна помощь.`,
-      requestDocs: `Здравствуйте! Чтобы продолжить сделку ${dealTitle}, загрузите, пожалуйста, недостающие документы в портале или отправьте нам ответным письмом. Список документов: ${workflowTasks
-        .filter((task) => task.requiresDocument && !task.attachmentUrl)
-        .map((task) => task.guardLabel ?? task.title)
-        .join(", ") || "пакет документов"}.\nСпасибо!`,
-    };
-    const message = templates[kind];
-    try {
-      await navigator.clipboard.writeText(message);
-      setActionMessage("Текст шаблона скопирован в буфер обмена.");
-    } catch (error) {
-      console.error(error);
-      setActionError("Не удалось скопировать шаблон. Скопируйте вручную.");
-    }
-  }
 
   return (
     <div className="space-y-6 pb-10">
@@ -645,46 +607,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
             />
           </CardContent>
         </Card>
-
-        <Card className="bg-card/60 backdrop-blur">
-          <CardHeader>
-            <CardTitle>Шаблоны коммуникаций</CardTitle>
-            <CardDescription>Скопируйте текст и отправьте клиенту</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-              {actionMessage ? (
-                <div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-900 dark:text-emerald-200">
-                  {actionMessage}
-                </div>
-              ) : null}
-              {actionError ? (
-                <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-900 dark:text-rose-200">
-                  {actionError}
-                </div>
-              ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full gap-2 rounded-lg"
-                onClick={() => handleTemplateAction("reminder")}
-              >
-                <Send className="h-4 w-4" />
-                Отправить напоминание
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full gap-2 rounded-lg"
-                onClick={() => handleTemplateAction("requestDocs")}
-              >
-                <MessageCircle className="h-4 w-4" />
-                Запросить документы
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Шаблон копируется в буфер обмена. Вставьте его в письмо, чат или CRM.
-              </p>
-            </CardContent>
-          </Card>
 
           <Card className="bg-card/60 backdrop-blur" id="timeline">
             <CardHeader>
