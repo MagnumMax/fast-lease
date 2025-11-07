@@ -113,6 +113,29 @@ const FALLBACK_VEHICLE = "Vehicle TBD";
 const FALLBACK_SOURCE = "Website";
 const BASE_SOURCE_OPTIONS = ["Supabase import", "Broker", "Dubizzle"];
 
+function buildPaddedOptionLabel(primary: string, secondary: string | null, padLength: number) {
+  const trimmedPrimary = primary.trim();
+  const trimmedSecondary = secondary?.trim();
+  const safePrimary = trimmedPrimary.length > 0 ? trimmedPrimary : "—";
+  const safeSecondary = trimmedSecondary && trimmedSecondary.length > 0 ? trimmedSecondary : "—";
+  const effectivePad = Math.max(padLength, safePrimary.length + 2);
+
+  return `${safePrimary.padEnd(effectivePad, " ")}${safeSecondary}`;
+}
+
+function resolveVehicleSecondaryLabel(vehicle: VehicleOption) {
+  if (vehicle.vin && vehicle.vin.trim() && vehicle.vin !== "—") {
+    return vehicle.vin.trim();
+  }
+  if (vehicle.detailHref && vehicle.detailHref.trim()) {
+    return vehicle.detailHref.trim();
+  }
+  if (vehicle.optionValue && vehicle.optionValue.trim()) {
+    return vehicle.optionValue.trim();
+  }
+  return "—";
+}
+
 function extractSourceOptions(deals: OpsDealSummary[]) {
   const sources = Array.from(new Set(deals.map((deal) => deal.source))).filter(Boolean);
 
@@ -375,6 +398,46 @@ export function OpsDealsBoard({
       optionValue: resolveVehicleOptionValue(vehicle, index),
     }));
   }, [vehicleDirectory]);
+  const clientDropdownOptions = useMemo(() => {
+    if (clientDirectory.length === 0) {
+      return [] as Array<{ id: string; optionLabel: string; titleLabel: string }>;
+    }
+
+    const normalized = clientDirectory.map((client) => ({
+      id: client.id,
+      name: (client.name ?? "").trim(),
+      phone: client.phone?.trim() ?? "",
+    }));
+    const padLength = normalized.reduce((max, item) => Math.max(max, item.name.length), 0) + 3;
+
+    return normalized.map((item) => {
+      const phoneLabel = item.phone.length > 0 ? item.phone : "—";
+      const baseTitle = item.name.length > 0 ? item.name : "—";
+      return {
+        id: item.id,
+        optionLabel: buildPaddedOptionLabel(item.name, phoneLabel, padLength),
+        titleLabel: item.phone.length > 0 ? `${baseTitle} · ${item.phone}` : baseTitle,
+      };
+    });
+  }, [clientDirectory]);
+  const vehicleDropdownOptions = useMemo(() => {
+    if (vehicleOptions.length === 0) {
+      return [] as Array<{ optionValue: string; optionLabel: string; titleLabel: string }>;
+    }
+
+    const normalized = vehicleOptions.map((vehicle) => ({
+      optionValue: vehicle.optionValue,
+      name: (vehicle.name ?? FALLBACK_VEHICLE).trim() || FALLBACK_VEHICLE,
+      secondary: resolveVehicleSecondaryLabel(vehicle),
+    }));
+    const padLength = normalized.reduce((max, item) => Math.max(max, item.name.length), 0) + 3;
+
+    return normalized.map((item) => ({
+      optionValue: item.optionValue,
+      optionLabel: buildPaddedOptionLabel(item.name, item.secondary, padLength),
+      titleLabel: `${item.name} · ${item.secondary}`,
+    }));
+  }, [vehicleOptions]);
   const vehicleNameMap = useMemo(() => {
     const map = new Map<string, string>();
     vehicleOptions.forEach((vehicle) => {
@@ -770,12 +833,12 @@ export function OpsDealsBoard({
               onChange={(event) =>
                 setFormState((prev) => ({ ...prev, clientId: event.target.value }))
               }
-              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60"
+              className="h-11 w-full rounded-xl border border-border bg-background px-3 font-mono text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 [&_option]:whitespace-pre"
               disabled={clientDirectory.length === 0}
             >
-              {clientDirectory.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
+              {clientDropdownOptions.map((option) => (
+                <option key={option.id} value={option.id} title={option.titleLabel}>
+                  {option.optionLabel}
                 </option>
               ))}
             </select>
@@ -801,12 +864,12 @@ export function OpsDealsBoard({
               onChange={(event) =>
                 setFormState((prev) => ({ ...prev, vehicleVin: event.target.value }))
               }
-              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60"
+              className="h-11 w-full rounded-xl border border-border bg-background px-3 font-mono text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 [&_option]:whitespace-pre"
               disabled={vehicleOptions.length === 0}
             >
-              {vehicleOptions.map((vehicle) => (
-                <option key={vehicle.optionValue} value={vehicle.optionValue}>
-                  {vehicle.name}
+              {vehicleDropdownOptions.map((option) => (
+                <option key={option.optionValue} value={option.optionValue} title={option.titleLabel}>
+                  {option.optionLabel}
                 </option>
               ))}
             </select>
