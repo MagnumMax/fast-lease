@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../tailwind.config.ts";
 
 :root {
   color-scheme: light;
@@ -141,7 +140,7 @@
   }
 
   * {
-    @apply border-border;
+    border-color: var(--border);
   }
 
   body {
@@ -174,8 +173,8 @@
     position: fixed;
     inset: 0 auto 0 0;
     width: var(--sidebar-width);
-    z-index: theme("zIndex.sidebar");
-    @apply hidden h-full flex-col border border-border bg-sidebar px-6 py-6 backdrop-blur lg:flex;
+    @apply z-sidebar hidden h-full flex-col border bg-sidebar px-6 py-6 backdrop-blur lg:flex;
+    border-color: var(--border);
   }
 
   .dashboard-sidebar[data-open="true"] {
@@ -216,7 +215,8 @@
 
   .dashboard-header {
     height: var(--header-height);
-    @apply sticky top-0 z-header flex items-center justify-between border-b border-border bg-header px-6 backdrop-blur;
+    @apply sticky top-0 z-header flex items-center justify-between border-b bg-header px-6 backdrop-blur;
+    border-color: var(--border);
   }
 
   .dashboard-header__left {
@@ -236,7 +236,8 @@
   }
 
   .dashboard-mobile-trigger {
-    @apply inline-flex items-center justify-center rounded-xl border border-border bg-card p-2 text-foreground transition-colors hover:border-slate-400 hover:text-foreground dark:text-slate-100 dark:hover:text-white;
+    @apply inline-flex items-center justify-center rounded-xl border bg-card p-2 text-foreground transition-colors hover:border-slate-400 hover:text-foreground dark:text-slate-100 dark:hover:text-white;
+    border-color: var(--border);
   }
 
   .dashboard-content {
@@ -253,7 +254,7 @@
     left: 0;
     right: 0;
     display: none;
-    z-index: theme("zIndex.nav");
+    @apply z-nav;
     padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border);
     backdrop-filter: blur(12px);
@@ -299,7 +300,8 @@
   }
 
   .public-header {
-    @apply border-b border-border bg-header backdrop-blur;
+    @apply border-b bg-header backdrop-blur;
+    border-color: var(--border);
   }
 
   .public-header__inner {
@@ -427,7 +429,8 @@
   }
 
   .segmented {
-    @apply inline-flex overflow-hidden rounded-xl border border-border bg-card backdrop-blur;
+    @apply inline-flex overflow-hidden rounded-xl border bg-card backdrop-blur;
+    border-color: var(--border);
   }
 
   .segmented-btn {
@@ -452,7 +455,7 @@
 @media (max-width: 1023px) {
   .dashboard-sidebar {
     transform: translateX(-100%);
-    transition: transform 0.3s theme("transitionTimingFunction.enter");
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 2px 0 18px rgba(15, 23, 42, 0.35);
     width: 16rem;
   }
