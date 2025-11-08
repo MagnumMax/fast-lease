@@ -560,60 +560,6 @@ export const mainNav = [
   { label: 'Contact', href: '/contact/index.html', icon: 'mail' },
 ];
 
-export function mountMobileBottomNav({ containerId, items, activePath, basePath = "" }) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="mobile-bottom-nav-container" role="navigation" aria-label="Bottom navigation">
-      ${items
-        .slice(0, 5)
-        .map((item) => {
-          const isActive = activePath === item.href;
-          const activeClass = isActive ? 'active' : '';
-          const ariaCurrent = isActive ? ' aria-current="page"' : '';
-          return `
-            <a href="${basePath}${item.href}" class="mobile-nav-item ${activeClass} focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2" data-nav-item="${item.href}"${ariaCurrent}>
-              <i data-lucide="${item.icon}" class="mobile-nav-icon" aria-hidden="true"></i>
-              <span class="mobile-nav-label">${item.label}</span>
-            </a>
-          `;
-        })
-        .join("")}
-    </div>
-  `;
-
-  try { applyIcons(); } catch {}
-
-  const navItems = container.querySelectorAll('.mobile-nav-item');
-  navItems.forEach(item => {
-    item.addEventListener('click', (e) => {
-      navItems.forEach(navItem => navItem.classList.remove('active'));
-      item.classList.add('active');
-      if (navigator.vibrate) {
-        navigator.vibrate(50);
-      }
-    });
-  });
-
-  updateMobileNavActiveState(container, activePath);
-}
-
-export function updateMobileNavActiveState(container, currentPath) {
-  if (!container) return;
-  const navItems = container.querySelectorAll('.mobile-nav-item');
-  navItems.forEach(item => {
-    const itemPath = item.getAttribute('data-nav-item');
-    if (itemPath === currentPath) {
-      item.classList.add('active');
-      item.setAttribute('aria-current', 'page');
-    } else {
-      item.classList.remove('active');
-      item.removeAttribute('aria-current');
-    }
-  });
-}
-
 // Function to add "Back to list" button on detail pages
 export function mountBackToListButton({ containerId, listHref, label = "Back to list" }) {
   const container = document.getElementById(containerId);

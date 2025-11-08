@@ -35,31 +35,30 @@ function resolveInvoiceStatusTone(status: string) {
 }
 
 export function InvoiceHistoryTable({ entries }: InvoiceHistoryTableProps) {
+  if (entries.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border p-6 text-center text-sm text-muted-foreground">
+        No invoices to display.
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl border border-border">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-surface-subtle">
-            <TableHead>Invoice</TableHead>
-            <TableHead>Due date</TableHead>
-            <TableHead>Purpose</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entries.length === 0 ? (
-            <TableRow>
-              <TableCell
-                colSpan={6}
-                className="text-center text-sm text-muted-foreground"
-              >
-                No invoices to display.
-              </TableCell>
+    <div className="space-y-4">
+      <div className="hidden overflow-x-auto rounded-2xl border border-border lg:block">
+        <Table className="min-w-[720px]">
+          <TableHeader>
+            <TableRow className="bg-surface-subtle">
+              <TableHead>Invoice</TableHead>
+              <TableHead>Due date</TableHead>
+              <TableHead>Purpose</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Action</TableHead>
             </TableRow>
-          ) : (
-            entries.map((invoice) => (
+          </TableHeader>
+          <TableBody>
+            {entries.map((invoice) => (
               <TableRow key={invoice.id}>
                 <TableCell className="font-medium text-foreground">
                   {invoice.link ? (
@@ -108,10 +107,57 @@ export function InvoiceHistoryTable({ entries }: InvoiceHistoryTableProps) {
                   </Button>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="grid gap-3 lg:hidden">
+        {entries.map((invoice) => (
+          <article
+            key={invoice.id}
+            className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+          >
+            <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+              <span>{invoice.invoiceNumber ?? invoice.id}</span>
+              <span className={resolveInvoiceStatusTone(invoice.status)}>
+                {invoice.status.replace(/_/g, " ")}
+              </span>
+            </div>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {formatCurrency(invoice.totalAmount)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Due {formatDate(invoice.dueDate)}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {invoice.purpose ?? "Monthly lease payment"}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <Button
+                asChild={Boolean(invoice.downloadUrl)}
+                size="sm"
+                variant="outline"
+                className="rounded-xl"
+                disabled={!invoice.downloadUrl}
+              >
+                {invoice.downloadUrl ? (
+                  <a
+                    href={invoice.downloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Download invoice"
+                  >
+                    Download
+                  </a>
+                ) : (
+                  <>Download</>
+                )}
+              </Button>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }

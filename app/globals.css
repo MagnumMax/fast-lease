@@ -40,8 +40,6 @@
   --chart-demand-activated-fill: rgba(37, 99, 235, 0.2);
   --chart-investor-accrued: rgba(15, 23, 42, 0.9);
   --chart-investor-actual: rgba(148, 163, 184, 0.4);
-  --font-geist-sans: "Inter";
-  --font-geist-mono: "Menlo";
   --radius-lg: 0.75rem;
   --brand-25: #f8faff;
   --brand-50: #f5f7ff;
@@ -110,8 +108,6 @@
   --chart-investor-accrued: rgba(96, 165, 250, 0.75);
   --chart-investor-actual: rgba(59, 130, 246, 0.45);
   --linear-surface: radial-gradient(circle at top left, rgba(37, 99, 235, 0.25) 0%, rgba(11, 15, 26, 0) 55%);
-  --font-geist-sans: "Inter";
-  --font-geist-mono: "Menlo";
   --brand-50: #16244a;
   --brand-100: #1b2f5f;
   --brand-200: #1f3a75;
@@ -248,56 +244,6 @@
     @apply mx-auto flex w-full max-w-6xl flex-col gap-6;
   }
 
-  .mobile-bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: none;
-    @apply z-nav;
-    padding: 0.5rem 0 calc(0.5rem + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--border);
-    backdrop-filter: blur(12px);
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.12);
-  }
-
-  .dark .mobile-bottom-nav {
-    background: rgba(11, 15, 26, 0.85);
-    box-shadow: 0 -6px 24px rgba(2, 6, 23, 0.65);
-  }
-
-  .mobile-bottom-nav__container {
-    @apply mx-auto flex max-w-xl items-center justify-around px-4;
-  }
-
-  .mobile-bottom-nav__item {
-    @apply relative flex flex-col items-center justify-center rounded-lg px-2 py-1.5 text-xs font-medium text-slate-500 transition-all hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100;
-  }
-
-  .mobile-bottom-nav__item[data-active="true"] {
-    @apply text-brand-600 dark:text-brand-400;
-  }
-
-  .mobile-bottom-nav__item[data-active="true"]::before {
-    content: "";
-    position: absolute;
-    top: -0.5rem;
-    left: 50%;
-    width: 1.75rem;
-    height: 2px;
-    transform: translateX(-50%);
-    border-radius: 9999px;
-    background: var(--brand-500);
-  }
-
-  .mobile-bottom-nav__icon {
-    @apply mb-1 h-5 w-5;
-  }
-
-  .mobile-bottom-nav__label {
-    @apply text-[0.65rem] font-medium leading-none;
-  }
 
   .public-header {
     @apply border-b bg-header backdrop-blur;
@@ -477,13 +423,6 @@
     @apply px-3;
   }
 
-  .mobile-bottom-nav {
-    display: block;
-  }
-
-  body .dashboard-content {
-    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
-  }
 }
 
 @media (max-width: 480px) {

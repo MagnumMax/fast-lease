@@ -29,26 +29,28 @@ function resolveScheduleStatusTone(status: string) {
 }
 
 export function PaymentScheduleTable({ entries }: PaymentScheduleTableProps) {
+  if (entries.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border p-6 text-center text-sm text-muted-foreground">
+        No scheduled payments found.
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-2xl border border-border">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-surface-subtle">
-            <TableHead className="w-12">#</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {entries.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
-                No scheduled payments found.
-              </TableCell>
+    <div className="space-y-4">
+      <div className="hidden overflow-x-auto rounded-2xl border border-border lg:block">
+        <Table className="min-w-[640px]">
+          <TableHeader>
+            <TableRow className="bg-surface-subtle">
+              <TableHead className="w-12">#</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Status</TableHead>
             </TableRow>
-          ) : (
-            entries.map((entry) => (
+          </TableHeader>
+          <TableBody>
+            {entries.map((entry) => (
               <TableRow key={entry.id}>
                 <TableCell className="font-medium text-foreground">
                   {entry.sequence}
@@ -61,10 +63,30 @@ export function PaymentScheduleTable({ entries }: PaymentScheduleTableProps) {
                   {entry.status.replace(/_/g, " ")}
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="grid gap-3 lg:hidden">
+        {entries.map((entry) => (
+          <article
+            key={entry.id}
+            className="rounded-2xl border border-border bg-card p-4 shadow-sm"
+          >
+            <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+              <span>Payment #{entry.sequence}</span>
+              <span className={resolveScheduleStatusTone(entry.status)}>
+                {entry.status.replace(/_/g, " ")}
+              </span>
+            </div>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {formatCurrency(entry.amount)}
+            </p>
+            <p className="text-sm text-muted-foreground">Due {formatDate(entry.dueDate)}</p>
+          </article>
+        ))}
+      </div>
     </div>
   );
 }
