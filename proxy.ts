@@ -53,7 +53,7 @@ async function loadSectionOverride(
     .eq("section", section);
 
   if (error) {
-    console.error("[middleware] Failed to load role access overrides", { section, error });
+    console.error("[proxy] Failed to load role access overrides", { section, error });
     return { roles: defaultRoles, hasOverride: false };
   }
 
@@ -80,7 +80,7 @@ async function loadUserRoles(
   userId: string,
   fallbackUser?: { app_metadata?: unknown; user_metadata?: unknown },
 ): Promise<AppRole[]> {
-  console.log("[middleware] Loading roles for user:", userId);
+  console.log("[proxy] Loading roles for user:", userId);
   const { data: rolesData, error } = await supabase
     .from("user_roles")
     .select("role")
@@ -89,14 +89,14 @@ async function loadUserRoles(
   const metadataFallback = extractRolesFromUserMetadata(fallbackUser ?? null);
 
   if (error) {
-    console.error("[middleware] Failed to load user roles", error);
+    console.error("[proxy] Failed to load user roles", error);
     if (metadataFallback.length) {
-      console.log("[middleware] Using metadata roles fallback", metadataFallback);
+      console.log("[proxy] Using metadata roles fallback", metadataFallback);
     }
     return metadataFallback;
   }
 
-  console.log("[middleware] Raw roles data:", rolesData);
+  console.log("[proxy] Raw roles data:", rolesData);
   const roles: AppRole[] = [];
   for (const row of rolesData ?? []) {
     const role = normalizeRoleCode((row as { role: unknown }).role);
@@ -106,11 +106,11 @@ async function loadUserRoles(
   }
 
   if (!roles.length && metadataFallback.length) {
-    console.log("[middleware] Roles empty, using metadata fallback", metadataFallback);
+    console.log("[proxy] Roles empty, using metadata fallback", metadataFallback);
     return metadataFallback;
   }
 
-  console.log("[middleware] Processed roles:", roles);
+  console.log("[proxy] Processed roles:", roles);
   return roles;
 }
 
@@ -122,7 +122,7 @@ function needsProtection(pathname: string) {
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-function createSupabaseMiddlewareClient(
+function createSupabaseProxyClient(
   req: NextRequest,
   res: NextResponse,
 ): SupabaseClient {
@@ -131,7 +131,7 @@ function createSupabaseMiddlewareClient(
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(
-      "Supabase middleware client requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "Supabase proxy client requires NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY",
     );
   }
 
@@ -153,16 +153,16 @@ function createSupabaseMiddlewareClient(
   });
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
   const { pathname } = req.nextUrl;
 
-  console.log("[middleware] Processing request for:", pathname);
-  console.log("[middleware] Is auth route:", isAuthRoute(pathname));
-  console.log("[middleware] Needs protection:", needsProtection(pathname));
+  console.log("[proxy] Processing request for:", pathname);
+  console.log("[proxy] Is auth route:", isAuthRoute(pathname));
+  console.log("[proxy] Needs protection:", needsProtection(pathname));
 
   if (pathname.startsWith("/beta/assets/")) {
-    console.log("[middleware] Serving beta asset:", pathname);
+    console.log("[proxy] Serving beta asset:", pathname);
   }
 
   if (
@@ -181,30 +181,30 @@ export async function middleware(req: NextRequest) {
 
   // Only hit Supabase for protected routes; skip on auth routes to reduce noisy fetch errors when offline.
   if (needsProtection(pathname)) {
-    console.log("[middleware] Creating Supabase client for protected route");
-    const supabase = createSupabaseMiddlewareClient(req, res);
+    console.log("[proxy] Creating Supabase client for protected route");
+    const supabase = createSupabaseProxyClient(req, res);
 
     // Используем getUser() вместо getSession() для безопасности
-    console.log("[middleware] Calling supabase.auth.getUser()");
+    console.log("[proxy] Calling supabase.auth.getUser()");
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError) {
-      console.error("[middleware] Auth error:", userError);
+      console.error("[proxy] Auth error:", userError);
     } else {
-      console.log("[middleware] User data:", userData.user ? "present" : "null");
+      console.log("[proxy] User data:", userData.user ? "present" : "null");
     }
 
     if (userError || !userData.user) {
-      console.log("[middleware] No user found, redirecting to login");
+      console.log("[proxy] No user found, redirecting to login");
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    console.log("[middleware] Loading user roles for user:", userData.user.id);
+    console.log("[proxy] Loading user roles for user:", userData.user.id);
     const roles = await loadUserRoles(supabase, userData.user.id, userData.user);
-    console.log("[middleware] User roles:", roles);
+    console.log("[proxy] User roles:", roles);
 
     const section = resolveSectionForPath(pathname);
     let customAllowed: AppRole[] | null = null;
@@ -212,20 +212,20 @@ export async function middleware(req: NextRequest) {
       const override = await loadSectionOverride(supabase, section);
       if (override.hasOverride) {
         customAllowed = override.roles;
-        console.log("[middleware] Using override access for section", section, override.roles);
+        console.log("[proxy] Using override access for section", section, override.roles);
       }
     }
 
-    console.log("[middleware] Checking access for path:", pathname, "with roles:", roles);
+    console.log("[proxy] Checking access for path:", pathname, "with roles:", roles);
     if (!isAccessAllowed(pathname, roles, customAllowed)) {
-      console.log("[middleware] Access denied, redirecting to home path");
+      console.log("[proxy] Access denied, redirecting to home path");
       const redirectUrl = req.nextUrl.clone();
       redirectUrl.pathname = resolveHomePath(roles, "/");
-      console.log("[middleware] Redirecting to:", redirectUrl.pathname);
+      console.log("[proxy] Redirecting to:", redirectUrl.pathname);
       return NextResponse.redirect(redirectUrl);
     }
 
-    console.log("[middleware] Access granted, proceeding");
+    console.log("[proxy] Access granted, proceeding");
     return res;
   }
 
