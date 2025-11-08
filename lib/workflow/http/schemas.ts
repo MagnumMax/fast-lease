@@ -3,7 +3,7 @@ import { z } from "zod";
 const createDealBaseSchema = z.object({
   source: z.string().min(1),
   op_manager_id: z.string().uuid().optional(),
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
 });
 
 const createDealFromReferencesSchema = createDealBaseSchema.extend({
@@ -27,7 +27,7 @@ const createDealWithEntitiesSchema = createDealBaseSchema.extend({
     supplier: z.string().optional(),
     price: z.number().nonnegative().optional(),
     mileage: z.number().nonnegative().optional(),
-    meta: z.record(z.unknown()).optional(),
+    meta: z.record(z.string(), z.unknown()).optional(),
   }),
 });
 
@@ -75,7 +75,7 @@ export const transitionRequestSchema = z.object({
       "ADMIN",
     ])
     .optional(),
-  guard_context: z.record(z.unknown()).optional(),
+  guard_context: z.record(z.string(), z.unknown()).optional(),
   comment: z.string().optional(),
 });
 
@@ -90,7 +90,7 @@ export const listDealTasksQuerySchema = z.object({
 export type ListDealTasksQuery = z.infer<typeof listDealTasksQuerySchema>;
 
 export const completeTaskRequestSchema = z.object({
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type CompleteTaskRequest = z.infer<typeof completeTaskRequestSchema>;
@@ -99,7 +99,7 @@ export const esignEventSchema = z.object({
   deal_id: z.string().uuid(),
   status: z.enum(["COMPLETED", "DECLINED"]),
   envelope_id: z.string().min(1).optional(),
-  meta: z.record(z.unknown()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type EsignEventPayload = z.infer<typeof esignEventSchema>;
@@ -120,7 +120,7 @@ export const aecbEventSchema = z.object({
   aecb_score: z.number().int(),
   approved: z.boolean(),
   notes: z.string().optional(),
-  raw: z.record(z.unknown()).optional(),
+  raw: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type AecbEventPayload = z.infer<typeof aecbEventSchema>;

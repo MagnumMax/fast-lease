@@ -168,10 +168,6 @@ function buildOperationsDashboardSnapshotFromData(
     invoice.status === 'pending' || invoice.status === 'overdue'
   ).length;
 
-  // Расчёт среднего времени одобрения (упрощённо)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const avgApprovalTime = deals.length > 0 ? "24h" : "0h";
-
   const kpis: OpsKpiMetric[] = [
     {
       id: "total-deals",
@@ -516,9 +512,6 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       (row.updated_at as string) ??
       (row.created_at as string) ??
       new Date().toISOString();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const updatedAtDate = parseDate(updatedAt) ?? new Date();
-
     const statusKey = mapStatusToWorkflow(row.status as string);
     const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
     const ownerRole = statusMeta.ownerRole;

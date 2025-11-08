@@ -96,7 +96,7 @@ export async function requestInvestorReportAction(
   });
 
   if (!validated.success) {
-    const firstError = validated.error.errors[0]?.message ?? "Некорректные параметры запроса.";
+    const firstError = validated.error.issues[0]?.message ?? "Некорректные параметры запроса.";
     return { status: "error", message: firstError };
   }
 

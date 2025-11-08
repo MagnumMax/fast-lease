@@ -54,6 +54,7 @@ function createSupabaseMock() {
   ];
 
   const notifications: NotificationRow[] = [];
+  const taskQueue: Array<Record<string, unknown>> = [];
 
   const ensureRow = (values: Record<string, unknown>): NotificationRow => {
     const existing = notifications.find((row) => row.action_hash === values.action_hash);
@@ -161,6 +162,26 @@ function createSupabaseMock() {
       };
     }
 
+    if (table === "workflow_task_queue") {
+      return {
+        select: () => ({
+          eq: (_column: string, status: string) => ({
+            order: () => ({
+              limit: async () => ({
+                data: taskQueue
+                  .filter((row) => row.status === status)
+                  .map((row) => ({ ...row })),
+                error: null,
+              }),
+            }),
+          }),
+        }),
+        update: () => ({
+          eq: async () => ({ error: null }),
+        }),
+      };
+    }
+
     return {
       select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }),
       update: () => ({ eq: async () => ({ error: null }) }),
@@ -170,7 +191,15 @@ function createSupabaseMock() {
   };
 
   return {
-    client: { from } as unknown,
+    client: {
+      from,
+      rpc: async (fn: string) => {
+        if (fn === "monitor_task_sla_status") {
+          return { data: 0, error: null };
+        }
+        return { data: null, error: null };
+      },
+    } as unknown,
     deal,
     notifications,
   };
@@ -215,7 +244,7 @@ describe("end-to-end workflow", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          deal_id: "00000000-0000-0000-0000-000000000010",
+          deal_id: "44444444-4444-4444-8444-444444444444",
           status: "COMPLETED",
         }),
       }),

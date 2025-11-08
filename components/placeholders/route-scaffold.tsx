@@ -1,5 +1,4 @@
-"use client";
-
+import type { ReactNode } from "react";
 import {
   Card,
   CardContent,
@@ -12,7 +11,7 @@ type RouteScaffoldProps = {
   title: string;
   description?: string;
   referencePath?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 };
 
 export function RouteScaffold({

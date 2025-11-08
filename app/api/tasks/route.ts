@@ -26,7 +26,7 @@ const createTaskSchema = z.object({
     .string()
     .datetime({ offset: true })
     .optional(),
-  payload: z.record(z.any()).optional(),
+  payload: z.record(z.string(), z.any()).optional(),
 });
 
 export async function GET(request: Request) {

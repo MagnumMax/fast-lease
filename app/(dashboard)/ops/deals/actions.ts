@@ -25,7 +25,7 @@ const inputSchema = z.object({
     year: z.number().int().min(1900).max(2100).optional(),
     price: z.number().nonnegative().nullable().optional(),
     mileage: z.number().nonnegative().optional(),
-    meta: z.record(z.unknown()).optional(),
+    meta: z.record(z.string(), z.unknown()).optional(),
   }),
 });
 

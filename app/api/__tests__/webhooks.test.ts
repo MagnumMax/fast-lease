@@ -24,9 +24,9 @@ const { POST: postEsign } = await import("../webhooks/esign/route");
 const { POST: postBank } = await import("../webhooks/bank/route");
 const { POST: postAecb } = await import("../webhooks/aecb/route");
 
-const DEAL_ID_ESIGN = "00000000-0000-0000-0000-000000000001";
-const DEAL_ID_BANK = "00000000-0000-0000-0000-000000000002";
-const DEAL_ID_AECB = "00000000-0000-0000-0000-000000000003";
+const DEAL_ID_ESIGN = "11111111-1111-4111-8111-111111111111";
+const DEAL_ID_BANK = "22222222-2222-4222-8222-222222222222";
+const DEAL_ID_AECB = "33333333-3333-4333-8333-333333333333";
 
 beforeEach(() => {
   vi.clearAllMocks();

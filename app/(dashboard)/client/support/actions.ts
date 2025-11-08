@@ -29,7 +29,7 @@ export async function createSupportTicketAction(
   });
 
   if (!validated.success) {
-    const firstError = validated.error.errors[0]?.message ?? "Некорректные данные.";
+    const firstError = validated.error.issues[0]?.message ?? "Некорректные данные.";
     return { success: false, error: firstError };
   }
 

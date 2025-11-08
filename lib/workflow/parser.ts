@@ -56,7 +56,7 @@ const rawTaskFieldSchema = z.object({
       }),
     )
     .optional(),
-  ui: z.record(z.any()).optional(),
+  ui: z.record(z.string(), z.any()).optional(),
 });
 
 const rawTaskSchemaSchema = z.object({
@@ -75,8 +75,8 @@ const rawTaskDefinitionSchema = z.object({
     })
     .optional(),
   schema: rawTaskSchemaSchema.optional(),
-  bindings: z.record(z.string().min(1)).optional(),
-  defaults: z.record(z.any()).optional(),
+  bindings: z.record(z.string(), z.string().min(1)).optional(),
+  defaults: z.record(z.string(), z.any()).optional(),
   guard_key: z.string().min(1).optional(),
 });
 
@@ -100,7 +100,7 @@ const rawEscalateActionSchema = z.object({
 const rawWebhookActionSchema = z.object({
   type: z.literal("WEBHOOK"),
   endpoint: z.string().min(1),
-  payload: z.record(z.any()).optional(),
+  payload: z.record(z.string(), z.any()).optional(),
 });
 
 const rawScheduleActionSchema = z.object({
@@ -295,8 +295,8 @@ const permissionEntrySchema = z.union([
 
 const integrationsSchema = z
   .object({
-    webhooks: z.record(z.string().min(1)).optional(),
-    callbacks: z.record(z.string().min(1)).optional(),
+    webhooks: z.record(z.string(), z.string().min(1)).optional(),
+    callbacks: z.record(z.string(), z.string().min(1)).optional(),
     retries: z
       .object({
         policy: z.string().min(1),
@@ -337,7 +337,7 @@ const metricsSchema = z.object({
 
 const notificationsSchema = z.object({
   channels: z.array(z.string().min(1)),
-  templates: z.record(z.string().min(1)),
+  templates: z.record(z.string(), z.string().min(1)),
 });
 
 const metadataSchema = z
@@ -357,9 +357,9 @@ const templateSchema = z.object({
   workflow: metadataSchema,
   roles: z.array(roleDefinitionSchema).min(1),
   kanban_order: z.array(z.string().min(1)).min(1),
-  statuses: z.record(statusSchema),
+  statuses: z.record(z.string(), statusSchema),
   transitions: z.array(transitionSchema).min(1),
-  permissions: z.record(permissionEntrySchema),
+  permissions: z.record(z.string(), permissionEntrySchema),
   integrations: integrationsSchema,
   metrics: metricsSchema,
   notifications: notificationsSchema,

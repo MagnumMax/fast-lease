@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import * as React from "react";
 import { ChevronDown, Menu } from "lucide-react";
 
@@ -17,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/system/theme-toggle";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
+import { useActivePathname } from "@/components/navigation/use-active-pathname";
 
 type DashboardLayoutProps = {
   navItems: NavItem[];
@@ -54,15 +54,17 @@ export function DashboardLayout({
   brand = DEFAULT_BRAND,
   user,
 }: DashboardLayoutProps) {
-  const pathname = usePathname();
+  const { pathname, isActive } = useActivePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const sidebarId = React.useId();
   const profileMenuId = React.useId();
   const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
   const profileMenuRef = React.useRef<HTMLDivElement>(null);
 
-  const activeItem =
-    navItems.find((item) => pathname.startsWith(item.href)) ?? navItems[0];
+  const activeItem = React.useMemo(
+    () => navItems.find((item) => isActive(item.href)) ?? navItems[0],
+    [navItems, isActive],
+  );
 
   React.useEffect(() => {
     setSidebarOpen(false);
@@ -123,13 +125,14 @@ export function DashboardLayout({
         <nav className="dashboard-sidebar__nav">
           {navItems.map((item) => {
             const Icon = resolveNavIcon(item.icon);
-            const active = pathname.startsWith(item.href);
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn("dashboard-sidebar__nav-link")}
                 data-active={active}
+                aria-current={active ? "page" : undefined}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
                 <span>{item.label}</span>

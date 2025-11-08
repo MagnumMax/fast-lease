@@ -43,6 +43,8 @@ describe("POST /api/workflow/queues/run", () => {
       processNotifications: vi.fn().mockResolvedValue({ processed: 1, failed: 0 }),
       processWebhooks: vi.fn().mockResolvedValue({ processed: 2, failed: 1 }),
       processSchedules: vi.fn().mockResolvedValue({ processed: 3, failed: 0 }),
+      processTasks: vi.fn().mockResolvedValue({ processed: 4, failed: 0 }),
+      monitorTaskSla: vi.fn().mockResolvedValue({ updated: 2 }),
     };
 
     mockedQueueProcessor.mockReturnValue(processorInstance);
@@ -58,10 +60,14 @@ describe("POST /api/workflow/queues/run", () => {
       notifications: { processed: 1, failed: 0 },
       webhooks: { processed: 2, failed: 1 },
       schedules: { processed: 3, failed: 0 },
+      tasks: { processed: 4, failed: 0 },
+      sla: { updated: 2 },
     });
 
     expect(processorInstance.processNotifications).toHaveBeenCalled();
     expect(processorInstance.processWebhooks).toHaveBeenCalled();
     expect(processorInstance.processSchedules).toHaveBeenCalled();
+    expect(processorInstance.processTasks).toHaveBeenCalled();
+    expect(processorInstance.monitorTaskSla).toHaveBeenCalled();
   });
 });

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { publicNav } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -9,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/system/theme-toggle";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
 import { AuthLayout } from "@/components/layout/auth-layout";
+import { useActivePathname } from "@/components/navigation/use-active-pathname";
 
 type PublicLayoutProps = {
   children: React.ReactNode;
@@ -19,7 +19,7 @@ export function PublicLayout({
   children,
   navItems = publicNav,
 }: PublicLayoutProps) {
-  const pathname = usePathname();
+  const { pathname, isActive } = useActivePathname("exact");
 
   if (pathname === "/") {
     return <AuthLayout>{children}</AuthLayout>;
@@ -39,7 +39,7 @@ export function PublicLayout({
           <div className="flex items-center gap-4">
             <nav className="hidden items-center gap-4 text-sm font-medium text-muted-foreground lg:flex">
               {navItems.map((item) => {
-                const active = pathname === item.href;
+                const active = isActive(item.href, "exact");
                 const Icon = resolveNavIcon(item.icon);
                 return (
                   <Link
@@ -49,6 +49,7 @@ export function PublicLayout({
                       "inline-flex items-center gap-2 rounded-xl px-3 py-2 transition-colors hover:text-foreground",
                       active && "bg-slate-900 text-white shadow-linear",
                     )}
+                    aria-current={active ? "page" : undefined}
                   >
                     <Icon className="h-4 w-4" aria-hidden="true" />
                     {item.label}

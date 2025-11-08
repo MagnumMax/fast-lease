@@ -23,7 +23,7 @@ const imagesConfig: NextConfig["images"] = supabaseHostname
   : undefined;
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: [],
+  serverExternalPackages: ["lightningcss", "@tailwindcss/node", "@tailwindcss/oxide"],
   ...(imagesConfig ? { images: imagesConfig } : {}),
   outputFileTracingIncludes: {
     // Ensure workflow template YAML ships with every serverless bundle so runtime fs access succeeds.
