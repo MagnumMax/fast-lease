@@ -148,6 +148,51 @@ export function DashboardLayout({
             );
           })}
         </nav>
+        <div className="dashboard-sidebar__profile" ref={profileMenuRef}>
+          <DropdownMenu open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
+            <DropdownMenuTrigger
+              asChild
+              id={profileMenuId}
+              aria-label="User menu"
+            >
+              <button type="button" className="dashboard-sidebar__profile-trigger">
+                <span className="dashboard-sidebar__profile-label">Профиль</span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              side="top"
+              sideOffset={12}
+              className="w-64"
+            >
+              <DropdownMenuLabel className="flex flex-col gap-0.5 text-left">
+                <span className="font-semibold leading-tight">{dropdownName}</span>
+                {showEmailInMenu ? (
+                  <span className="text-xs text-muted-foreground">{user?.email}</span>
+                ) : null}
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {roleLabel}
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="justify-between">
+                <div className="flex w-full items-center justify-between">
+                  <span>Theme</span>
+                  <ThemeToggle />
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <form action={signOutAction}>
+                <DropdownMenuItem asChild>
+                  <button type="submit" className="w-full text-left">
+                    Sign out
+                  </button>
+                </DropdownMenuItem>
+              </form>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </aside>
 
       {sidebarOpen ? (
@@ -178,51 +223,6 @@ export function DashboardLayout({
               <h1 className="dashboard-header__title">
                 {activeItem?.label ?? "Dashboard"}
               </h1>
-            </div>
-          </div>
-          <div className="dashboard-header__actions">
-            <div className="relative" ref={profileMenuRef}>
-              <DropdownMenu open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
-                <DropdownMenuTrigger asChild id={profileMenuId} aria-label="User menu">
-                  <Button
-                    type="button"
-                    variant="subtle"
-                    size="sm"
-                    className="flex h-auto items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm"
-                  >
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {roleLabel}
-                    </span>
-                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuLabel className="flex flex-col gap-0.5 text-left">
-                    <span className="font-semibold leading-tight">{dropdownName}</span>
-                    {showEmailInMenu ? (
-                      <span className="text-xs text-muted-foreground">{user?.email}</span>
-                    ) : null}
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {roleLabel}
-                    </span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="justify-between">
-                    <div className="flex w-full items-center justify-between">
-                      <span>Theme</span>
-                      <ThemeToggle />
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <form action={signOutAction}>
-                    <DropdownMenuItem asChild>
-                      <button type="submit" className="w-full text-left">
-                        Sign out
-                      </button>
-                    </DropdownMenuItem>
-                  </form>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </header>
