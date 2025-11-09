@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
+import { formatFallbackDealNumber } from "@/lib/deals/deal-number";
 import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 import { buildSlugWithId, extractIdFromSlug, slugify } from "@/lib/utils/slugs";
 import {
@@ -1074,10 +1075,6 @@ async function buildDetailGuardStatuses(
   );
 }
 
-function computeFallbackDealNumber(id: string) {
-  return `DEAL-${id.slice(-6).toUpperCase()}`;
-}
-
 function buildDealWorkflowTasks(options: {
   statusKey: OpsDealStatusKey;
   tasks: WorkspaceTask[];
@@ -1122,13 +1119,16 @@ function buildDealWorkflowTasks(options: {
 type DealRow = {
   id: string;
   deal_number: string | null;
+  created_at?: string | null;
 };
 
 function matchesDealSlug(row: DealRow, slug: string) {
   const normalizedSlug = slug.toLowerCase();
   const byNumber = row.deal_number ? toSlug(row.deal_number).toLowerCase() : "";
   const byId = toSlug(row.id).toLowerCase();
-  const fallback = toSlug(computeFallbackDealNumber(row.id)).toLowerCase();
+  const fallback = toSlug(
+    formatFallbackDealNumber({ id: row.id, createdAt: row.created_at ?? null }),
+  ).toLowerCase();
 
   return normalizedSlug === byNumber || normalizedSlug === byId || normalizedSlug === fallback;
 }
@@ -1363,7 +1363,9 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   }
 
   return data.map((row, index) => {
-    const dealNumber = (row.deal_number as string) ?? `DEAL-${row.id.slice(-6)}`;
+    const dealNumber =
+      (row.deal_number as string) ??
+      formatFallbackDealNumber({ id: row.id as string, createdAt: row.created_at as string });
 
     const payload = (row.payload as Record<string, unknown> | null) ?? null;
     const updatedAt = (row.updated_at as string) ?? (row.created_at as string) ?? new Date().toISOString();
@@ -2108,7 +2110,8 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
 
     return {
       id: deal.id,
-      dealNumber: deal.deal_number ?? computeFallbackDealNumber(deal.id),
+      dealNumber:
+        deal.deal_number ?? formatFallbackDealNumber({ id: deal.id, createdAt: deal.created_at }),
       status: (deal.status ?? "unknown").toUpperCase(),
       statusKey,
       stageLabel: statusMeta?.title ?? null,
@@ -3375,7 +3378,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const sellerDocuments: OpsSellerDocument[] = await buildSellerDocumentList(sellerDocumentCandidates);
 
   const profile: DealDetailResult["profile"] = {
-    dealId: dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id),
+    dealId:
+      dealRow.deal_number ??
+      formatFallbackDealNumber({ id: dealRow.id, createdAt: dealRow.created_at ?? null }),
     vehicleName: vehicleName ?? "Автомобиль не выбран",
     status: statusKey,
     description: profileDescription,
@@ -3458,7 +3463,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     },
     {
       label: "Deal Number",
-      value: dealRow.deal_number || computeFallbackDealNumber(dealRow.id),
+      value:
+        dealRow.deal_number ||
+        formatFallbackDealNumber({ id: dealRow.id, createdAt: dealRow.created_at ?? null }),
     },
     {
       label: "Last status update",
@@ -3744,10 +3751,12 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     completedAt: getString(dealRow.completed_at),
   };
 
-  const canonicalDealSlug = buildSlugWithId(
-    dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id),
-    dealRow.id,
-  ) || dealRow.id;
+  const canonicalDealSlug =
+    buildSlugWithId(
+      dealRow.deal_number ??
+        formatFallbackDealNumber({ id: dealRow.id, createdAt: dealRow.created_at ?? null }),
+      dealRow.id,
+    ) || dealRow.id;
 
   const outboundSlug = canonicalDealSlug;
 
@@ -4247,7 +4256,8 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
   const vehicleDeals: OpsVehicleDeal[] = deals.map((deal) => {
     const dealId = getString(deal.id) ?? crypto.randomUUID();
     const rawNumber = getString(deal.deal_number);
-    const dealNumber = rawNumber ?? computeFallbackDealNumber(dealId);
+    const dealNumber =
+      rawNumber ?? formatFallbackDealNumber({ id: dealId, createdAt: getString(deal.created_at) });
     const statusRaw = getString(deal.status);
     const statusKey = statusRaw ? statusRaw.toLowerCase() : null;
     const statusMeta = statusKey ? OPS_DEAL_STATUS_META[statusKey] ?? null : null;

@@ -37,31 +37,78 @@ INSERT INTO workflow_assets (type, vin, make, model, trim, year, supplier, price
     ('VEHICLE', 'VIN015', 'Lexus', 'LX', '600', 2024, 'Toyota Premium', 410000.00, '{"color": "Pearl", "mileage": 9300}');
 
 -- 3. Создание сделок (deals)
-INSERT INTO deals (deal_number, customer_id, asset_id, status, source, principal_amount, total_amount, monthly_payment, term_months, interest_rate, down_payment_amount, security_deposit, processing_fee, contract_start_date, contract_end_date, first_payment_date, contract_terms, insurance_details, op_manager_id)
+WITH source_data AS (
+  SELECT
+    c.id AS customer_id,
+    a.id AS asset_id,
+    a.vin,
+    ROW_NUMBER() OVER () AS global_seq,
+    ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY c.id) AS vin_seq
+  FROM workflow_contacts c
+  CROSS JOIN workflow_assets a
+  WHERE c.id IN (SELECT id FROM workflow_contacts LIMIT 10)
+    AND a.id IN (SELECT id FROM workflow_assets LIMIT 10)
+), numbered AS (
+  SELECT
+    sd.*,
+    to_char(timezone('utc', now())::date, 'DDMMYY') AS deal_date_part,
+    LPAD(
+      RIGHT(COALESCE(regexp_replace(sd.vin, '[^A-Za-z0-9]', '', 'g'), ''), 4),
+      4,
+      '0'
+    ) AS vin_part
+  FROM source_data sd
+)
+INSERT INTO deals (
+  deal_number,
+  customer_id,
+  asset_id,
+  status,
+  source,
+  principal_amount,
+  total_amount,
+  monthly_payment,
+  term_months,
+  interest_rate,
+  down_payment_amount,
+  security_deposit,
+  processing_fee,
+  contract_start_date,
+  contract_end_date,
+  first_payment_date,
+  contract_terms,
+  insurance_details,
+  op_manager_id
+)
 SELECT
-    'FL-' || LPAD((ROW_NUMBER() OVER())::text, 4, '0'),
-    c.id,
-    a.id,
-    (ARRAY['NEW', 'OFFER_PREP', 'VEHICLE_CHECK', 'DOCS_COLLECT', 'RISK_REVIEW', 'FINANCE_REVIEW', 'INVESTOR_PENDING', 'CONTRACT_PREP', 'SIGNING_FUNDING', 'VEHICLE_DELIVERY', 'ACTIVE', 'CANCELLED'])[(RANDOM() * 11 + 1)::int],
-    (ARRAY['Website', 'Broker', 'Referral', 'Partner'])[(RANDOM() * 3 + 1)::int],
-    (RANDOM() * 500000 + 100000)::numeric,
-    (RANDOM() * 800000 + 200000)::numeric,
-    (RANDOM() * 20000 + 5000)::numeric,
-    (RANDOM() * 48 + 12)::int,
-    (RANDOM() * 0.15 + 0.05)::numeric,
-    (RANDOM() * 100000 + 20000)::numeric,
-    (RANDOM() * 50000 + 10000)::numeric,
-    (RANDOM() * 10000 + 2000)::numeric,
-    CURRENT_DATE + (RANDOM() * 30)::int * INTERVAL '1 day',
-    CURRENT_DATE + (RANDOM() * 365 + 30)::int * INTERVAL '1 day',
-    CURRENT_DATE + (RANDOM() * 60 + 30)::int * INTERVAL '1 day',
-    '{"payment_day": 15, "grace_period": 5}',
-    '{"provider": "Dubai Insurance", "policy_number": "INS2024" || (ROW_NUMBER() OVER())::text}',
-    (SELECT id FROM user_roles WHERE role = 'OP_MANAGER' LIMIT 1)
-FROM workflow_contacts c
-CROSS JOIN workflow_assets a
-WHERE c.id IN (SELECT id FROM workflow_contacts LIMIT 10)
-AND a.id IN (SELECT id FROM workflow_assets LIMIT 10);
+  CASE
+    WHEN numbered.vin_seq = 1 THEN format('LTR-%s-%s', numbered.deal_date_part, numbered.vin_part)
+    ELSE format(
+      'LTR-%s-%s-%s',
+      numbered.deal_date_part,
+      numbered.vin_part,
+      LPAD(numbered.vin_seq::text, 2, '0')
+    )
+  END,
+  numbered.customer_id,
+  numbered.asset_id,
+  (ARRAY['NEW', 'OFFER_PREP', 'VEHICLE_CHECK', 'DOCS_COLLECT', 'RISK_REVIEW', 'FINANCE_REVIEW', 'INVESTOR_PENDING', 'CONTRACT_PREP', 'SIGNING_FUNDING', 'VEHICLE_DELIVERY', 'ACTIVE', 'CANCELLED'])[(RANDOM() * 11 + 1)::int],
+  (ARRAY['Website', 'Broker', 'Referral', 'Partner'])[(RANDOM() * 3 + 1)::int],
+  (RANDOM() * 500000 + 100000)::numeric,
+  (RANDOM() * 800000 + 200000)::numeric,
+  (RANDOM() * 20000 + 5000)::numeric,
+  (RANDOM() * 48 + 12)::int,
+  (RANDOM() * 0.15 + 0.05)::numeric,
+  (RANDOM() * 100000 + 20000)::numeric,
+  (RANDOM() * 50000 + 10000)::numeric,
+  (RANDOM() * 10000 + 2000)::numeric,
+  CURRENT_DATE + (RANDOM() * 30)::int * INTERVAL '1 day',
+  CURRENT_DATE + (RANDOM() * 365 + 30)::int * INTERVAL '1 day',
+  CURRENT_DATE + (RANDOM() * 60 + 30)::int * INTERVAL '1 day',
+  '{"payment_day": 15, "grace_period": 5}',
+  format('{"provider": "Dubai Insurance", "policy_number": "INS2024%04s"}', numbered.global_seq)::jsonb,
+  (SELECT id FROM user_roles WHERE role = 'OP_MANAGER' LIMIT 1)
+FROM numbered;
 
 -- 4. Создание платежей (payments)
 INSERT INTO payments (deal_id, amount, currency, status, method, metadata)

@@ -615,7 +615,7 @@ export function DealEditDialog({
                 <Input
                   value={form.dealNumber}
                   onChange={handleChange("dealNumber")}
-                  placeholder="DEAL-2025-0001"
+                  placeholder="LTR-081125-3782"
                   className="rounded-lg"
                 />
               </div>

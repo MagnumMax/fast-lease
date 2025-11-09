@@ -17,7 +17,7 @@ function fallbackActivities(): ActivityItem[] {
     {
       id: "sample-1",
       title: "Автоплатежи включены",
-      description: "Auto-payments enabled for deal FL-2025-1042",
+      description: "Auto-payments enabled for deal LTR-081125-4821",
       createdAt: new Date().toISOString(),
       icon: "repeat",
     },

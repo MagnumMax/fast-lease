@@ -36,7 +36,7 @@ const highlights = [
   },
   {
     title: "Reconciliation",
-    description: "Расхождение по payout #FL-1098 (Stripe vs. bank) — 18K AED без привязки.",
+    description: "Расхождение по payout #LTR-081125-1098 (Stripe vs. bank) — 18K AED без привязки.",
     status: "High",
     tone: "critical" as const,
   },
@@ -57,7 +57,7 @@ const actions = [
     tone: "info" as const,
   },
   {
-    title: "Согласовать реструктуризацию DEAL-9042",
+    title: "Согласовать реструктуризацию LTR-081125-9042",
     owner: "Risk + Finance",
     due: "Сегодня",
     status: "ждёт подписи",

@@ -22,7 +22,7 @@ const metrics = [
   {
     label: "E-sign отклонения",
     value: "1",
-    trend: "DEAL-9107",
+    trend: "LTR-081125-9107",
     tone: "critical" as const,
   },
 ];
@@ -30,7 +30,7 @@ const metrics = [
 const highlights = [
   {
     title: "KYC документы",
-    description: "Клиент #FL-34221 загрузил просроченный Emirates ID. Нужен запрос обновления.",
+    description: "Клиент #LTR-081125-3421 загрузил просроченный Emirates ID. Нужен запрос обновления.",
     status: "Due 4h",
     tone: "warning" as const,
   },
@@ -50,7 +50,7 @@ const highlights = [
 
 const actions = [
   {
-    title: "Подготовить addendum для DEAL-9042",
+    title: "Подготовить addendum для LTR-081125-9042",
     owner: "Legal Ops",
     due: "Сегодня",
     status: "новые условия",

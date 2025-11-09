@@ -304,37 +304,60 @@ FROM generate_series(141, 150) as applications;
 -- =====================================================================
 
 -- Создаем 80 сделок на основе одобренных заявок
--- Номера сделок: DEAL-2025-0001 до DEAL-2025-0080
+-- Номера сделок формируются как LTR-DDMMYY-XXXX (XXXX = последние 4 символа VIN)
 
+WITH approved_applications AS (
+    SELECT *
+    FROM applications
+    WHERE status = 'approved'
+    ORDER BY approved_at
+    LIMIT 80
+), ranked_applications AS (
+    SELECT
+        a.*,
+        v.vin,
+        ROW_NUMBER() OVER () AS global_seq,
+        ROW_NUMBER() OVER (PARTITION BY a.vehicle_id ORDER BY a.approved_at, a.id) AS vin_seq,
+        LPAD(
+            RIGHT(COALESCE(regexp_replace(v.vin, '[^A-Za-z0-9]', '', 'g'), ''), 4),
+            4,
+            '0'
+        ) AS vin_part
+    FROM approved_applications a
+    JOIN vehicles v ON v.id = a.vehicle_id
+)
 INSERT INTO deals (
     id, deal_number, application_id, vehicle_id, client_id, status,
     principal_amount, total_amount, monthly_payment, monthly_lease_rate,
     term_months, interest_rate, down_payment_amount, security_deposit,
     processing_fee, contract_start_date, contract_end_date, first_payment_date,
     contract_terms, insurance_details, assigned_account_manager, activated_at
-) 
-SELECT 
+)
+SELECT
     gen_random_uuid(),
-    'DEAL-2025-' || LPAD((ROW_NUMBER() OVER())::text, 4, '0'),
-    a.id,
-    a.vehicle_id,
-    a.user_id,
-    CASE 
-        WHEN ROW_NUMBER() OVER() <= 25 THEN 'pending_activation'  -- Новые сделки
-        WHEN ROW_NUMBER() OVER() <= 65 THEN 'active'             -- Активные сделки  
-        ELSE 'suspended'                                         -- Завершающиеся
+    CASE
+        WHEN ra.vin_seq = 1 THEN format('LTR-%s-%s', to_char(timezone('utc', now())::date, 'DDMMYY'), ra.vin_part)
+        ELSE format('LTR-%s-%s-%s', to_char(timezone('utc', now())::date, 'DDMMYY'), ra.vin_part, LPAD(ra.vin_seq::text, 2, '0'))
     END,
-    (a.requested_amount - a.down_payment)::numeric(16,2),
-    a.requested_amount::numeric(16,2),
-    a.monthly_payment,
-    (a.monthly_payment / a.requested_amount * 12)::numeric(16,6),
-    a.term_months,
-    a.interest_rate,
-    a.down_payment,
-    (a.monthly_payment * 2)::numeric(16,2),  -- Депозит = 2 месячных платежа
-    (a.requested_amount * 0.01)::numeric(16,2),  -- Комиссия = 1% от суммы
+    ra.id,
+    ra.vehicle_id,
+    ra.user_id,
+    CASE
+        WHEN ra.global_seq <= 25 THEN 'pending_activation'
+        WHEN ra.global_seq <= 65 THEN 'active'
+        ELSE 'suspended'
+    END,
+    (ra.requested_amount - ra.down_payment)::numeric(16,2),
+    ra.requested_amount::numeric(16,2),
+    ra.monthly_payment,
+    (ra.monthly_payment / ra.requested_amount * 12)::numeric(16,6),
+    ra.term_months,
+    ra.interest_rate,
+    ra.down_payment,
+    (ra.monthly_payment * 2)::numeric(16,2),
+    (ra.requested_amount * 0.01)::numeric(16,2),
     CURRENT_DATE + INTERVAL '7 days',
-    (CURRENT_DATE + INTERVAL '7 days') + (a.term_months || ' months')::interval,
+    (CURRENT_DATE + INTERVAL '7 days') + (ra.term_months || ' months')::interval,
     (CURRENT_DATE + INTERVAL '7 days') + INTERVAL '12 days',
     jsonb_build_object(
         'grace_days', 5,
@@ -347,16 +370,12 @@ SELECT
         'policy_type', 'comprehensive',
         'deductible', 500
     ),
-    a.assigned_to,
-    CASE 
-        WHEN ROW_NUMBER() OVER() <= 65 THEN  -- Активные сделки уже активированы
-            (CURRENT_TIMESTAMP - (RANDOM() * INTERVAL '24 months'))::timestamptz
+    ra.assigned_to,
+    CASE
+        WHEN ra.global_seq <= 65 THEN (CURRENT_TIMESTAMP - (RANDOM() * INTERVAL '24 months'))::timestamptz
         ELSE NULL
     END
-FROM applications a
-WHERE a.status = 'approved'
-ORDER BY a.approved_at
-LIMIT 80;
+FROM ranked_applications ra;
 
 -- =====================================================================
 -- 3. СВЯЗАННЫЕ ТАБЛИЦЫ ДЛЯ СДЕЛОК

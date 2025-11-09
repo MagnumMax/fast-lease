@@ -910,9 +910,9 @@ created_at: "2025-09-20 10:00:00"
 
 ### Примеры сделок
 
-#### DEAL-2025-0001 (Rolls-Royce)
+#### LTR-151025-0001 (Rolls-Royce)
 ```sql
-deal_number: DEAL-2025-0001
+deal_number: LTR-151025-0001
 application_id: APP-2025-0001
 vehicle_id: [Rolls-Royce Cullinan]
 client_id: [amira.client]
@@ -947,7 +947,7 @@ created_at: "2025-09-30 10:00:00"
 #### Ежемесячный инвойс
 ```sql
 invoice_number: INV-2025-0001
-deal_id: DEAL-2025-0001
+deal_id: LTR-151025-0001
 invoice_type: monthly_payment
 amount: 29800.00
 tax_amount: 1490.00
@@ -979,7 +979,7 @@ tax_breakdown: [
 ```sql
 ticket_number: SUP-3051
 client_id: [amira.client]
-deal_id: DEAL-2025-0001
+deal_id: LTR-151025-0001
 topic: Payment question
 priority: high
 status: in_progress
@@ -1027,7 +1027,7 @@ occurred_at: "2025-10-22 11:15:00"
 
 -- Закрытие сделки
 event_type: deal
-metadata: {"deal_number": "DEAL-2025-2011"}
+metadata: {"deal_number": "LTR-151025-2011"}
 occurred_at: "2025-10-28 16:45:00"
 ```
 

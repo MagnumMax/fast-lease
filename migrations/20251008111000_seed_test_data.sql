@@ -379,7 +379,7 @@ begin
     op_manager_id
   )
   values (
-    'DEAL-2025-0001',
+    'LTR-151025-0001',
     application_id,
     rolls_id,
     client_id,
@@ -449,7 +449,7 @@ begin
     op_manager_id
   )
   values (
-    'DEAL-2025-0002',
+    'LTR-151025-0002',
     application_id_secondary,
     lambo_id,
     client_id,
@@ -521,7 +521,7 @@ begin
     op_manager_id
   )
   values (
-    'DEAL-2025-0003',
+    'LTR-151025-0003',
     application_id_third,
     volvo_id,
     client_id,
@@ -708,7 +708,7 @@ begin
   values
     (referral_id, 'click', jsonb_build_object('source', 'whatsapp'), now() - interval '10 days'),
     (referral_id, 'application', jsonb_build_object('application_number', 'APP-2025-0025'), now() - interval '8 days'),
-    (referral_id, 'deal', jsonb_build_object('deal_number', 'DEAL-2025-2011'), now() - interval '2 days');
+    (referral_id, 'deal', jsonb_build_object('deal_number', 'LTR-151025-2011'), now() - interval '2 days');
 
   insert into public.referral_deals (referral_id, deal_id, friend_name, status, monthly_payment, created_at)
   values

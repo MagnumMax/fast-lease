@@ -554,8 +554,12 @@ declare
   wf_version_previous uuid;
   contact_id uuid;
   asset_id uuid;
+  vehicle_vin text;
   assigned_ops uuid;
   deal_id uuid;
+  base_deal_number text;
+  final_deal_number text;
+  duplicate_count integer;
 begin
   insert into public.workflow_versions (workflow_id, version, title, description, source_yaml, template, checksum, is_active, created_by)
   values (
@@ -601,13 +605,33 @@ begin
     where au.id = app_record.user_id
     limit 1;
 
-    select wa.id into asset_id
+    select wa.id, v.vin into asset_id, vehicle_vin
     from public.workflow_assets wa
     join public.vehicles v on v.vin = wa.vin
     where v.id = app_record.vehicle_id
     limit 1;
 
     assigned_ops := ops_ids[(app_record.rn % array_length(ops_ids,1)) + 1];
+
+    base_deal_number := format(
+      'LTR-%s-%s',
+      to_char(timezone('utc', now())::date, 'DDMMYY'),
+      LPAD(
+        RIGHT(COALESCE(regexp_replace(vehicle_vin, '[^A-Za-z0-9]', '', 'g'), ''), 4),
+        4,
+        '0'
+      )
+    );
+
+    select count(*) into duplicate_count
+    from public.deals
+    where deal_number like base_deal_number || '%';
+
+    if duplicate_count = 0 then
+      final_deal_number := base_deal_number;
+    else
+      final_deal_number := base_deal_number || '-' || LPAD((duplicate_count + 1)::text, 2, '0');
+    end if;
 
     insert into public.deals (
       deal_number,
@@ -642,7 +666,7 @@ begin
       op_manager_id
     )
     values (
-      format('DEAL-%05s', app_record.rn),
+      final_deal_number,
       app_record.id,
       app_record.vehicle_id,
       app_record.user_id,
@@ -695,7 +719,7 @@ begin
       status_codes[(app_record.rn % array_length(status_codes,1)) + 1],
       'deal-status-change',
       array['OP_MANAGER','FINANCE'],
-      jsonb_build_object('deal_number', format('DEAL-%05s', app_record.rn), 'status', status_codes[(app_record.rn % array_length(status_codes,1)) + 1]),
+      jsonb_build_object('deal_number', final_deal_number, 'status', status_codes[(app_record.rn % array_length(status_codes,1)) + 1]),
       case when (app_record.rn % 3) = 0 then 'ERROR' else 'PENDING' end,
       encode(digest(deal_id::text || '-notify','sha256'),'hex'),
       now() - interval '12 hours'
@@ -904,7 +928,7 @@ begin
       values
         (deal_id, 'click', jsonb_build_object('channel','whatsapp'), now() - interval '10 days'),
         (deal_id, 'application', jsonb_build_object('application_number', format('APP-REF-%04s', ref_counter)), now() - interval '6 days'),
-        (deal_id, 'deal', jsonb_build_object('deal_number', format('DEAL-REF-%04s', ref_counter)), now() - interval '2 days');
+        (deal_id, 'deal', jsonb_build_object('deal_number', format('LTR-%s-%04s', to_char(current_date, 'DDMMYY'), ref_counter)), now() - interval '2 days');
 
       insert into public.referral_deals (referral_id, deal_id, friend_name, status, monthly_payment, created_at)
       values (

@@ -76,6 +76,7 @@ import {
   type WorkflowRole,
   type WorkflowStatusItem,
 } from "@/lib/supabase/queries/operations";
+import { formatFallbackDealNumber } from "@/lib/deals/deal-number";
 
 import { type OpsCarRecord, type OpsClientRecord } from "@/lib/supabase/queries/operations";
 import { cn } from "@/lib/utils";
@@ -358,9 +359,8 @@ function mapDealRowToSummary(
   const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
   const guardStatuses = createGuardStatusesFromMeta(statusKey, row.payload);
 
-  // Используем deal_number из базы данных, если он есть, иначе формируем fallback
-  const fallbackId = row.id ? `FL-${row.id.slice(-6).toUpperCase()}` : `deal-${Date.now()}`;
-  const dealIdentifier = (row.deal_number?.trim()) || reference?.trim() || fallbackId;
+  const fallbackId = formatFallbackDealNumber({ id: row.id ?? null, createdAt: row.created_at ?? null });
+  const dealIdentifier = row.deal_number?.trim() || reference?.trim() || fallbackId;
 
   console.log(`[DEBUG] mapDealRowToSummary:`, {
     rowId: row.id,
@@ -929,7 +929,7 @@ export function OpsDealsBoard({
               onChange={(event) =>
                 setFormState((prev) => ({ ...prev, reference: event.target.value }))
               }
-              placeholder="FL-3301"
+              placeholder="LTR-081125-3782"
               className="rounded-xl"
             />
           </div>

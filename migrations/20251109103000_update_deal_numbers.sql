@@ -1,5 +1,5 @@
--- SQL helper to realign legacy deal numbers with the LTR-DDMMYY-XXXX standard.
--- Run inside Supabase SQL Editor if you need to backfill environments outside the migration pipeline.
+-- Normalize historical deal numbers to the LTR-DDMMYY-XXXX format.
+-- Existing deals keep their contract_start_date as the date segment; if it's missing we fall back to created_at.
 
 with candidates as (
   select

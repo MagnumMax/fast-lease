@@ -1,6 +1,7 @@
 import { getSessionUser } from "@/lib/auth/session";
 import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { formatFallbackDealNumber } from "@/lib/deals/deal-number";
 import {
   OPS_DEAL_STATUS_META,
   OPS_WORKFLOW_STATUS_MAP,
@@ -505,7 +506,8 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
 
   return data.map((row) => {
     const dealNumber =
-      (row.deal_number as string) ?? `DEAL-${row.id.slice(-6)}`;
+      (row.deal_number as string) ??
+      formatFallbackDealNumber({ id: row.id as string, createdAt: row.created_at as string });
 
     const payload = (row.payload as Record<string, unknown> | null) ?? null;
     const updatedAt =

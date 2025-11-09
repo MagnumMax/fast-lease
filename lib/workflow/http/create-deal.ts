@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { buildDealNumberCandidate } from "@/lib/deals/deal-number";
 import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseWorkflowVersionRepository } from "@/lib/supabase/queries/workflow-versions";
 import {
@@ -40,48 +41,35 @@ type CreateDealResult =
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createSupabaseServiceClient>>;
 
-// Sequential deal number generator starting from 1000
-let dealNumberCounter: number | null = null;
+const DEAL_NUMBER_MAX_ATTEMPTS = 50;
 
-async function ensureDealNumberCounter(client: SupabaseServerClient): Promise<void> {
-  if (dealNumberCounter !== null) {
-    return;
+async function generateFormattedDealNumber(
+  client: SupabaseServerClient,
+  options: { createdAt: Date; vin?: string | null },
+): Promise<string> {
+  const { createdAt, vin = null } = options;
+
+  for (let attempt = 1; attempt <= DEAL_NUMBER_MAX_ATTEMPTS; attempt++) {
+    const candidate = buildDealNumberCandidate(createdAt, vin, attempt);
+    const { count, error } = await client
+      .from("deals")
+      .select("id", { head: true, count: "exact" })
+      .eq("deal_number", candidate);
+
+    if (error) {
+      console.error("[workflow] failed to verify deal number uniqueness", {
+        candidate,
+        error,
+      });
+      continue;
+    }
+
+    if (!count) {
+      return candidate;
+    }
   }
 
-  const { data, error } = await client
-    .from("deals")
-    .select("deal_number")
-    .not("deal_number", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    console.error("[workflow] failed to load last deal number", error);
-    dealNumberCounter = 1000;
-    return;
-  }
-
-  const rawNumber = data?.[0]?.deal_number ?? null;
-  if (!rawNumber) {
-    dealNumberCounter = 1000;
-    return;
-  }
-
-  const match = /(\d+)$/.exec(rawNumber);
-  if (!match) {
-    dealNumberCounter = 1000;
-    return;
-  }
-
-  const parsed = Number.parseInt(match[1] ?? "", 10);
-  dealNumberCounter = Number.isNaN(parsed) ? 1000 : parsed + 1;
-}
-
-async function generateSequentialDealNumber(client: SupabaseServerClient): Promise<string> {
-  await ensureDealNumberCounter(client);
-  const currentNumber = dealNumberCounter ?? 1000;
-  dealNumberCounter = currentNumber + 1;
-  return `FL-${currentNumber}`;
+  throw new Error("Failed to generate unique deal number");
 }
 
 const DEFAULT_GUARD_PAYLOAD: Record<string, unknown> = {
@@ -575,9 +563,11 @@ export async function createDealWithWorkflow(
 
     const actorRole = resolveActorRole("OP_MANAGER");
 
-    // Generate deal number - SEQUENTIAL NUMBERING starting from 1000
-    const dealNumber = await generateSequentialDealNumber(supabase);
-    console.log(`[DEBUG] Generated sequential deal number: ${dealNumber}`);
+    const dealNumber = await generateFormattedDealNumber(supabase, {
+      createdAt: new Date(),
+      vin: assetSnapshot?.vin ?? null,
+    });
+    console.log(`[DEBUG] Generated formatted deal number: ${dealNumber}`);
 
     const { data, error } = await supabase
       .from("deals")

@@ -35,7 +35,7 @@ const highlights = [
     tone: "info" as const,
   },
   {
-    title: "DEAL-9021",
+    title: "LTR-081125-9021",
     description: "Новый работодатель, нет подтверждения payroll. Нужна ручная верификация.",
     status: "Manual review",
     tone: "warning" as const,

@@ -31,7 +31,7 @@ type LegalRequest = {
 };
 
 const INITIAL_REQUESTS: LegalRequest[] = [
-  { id: "LR-512", title: "Проверить addendum для DEAL-9042", source: "Finance", priority: "high", due: "Сегодня" },
+  { id: "LR-512", title: "Проверить addendum для LTR-081125-9042", source: "Finance", priority: "high", due: "Сегодня" },
   { id: "LR-507", title: "Обновить clausу buy-out", source: "Product", priority: "medium", due: "Завтра" },
   { id: "LR-498", title: "Регуляторный пакет batch-52", source: "Compliance", priority: "critical", due: "4ч" },
 ];

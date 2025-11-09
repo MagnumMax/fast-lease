@@ -25,7 +25,7 @@ import {
 const INITIAL_INSPECTIONS = [
   {
     vin: "5YJ3E1EA7LF7801",
-    deal: "DEAL-7801",
+    deal: "LTR-081125-7801",
     hub: "Dubai South",
     scheduled: "2024-07-04T09:00:00Z",
     status: "awaiting_photos",
@@ -33,7 +33,7 @@ const INITIAL_INSPECTIONS = [
   },
   {
     vin: "WAUZZZF40MN005122",
-    deal: "DEAL-7798",
+    deal: "LTR-081125-7798",
     hub: "Deira",
     scheduled: "2024-07-04T12:00:00Z",
     status: "in_progress",
@@ -41,7 +41,7 @@ const INITIAL_INSPECTIONS = [
   },
   {
     vin: "WDD2130431A987654",
-    deal: "DEAL-7791",
+    deal: "LTR-081125-7791",
     hub: "Abu Dhabi",
     scheduled: "2024-07-03T15:00:00Z",
     status: "completed",
