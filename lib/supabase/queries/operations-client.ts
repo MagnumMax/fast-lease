@@ -550,6 +550,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       client: clientName,
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,
+      vehicleVin: typeof vehicleData?.vin === "string" ? vehicleData.vin : null,
       updatedAt,
       stage: statusMeta.description,
       statusKey,

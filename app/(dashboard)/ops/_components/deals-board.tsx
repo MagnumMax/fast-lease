@@ -204,6 +204,10 @@ const STATUS_BADGES: Record<OpsDealStatusKey, ComponentProps<typeof Badge>["vari
   CANCELLED: "danger",
 };
 
+function normalizeVin(value: string | null | undefined) {
+  return value ? value.replace(/[^a-z0-9]/gi, "").toLowerCase() : "";
+}
+
 const CURRENT_USER_ROLE: WorkflowRole = "OP_MANAGER";
 
 const FALLBACK_VEHICLE = "Vehicle TBD";
@@ -638,14 +642,15 @@ export function OpsDealsBoard({
 
   const filteredDeals = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const normalizedVinQuery = normalizeVin(searchQuery);
     return deals.filter((deal) => {
-      const matchesQuery =
-        !query ||
-        `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.source} ${deal.contractStartDate ?? ""}`
-          .toLowerCase()
-          .includes(query);
+      const searchableText = `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.source} ${deal.contractStartDate ?? ""} ${deal.vehicleVin ?? ""}`
+        .toLowerCase();
+      const matchesText = !query || searchableText.includes(query);
+      const matchesVin =
+        normalizedVinQuery.length > 0 && normalizeVin(deal.vehicleVin).includes(normalizedVinQuery);
       const matchesStatus = statusFilter === "all" || deal.statusKey === statusFilter;
-      return matchesQuery && matchesStatus;
+      return (matchesText || matchesVin) && matchesStatus;
     });
   }, [deals, searchQuery, statusFilter]);
 
@@ -1066,7 +1071,7 @@ export function OpsDealsBoard({
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Поиск (клиент, авто, ID)"
+                placeholder="Поиск (клиент, авто, VIN, ID)"
                 className="h-10 w-full rounded-xl pl-9"
               />
             </div>

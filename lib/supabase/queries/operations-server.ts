@@ -1141,6 +1141,7 @@ type OperationsDeal = {
   client: string;
   vehicleId?: string | null;
   vehicle: string;
+  vehicleVin?: string | null;
   updatedAt: string;
   stage: string;
   statusKey: OpsDealStatusKey;
@@ -1441,6 +1442,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       client: clientName,
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,
+      vehicleVin: typeof vehicleData?.vin === "string" ? vehicleData.vin : null,
       updatedAt,
       stage: statusMeta.description,
       statusKey,
@@ -1528,6 +1530,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     client_id: string;
     deal_number: string | null;
     vehicle_name: string | null;
+    vehicle_vin: string | null;
     total_amount: number | null;
     contract_start_date: string | null;
   }> = [];
@@ -1536,7 +1539,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     const leasingResult = await supabase
       .from("deals")
       .select(
-        "client_id, deal_number, total_amount, contract_start_date, vehicles:vehicle_id(make, model)",
+        "client_id, deal_number, total_amount, contract_start_date, vehicles:vehicle_id(make, model, vin)",
       )
       .in("client_id", clientIds)
       .order("contract_start_date", { ascending: false, nullsFirst: false });
@@ -1550,12 +1553,17 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
           vehicle && typeof vehicle === "object"
             ? `${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
             : null;
+        const vehicleVin =
+          vehicle && typeof vehicle === "object"
+            ? getString((vehicle as { vin?: string | null }).vin)
+            : null;
         return {
           client_id: row.client_id as string,
           deal_number: getString(row.deal_number),
           total_amount: typeof row.total_amount === "number" ? row.total_amount : null,
           contract_start_date: getString(row.contract_start_date),
           vehicle_name: vehicleName && vehicleName.length ? vehicleName : null,
+          vehicle_vin: vehicleVin,
         };
       });
     }
@@ -1614,6 +1622,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       ? formatDate(leasing.contract_start_date, { day: "2-digit", month: "2-digit", year: "numeric" })
       : "—";
     const leasingVehicle = leasing?.vehicle_name ?? "—";
+    const leasingVin = leasing?.vehicle_vin ?? null;
 
     const userId = (profile.user_id as string) ?? "";
     const clientName = (profile.full_name as string) ?? "";
@@ -1647,6 +1656,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
               amount: leasingAmount,
               since: leasingStart,
               dealNumber: leasing.deal_number ?? undefined,
+              vin: leasingVin,
             }
           : undefined,
     } satisfies OpsClientRecord;

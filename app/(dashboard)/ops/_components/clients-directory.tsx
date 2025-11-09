@@ -45,6 +45,10 @@ const CLIENT_STATUS_TONE_CLASS: Record<string, string> = {
 const FILTER_ALL_VALUE = "__all";
 const OVERDUE_ALL_VALUE = "__overdue_all";
 
+function normalizeVin(value: string | null | undefined) {
+  return value ? value.replace(/[^a-z0-9]/gi, "").toLowerCase() : "";
+}
+
 function resolveClientStatusToneClass(status: string | undefined | null) {
   if (!status) {
     return CLIENT_STATUS_TONE_CLASS.muted;
@@ -104,18 +108,18 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
 
   const filteredClients = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const normalizedVinQuery = normalizeVin(searchQuery);
     return clients.filter((client) => {
       const tagsJoined = client.tags.join(" ").toLowerCase();
-      const matchesQuery =
-        !query ||
-        `${client.name} ${client.email} ${client.phone} ${tagsJoined}`
-          .toLowerCase()
-          .includes(query);
+      const searchableText = `${client.name} ${client.email} ${client.phone} ${tagsJoined} ${client.leasing?.vin ?? ""}`.toLowerCase();
+      const matchesText = !query || searchableText.includes(query);
+      const matchesVin =
+        normalizedVinQuery.length > 0 && normalizeVin(client.leasing?.vin).includes(normalizedVinQuery);
       const matchesStatus = !normalizedStatusFilter || client.status === normalizedStatusFilter;
       const matchesOverdue =
         !normalizedOverdueFilter ||
         (normalizedOverdueFilter === "0" ? client.overdue === 0 : client.overdue > 0);
-      return matchesQuery && matchesStatus && matchesOverdue;
+      return (matchesText || matchesVin) && matchesStatus && matchesOverdue;
     });
   }, [clients, searchQuery, normalizedStatusFilter, normalizedOverdueFilter]);
 
@@ -260,7 +264,7 @@ function handleCreateClient() {
             <Input
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Поиск (имя, email, телефон, теги)"
+              placeholder="Поиск (имя, email, телефон, теги, VIN)"
               className="h-10 rounded-xl pl-9 pr-3"
             />
           </div>
@@ -351,6 +355,9 @@ function handleCreateClient() {
                             <CarFront className="h-4 w-4 text-muted-foreground" />
                             <span>{client.leasing.vehicle}</span>
                           </div>
+                          {client.leasing.vin ? (
+                            <p className="text-xs text-muted-foreground">VIN: {client.leasing.vin}</p>
+                          ) : null}
                           <div className="grid grid-cols-[auto,1fr] gap-x-2 text-xs text-muted-foreground">
                             <span>Сумма:</span>
                             <span>{client.leasing.amount}</span>

@@ -360,6 +360,7 @@ export type OpsClientRecord = {
     amount: string;
     since: string;
     dealNumber?: string;
+    vin?: string | null;
   };
 };
 
@@ -456,6 +457,7 @@ export type OpsDealSummary = {
   client: string;
   vehicleId?: string | null;
   vehicle: string;
+  vehicleVin?: string | null;
   updatedAt: string;
   stage: string;
   statusKey: OpsDealStatusKey;

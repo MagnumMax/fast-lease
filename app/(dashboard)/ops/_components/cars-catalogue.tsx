@@ -51,6 +51,10 @@ const STATUS_TONE_CLASS: Record<OpsTone, string> = {
 
 const FILTER_ALL_VALUE = "__all";
 
+function normalizeVin(value: string | null | undefined) {
+  return value ? value.replace(/[^a-z0-9]/gi, "").toLowerCase() : "";
+}
+
 function resolveStatusToneClass(tone: OpsTone | undefined | null) {
   if (!tone) {
     return STATUS_TONE_CLASS.muted;
@@ -128,18 +132,21 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
 
   const filteredCars = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
+    const normalizedVinQuery = normalizeVin(searchQuery);
     return cars.filter((car) => {
       const licensePlateLabel = resolveLicensePlateLabel(car);
-      const matchesQuery =
+      const matchesText =
         !query ||
         `${car.name} ${car.vin} ${car.variant ?? ""} ${car.licensePlate ?? ""} ${licensePlateLabel ?? ""}`
           .toLowerCase()
           .includes(query);
+      const matchesVin =
+        normalizedVinQuery.length > 0 && normalizeVin(car.vin).includes(normalizedVinQuery);
       const matchesBodyType =
         !normalizedBodyTypeFilter ||
         (car.bodyType ?? "").toLowerCase() === normalizedBodyTypeFilter.toLowerCase();
       const matchesStatus = !normalizedStatusFilter || car.status === normalizedStatusFilter;
-      return matchesQuery && matchesBodyType && matchesStatus;
+      return (matchesText || matchesVin) && matchesBodyType && matchesStatus;
     });
   }, [cars, searchQuery, normalizedBodyTypeFilter, normalizedStatusFilter]);
 
@@ -393,7 +400,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Поиск (VIN, марка, модель)"
+                placeholder="Поиск (VIN, марка, модель, номер)"
                 className="h-10 w-full rounded-xl pl-9 pr-3"
               />
             </div>
