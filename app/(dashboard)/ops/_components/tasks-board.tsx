@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Plus, RefreshCcw, Search, Workflow } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Plus, RefreshCcw, Search, Workflow } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,25 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { DateTimePickerInput } from "@/components/ui/date-time-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Table,
   TableBody,
@@ -26,6 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { cn } from "@/lib/utils";
 import { buildSlugWithId } from "@/lib/utils/slugs";
@@ -61,6 +80,159 @@ const DEFAULT_FORM_STATE: FormState = {
   dealId: "",
   dueAt: "",
 };
+
+type DealComboboxProps = {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: DealOption[];
+  loading: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+  error?: string | null;
+};
+
+function DealCombobox({
+  id,
+  value,
+  onChange,
+  options,
+  loading,
+  disabled,
+  placeholder = "Выберите сделку",
+  error,
+}: DealComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
+  const selected = useMemo(() => options.find((option) => option.id === value), [options, value]);
+  const manualValue = searchValue.trim();
+
+  useEffect(() => {
+    if (!open) {
+      setSearchValue("");
+    }
+  }, [open]);
+
+  const handleSelect = (nextValue: string) => {
+    onChange(nextValue);
+    setOpen(false);
+    setSearchValue("");
+  };
+
+  const handleManual = () => {
+    if (!manualValue) return;
+    onChange(manualValue);
+    setOpen(false);
+    setSearchValue("");
+  };
+
+  const handleClear = () => {
+    onChange("");
+    setOpen(false);
+    setSearchValue("");
+  };
+
+  const resolvedPlaceholder =
+    loading && options.length === 0 ? "Загружаем сделки..." : placeholder;
+
+  return (
+    <Popover open={open} onOpenChange={(nextOpen) => !disabled && setOpen(nextOpen)}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          id={id}
+          variant="outline"
+          disabled={disabled}
+          aria-expanded={open}
+          className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-2 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-brand-500"
+        >
+          <span className="flex flex-col text-left">
+            {selected ? (
+              <>
+                <span className="truncate text-foreground">{selected.label}</span>
+                <span className="text-xs text-muted-foreground">{selected.id}</span>
+              </>
+            ) : value ? (
+              <>
+                <span className="truncate text-foreground">ID: {value}</span>
+                <span className="text-xs text-muted-foreground">Будет привязана вручную</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">{resolvedPlaceholder}</span>
+            )}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[320px] p-0" align="start">
+        <Command>
+          <CommandInput
+            value={searchValue}
+            onValueChange={setSearchValue}
+            placeholder="Поиск по номеру или ID"
+          />
+          <CommandList>
+            <CommandEmpty>
+              {loading
+                ? "Загружаем сделки..."
+                : error
+                  ? error
+                  : "Ничего не найдено. Введите точный ID и подтвердите ниже."}
+            </CommandEmpty>
+            <CommandGroup>
+              {options.map((option) => (
+                <CommandItem
+                  key={option.id}
+                  value={`${option.label} ${option.id}`}
+                  onSelect={() => handleSelect(option.id)}
+                  className="gap-2"
+                >
+                  <Check
+                    className={cn(
+                      "h-4 w-4 text-brand-500",
+                      option.id === value ? "opacity-100" : "opacity-0",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-foreground">{option.label}</span>
+                    <span className="text-xs text-muted-foreground">{option.id}</span>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+          {(manualValue || value) && (
+            <div className="space-y-1 border-t border-border/80 bg-card/50 p-2">
+              {manualValue ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs font-medium"
+                  onClick={handleManual}
+                >
+                  Использовать ID “{manualValue}”
+                </Button>
+              ) : null}
+              {value ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-xs text-muted-foreground"
+                  onClick={handleClear}
+                >
+                  Сбросить выбор
+                </Button>
+              ) : null}
+            </div>
+          )}
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: "Открыта",
@@ -546,9 +718,9 @@ export function OpsTasksBoard({
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="task-description">Описание</Label>
-                    <textarea
+                    <Textarea
                       id="task-description"
-                      className="min-h-[80px] w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="min-h-[80px] rounded-md"
                       value={formState.description}
                       onChange={(event) =>
                         setFormState((prev) => ({ ...prev, description: event.target.value }))
@@ -559,24 +731,20 @@ export function OpsTasksBoard({
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor="task-deal">Сделка</Label>
-                      <Input
+                      <DealCombobox
                         id="task-deal"
-                        list="deal-options"
                         value={formState.dealId}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, dealId: event.target.value }))
+                        onChange={(nextValue) =>
+                          setFormState((prev) => ({ ...prev, dealId: nextValue }))
                         }
-                        placeholder="Выберите или введите ID"
+                        options={dealOptions}
+                        loading={dealsLoading}
+                        disabled={dealsLoading && dealOptions.length === 0}
+                        error={dealsError}
+                        placeholder="Найдите сделку или введите ID"
                       />
-                      <datalist id="deal-options">
-                        {dealOptions.map((deal) => (
-                          <option key={deal.id} value={deal.id}>
-                            {deal.label}
-                          </option>
-                        ))}
-                      </datalist>
                       <p className="text-[11px] text-muted-foreground">
-                        Выберите из списка или укажите UUID вручную.
+                        Можно выбрать из списка или подтвердить собственный ID вручную.
                       </p>
                       {dealsLoading ? (
                         <p className="text-xs text-muted-foreground">Загружаем сделки…</p>
@@ -587,13 +755,14 @@ export function OpsTasksBoard({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="task-due">Срок (необязательно)</Label>
-                      <Input
+                      <DateTimePickerInput
                         id="task-due"
-                        type="datetime-local"
                         value={formState.dueAt}
-                        onChange={(event) =>
-                          setFormState((prev) => ({ ...prev, dueAt: event.target.value }))
+                        onChange={(nextValue) =>
+                          setFormState((prev) => ({ ...prev, dueAt: nextValue }))
                         }
+                        placeholder="Выберите дату и время"
+                        buttonClassName="rounded-md"
                       />
                     </div>
                   </div>
@@ -621,65 +790,66 @@ export function OpsTasksBoard({
               onChange={(event) => setSearchQuery(event.target.value)}
             />
           </div>
-          <select
-            className="h-10 rounded-md border border-border bg-transparent px-3 text-sm"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="all">Все статусы</option>
-            {statusOptions.map((status) => (
-              <option key={status} value={status}>
-                {STATUS_LABELS[status] ?? status}
-              </option>
-            ))}
-          </select>
-          <select
-            className="h-10 rounded-md border border-border bg-transparent px-3 text-sm"
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value)}
-          >
-            <option value="all">Все типы</option>
-            {typeOptions.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <select
-            className="h-10 rounded-md border border-border bg-transparent px-3 text-sm"
-            value={dealFilter}
-            onChange={(event) => setDealFilter(event.target.value)}
-          >
-            <option value="all">Все сделки</option>
-            <option value="no-deal">Без сделки</option>
-            {dealFilterOptions.map(([dealId, label]) => (
-              <option key={dealId} value={dealId}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-10 rounded-md border border-border bg-transparent px-3 text-sm">
+              <SelectValue placeholder="Все статусы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              {statusOptions.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {STATUS_LABELS[status] ?? status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="h-10 rounded-md border border-border bg-transparent px-3 text-sm">
+              <SelectValue placeholder="Все типы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все типы</SelectItem>
+              {typeOptions.map((type) => (
+                <SelectItem key={type} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={dealFilter} onValueChange={setDealFilter}>
+            <SelectTrigger className="h-10 rounded-md border border-border bg-transparent px-3 text-sm">
+              <SelectValue placeholder="Все сделки" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">Все сделки</SelectItem>
+              <SelectItem value="no-deal">Без сделки</SelectItem>
+              {dealFilterOptions.map(([dealId, label]) => (
+                <SelectItem key={dealId} value={dealId}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm text-muted-foreground">
           <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border border-border"
+            <Checkbox
+              className="h-4 w-4"
               checked={workflowOnly}
-              onChange={(event) => setWorkflowOnly(event.target.checked)}
+              onCheckedChange={(checked) => setWorkflowOnly(Boolean(checked))}
             />
             Только workflow-задачи
           </label>
           <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border border-border"
+            <Checkbox
+              className="h-4 w-4"
               checked={enforceUserScope ? true : onlyMine}
               disabled={!currentUserId || enforceUserScope}
-              onChange={(event) => {
+              onCheckedChange={(checked) => {
                 if (enforceUserScope) {
                   return;
                 }
-                const next = event.target.checked;
+                const next = checked === true;
                 setOnlyMine(next);
                 if (next) {
                   setOnlyByRole(false);
@@ -691,14 +861,14 @@ export function OpsTasksBoard({
             Мои задачи
           </label>
           <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border border-border"
+            <Checkbox
+              className="h-4 w-4"
               checked={enforceRoleScope ? true : onlyByRole}
               disabled={enforceRoleScope || !primaryRole || onlyMine}
-              onChange={(event) => {
+              onCheckedChange={(checked) => {
                 if (!enforceRoleScope) {
-                  setOnlyByRole(event.target.checked);
+                  const next = checked === true;
+                  setOnlyByRole(next);
                 }
               }}
             />

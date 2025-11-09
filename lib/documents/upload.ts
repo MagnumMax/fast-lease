@@ -2,9 +2,21 @@ import { Buffer } from "node:buffer";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export type FileLike = (File | Blob) & { name?: string };
+
+export function isFileLike(value: unknown): value is FileLike {
+  if (typeof File !== "undefined" && value instanceof File) {
+    return true;
+  }
+  if (typeof Blob !== "undefined" && value instanceof Blob) {
+    return true;
+  }
+  return false;
+}
+
 export type DocumentUploadCandidate<TType extends string = string> = {
   type: TType;
-  file: File;
+  file: FileLike;
   title?: string | null;
   category?: string | null;
   context?: string | null;
@@ -67,6 +79,10 @@ export function sanitizeFileName(original: string): string {
   return trimmed.length ? trimmed : fallback;
 }
 
+export function getFileName(file: FileLike): string {
+  return typeof file.name === "string" ? file.name : "";
+}
+
 export async function uploadDocumentsBatch<TType extends string = string>(
   documents: DocumentUploadCandidate<TType>[],
   options: DocumentUploadOptions<TType>,
@@ -111,7 +127,7 @@ export async function uploadDocumentsBatch<TType extends string = string>(
     if (typeLabel && typeLabel.trim().length > 0) {
       return typeLabel;
     }
-    return sanitizeFileName(candidate.file.name);
+    return sanitizeFileName(getFileName(candidate.file));
   };
 
   const uploadErrorMessage = messages?.upload ?? DEFAULT_UPLOAD_ERROR;
@@ -124,7 +140,8 @@ export async function uploadDocumentsBatch<TType extends string = string>(
         return { success: false, error: uploadErrorMessage };
       }
 
-      const sanitizedName = sanitizeFileName(candidate.file.name);
+      const originalName = getFileName(candidate.file);
+      const sanitizedName = sanitizeFileName(originalName);
       const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const objectPath = `${storagePathPrefix ?? entityId}/${uniqueSuffix}-${sanitizedName}`;
       const buffer = Buffer.from(await candidate.file.arrayBuffer());
@@ -139,9 +156,9 @@ export async function uploadDocumentsBatch<TType extends string = string>(
         return { success: false, error: uploadErrorMessage };
       }
 
-      const label = typeLabelMap?.[candidate.type] ?? candidate.file.name;
+      const label = typeLabelMap?.[candidate.type] ?? originalName;
       const metadata: Record<string, unknown> = {
-        original_filename: candidate.file.name,
+        original_filename: originalName || sanitizedName,
         ...(metadataBuilder ? metadataBuilder(candidate) : {}),
         ...coerceMetadata(candidate.metadata),
       };

@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   AlertTriangle,
   Check,
+  ChevronsUpDown,
   Clock,
   LayoutGrid,
   Loader2,
@@ -37,6 +38,23 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Table,
   TableBody,
@@ -69,6 +87,84 @@ import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 type DealRowWithDealNumber = DealRow & {
   deal_number: string | null;
 };
+
+type ComboboxOption = {
+  value: string;
+  label: string;
+  description?: string;
+};
+
+type ComboboxFieldProps = {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: ComboboxOption[];
+  disabled?: boolean;
+};
+
+function ComboboxField({ label, placeholder, value, onChange, options, disabled }: ComboboxFieldProps) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((option) => option.value === value);
+  const isDisabled = disabled || options.length === 0;
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground/80">{label}</label>
+      <Popover open={open} onOpenChange={(nextOpen) => !isDisabled && setOpen(nextOpen)}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            disabled={isDisabled}
+            className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-2 font-mono text-sm"
+          >
+            <span className="truncate text-left">
+              {selected ? selected.label : placeholder}
+            </span>
+            <ChevronsUpDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-0" align="start">
+          <Command>
+            <CommandInput placeholder="Поиск..." />
+            <CommandEmpty>Ничего не найдено</CommandEmpty>
+            <CommandList>
+              <CommandGroup>
+                {options.map((option) => {
+                  const isSelected = selected?.value === option.value;
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.value}
+                      className="flex flex-col items-start gap-0.5 text-left"
+                      onSelect={() => {
+                        onChange(option.value);
+                        setOpen(false);
+                      }}
+                    >
+                      <div className="flex w-full items-center gap-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-foreground">{option.label}</span>
+                          {option.description ? (
+                            <span className="text-xs text-muted-foreground">{option.description}</span>
+                          ) : null}
+                        </div>
+                        {isSelected ? <Check className="ml-auto h-4 w-4 text-brand-500" aria-hidden="true" /> : null}
+                      </div>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 type OpsDealsBoardProps = {
   initialDeals: OpsDealSummary[];
@@ -420,6 +516,15 @@ export function OpsDealsBoard({
       };
     });
   }, [clientDirectory]);
+  const clientComboboxOptions = useMemo(
+    () =>
+      clientDropdownOptions.map((option) => ({
+        value: option.id,
+        label: option.optionLabel,
+        description: option.titleLabel,
+      })),
+    [clientDropdownOptions],
+  );
   const vehicleDropdownOptions = useMemo(() => {
     if (vehicleOptions.length === 0) {
       return [] as Array<{ optionValue: string; optionLabel: string; titleLabel: string }>;
@@ -438,6 +543,15 @@ export function OpsDealsBoard({
       titleLabel: `${item.name} · ${item.secondary}`,
     }));
   }, [vehicleOptions]);
+  const vehicleComboboxOptions = useMemo(
+    () =>
+      vehicleDropdownOptions.map((option) => ({
+        value: option.optionValue,
+        label: option.optionLabel,
+        description: option.titleLabel,
+      })),
+    [vehicleDropdownOptions],
+  );
   const vehicleNameMap = useMemo(() => {
     const map = new Map<string, string>();
     vehicleOptions.forEach((vehicle) => {
@@ -818,61 +932,38 @@ export function OpsDealsBoard({
               placeholder="FL-3301"
               className="rounded-xl"
             />
-            <p className="text-xs text-muted-foreground">
-              Укажите внутренний номер, если нужно синхронизировать с внешней системой.
-            </p>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="deal-client" className="text-sm font-medium text-foreground/80">
-              Клиент
-            </label>
-            <select
-              id="deal-client"
+            <ComboboxField
+              label="Клиент"
+              placeholder="Выберите клиента"
               value={formState.clientId}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, clientId: event.target.value }))
+              onChange={(value) =>
+                setFormState((prev) => ({ ...prev, clientId: value }))
               }
-              className="h-11 w-full rounded-xl border border-border bg-background px-3 font-mono text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 [&_option]:whitespace-pre"
+              options={clientComboboxOptions}
               disabled={clientDirectory.length === 0}
-            >
-              {clientDropdownOptions.map((option) => (
-                <option key={option.id} value={option.id} title={option.titleLabel}>
-                  {option.optionLabel}
-                </option>
-              ))}
-            </select>
+            />
             {selectedClient ? (
               <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
                 <p>{selectedClient.email || "—"}</p>
                 <p>{selectedClient.phone}</p>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Нет доступных клиентов. Добавьте запись в разделе Clients.
-              </p>
-            )}
+            ) : null}
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="deal-vehicle" className="text-sm font-medium text-foreground/80">
-              Автомобиль
-            </label>
-            <select
-              id="deal-vehicle"
+            <ComboboxField
+              label="Автомобиль"
+              placeholder="Выберите автомобиль"
               value={formState.vehicleVin}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, vehicleVin: event.target.value }))
+              onChange={(value) =>
+                setFormState((prev) => ({ ...prev, vehicleVin: value }))
               }
-              className="h-11 w-full rounded-xl border border-border bg-background px-3 font-mono text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 disabled:opacity-60 [&_option]:whitespace-pre"
+              options={vehicleComboboxOptions}
               disabled={vehicleOptions.length === 0}
-            >
-              {vehicleDropdownOptions.map((option) => (
-                <option key={option.optionValue} value={option.optionValue} title={option.titleLabel}>
-                  {option.optionLabel}
-                </option>
-              ))}
-            </select>
+            />
             {selectedVehicle ? (
               <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground/70">{selectedVehicle.name}</p>
@@ -881,22 +972,16 @@ export function OpsDealsBoard({
                   {selectedVehicle.year} · {selectedVehicle.type}
                 </p>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Нет доступных автомобилей. Обновите каталог в разделе Cars.
-              </p>
-            )}
+            ) : null}
           </div>
 
           <div className="space-y-2">
             <label htmlFor="deal-source" className="text-sm font-medium text-foreground/80">
               Источник сделки
             </label>
-            <select
-              id="deal-source"
+            <Select
               value={showCustomSource ? "__custom" : formState.source}
-              onChange={(event) => {
-                const selected = event.target.value;
+              onValueChange={(selected) => {
                 if (selected === "__custom") {
                   setShowCustomSource(true);
                   setFormState((prev) => ({ ...prev, source: "" }));
@@ -905,15 +990,22 @@ export function OpsDealsBoard({
                   setFormState((prev) => ({ ...prev, source: selected }));
                 }
               }}
-              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
             >
-              {sourceOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-              <option value="__custom">Другое...</option>
-            </select>
+              <SelectTrigger
+                id="deal-source"
+                className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+              >
+                <SelectValue placeholder="Выберите источник" />
+              </SelectTrigger>
+              <SelectContent>
+                {sourceOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+                <SelectItem value="__custom">Другое...</SelectItem>
+              </SelectContent>
+            </Select>
             {showCustomSource ? (
               <Input
                 id="deal-source-custom"
@@ -978,48 +1070,38 @@ export function OpsDealsBoard({
                 className="h-10 w-full rounded-xl pl-9"
               />
             </div>
-            <select
+            <Select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as OpsDealStatusKey | "all")}
-              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+              onValueChange={(value) => setStatusFilter(value as OpsDealStatusKey | "all")}
             >
-              <option value="all">Все статусы</option>
-              {STATUS_ORDER.map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
+                <SelectValue placeholder="Все статусы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                {STATUS_ORDER.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {STATUS_LABELS[status]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex h-10 items-center justify-center rounded-xl border border-border bg-background p-1 text-sm shadow-sm">
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex items-center rounded-lg px-2 py-1 transition",
-                  view === "kanban" ? "bg-brand-500 text-white shadow" : "text-muted-foreground",
-                )}
-                onClick={() => setView("kanban")}
-                aria-label="Show Kanban view"
-                aria-pressed={view === "kanban"}
-              >
+            <ToggleGroup
+              type="single"
+              value={view}
+              onValueChange={(value) => value && setView(value as "kanban" | "table")}
+            >
+              <ToggleGroupItem value="kanban" aria-label="Kanban view" className="gap-2">
                 <LayoutGrid className="h-4 w-4" />
-                <span className="sr-only">Kanban</span>
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex items-center rounded-lg px-2 py-1 transition",
-                  view === "table" ? "bg-brand-500 text-white shadow" : "text-muted-foreground",
-                )}
-                onClick={() => setView("table")}
-                aria-label="Show Table view"
-                aria-pressed={view === "table"}
-              >
+                <span className="text-xs font-medium">Kanban</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table" aria-label="Table view" className="gap-2">
                 <TableIcon className="h-4 w-4" />
-                <span className="sr-only">Table</span>
-              </button>
-            </div>
+                <span className="text-xs font-medium">Table</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
         </CardContent>
       </Card>
@@ -1058,8 +1140,6 @@ export function OpsDealsBoard({
                         WORKFLOW_ROLE_LABELS[deal.ownerRole] ??
                         deal.ownerRole;
                       const ownerDisplay = deal.ownerName ?? ownerRoleLabel;
-                      const ownerSubLabel =
-                        deal.ownerName && deal.ownerRoleLabel ? deal.ownerRoleLabel : null;
                       const slaCountdown = formatSlaCountdown(deal.slaDueAt ?? null);
                       const slaDisplay = slaCountdown ?? formatSlaLabel(deal, meta);
                       const clientIdValue = deal.clientId ?? null;
@@ -1132,56 +1212,35 @@ export function OpsDealsBoard({
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            <span className="inline-flex items-start gap-1">
+                            <span className="inline-flex items-center gap-1">
                               <UserCircle2 className="h-3.5 w-3.5" />
-                              <span className="flex flex-col leading-tight">
-                                <span>{ownerDisplay}</span>
-                                {ownerSubLabel ? (
-                                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                                    {ownerSubLabel}
-                                  </span>
-                                ) : null}
-                              </span>
+                              <span>{ownerDisplay}</span>
                             </span>
                           </div>
 
                           {deal.guardStatuses.length > 0 ? (
-                            <div className="space-y-2">
-                              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                                Задача
-                              </p>
-                              <div className="space-y-1 text-xs">
-                                {deal.guardStatuses.map((guard) => (
-                                  <div
-                                    key={guard.key}
-                                    className={cn(
-                                      "flex w-full items-center justify-between rounded-lg border px-3 py-2",
-                                      guard.fulfilled
-                                        ? "border-emerald-500/60 bg-emerald-50 text-emerald-700"
-                                        : "border-amber-500/50 bg-amber-50 text-amber-700",
+                            <div className="space-y-1 text-xs">
+                              {deal.guardStatuses.map((guard) => (
+                                <div
+                                  key={guard.key}
+                                  className={cn(
+                                    "flex w-full items-center justify-between rounded-lg border px-3 py-2",
+                                    guard.fulfilled
+                                      ? "border-emerald-500/60 bg-emerald-50 text-emerald-700"
+                                      : "border-amber-500/50 bg-amber-50 text-amber-700",
+                                  )}
+                                  title={guard.hint || undefined}
+                                >
+                                  <span className="flex items-center gap-2">
+                                    {guard.fulfilled ? (
+                                      <ShieldCheck className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <AlertTriangle className="h-3.5 w-3.5" />
                                     )}
-                                    title={guard.hint || undefined}
-                                  >
-                                    <span className="flex items-center gap-2">
-                                      {guard.fulfilled ? (
-                                        <ShieldCheck className="h-3.5 w-3.5" />
-                                      ) : (
-                                        <AlertTriangle className="h-3.5 w-3.5" />
-                                      )}
-                                      {guard.label}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.2em]">
-                                      {guard.fulfilled ? (
-                                        <>
-                                          Done <Check className="h-3 w-3" />
-                                        </>
-                                      ) : (
-                                        "Awaiting"
-                                      )}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                                    {guard.label}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
                           ) : null}
 

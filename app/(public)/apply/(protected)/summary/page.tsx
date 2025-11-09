@@ -8,6 +8,7 @@ import { AlertTriangle, Edit3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { getCarById } from "@/lib/data/cars";
 import { pricingPlans } from "@/lib/data/pricing";
 
@@ -252,16 +253,15 @@ export default function ApplicationSummaryPage() {
           <h3 className="text-sm font-semibold text-foreground">Согласия</h3>
           <div className="space-y-2 text-sm text-muted-foreground">
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-border text-slate-900 focus:ring-brand-500"
+              <Checkbox
+                className="h-4 w-4"
                 checked={draft.consents.creditCheck}
-                onChange={(event) =>
+                onCheckedChange={(checked) =>
                   updateDraft((prev) => ({
                     ...prev,
                     consents: {
                       ...prev.consents,
-                      creditCheck: event.target.checked,
+                      creditCheck: checked === true,
                     },
                   }))
                 }
@@ -269,16 +269,15 @@ export default function ApplicationSummaryPage() {
               Согласие на проверку кредитной истории
             </label>
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-border text-slate-900 focus:ring-brand-500"
+              <Checkbox
+                className="h-4 w-4"
                 checked={draft.consents.terms}
-                onChange={(event) =>
+                onCheckedChange={(checked) =>
                   updateDraft((prev) => ({
                     ...prev,
                     consents: {
                       ...prev.consents,
-                      terms: event.target.checked,
+                      terms: checked === true,
                     },
                   }))
                 }
@@ -286,16 +285,15 @@ export default function ApplicationSummaryPage() {
               Принимаю условия оферты и политику конфиденциальности
             </label>
             <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-border text-slate-900 focus:ring-brand-500"
+              <Checkbox
+                className="h-4 w-4"
                 checked={draft.consents.marketing}
-                onChange={(event) =>
+                onCheckedChange={(checked) =>
                   updateDraft((prev) => ({
                     ...prev,
                     consents: {
                       ...prev.consents,
-                      marketing: event.target.checked,
+                      marketing: checked === true,
                     },
                   }))
                 }

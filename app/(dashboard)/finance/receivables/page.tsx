@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -130,25 +137,27 @@ export default function FinanceReceivablesPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Receivables</p>
             <CardTitle className="text-2xl">Очередь сборов</CardTitle>
             <div className="flex flex-wrap gap-2 text-sm">
-              <select
-                value={bucketFilter}
-                onChange={(event) => setBucketFilter(event.currentTarget.value)}
-                className="rounded-xl border border-border bg-background px-3 py-1"
-              >
-                <option value="all">Все статусы</option>
-                <option value="pending">К оплате</option>
-                <option value="overdue">Просрочка</option>
-                <option value="promise">Обещан платёж</option>
-                <option value="legal">Эскалация</option>
-              </select>
-              <select
-                value={sortDir}
-                onChange={(event) => setSortDir(event.currentTarget.value as "asc" | "desc")}
-                className="rounded-xl border border-border bg-background px-3 py-1"
-              >
-                <option value="asc">Срок ↑</option>
-                <option value="desc">Срок ↓</option>
-              </select>
+              <Select value={bucketFilter} onValueChange={setBucketFilter}>
+                <SelectTrigger className="h-9 min-w-[150px] rounded-xl border border-border bg-background px-3">
+                  <SelectValue placeholder="Все статусы" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все статусы</SelectItem>
+                  <SelectItem value="pending">К оплате</SelectItem>
+                  <SelectItem value="overdue">Просрочка</SelectItem>
+                  <SelectItem value="promise">Обещан платёж</SelectItem>
+                  <SelectItem value="legal">Эскалация</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortDir} onValueChange={(value) => setSortDir(value as "asc" | "desc")}>
+                <SelectTrigger className="h-9 min-w-[140px] rounded-xl border border-border bg-background px-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="asc">Срок ↑</SelectItem>
+                  <SelectItem value="desc">Срок ↓</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>

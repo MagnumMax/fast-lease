@@ -19,6 +19,9 @@ import { buildSlugWithId } from "@/lib/utils/slugs";
 import {
   uploadDocumentsBatch,
   type DocumentUploadCandidate,
+  isFileLike,
+  type FileLike,
+  getFileName,
 } from "@/lib/documents/upload";
 
 const inputSchema = z.object({
@@ -723,7 +726,7 @@ export async function uploadClientDocuments(
 
   const documentsMap = new Map<
     number,
-    { type?: ClientDocumentTypeValue | ""; file?: File; context?: "personal" | "company" }
+    { type?: ClientDocumentTypeValue | ""; file?: FileLike | null; context?: "personal" | "company" }
   >();
   for (const [key, value] of formData.entries()) {
     const match = /^documents\[(\d+)\]\[(type|file|context)\]$/.exec(key);
@@ -734,7 +737,7 @@ export async function uploadClientDocuments(
     if (match[2] === "type" && typeof value === "string") {
       existing.type = value as ClientDocumentTypeValue | "";
     }
-    if (match[2] === "file" && value instanceof File) {
+    if (match[2] === "file" && isFileLike(value)) {
       existing.file = value;
     }
     if (match[2] === "context" && typeof value === "string") {
@@ -747,7 +750,7 @@ export async function uploadClientDocuments(
   const rawDocuments = Array.from(documentsMap.values());
   const hasIncompleteDocument = rawDocuments.some((entry) => {
     const hasType = Boolean(entry.type);
-    const hasFile = entry.file instanceof File && entry.file.size > 0;
+    const hasFile = isFileLike(entry.file) && entry.file.size > 0;
     return (hasType && !hasFile) || (hasFile && !hasType);
   });
 
@@ -760,7 +763,7 @@ export async function uploadClientDocuments(
       if (!entry.type || !CLIENT_DOCUMENT_TYPE_VALUES.has(entry.type)) {
         return null;
       }
-      if (!(entry.file instanceof File) || entry.file.size <= 0) {
+      if (!isFileLike(entry.file) || entry.file.size <= 0) {
         return null;
       }
       const context =
@@ -769,7 +772,7 @@ export async function uploadClientDocuments(
       return { type: entry.type, file: entry.file, context };
     })
     .filter(
-      (entry): entry is { type: ClientDocumentTypeValue; file: File; context: "personal" | "company" } =>
+      (entry): entry is { type: ClientDocumentTypeValue; file: FileLike; context: "personal" | "company" } =>
         entry !== null,
     );
 
@@ -785,7 +788,8 @@ export async function uploadClientDocuments(
     const candidates: DocumentUploadCandidate<ClientDocumentTypeValue>[] = documents.map((doc) => {
       const category =
         CLIENT_DOCUMENT_CATEGORY_MAP[doc.type] ?? (doc.context === "company" ? "company" : "identity");
-      const defaultLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? doc.file.name;
+      const fallbackName = getFileName(doc.file) || "client-document";
+      const defaultLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? fallbackName;
 
       return {
         type: doc.type,

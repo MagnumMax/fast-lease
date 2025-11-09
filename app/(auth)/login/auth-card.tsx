@@ -12,6 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { normalizeRoleCode, validateRolePath } from "@/lib/auth/roles";
 import type { AppRole } from "@/lib/auth/types";
 import {
@@ -106,16 +113,18 @@ export function AuthCard() {
   const banners =
     state.status === "idle" || !state.message ? [] : [state];
 
-  function handlePresetChange(event: React.ChangeEvent<HTMLSelectElement>) {
-    const value = event.currentTarget.value as LoginPresetRole | "";
-    if (!value) {
+  function handlePresetSelect(value: string) {
+    if (value === "__clear") {
       setSelectedPreset("");
       setIdentityValue("");
       return;
     }
 
     const preset = LOGIN_PRESETS.find((item) => item.role === value);
-    if (!preset) return;
+    if (!preset) {
+      setSelectedPreset("");
+      return;
+    }
 
     setSelectedPreset(preset.role);
     setIdentityValue(preset.identity);
@@ -138,21 +147,24 @@ export function AuthCard() {
           >
             Быстрый доступ
           </Label>
-          <select
-            id="role-select"
+          <Select
             name="rolePreset"
-            value={selectedPreset}
+            value={selectedPreset || undefined}
             disabled={pending}
-            className="w-full rounded-xl border border-border bg-transparent px-4 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30"
-            onChange={handlePresetChange}
+            onValueChange={handlePresetSelect}
           >
-            <option value="">Выберите роль</option>
-            {LOGIN_PRESETS.map((preset) => (
-              <option key={preset.role} value={preset.role}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Выберите роль" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__clear">Сбросить выбор</SelectItem>
+              {LOGIN_PRESETS.map((preset) => (
+                <SelectItem key={preset.role} value={preset.role}>
+                  {preset.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
@@ -202,4 +214,3 @@ export function AuthCard() {
     </form>
   );
 }
-

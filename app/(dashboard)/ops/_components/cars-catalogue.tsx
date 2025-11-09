@@ -18,6 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -41,6 +48,8 @@ const STATUS_TONE_CLASS: Record<OpsTone, string> = {
   danger: "border-rose-400/80 bg-rose-500/10 text-rose-700",
   muted: "border-border bg-background/60 text-muted-foreground",
 };
+
+const FILTER_ALL_VALUE = "__all";
 
 function resolveStatusToneClass(tone: OpsTone | undefined | null) {
   if (!tone) {
@@ -76,8 +85,8 @@ function createDefaultCarFormState(): CarFormState {
 export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   const [cars, setCars] = useState(initialCars);
   const [searchQuery, setSearchQuery] = useState("");
-  const [bodyTypeFilter, setBodyTypeFilter] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [bodyTypeFilter, setBodyTypeFilter] = useState<string>(FILTER_ALL_VALUE);
+  const [statusFilter, setStatusFilter] = useState<string>(FILTER_ALL_VALUE);
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,6 +123,9 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
     return Array.from(set.values()).sort((a, b) => a.localeCompare(b, "ru"));
   }, [cars]);
 
+  const normalizedBodyTypeFilter = bodyTypeFilter === FILTER_ALL_VALUE ? "" : bodyTypeFilter;
+  const normalizedStatusFilter = statusFilter === FILTER_ALL_VALUE ? "" : statusFilter;
+
   const filteredCars = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return cars.filter((car) => {
@@ -123,11 +135,13 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
         `${car.name} ${car.vin} ${car.variant ?? ""} ${car.licensePlate ?? ""} ${licensePlateLabel ?? ""}`
           .toLowerCase()
           .includes(query);
-      const matchesBodyType = !bodyTypeFilter || (car.bodyType ?? "").toLowerCase() === bodyTypeFilter.toLowerCase();
-      const matchesStatus = !statusFilter || car.status === statusFilter;
+      const matchesBodyType =
+        !normalizedBodyTypeFilter ||
+        (car.bodyType ?? "").toLowerCase() === normalizedBodyTypeFilter.toLowerCase();
+      const matchesStatus = !normalizedStatusFilter || car.status === normalizedStatusFilter;
       return matchesQuery && matchesBodyType && matchesStatus;
     });
-  }, [cars, searchQuery, bodyTypeFilter, statusFilter]);
+  }, [cars, searchQuery, normalizedBodyTypeFilter, normalizedStatusFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredCars.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -136,7 +150,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
 
   useEffect(() => {
     setPage(0);
-  }, [searchQuery, bodyTypeFilter, statusFilter, cars]);
+  }, [searchQuery, normalizedBodyTypeFilter, normalizedStatusFilter, cars]);
 
   const canCreateCar =
     formState.make.trim().length > 0 &&
@@ -383,30 +397,32 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 className="h-10 w-full rounded-xl pl-9 pr-3"
               />
             </div>
-            <select
-              value={bodyTypeFilter}
-              onChange={(event) => setBodyTypeFilter(event.target.value)}
-              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              <option value="">Все типы</option>
-              {bodyTypeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              <option value="">Все статусы</option>
-              {Object.entries(OPS_VEHICLE_STATUS_META).map(([status, meta]) => (
-                <option key={status} value={status}>
-                  {meta.label}
-                </option>
-              ))}
-            </select>
+            <Select value={bodyTypeFilter} onValueChange={setBodyTypeFilter}>
+              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 sm:w-48">
+                <SelectValue placeholder="Все типы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={FILTER_ALL_VALUE}>Все типы</SelectItem>
+                {bodyTypeOptions.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 sm:w-48">
+                <SelectValue placeholder="Все статусы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={FILTER_ALL_VALUE}>Все статусы</SelectItem>
+                {Object.entries(OPS_VEHICLE_STATUS_META).map(([status, meta]) => (
+                  <SelectItem key={status} value={status}>
+                    {meta.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

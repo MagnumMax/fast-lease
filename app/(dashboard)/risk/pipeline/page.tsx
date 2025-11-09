@@ -6,6 +6,7 @@ import { formatRelativeDays } from "@/app/(dashboard)/client/_components";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type PipelineItem = {
   id: string;
@@ -109,10 +110,9 @@ export default function RiskPipelinePage() {
   return (
     <div className="space-y-4">
       <label className="inline-flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={flagsOnly}
-          onChange={(event) => setFlagsOnly(event.currentTarget.checked)}
+          onCheckedChange={(checked) => setFlagsOnly(checked === true)}
         />
         Показывать только flagged
       </label>

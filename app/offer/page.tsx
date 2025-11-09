@@ -8,6 +8,15 @@ import { AlertTriangle, Car, Link2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { ResidencyStatus } from "@/lib/data/application";
 import { getAllCars, getCarById } from "@/lib/data/cars";
 import { pricingPlans } from "@/lib/data/pricing";
@@ -329,65 +338,68 @@ function OfferConfigurationPage() {
 
           <div className="space-y-3">
             <Label>Цель использования</Label>
-            <div className="grid gap-2">
-              {usageOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
-                >
-                  <input
-                    type="radio"
-                    name="usage"
-                    value={option.value}
-                    checked={draft.preferences.usagePurpose === option.value}
-                    onChange={() =>
-                      updateDraft((prev) => ({
-                        ...prev,
-                        preferences: {
-                          ...prev.preferences,
-                          usagePurpose: option.value as typeof prev.preferences.usagePurpose,
-                        },
-                      }))
-                    }
-                    className="h-4 w-4 border-border text-slate-900 focus:ring-brand-500"
-                  />
-                  <span>{option.label}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="mileage">Планируемый пробег</Label>
-            <select
-              id="mileage"
-              className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-              value={draft.preferences.mileage}
-              onChange={(event) =>
+            <RadioGroup
+              value={draft.preferences.usagePurpose}
+              onValueChange={(value) =>
                 updateDraft((prev) => ({
                   ...prev,
                   preferences: {
                     ...prev.preferences,
-                    mileage: event.target.value,
+                    usagePurpose: value as typeof prev.preferences.usagePurpose,
+                  },
+                }))
+              }
+              className="grid gap-2"
+            >
+              {usageOptions.map((option) => (
+                <label
+                  key={option.value}
+                  htmlFor={`usage-${option.value}`}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground",
+                    draft.preferences.usagePurpose === option.value && "border-brand-500 bg-surface-subtle text-foreground",
+                  )}
+                >
+                  <RadioGroupItem id={`usage-${option.value}`} value={option.value} className="sr-only" />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mileage">Планируемый пробег</Label>
+            <Select
+              value={draft.preferences.mileage}
+              onValueChange={(value) =>
+                updateDraft((prev) => ({
+                  ...prev,
+                  preferences: {
+                    ...prev.preferences,
+                    mileage: value,
                   },
                 }))
               }
             >
-              {mileageOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="mileage" className="h-11">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {mileageOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="notes">Дополнительные комментарии</Label>
-            <textarea
+            <Textarea
               id="notes"
-              rows={5}
               placeholder="Например, предпочитаемый цвет, требования к салону, гибкие условия..."
               value={draft.preferences.notes}
               onChange={(event) =>
@@ -399,7 +411,7 @@ function OfferConfigurationPage() {
                   },
                 }))
               }
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              className="min-h-[120px] rounded-xl"
             />
           </div>
 
@@ -465,4 +477,3 @@ export default function OfferPage() {
     </Suspense>
   );
 }
-

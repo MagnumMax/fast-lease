@@ -3,6 +3,13 @@
 import { useMemo, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -47,22 +54,24 @@ export default function RiskReportsPage() {
     <div className="space-y-6">
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 text-sm">
-          <select
-            value={timeframe}
-            onChange={(event) => setTimeframe(event.currentTarget.value as "week" | "month")}
-            className="rounded-xl border border-border bg-background px-3 py-2"
-          >
-            <option value="week">Last 7 days</option>
-            <option value="month">Month to date</option>
-          </select>
-          <select
-            value={sortDir}
-            onChange={(event) => setSortDir(event.currentTarget.value as "asc" | "desc")}
-            className="rounded-xl border border-border bg-background px-3 py-2"
-          >
-            <option value="desc">Share ↓</option>
-            <option value="asc">Share ↑</option>
-          </select>
+          <Select value={timeframe} onValueChange={(value) => setTimeframe(value as "week" | "month")}>
+            <SelectTrigger className="h-10 min-w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="week">Last 7 days</SelectItem>
+              <SelectItem value="month">Month to date</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortDir} onValueChange={(value) => setSortDir(value as "asc" | "desc")}>
+            <SelectTrigger className="h-10 min-w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Share ↓</SelectItem>
+              <SelectItem value="asc">Share ↑</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Button variant="outline" size="sm">Export CSV</Button>
       </section>

@@ -7,6 +7,15 @@ import { AlertTriangle, Mail, Phone, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePickerInput } from "@/components/ui/date-picker";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { getCarById } from "@/lib/data/cars";
 import { pricingPlans } from "@/lib/data/pricing";
@@ -217,22 +226,26 @@ function ApplicationStartContent() {
             />
             <div className="space-y-2">
               <Label>Город проживания</Label>
-              <select
-                className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+              <Select
                 value={draft.personal.city}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   updateDraft((prev) => ({
                     ...prev,
-                    personal: { ...prev.personal, city: event.target.value },
+                    personal: { ...prev.personal, city: value },
                   }))
                 }
               >
-                {cityOptions.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {cityOptions.map((city) => (
+                    <SelectItem key={city} value={city}>
+                      {city}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <Field
               label="Email"
@@ -277,16 +290,15 @@ function ApplicationStartContent() {
             проверки кредитной истории и подписания оферты.
           </p>
           <label className="flex items-start gap-3 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-border text-slate-900 focus:ring-brand-500"
+            <Checkbox
+              className="mt-1 h-4 w-4"
               checked={draft.consents.creditCheck}
-              onChange={(event) =>
+              onCheckedChange={(checked) =>
                 updateDraft((prev) => ({
                   ...prev,
                   consents: {
                     ...prev.consents,
-                    creditCheck: event.target.checked,
+                    creditCheck: checked === true,
                   },
                 }))
               }
@@ -296,16 +308,15 @@ function ApplicationStartContent() {
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-border text-slate-900 focus:ring-brand-500"
+            <Checkbox
+              className="mt-1 h-4 w-4"
               checked={draft.consents.terms}
-              onChange={(event) =>
+              onCheckedChange={(checked) =>
                 updateDraft((prev) => ({
                   ...prev,
                   consents: {
                     ...prev.consents,
-                    terms: event.target.checked,
+                    terms: checked === true,
                   },
                 }))
               }
@@ -315,16 +326,15 @@ function ApplicationStartContent() {
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-muted-foreground">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-border text-slate-900 focus:ring-brand-500"
+            <Checkbox
+              className="mt-1 h-4 w-4"
               checked={draft.consents.marketing}
-              onChange={(event) =>
+              onCheckedChange={(checked) =>
                 updateDraft((prev) => ({
                   ...prev,
                   consents: {
                     ...prev.consents,
-                    marketing: event.target.checked,
+                    marketing: checked === true,
                   },
                 }))
               }
@@ -440,27 +450,39 @@ function Field({
   required,
   icon,
 }: FieldProps) {
+  const isDateField = type === "date";
+
   return (
     <div className="space-y-2">
       <Label>
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </Label>
-      <div className="relative">
-        {icon ? (
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
-            {icon}
-          </span>
-        ) : null}
-        <Input
-          type={type}
+      {isDateField ? (
+        <DatePickerInput
           value={value}
+          onChange={onChange}
           required={required}
-          placeholder={placeholder}
-          onChange={(event) => onChange(event.target.value)}
-          className={cn("rounded-xl border-border", icon && "pl-10")}
+          placeholder={placeholder ?? "ДД.ММ.ГГГГ"}
+          buttonClassName="h-11 rounded-xl"
         />
-      </div>
+      ) : (
+        <div className="relative">
+          {icon ? (
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center">
+              {icon}
+            </span>
+          ) : null}
+          <Input
+            type={type}
+            value={value}
+            required={required}
+            placeholder={placeholder}
+            onChange={(event) => onChange(event.target.value)}
+            className={cn("rounded-xl border-border", icon && "pl-10")}
+          />
+        </div>
+      )}
     </div>
   );
 }

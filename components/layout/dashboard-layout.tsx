@@ -14,6 +14,14 @@ import { clientNav } from "@/lib/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/system/theme-toggle";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
 import { useActivePathname } from "@/components/navigation/use-active-pathname";
@@ -174,55 +182,47 @@ export function DashboardLayout({
           </div>
           <div className="dashboard-header__actions">
             <div className="relative" ref={profileMenuRef}>
-              <Button
-                type="button"
-                variant="subtle"
-                size="sm"
-                className="flex h-auto items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm"
-                onClick={() => setProfileMenuOpen((prev) => !prev)}
-                aria-haspopup="menu"
-                aria-expanded={profileMenuOpen}
-                aria-controls={profileMenuId}
-              >
-                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {roleLabel}
-                </span>
-                <ChevronDown className="h-4 w-4" aria-hidden="true" />
-              </Button>
-              {profileMenuOpen ? (
-                <div
-                  id={profileMenuId}
-                  role="menu"
-                  aria-label="User menu"
-                  className="absolute right-0 z-50 mt-2 w-64 rounded-xl border border-border bg-card p-3 text-sm shadow-lg"
-                >
-                  <div className="border-b border-border pb-3">
-                    <p className="font-semibold leading-tight">
-                      {dropdownName}
-                    </p>
-                    {showEmailInMenu ? (
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
-                    ) : null}
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
+              <DropdownMenu open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
+                <DropdownMenuTrigger asChild id={profileMenuId} aria-label="User menu">
+                  <Button
+                    type="button"
+                    variant="subtle"
+                    size="sm"
+                    className="flex h-auto items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 text-sm shadow-sm"
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {roleLabel}
-                    </p>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="text-sm font-medium">Theme</span>
-                    <ThemeToggle />
-                  </div>
-                  <form action={signOutAction} className="mt-3">
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="sm"
-                      className="w-full rounded-lg"
-                    >
-                      Sign out
-                    </Button>
+                    </span>
+                    <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="flex flex-col gap-0.5 text-left">
+                    <span className="font-semibold leading-tight">{dropdownName}</span>
+                    {showEmailInMenu ? (
+                      <span className="text-xs text-muted-foreground">{user?.email}</span>
+                    ) : null}
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {roleLabel}
+                    </span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild className="justify-between">
+                    <div className="flex w-full items-center justify-between">
+                      <span>Theme</span>
+                      <ThemeToggle />
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <form action={signOutAction}>
+                    <DropdownMenuItem asChild>
+                      <button type="submit" className="w-full text-left">
+                        Sign out
+                      </button>
+                    </DropdownMenuItem>
                   </form>
-                </div>
-              ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </header>

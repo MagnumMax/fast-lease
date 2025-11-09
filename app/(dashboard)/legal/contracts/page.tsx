@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -75,16 +82,17 @@ export default function LegalContractsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Contracts</p>
           <CardTitle className="text-2xl">Поток документов</CardTitle>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.currentTarget.value)}
-            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">Все статусы</option>
-            <option value="awaiting_sign">Awaiting sign</option>
-            <option value="in_review">In review</option>
-            <option value="signed">Signed</option>
-          </select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-10 w-[180px]">
+              <SelectValue placeholder="Все статусы" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все статусы</SelectItem>
+              <SelectItem value="awaiting_sign">Awaiting sign</SelectItem>
+              <SelectItem value="in_review">In review</SelectItem>
+              <SelectItem value="signed">Signed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">

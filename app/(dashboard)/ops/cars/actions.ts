@@ -20,6 +20,10 @@ import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 import {
   uploadDocumentsBatch,
   type DocumentUploadCandidate,
+  isFileLike,
+  type FileLike,
+  getFileName,
+  sanitizeFileName,
 } from "@/lib/documents/upload";
 
 const createVehicleSchema = z.object({
@@ -422,7 +426,7 @@ export async function uploadVehicleDocuments(
 
   const documentsMap = new Map<
     number,
-    { type?: VehicleDocumentTypeValue | ""; file?: File; title?: string }
+    { type?: VehicleDocumentTypeValue | ""; file?: FileLike | null; title?: string }
   >();
 
   for (const [key, value] of formData.entries()) {
@@ -436,7 +440,7 @@ export async function uploadVehicleDocuments(
     if (match[2] === "type" && typeof value === "string") {
       existing.type = value as VehicleDocumentTypeValue | "";
     }
-    if (match[2] === "file" && value instanceof File) {
+    if (match[2] === "file" && isFileLike(value)) {
       existing.file = value;
     }
     if (match[2] === "title" && typeof value === "string") {
@@ -449,7 +453,7 @@ export async function uploadVehicleDocuments(
 
   const hasIncompleteDocument = rawDocuments.some((entry) => {
     const hasType = Boolean(entry.type);
-    const hasFile = entry.file instanceof File && entry.file.size > 0;
+    const hasFile = isFileLike(entry.file) && entry.file.size > 0;
     const requiresTitle = entry.type === "other";
     const hasTitle = typeof entry.title === "string" && entry.title.trim().length > 0;
     return (
@@ -465,7 +469,7 @@ export async function uploadVehicleDocuments(
 
   const documents = rawDocuments.filter((entry): entry is {
     type: VehicleDocumentTypeValue;
-    file: File;
+    file: FileLike;
     title?: string;
   } => {
     if (!entry.type || !entry.file) {
@@ -494,10 +498,11 @@ export async function uploadVehicleDocuments(
 
     const candidates: DocumentUploadCandidate<VehicleDocumentTypeValue>[] = documents.map((doc) => {
       const trimmedTitle = (doc.title ?? "").trim();
+      const fallbackName = getFileName(doc.file) || "vehicle-document";
       const defaultTitle =
         doc.type === "other"
-          ? trimmedTitle || doc.file.name
-          : VEHICLE_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? doc.file.name;
+          ? trimmedTitle || fallbackName
+          : VEHICLE_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? fallbackName;
 
       return {
         type: doc.type,
@@ -554,7 +559,12 @@ export async function uploadVehicleImages(formData: FormData): Promise<UploadVeh
 
   const { vehicleId, slug } = parsed.data;
 
-  const imageEntries = formData.getAll("images").filter((entry): entry is File => entry instanceof File);
+  const imageEntries = formData
+    .getAll("images")
+    .filter(
+      (entry): entry is File =>
+        typeof File !== "undefined" && entry instanceof File && isFileLike(entry),
+    );
 
   const images = imageEntries.filter((file) => file.size > 0);
 
@@ -646,7 +656,8 @@ export async function uploadVehicleImages(formData: FormData): Promise<UploadVeh
     const uploadedPaths: string[] = [];
 
     for (const file of images) {
-      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-") || "image";
+      const baseName = getFileName(file) || "image";
+      const sanitizedName = sanitizeFileName(baseName);
       const uniqueSuffix =
         typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
           ? crypto.randomUUID()

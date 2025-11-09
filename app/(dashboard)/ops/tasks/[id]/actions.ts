@@ -10,6 +10,7 @@ import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { handleTaskCompletion } from "@/lib/workflow/task-completion";
 import { getSessionUser } from "@/lib/auth/session";
+import { isFileLike, type FileLike, getFileName, sanitizeFileName } from "@/lib/documents/upload";
 
 export type FormStatus = { status: "idle" | "success" | "error"; message?: string };
 
@@ -33,7 +34,7 @@ function parseFieldEntries(formData: FormData): Record<string, unknown> {
     if (!fieldId) continue;
     if (typeof value === "string") {
       result[fieldId] = value.trim();
-    } else if (value instanceof File) {
+    } else if (isFileLike(value)) {
       // Поля форм с type="file" идут отдельно — их не обрабатываем как field
       continue;
     } else {
@@ -49,13 +50,14 @@ async function uploadAttachment(options: {
   dealId: string;
   guardKey: string;
   guardLabel?: string;
-  file: File;
+  file: FileLike;
 }): Promise<{ path: string } | { error: string }> {
   const { supabase, dealId, guardKey, guardLabel, file } = options;
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-");
+  const baseName = getFileName(file) || guardKey || "attachment";
+  const sanitizedName = sanitizeFileName(baseName);
   const path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
 
   const { error: uploadError } = await supabase.storage.from(STORAGE_BUCKET).upload(path, buffer, {
@@ -162,9 +164,10 @@ export async function completeTaskFormAction(
   const noteTrimmed = noteRaw.trim();
   const noteChanged = noteTrimmed !== (initialNote ?? "");
   const noteValue = noteChanged ? (noteTrimmed.length > 0 ? noteTrimmed : null) : initialNote ?? null;
-  const file = formData.get("attachment") as File | null;
+  const attachmentEntry = formData.get("attachment");
+  const file = isFileLike(attachmentEntry) && attachmentEntry.size > 0 ? attachmentEntry : null;
 
-  if (requiresDoc && (!file || file.size === 0)) {
+  if (requiresDoc && !file) {
     return { status: "error", message: "Необходимо приложить документ" };
   }
 

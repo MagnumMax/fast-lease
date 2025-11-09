@@ -24,6 +24,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -462,35 +470,36 @@ export function AdminUsersDirectory({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="create-role">Role</Label>
-                      <select
-                        id="create-role"
+                      <Select
                         value={createForm.role}
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           setCreateForm((prev) => ({
                             ...prev,
-                            role: event.target.value as AppRole,
+                            role: value as AppRole,
                           }))
                         }
-                        className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
                       >
-                        {AVAILABLE_ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {ROLE_LABELS[role]}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger id="create-role" className="h-10">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AVAILABLE_ROLES.map((role) => (
+                            <SelectItem key={role} value={role}>
+                              {ROLE_LABELS[role]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <label className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={createForm.sendInvite}
-                        onChange={(event) =>
+                        onCheckedChange={(checked) =>
                           setCreateForm((prev) => ({
                             ...prev,
-                            sendInvite: event.target.checked,
+                            sendInvite: Boolean(checked),
                           }))
                         }
-                        className="h-4 w-4 rounded border-border text-brand-500 focus-visible:ring-brand-500"
                       />
                       Send invitation email
                     </label>
@@ -728,23 +737,26 @@ export function AdminUsersDirectory({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="manage-status">Status</Label>
-                <select
-                  id="manage-status"
+                <Select
                   value={manageState.status}
-                  onChange={(event) =>
+                  onValueChange={(value) =>
                     setManageState((prev) => ({
                       ...prev,
-                      status: event.target.value as AdminUserStatus,
+                      status: value as AdminUserStatus,
                     }))
                   }
-                  className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="pending">Invitation sent</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="archived">Deactivated</option>
-                </select>
+                  <SelectTrigger id="manage-status" className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="pending">Invitation sent</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                    <SelectItem value="archived">Deactivated</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-3">
                 <Label>Roles</Label>

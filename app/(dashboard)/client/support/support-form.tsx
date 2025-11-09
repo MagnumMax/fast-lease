@@ -6,6 +6,14 @@ import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createSupportTicketAction } from "./actions";
 
 const initialState = { success: false, error: "" };
@@ -52,17 +60,17 @@ export function SupportForm() {
           <Label htmlFor="priority" className="text-sm font-medium text-foreground">
             Priority
           </Label>
-          <select
-            id="priority"
-            name="priority"
-            defaultValue="medium"
-            className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-          >
-            <option value="low">Normal</option>
-            <option value="medium">High</option>
-            <option value="high">Urgent</option>
-            <option value="critical">Critical</option>
-          </select>
+          <Select name="priority" defaultValue="medium">
+            <SelectTrigger id="priority" className="h-10">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Normal</SelectItem>
+              <SelectItem value="medium">High</SelectItem>
+              <SelectItem value="high">Urgent</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -70,13 +78,13 @@ export function SupportForm() {
         <Label htmlFor="message" className="text-sm font-medium text-foreground">
           Describe the situation
         </Label>
-        <textarea
+        <Textarea
           id="message"
           name="message"
           required
           rows={5}
           placeholder="Опишите, что случилось, какие шаги уже предприняли."
-          className="min-h-[140px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          className="min-h-[140px]"
         />
       </div>
 

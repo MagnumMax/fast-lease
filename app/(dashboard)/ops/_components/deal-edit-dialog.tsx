@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type ComponentProps } from "react";
+import { useEffect, useMemo, useState, useTransition, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 
 import { Loader2, Paperclip, Pencil, Plus, Trash2 } from "lucide-react";
@@ -17,7 +17,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePickerInput } from "@/components/ui/date-picker";
+import { DateTimePickerInput } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DEAL_DOCUMENT_TYPES,
   type DealDocumentCategory,
@@ -27,6 +36,7 @@ import {
 import {
   updateOperationsDeal,
   uploadDealDocuments,
+  uploadSellerDocuments,
   verifyDealDeletion,
   deleteOperationsDeal,
   deleteDealDocument,
@@ -36,6 +46,8 @@ import {
   type DeleteDealDocumentResult,
 } from "@/app/(dashboard)/ops/deals/[id]/actions";
 import { sortDocumentOptions } from "@/lib/documents/options";
+
+const EMPTY_SELECT_VALUE = "__empty";
 
 type DealEditDialogProps = {
   detail: OpsDealDetail;
@@ -75,6 +87,16 @@ type DealDocumentDraft = {
   file: File | null;
 };
 
+type SellerDocumentDraft = {
+  id: string;
+  title: string;
+  file: File | null;
+  url?: string | null;
+  bucket?: string | null;
+  storagePath?: string | null;
+  uploadedAt?: string;
+};
+
 const DEAL_DOCUMENT_CATEGORY_LABEL_MAP: Record<DealDocumentCategory, string> = {
   required: "Обязательный",
   signature: "Подписание",
@@ -97,6 +119,21 @@ function createDealDocumentDraft(): DealDocumentDraft {
     type: "",
     file: null,
   } satisfies DealDocumentDraft;
+}
+
+function createSellerDocumentDraft(): SellerDocumentDraft {
+  return {
+    id:
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `seller-doc-${Math.random().toString(36).slice(2, 10)}`,
+    title: "",
+    file: null,
+    url: null,
+    bucket: null,
+    storagePath: null,
+    uploadedAt: new Date().toISOString(),
+  } satisfies SellerDocumentDraft;
 }
 
 function formatNumberInput(value: number | null | undefined, fractionDigits = 2) {
@@ -162,6 +199,20 @@ export function DealEditDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [dealDocumentDrafts, setDealDocumentDrafts] = useState<DealDocumentDraft[]>([]);
+  const initialSellerDocuments = useMemo<SellerDocumentDraft[]>(
+    () =>
+      (detail.sellerDocuments ?? []).map((doc) => ({
+        id: doc.id,
+        title: doc.title ?? "",
+        file: null,
+        url: doc.url ?? null,
+        bucket: doc.bucket ?? null,
+        storagePath: doc.storagePath ?? null,
+        uploadedAt: doc.uploadedAt ?? undefined,
+      })),
+    [detail.sellerDocuments],
+  );
+  const [sellerDocumentDrafts, setSellerDocumentDrafts] = useState<SellerDocumentDraft[]>(initialSellerDocuments);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -209,6 +260,18 @@ export function DealEditDialog({
   const dealDocumentsValidationMessage = dealDocumentsHasIncomplete
     ? "Выберите тип и загрузите файл для каждого документа."
     : null;
+  const sellerDocumentsHasIncomplete = useMemo(() => {
+    return sellerDocumentDrafts.some((doc) => {
+      const hasTitle = doc.title.trim().length > 0;
+      const hasExistingFile = Boolean(doc.url || doc.storagePath);
+      const hasNewFile = doc.file instanceof File && doc.file.size > 0;
+      const hasFileReference = hasExistingFile || hasNewFile;
+      return (hasTitle && !hasFileReference) || (!hasTitle && hasFileReference);
+    });
+  }, [sellerDocumentDrafts]);
+  const sellerDocumentsValidationMessage = sellerDocumentsHasIncomplete
+    ? "Для документов продавца заполните название и выберите файл."
+    : null;
   const existingDealDocuments = detail.documents ?? [];
   const documentTypeOptions = useMemo(
     () => sortDocumentOptions(DEAL_DOCUMENT_TYPES),
@@ -230,17 +293,22 @@ export function DealEditDialog({
   }
 
   const canSubmit = useMemo(() => {
-    return !isPending && !dealDocumentsHasIncomplete;
-  }, [isPending, dealDocumentsHasIncomplete]);
+    return !isPending && !dealDocumentsHasIncomplete && !sellerDocumentsHasIncomplete;
+  }, [isPending, dealDocumentsHasIncomplete, sellerDocumentsHasIncomplete]);
 
   function resetForm() {
     setForm(initialState);
     setErrorMessage(null);
     setDealDocumentDrafts([]);
+    setSellerDocumentDrafts(initialSellerDocuments);
     setDocumentActionError(null);
     setDocumentActionMessage(null);
     setDeletingDocumentIds(new Set());
   }
+
+  useEffect(() => {
+    setSellerDocumentDrafts(initialSellerDocuments);
+  }, [initialSellerDocuments]);
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
@@ -275,6 +343,22 @@ export function DealEditDialog({
 
   function removeDealDocumentDraft(id: string) {
     setDealDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
+  }
+
+  function addSellerDocumentDraft() {
+    setSellerDocumentDrafts((prev) => [...prev, createSellerDocumentDraft()]);
+  }
+
+  function updateSellerDocumentDraft(id: string, patch: Partial<SellerDocumentDraft>) {
+    setSellerDocumentDrafts((prev) => prev.map((doc) => (doc.id === id ? { ...doc, ...patch } : doc)));
+  }
+
+  function changeSellerDocumentFile(id: string, file: File | null) {
+    updateSellerDocumentDraft(id, { file });
+  }
+
+  function removeSellerDocumentDraft(id: string) {
+    setSellerDocumentDrafts((prev) => prev.filter((doc) => doc.id !== id));
   }
 
   function handleDeleteExistingDocument(documentId: string) {
@@ -391,6 +475,67 @@ export function DealEditDialog({
     setErrorMessage(null);
 
     startTransition(async () => {
+      const sellerDocumentsNeedingUpload = sellerDocumentDrafts.filter(
+        (doc) => doc.file instanceof File && doc.file.size > 0,
+      );
+
+      let uploadedSellerDocuments: Array<{ id: string; title: string; bucket: string; storage_path: string; uploaded_at: string }> = [];
+
+      if (sellerDocumentsNeedingUpload.length > 0) {
+        const sellerFormData = new FormData();
+        sellerFormData.append("dealId", detail.dealUuid);
+        sellerFormData.append("slug", detail.slug);
+
+        sellerDocumentsNeedingUpload.forEach((doc, index) => {
+          sellerFormData.append(`documents[${index}][title]`, doc.title.trim());
+          if (doc.file) {
+            sellerFormData.append(`documents[${index}][file]`, doc.file);
+          }
+        });
+
+        const sellerUploadResult = await uploadSellerDocuments(sellerFormData);
+
+        if (!sellerUploadResult.success) {
+          setErrorMessage(sellerUploadResult.error);
+          return;
+        }
+
+        uploadedSellerDocuments = sellerUploadResult.documents;
+      }
+
+      const manualSellerDocuments = sellerDocumentDrafts
+        .filter((doc) => !(doc.file instanceof File && doc.file.size > 0))
+        .map((doc) => {
+          const title = doc.title.trim();
+          if (!title) {
+            return null;
+          }
+          const hasExistingFile = Boolean(doc.url || doc.storagePath);
+          if (!hasExistingFile) {
+            return null;
+          }
+          return {
+            id: doc.id,
+            title,
+            url: doc.url ?? undefined,
+            bucket: doc.bucket ?? undefined,
+            storagePath: doc.storagePath ?? undefined,
+            uploadedAt: doc.uploadedAt ?? new Date().toISOString(),
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+      const sellerDocumentsPayload = [
+        ...manualSellerDocuments,
+        ...uploadedSellerDocuments.map((doc) => ({
+          id: doc.id,
+          title: doc.title,
+          bucket: doc.bucket,
+          storagePath: doc.storage_path,
+          uploadedAt: doc.uploaded_at,
+        })),
+      ];
+
       const result = await updateOperationsDeal({
         dealId: detail.dealUuid,
         slug: detail.slug,
@@ -409,6 +554,7 @@ export function DealEditDialog({
         firstPaymentDate: form.firstPaymentDate,
         activatedAt: form.activatedAt,
         completedAt: form.completedAt,
+        sellerDocuments: sellerDocumentsPayload,
       });
 
       if (!result.success) {
@@ -556,23 +702,27 @@ export function DealEditDialog({
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="space-y-1">
                           <Label>Тип документа</Label>
-                          <select
-                            value={draft.type}
-                            onChange={(event) =>
+                          <Select
+                            value={draft.type || EMPTY_SELECT_VALUE}
+                            onValueChange={(value) =>
                               changeDealDocumentType(
                                 draft.id,
-                                event.currentTarget.value as DealDocumentTypeValue | "",
+                                (value === EMPTY_SELECT_VALUE ? "" : value) as DealDocumentTypeValue | "",
                               )
                             }
-                            className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm"
                           >
-                            <option value="">Выберите тип</option>
-                            {documentTypeOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm">
+                              <SelectValue placeholder="Выберите тип" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={EMPTY_SELECT_VALUE}>Выберите тип</SelectItem>
+                              {documentTypeOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-1">
                           <Label>Файл</Label>
@@ -621,6 +771,99 @@ export function DealEditDialog({
                   {dealDocumentsValidationMessage ? (
                     <p className="text-xs text-destructive">{dealDocumentsValidationMessage}</p>
                   ) : null}
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection
+              title="Документы продавца автомобиля"
+              description="Сохраните ссылки на документы, которые передал дилер или поставщик."
+              columns={1}
+            >
+              <div className="space-y-3">
+                {sellerDocumentDrafts.length ? (
+                  sellerDocumentDrafts.map((doc) => {
+                    const hasTitle = doc.title.trim().length > 0;
+                    const hasExistingFile = Boolean(doc.url || doc.storagePath);
+                    const hasUrl = (doc.url ?? "").trim().length > 0;
+                    const hasFileRef = hasExistingFile || (doc.file instanceof File && doc.file.size > 0);
+                    return (
+                      <div
+                        key={doc.id}
+                        className="space-y-3 rounded-xl border border-border/60 bg-background/60 p-3"
+                      >
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <Label>Название документа</Label>
+                            <Input
+                              value={doc.title}
+                              onChange={(event) =>
+                                updateSellerDocumentDraft(doc.id, { title: event.currentTarget.value })
+                              }
+                              placeholder="Invoice, Purchase Order ..."
+                              className="rounded-lg"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Файл</Label>
+                            <Input
+                              type="file"
+                              accept=".pdf,.png,.jpg,.jpeg"
+                              onChange={(event) =>
+                                changeSellerDocumentFile(
+                                  doc.id,
+                                  event.currentTarget.files && event.currentTarget.files[0]
+                                    ? event.currentTarget.files[0]
+                                    : null,
+                                )
+                              }
+                              className="cursor-pointer rounded-lg"
+                            />
+                            {doc.file ? (
+                              <p className="text-xs text-muted-foreground">{doc.file.name}</p>
+                            ) : doc.url ? (
+                              <Button asChild size="sm" variant="outline" className="mt-2 rounded-lg">
+                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                  <Paperclip className="mr-1.5 h-3.5 w-3.5" /> Открыть текущий файл
+                                </a>
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeSellerDocumentDraft(doc.id)}
+                            className="rounded-lg text-muted-foreground hover:text-destructive"
+                          >
+                            Удалить
+                          </Button>
+                        </div>
+                        {(!hasTitle && !hasFileRef) || (hasTitle && hasFileRef) ? null : (
+                          <p className="text-xs text-destructive">Укажите и название, и выберите файл.</p>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-muted-foreground">Документы продавца пока не добавлены.</p>
+                )}
+                {sellerDocumentsValidationMessage ? (
+                  <p className="text-xs text-destructive">{sellerDocumentsValidationMessage}</p>
+                ) : null}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addSellerDocumentDraft}
+                    className="flex items-center gap-2 rounded-lg"
+                    disabled={isPending}
+                  >
+                    <Plus className="h-4 w-4" /> Добавить документ продавца
+                  </Button>
                 </div>
               </div>
             </FormSection>
@@ -714,47 +957,52 @@ export function DealEditDialog({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Старт договора</Label>
-                <Input
+                <DatePickerInput
+                  id="contract-start-date"
                   value={form.contractStartDate}
-                  onChange={handleChange("contractStartDate")}
-                  type="date"
-                  className="rounded-lg"
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, contractStartDate: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Окончание договора</Label>
-                <Input
+                <DatePickerInput
+                  id="contract-end-date"
                   value={form.contractEndDate}
-                  onChange={handleChange("contractEndDate")}
-                  type="date"
-                  className="rounded-lg"
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, contractEndDate: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Первая оплата</Label>
-                <Input
+                <DatePickerInput
+                  id="contract-first-payment"
                   value={form.firstPaymentDate}
-                  onChange={handleChange("firstPaymentDate")}
-                  type="date"
-                  className="rounded-lg"
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, firstPaymentDate: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Активация</Label>
-                <Input
+                <DateTimePickerInput
+                  id="deal-activated-at"
                   value={form.activatedAt}
-                  onChange={handleChange("activatedAt")}
-                  type="datetime-local"
-                  className="rounded-lg"
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, activatedAt: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату и время"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Завершение</Label>
-                <Input
+                <DateTimePickerInput
+                  id="deal-completed-at"
                   value={form.completedAt}
-                  onChange={handleChange("completedAt")}
-                  type="datetime-local"
-                  className="rounded-lg"
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, completedAt: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату и время"
                 />
               </div>
             </FormSection>

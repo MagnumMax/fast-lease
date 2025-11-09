@@ -18,6 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -34,6 +41,9 @@ const CLIENT_STATUS_TONE_CLASS: Record<string, string> = {
   danger: "border-rose-400/80 bg-rose-500/10 text-rose-700",
   muted: "border-border bg-background/60 text-muted-foreground",
 };
+
+const FILTER_ALL_VALUE = "__all";
+const OVERDUE_ALL_VALUE = "__overdue_all";
 
 function resolveClientStatusToneClass(status: string | undefined | null) {
   if (!status) {
@@ -71,8 +81,8 @@ type OpsClientsDirectoryProps = {
 export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps) {
   const [clients, setClients] = useState(initialClients);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("");
-  const [overdueFilter, setOverdueFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>(FILTER_ALL_VALUE);
+  const [overdueFilter, setOverdueFilter] = useState<string>(OVERDUE_ALL_VALUE);
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,6 +99,9 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
     return { total, active, blocked };
   }, [clients]);
 
+  const normalizedStatusFilter = statusFilter === FILTER_ALL_VALUE ? "" : statusFilter;
+  const normalizedOverdueFilter = overdueFilter === OVERDUE_ALL_VALUE ? "" : overdueFilter;
+
   const filteredClients = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return clients.filter((client) => {
@@ -98,13 +111,13 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
         `${client.name} ${client.email} ${client.phone} ${tagsJoined}`
           .toLowerCase()
           .includes(query);
-      const matchesStatus = !statusFilter || client.status === statusFilter;
+      const matchesStatus = !normalizedStatusFilter || client.status === normalizedStatusFilter;
       const matchesOverdue =
-        !overdueFilter ||
-        (overdueFilter === "0" ? client.overdue === 0 : client.overdue > 0);
+        !normalizedOverdueFilter ||
+        (normalizedOverdueFilter === "0" ? client.overdue === 0 : client.overdue > 0);
       return matchesQuery && matchesStatus && matchesOverdue;
     });
-  }, [clients, searchQuery, statusFilter, overdueFilter]);
+  }, [clients, searchQuery, normalizedStatusFilter, normalizedOverdueFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredClients.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -116,7 +129,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
 
   useEffect(() => {
     setPage(0);
-  }, [searchQuery, statusFilter, overdueFilter, clients]);
+  }, [searchQuery, normalizedStatusFilter, normalizedOverdueFilter, clients]);
 
 function handleCreateClient() {
     if (!formState.name.trim()) return;
@@ -252,24 +265,26 @@ function handleCreateClient() {
             />
           </div>
           <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              <option value="">Все статусы</option>
-              <option value="Active">Active</option>
-              <option value="Blocked">Blocked</option>
-            </select>
-            <select
-              value={overdueFilter}
-              onChange={(event) => setOverdueFilter(event.target.value)}
-              className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
-            >
-              <option value="">Все задолженности</option>
-              <option value="0">Без просрочек</option>
-              <option value=">0">Есть просрочки</option>
-            </select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 md:w-48">
+                <SelectValue placeholder="Все статусы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={FILTER_ALL_VALUE}>Все статусы</SelectItem>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Blocked">Blocked</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={overdueFilter} onValueChange={setOverdueFilter}>
+              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 md:w-48">
+                <SelectValue placeholder="Все задолженности" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={OVERDUE_ALL_VALUE}>Все задолженности</SelectItem>
+                <SelectItem value="0">Без просрочек</SelectItem>
+                <SelectItem value=">0">Есть просрочки</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

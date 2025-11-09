@@ -24,8 +24,16 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePickerInput } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   OpsClientDocument,
   OpsClientProfile,
@@ -49,6 +57,8 @@ import {
 } from "@/app/(dashboard)/ops/clients/actions";
 import { sortDocumentOptions } from "@/lib/documents/options";
 import { buildSlugWithId } from "@/lib/utils/slugs";
+
+const EMPTY_SELECT_VALUE = "__empty";
 
 type ClientEditDialogProps = {
   profile: OpsClientProfile;
@@ -496,23 +506,27 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label>Тип документа</Label>
-                    <select
-                      value={draft.type}
-                      onChange={(event) =>
+                    <Select
+                      value={draft.type || EMPTY_SELECT_VALUE}
+                      onValueChange={(value) =>
                         onTypeChange(
                           draft.id,
-                          event.currentTarget.value as ClientDocumentTypeValue | "",
+                          (value === EMPTY_SELECT_VALUE ? "" : value) as ClientDocumentTypeValue | "",
                         )
                       }
-                      className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
-                      <option value="">Выберите тип</option>
-                      {options.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm">
+                        <SelectValue placeholder="Выберите тип" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={EMPTY_SELECT_VALUE}>Выберите тип</SelectItem>
+                        {options.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
                     <Label>Файл</Label>
@@ -799,30 +813,46 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
               </div>
               <div>
                 <Label htmlFor="client-type">Тип клиента</Label>
-                <select
-                  id="client-type"
+                <Select
                   value={form.clientType}
-                  onChange={handleChange("clientType")}
-                  className="mt-2 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+                  onValueChange={(value) =>
+                    setForm((prev) => ({ ...prev, clientType: value as ClientTypeValue }))
+                  }
                 >
-                  {CLIENT_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="client-type"
+                    className="mt-2 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLIENT_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="client-status">Статус</Label>
-                <select
-                  id="client-status"
+                <Select
                   value={form.status}
-                  onChange={handleChange("status")}
-                  className="mt-2 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+                  onValueChange={(value) =>
+                    setForm((prev) => ({ ...prev, status: value as FormState["status"] }))
+                  }
                 >
-                  <option value="Active">Active</option>
-                  <option value="Blocked">Blocked</option>
-                </select>
+                  <SelectTrigger
+                    id="client-status"
+                    className="mt-2 h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Blocked">Blocked</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label htmlFor="client-phone">Телефон</Label>
@@ -847,12 +877,12 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
               </div>
               <div>
                 <Label htmlFor="client-dob">Дата рождения</Label>
-                <Input
+                <DatePickerInput
                   id="client-dob"
-                  type="date"
                   value={form.dateOfBirth}
-                  onChange={handleChange("dateOfBirth")}
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, dateOfBirth: nextValue }))}
                   className="mt-2"
+                  placeholder="ДД.ММ.ГГГГ"
                 />
               </div>
               <div>

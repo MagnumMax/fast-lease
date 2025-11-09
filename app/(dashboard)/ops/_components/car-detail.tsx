@@ -205,7 +205,6 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
       <Card className="bg-card/60 backdrop-blur">
         <CardHeader>
           <CardTitle>Фото</CardTitle>
-          <CardDescription>Предпросмотр галереи автомобиля</CardDescription>
         </CardHeader>
         <CardContent>
           <VehicleGallery images={profile.gallery ?? []} fallbackImageSrc={fallbackImage} />
@@ -256,7 +255,6 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
         <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Сделки</CardTitle>
-            <CardDescription>История сделок, в которых участвует автомобиль</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
@@ -352,7 +350,6 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
         <CardHeader>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardDescription>Обслуживание</CardDescription>
               <CardTitle>История операций</CardTitle>
             </div>
           </div>

@@ -18,6 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import type {
   OpsVehicleData,
@@ -48,6 +55,8 @@ import {
   uploadVehicleImages,
   updateOperationsCar,
 } from "@/app/(dashboard)/ops/cars/actions";
+
+const EMPTY_SELECT_VALUE = "__empty";
 
 type CarEditDialogProps = {
   vehicle: OpsVehicleData;
@@ -920,18 +929,27 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
               </div>
               <div className="space-y-1">
                 <Label>Статус</Label>
-                <select
+                <Select
                   value={form.status}
-                  onChange={handleChange("status")}
-                  className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onValueChange={(value) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      status: value,
+                    }))
+                  }
                 >
-                  <option value="draft">Черновик</option>
-                  <option value="available">Доступен</option>
-                  <option value="reserved">Резерв</option>
-                  <option value="leased">В лизинге</option>
-                  <option value="maintenance">На сервисе</option>
-                  <option value="retired">Списан</option>
-                </select>
+                  <SelectTrigger className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm text-foreground shadow-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="draft">Черновик</SelectItem>
+                    <SelectItem value="available">Доступен</SelectItem>
+                    <SelectItem value="reserved">Резерв</SelectItem>
+                    <SelectItem value="leased">В лизинге</SelectItem>
+                    <SelectItem value="maintenance">На сервисе</SelectItem>
+                    <SelectItem value="retired">Списан</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </FormSection>
 
@@ -1185,24 +1203,30 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                               </div>
                               <div className="space-y-1">
                                 <Label htmlFor={`document-type-${doc.id}`}>Тип документа</Label>
-                                <select
-                                  id={`document-type-${doc.id}`}
-                                  value={edit.type}
-                                  onChange={(event) =>
+                                <Select
+                                  value={edit.type || EMPTY_SELECT_VALUE}
+                                  onValueChange={(value) =>
                                     handleExistingDocumentTypeChange(
                                       doc.id,
-                                      event.currentTarget.value,
+                                      value === EMPTY_SELECT_VALUE ? "" : value,
                                     )
                                   }
-                                  className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                 >
-                                  <option value="">Не указан</option>
-                                  {documentTypeOptions.map((type) => (
-                                    <option key={type.value} value={type.value}>
-                                      {type.label}
-                                    </option>
-                                  ))}
-                                </select>
+                                  <SelectTrigger
+                                    id={`document-type-${doc.id}`}
+                                    className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm"
+                                  >
+                                    <SelectValue placeholder="Не указан" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={EMPTY_SELECT_VALUE}>Не указан</SelectItem>
+                                    {documentTypeOptions.map((type) => (
+                                      <SelectItem key={type.value} value={type.value}>
+                                        {type.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
                             {documentErrors[doc.id] ? (
@@ -1273,21 +1297,30 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                         >
                           <div className="space-y-1">
                             <Label htmlFor={`document-type-${draft.id}`}>Тип документа</Label>
-                            <select
-                              id={`document-type-${draft.id}`}
-                              value={draft.type}
-                              onChange={(event) =>
-                                handleDocumentTypeChange(draft.id, event.currentTarget.value as VehicleDocumentTypeValue)
+                            <Select
+                              value={draft.type || EMPTY_SELECT_VALUE}
+                              onValueChange={(value) =>
+                                handleDocumentTypeChange(
+                                  draft.id,
+                                  (value === EMPTY_SELECT_VALUE ? "" : value) as VehicleDocumentTypeValue,
+                                )
                               }
-                              className="w-full rounded-lg border border-border bg-background/80 px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                             >
-                              <option value="">Выберите тип</option>
-                              {documentTypeOptions.map((type) => (
-                                <option key={type.value} value={type.value}>
-                                  {type.label}
-                                </option>
-                              ))}
-                            </select>
+                              <SelectTrigger
+                                id={`document-type-${draft.id}`}
+                                className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm"
+                              >
+                                <SelectValue placeholder="Выберите тип" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={EMPTY_SELECT_VALUE}>Выберите тип</SelectItem>
+                                {documentTypeOptions.map((type) => (
+                                  <SelectItem key={type.value} value={type.value}>
+                                    {type.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             {draft.type === "other" ? (
                               <div className="space-y-1 pt-2">
                                 <Label htmlFor={`document-title-draft-${draft.id}`}>Название</Label>

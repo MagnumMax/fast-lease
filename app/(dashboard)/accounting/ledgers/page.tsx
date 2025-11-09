@@ -6,6 +6,13 @@ import { formatCurrency, formatDate } from "@/app/(dashboard)/client/_components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -84,26 +91,28 @@ export default function AccountingLedgersPage() {
             <CardTitle className="text-2xl">Последние проводки</CardTitle>
           </div>
           <div className="flex gap-2 text-sm">
-            <select
-              value={accountFilter}
-              onChange={(event) => setAccountFilter(event.currentTarget.value)}
-              className="rounded-xl border border-border bg-background px-3 py-1"
-            >
-              <option value="all">Все счета</option>
-              {accounts.map((account) => (
-                <option key={account} value={account}>
-                  {account}
-                </option>
-              ))}
-            </select>
-            <select
-              value={sortDir}
-              onChange={(event) => setSortDir(event.currentTarget.value as "asc" | "desc")}
-              className="rounded-xl border border-border bg-background px-3 py-1"
-            >
-              <option value="desc">Дата ↓</option>
-              <option value="asc">Дата ↑</option>
-            </select>
+            <Select value={accountFilter} onValueChange={setAccountFilter}>
+              <SelectTrigger className="h-9 min-w-[150px] rounded-xl border border-border bg-background px-3">
+                <SelectValue placeholder="Все счета" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value="all">Все счета</SelectItem>
+                {accounts.map((account) => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sortDir} onValueChange={(value) => setSortDir(value as "asc" | "desc")}>
+              <SelectTrigger className="h-9 rounded-xl border border-border bg-background px-3">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">Дата ↓</SelectItem>
+                <SelectItem value="asc">Дата ↑</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardHeader>

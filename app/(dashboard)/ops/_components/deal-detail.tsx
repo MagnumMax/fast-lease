@@ -101,6 +101,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
     financials = [],
     contract = [],
     documents,
+    sellerDocuments,
     invoices,
     timeline,
     workflowTasks,
@@ -226,6 +227,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
     [clientDocuments],
   );
   const dealDocumentsPreview = useMemo(() => documents.slice(0, 5), [documents]);
+  const sellerDocumentsPreview = useMemo(() => sellerDocuments.slice(0, 5), [sellerDocuments]);
   const companyDocumentItems = useMemo(
     () =>
       companyDocuments.map((doc) => ({
@@ -243,8 +245,20 @@ export function DealDetailView({ detail }: DealDetailProps) {
         title: doc.title,
         uploadedAt: doc.uploadedAt,
         url: doc.url ?? null,
+        status: doc.status,
       })),
     [dealDocumentsPreview],
+  );
+  const sellerDocumentItems = useMemo(
+    () =>
+      sellerDocumentsPreview.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        uploadedAt: doc.uploadedAt,
+        url: doc.url ?? null,
+        status: doc.status,
+      })),
+    [sellerDocumentsPreview],
   );
   const vehicleChecklist = useMemo(
     () =>
@@ -483,7 +497,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
             <Card className="bg-card/60 backdrop-blur">
               <CardHeader>
                 <CardTitle>Финансовые параметры</CardTitle>
-                <CardDescription>Полный набор сумм и ставок по сделке</CardDescription>
               </CardHeader>
               <CardContent>
                 <dl className="grid gap-3 md:grid-cols-2">
@@ -502,7 +515,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
             <Card className="bg-card/60 backdrop-blur">
               <CardHeader>
                 <CardTitle>Договор</CardTitle>
-                <CardDescription>Сроки, даты и статус исполнения</CardDescription>
               </CardHeader>
               <CardContent>
                 <dl className="grid gap-3 md:grid-cols-2">
@@ -516,6 +528,36 @@ export function DealDetailView({ detail }: DealDetailProps) {
               </CardContent>
             </Card>
           ) : null}
+
+          <Card className="bg-card/60 backdrop-blur">
+            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+              <div>
+                <CardTitle>Документы сделки</CardTitle>
+              </div>
+              <Button variant="outline" size="sm" asChild className="rounded-lg">
+                <Link href={`/ops/deals/${slug}/documents`}>Все документы</Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <DocumentList
+                documents={dealDocumentItems}
+                emptyMessage="Документы сделки ещё не загружены."
+                showUploadOnly
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle>Документы продавца автомобиля</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DocumentList
+                documents={sellerDocumentItems}
+                emptyMessage="Документы продавца пока не добавлены."
+              />
+            </CardContent>
+          </Card>
 
         </div>
 
@@ -588,24 +630,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 />
               </div>
             </CardContent>
-        </Card>
-
-        <Card className="bg-card/60 backdrop-blur">
-          <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-            <div>
-              <CardTitle>Документы сделки</CardTitle>
-              <CardDescription>Быстрый доступ к последним файлам</CardDescription>
-            </div>
-            <Button variant="outline" size="sm" asChild className="rounded-lg">
-              <Link href={`/ops/deals/${slug}/documents`}>Все документы</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <DocumentList
-              documents={dealDocumentItems}
-              emptyMessage="Документы сделки ещё не загружены."
-            />
-          </CardContent>
         </Card>
 
           <Card className="bg-card/60 backdrop-blur" id="timeline">

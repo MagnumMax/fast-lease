@@ -7,6 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -84,28 +91,30 @@ export default function TechInspectionsPage() {
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Inspections</p>
           <CardTitle className="text-2xl">Очередь проверок</CardTitle>
           <div className="flex gap-2 text-sm">
-            <select
-              value={hubFilter}
-              onChange={(event) => setHubFilter(event.currentTarget.value)}
-              className="rounded-xl border border-border bg-background px-3 py-1"
-            >
-              <option value="all">Все хабы</option>
-              {hubs.map((hub) => (
-                <option key={hub} value={hub}>
-                  {hub}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.currentTarget.value)}
-              className="rounded-xl border border-border bg-background px-3 py-1"
-            >
-              <option value="all">Все статусы</option>
-              <option value="awaiting_photos">Awaiting photos</option>
-              <option value="in_progress">In progress</option>
-              <option value="completed">Completed</option>
-            </select>
+            <Select value={hubFilter} onValueChange={setHubFilter}>
+              <SelectTrigger className="h-9 min-w-[140px]">
+                <SelectValue placeholder="Все хабы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все хабы</SelectItem>
+                {hubs.map((hub) => (
+                  <SelectItem key={hub} value={hub}>
+                    {hub}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-9 min-w-[150px]">
+                <SelectValue placeholder="Все статусы" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="awaiting_photos">Awaiting photos</SelectItem>
+                <SelectItem value="in_progress">In progress</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </CardHeader>

@@ -8,6 +8,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
+import { isFileLike, type FileLike, getFileName, sanitizeFileName } from "@/lib/documents/upload";
 
 type PreferencesPayload = {
   monthlyBudget: number;
@@ -156,7 +157,7 @@ export async function uploadApplicationDocumentAction(formData: FormData) {
   if (
     typeof applicationId !== "string" ||
     typeof documentId !== "string" ||
-    !(file instanceof File)
+    !isFileLike(file)
   ) {
     throw new Error("Некорректные данные для загрузки документа.");
   }
@@ -164,8 +165,9 @@ export async function uploadApplicationDocumentAction(formData: FormData) {
   const service = await createSupabaseServiceClient();
 
   const fileBuffer = Buffer.from(await file.arrayBuffer());
-  const extension = file.name.split(".").pop() ?? "dat";
-  const storagePath = `${applicationId}/${documentId}-${randomUUID()}.${extension}`;
+  const originalName = getFileName(file) || `${documentId}.dat`;
+  const extension = originalName.includes(".") ? originalName.split(".").pop() ?? "dat" : "dat";
+  const storagePath = `${applicationId}/${sanitizeFileName(documentId)}-${randomUUID()}.${extension}`;
 
   const { error: uploadError } = await service.storage
     .from("application-documents")
@@ -184,7 +186,7 @@ export async function uploadApplicationDocumentAction(formData: FormData) {
       {
         application_id: applicationId,
         document_type: documentId,
-        original_filename: file.name,
+        original_filename: originalName,
         stored_filename: storagePath,
         storage_path: storagePath,
         mime_type: file.type,
@@ -203,7 +205,7 @@ export async function uploadApplicationDocumentAction(formData: FormData) {
   return {
     recordId: data.id,
     status: data.status ?? "uploaded",
-    fileName: data.original_filename ?? file.name,
+    fileName: data.original_filename ?? originalName,
   };
 }
 

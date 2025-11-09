@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { Calendar, Check, Download, FileDown, FileText, FileUp } from "lucide-react";
+import { Check, Download, FileDown, FileText, FileUp } from "lucide-react";
 
 import type { InvestorReportsSnapshot } from "@/lib/supabase/queries/investor";
 import { cn } from "@/lib/utils";
@@ -15,8 +15,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { DatePickerInput } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   requestInvestorReportAction,
@@ -81,6 +90,14 @@ function ReportGeneratorForm({ lastReadyAt }: { lastReadyAt: string | null }) {
     requestInvestorReportAction,
     { status: "idle" },
   );
+  const [reportFormat, setReportFormat] = useState<"pdf" | "xlsx" | "csv">("pdf");
+  const defaultPeriodTo = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const defaultPeriodFrom = useMemo(
+    () => new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    [],
+  );
+  const [periodFrom, setPeriodFrom] = useState(defaultPeriodFrom);
+  const [periodTo, setPeriodTo] = useState(defaultPeriodTo);
 
   const statusBadge =
     state.status === "success"
@@ -108,73 +125,74 @@ function ReportGeneratorForm({ lastReadyAt }: { lastReadyAt: string | null }) {
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="reportType">Report Type</Label>
-              <select
-                id="reportType"
-                name="reportType"
-                defaultValue="payment_schedule"
-                className="h-10 w-full rounded-xl border border-border bg-background/80 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-offset-0 focus-visible:ring-brand-500"
-              >
-                <option value="payment_schedule">Payment Schedule</option>
-                <option value="portfolio_yield">Portfolio Yield</option>
-                <option value="cash_flow">Cash Flow</option>
-              </select>
+              <Select name="reportType" defaultValue="payment_schedule">
+                <SelectTrigger id="reportType" className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="payment_schedule">Payment Schedule</SelectItem>
+                  <SelectItem value="portfolio_yield">Portfolio Yield</SelectItem>
+                  <SelectItem value="cash_flow">Cash Flow</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="periodFrom">From Period</Label>
-              <div className="relative">
-                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="periodFrom"
-                  name="periodFrom"
-                  type="date"
-                  defaultValue={new Date(Date.now() - 31 * 24 * 60 * 60 * 1000)
-                    .toISOString()
-                    .slice(0, 10)}
-                  className="pl-9"
-                  required
-                />
-              </div>
+              <DatePickerInput
+                id="periodFrom"
+                name="periodFrom"
+                value={periodFrom}
+                onChange={setPeriodFrom}
+                required
+                allowClear={false}
+                buttonClassName="h-10 rounded-xl"
+                placeholder="Select date"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="periodTo">To Period</Label>
-              <div className="relative">
-                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="periodTo"
-                  name="periodTo"
-                  type="date"
-                  defaultValue={new Date().toISOString().slice(0, 10)}
-                  className="pl-9"
-                  required
-                />
-              </div>
+              <DatePickerInput
+                id="periodTo"
+                name="periodTo"
+                value={periodTo}
+                onChange={setPeriodTo}
+                required
+                allowClear={false}
+                buttonClassName="h-10 rounded-xl"
+                placeholder="Select date"
+              />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>Report Format</Label>
-            <div className="flex gap-3">
+            <RadioGroup
+              name="format"
+              value={reportFormat}
+              onValueChange={(value) => setReportFormat(value as "pdf" | "xlsx" | "csv")}
+              className="flex flex-wrap gap-3"
+            >
               {(["pdf", "xlsx", "csv"] as const).map((format) => (
                 <label
                   key={format}
+                  htmlFor={`format-${format}`}
                   className={cn(
                     "flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm",
+                    reportFormat === format && "border-brand-500 bg-surface-subtle",
                   )}
                 >
-                  <input
-                    type="radio"
-                    name="format"
-                    value={format}
-                    defaultChecked={format === "pdf"}
-                  />
+                  <RadioGroupItem value={format} id={`format-${format}`} />
                   {REPORT_FORMAT_LABEL[format]}
                 </label>
               ))}
-            </div>
+            </RadioGroup>
           </div>
 
-          <label className="flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-sm">
-            <input type="checkbox" name="sendCopy" defaultChecked />
+          <label
+            htmlFor="sendCopy"
+            className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm"
+          >
+            <Checkbox id="sendCopy" name="sendCopy" defaultChecked />
             Send copy to accounting by email
           </label>
 

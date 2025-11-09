@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -63,16 +70,17 @@ export default function LegalRequestsPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Requests</p>
             <CardTitle className="text-2xl">Очередь обращений</CardTitle>
           </div>
-          <select
-            value={priorityFilter}
-            onChange={(event) => setPriorityFilter(event.currentTarget.value)}
-            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">Все приоритеты</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-          </select>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="h-10 w-[180px]">
+              <SelectValue placeholder="Все приоритеты" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все приоритеты</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </CardHeader>
       <CardContent className="overflow-x-auto">

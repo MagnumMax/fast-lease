@@ -430,10 +430,7 @@ export function ClientDetailView({
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="Коммуникации"
-        description="Уведомления для клиента и обращения в поддержку"
-      >
+      <SectionCard title="Коммуникации">
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="space-y-3">
             <p className="text-sm font-semibold text-foreground">Недавние уведомления</p>
@@ -488,10 +485,7 @@ export function ClientDetailView({
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="Реферальная программа"
-        description="Активность клиента в реферальном канале"
-      >
+      <SectionCard title="Реферальная программа">
         {referral ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <InfoCell label="Промокод">{referral.code}</InfoCell>

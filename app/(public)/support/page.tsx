@@ -3,6 +3,7 @@ import { Headset, LifeBuoy, MapPin, PhoneCall, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   officeLocations,
   supportChannels,
@@ -68,11 +69,10 @@ export default function SupportPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="support-message">Сообщение</Label>
-              <textarea
+              <Textarea
                 id="support-message"
-                rows={4}
                 placeholder="Опишите ситуацию или вопрос..."
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                className="rounded-xl"
               />
             </div>
             <Button type="submit" className="mt-2 rounded-xl">

@@ -7,12 +7,14 @@ export type DocumentListItem = {
   title: string;
   uploadedAt?: string | null;
   url?: string | null;
+  status?: string | null;
 };
 
 type DocumentListProps = {
   documents: DocumentListItem[];
   emptyMessage: string;
   className?: string;
+  showUploadOnly?: boolean;
 };
 
 function formatDocumentDate(value?: string | null): string {
@@ -34,7 +36,7 @@ function formatDocumentDate(value?: string | null): string {
   return trimmed.length > 0 ? trimmed : "Не указана";
 }
 
-export function DocumentList({ documents, emptyMessage, className }: DocumentListProps) {
+export function DocumentList({ documents, emptyMessage, className, showUploadOnly = false }: DocumentListProps) {
   if (!documents.length) {
     return <p className={cn("text-sm text-muted-foreground", className)}>{emptyMessage}</p>;
   }
@@ -43,6 +45,12 @@ export function DocumentList({ documents, emptyMessage, className }: DocumentLis
     <div className={cn("space-y-3", className)}>
       {documents.map((doc) => {
         const uploadLabel = formatDocumentDate(doc.uploadedAt);
+        const statusLabel = doc.status?.trim();
+        const metaLine = showUploadOnly
+          ? `Дата загрузки: ${uploadLabel}`
+          : statusLabel?.length
+            ? `${statusLabel} • ${uploadLabel}`
+            : `Дата загрузки: ${uploadLabel}`;
         return (
           <div
             key={doc.id}
@@ -50,7 +58,7 @@ export function DocumentList({ documents, emptyMessage, className }: DocumentLis
           >
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">{doc.title}</p>
-              <p className="text-xs text-muted-foreground">Дата загрузки: {uploadLabel}</p>
+              <p className="text-xs text-muted-foreground">{metaLine}</p>
             </div>
             {doc.url ? (
               <Button asChild size="sm" variant="outline" className="rounded-lg">

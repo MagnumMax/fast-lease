@@ -6,6 +6,13 @@ import { formatRelativeDays } from "@/app/(dashboard)/client/_components";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Ticket = {
   id: string;
@@ -108,28 +115,30 @@ export default function SupportQueuesPage() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 text-sm">
-        <select
-          value={channelFilter}
-          onChange={(event) => setChannelFilter(event.currentTarget.value)}
-          className="rounded-xl border border-border bg-background px-3 py-2"
-        >
-          <option value="all">Все каналы</option>
-          {channelOptions.map((channel) => (
-            <option key={channel} value={channel}>
-              {channel}
-            </option>
-          ))}
-        </select>
-        <select
-          value={priorityFilter}
-          onChange={(event) => setPriorityFilter(event.currentTarget.value)}
-          className="rounded-xl border border-border bg-background px-3 py-2"
-        >
-          <option value="all">Все приоритеты</option>
-          <option value="high">High</option>
-          <option value="normal">Normal</option>
-          <option value="low">Low</option>
-        </select>
+        <Select value={channelFilter} onValueChange={setChannelFilter}>
+          <SelectTrigger className="h-10 min-w-[160px]">
+            <SelectValue placeholder="Все каналы" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все каналы</SelectItem>
+            {channelOptions.map((channel) => (
+              <SelectItem key={channel} value={channel}>
+                {channel}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <SelectTrigger className="h-10 min-w-[160px]">
+            <SelectValue placeholder="Все приоритеты" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все приоритеты</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="normal">Normal</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

@@ -515,6 +515,17 @@ export type OpsDealDocument = {
   rawStatus?: string | null;
 };
 
+export type OpsSellerDocument = {
+  id: string;
+  title: string;
+  status?: string | null;
+  documentType?: string | null;
+  uploadedAt?: string | null;
+  url: string | null;
+  bucket?: string | null;
+  storagePath?: string | null;
+};
+
 export type OpsDealInvoice = {
   id: string;
   invoiceNumber: string;
@@ -1137,6 +1148,7 @@ export type OpsDealDetail = {
   editDefaults: OpsDealEditDefaults;
   clientDocuments: OpsClientDocument[];
   documents: OpsDealDocument[];
+  sellerDocuments: OpsSellerDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];
 };

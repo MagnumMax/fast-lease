@@ -98,10 +98,6 @@ export async function createSupabaseServiceClient(): Promise<SupabaseClient> {
     `${LOG_PREFIX} Service client URL env key:`,
     supabaseUrlVar?.key ?? "missing",
   );
-  console.log(
-    `${LOG_PREFIX} Service client key env key:`,
-    serviceRoleKeyVar?.key ?? "missing",
-  );
 
   if (!supabaseUrlVar || !serviceRoleKeyVar) {
     throw new Error(

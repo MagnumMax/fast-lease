@@ -20,6 +20,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 type ProfileActionState = {
   status: "idle" | "success" | "error";
@@ -195,19 +203,18 @@ export function ProfileClient({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="timezone">Timezone</Label>
-                  <select
-                    id="timezone"
-                    name="timezone"
-                    defaultValue={profile.timezone}
-                    disabled={profilePending}
-                    className="w-full rounded-xl border border-border bg-transparent px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                  >
-                    {TIMEZONE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <Select name="timezone" defaultValue={profile.timezone} disabled={profilePending}>
+                    <SelectTrigger id="timezone" className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMEZONE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -265,19 +272,18 @@ export function ProfileClient({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notifications">Notification settings</Label>
-                <select
-                  id="notifications"
-                  name="notifications"
-                  defaultValue={notificationState}
-                  disabled={securityPending}
-                  className="w-full rounded-xl border border-border bg-transparent px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-                >
-                  {NOTIFICATION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <Select name="notifications" defaultValue={notificationState} disabled={securityPending}>
+                  <SelectTrigger id="notifications" className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NOTIFICATION_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <Banner state={securityState} />
@@ -310,16 +316,12 @@ export function ProfileClient({
                 <div className="text-xs text-brand-600">{autopayMessage}</div>
               ) : null}
             </div>
-            <button
-              type="button"
-              onClick={toggleAutopay}
+            <Switch
+              checked={autopayEnabled}
+              onCheckedChange={() => toggleAutopay()}
               disabled={autopayPending}
-              className={`relative inline-flex h-7 w-14 items-center rounded-full border border-border transition ${autopayEnabled ? "bg-brand-600" : "bg-muted"}`}
-            >
-              <span
-                className={`absolute left-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${autopayEnabled ? "translate-x-7" : ""}`}
-              />
-            </button>
+              aria-label="Toggle auto-payments"
+            />
           </CardContent>
         </Card>
 

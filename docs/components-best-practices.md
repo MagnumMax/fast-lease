@@ -15,3 +15,4 @@
 - Convert `RouteScaffold` into a Server Component because it only renders static scaffolding.
 - Keep UI primitives (`Button`, `Card`, etc.) as Client Components to remain consumable inside other client-only widgets.
 - Audit layout files to ensure type-safe props (`readonly` data bags) and consistent aria labelling as we touch them.
+- Расширить библиотеку `components/ui` шадовскими примитивами (`Select`, `RadioGroup`, `Checkbox`) и в формах, отправляемых через Server Actions, синхронизировать их значения с нативными `<input type="hidden">`.

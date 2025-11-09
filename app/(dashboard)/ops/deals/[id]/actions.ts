@@ -1,6 +1,7 @@
 "use server";
 
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -17,6 +18,8 @@ import { getWorkspacePaths } from "@/lib/workspace/routes";
 import {
   uploadDocumentsBatch,
   type DocumentUploadCandidate,
+  isFileLike,
+  type FileLike,
 } from "@/lib/documents/upload";
 
 const inputSchema = z.object({
@@ -28,6 +31,7 @@ const inputSchema = z.object({
 });
 
 const STORAGE_BUCKET = "deal-documents";
+const SELLER_DOCUMENTS_BUCKET = "seller-documents";
 
 const DEAL_DOCUMENT_TYPE_META: Record<DealDocumentTypeValue, { title: string; category: DealDocumentCategory }> =
   DEAL_DOCUMENT_TYPES.reduce(
@@ -42,7 +46,19 @@ const DEAL_DOCUMENT_TYPE_VALUES = new Set<DealDocumentTypeValue>(
   DEAL_DOCUMENT_TYPES.map((entry) => entry.value),
 );
 
+const FALLBACK_UPLOAD_NAME = "document";
+
+function resolveUploadedFileName(file: FileLike): string {
+  const rawName = typeof file.name === "string" ? file.name.trim() : "";
+  return rawName.length > 0 ? rawName : FALLBACK_UPLOAD_NAME;
+}
+
 const uploadDealDocumentsSchema = z.object({
+  dealId: z.string().uuid(),
+  slug: z.string().min(1),
+});
+
+const uploadSellerDocumentsSchema = z.object({
   dealId: z.string().uuid(),
   slug: z.string().min(1),
 });
@@ -55,6 +71,18 @@ const deleteDealDocumentSchema = z.object({
 
 export type UploadDealDocumentsResult =
   | { success: true; uploaded: number }
+  | { success: false; error: string };
+
+type UploadedSellerDocument = {
+  id: string;
+  title: string;
+  bucket: string;
+  storage_path: string;
+  uploaded_at: string;
+};
+
+export type UploadSellerDocumentsResult =
+  | { success: true; documents: UploadedSellerDocument[] }
   | { success: false; error: string };
 
 type DeleteDealDocumentInput = z.infer<typeof deleteDealDocumentSchema>;
@@ -78,7 +106,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
 
   const { dealId, slug } = parsed.data;
 
-  const documentsMap = new Map<number, { type?: string; file?: File }>();
+  const documentsMap = new Map<number, { type?: string; file?: FileLike | null }>();
 
   for (const [key, value] of formData.entries()) {
     const match = /^documents\[(\d+)\]\[(type|file)\]$/.exec(key);
@@ -89,7 +117,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
     if (match[2] === "type" && typeof value === "string") {
       existing.type = value;
     }
-    if (match[2] === "file" && value instanceof File) {
+    if (match[2] === "file" && isFileLike(value)) {
       existing.file = value;
     }
     documentsMap.set(index, existing);
@@ -99,7 +127,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
 
   const hasIncomplete = rawDocuments.some((entry) => {
     const type = typeof entry.type === "string" ? entry.type.trim() : "";
-    const hasFile = entry.file instanceof File && entry.file.size > 0;
+    const hasFile = isFileLike(entry.file) && entry.file.size > 0;
     return (type && !hasFile) || (hasFile && !type);
   });
 
@@ -111,7 +139,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
     .map((entry) => {
       const typeRaw = typeof entry.type === "string" ? entry.type.trim().toLowerCase() : "";
       const typeValue = typeRaw as DealDocumentTypeValue;
-      const file = entry.file instanceof File && entry.file.size > 0 ? entry.file : null;
+      const file = isFileLike(entry.file) && entry.file.size > 0 ? entry.file : null;
       if (!typeRaw || !file) {
         return null;
       }
@@ -120,7 +148,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
       }
       return { type: typeValue, file };
     })
-    .filter((entry): entry is { type: DealDocumentTypeValue; file: File } => entry !== null);
+    .filter((entry): entry is { type: DealDocumentTypeValue; file: FileLike } => entry !== null);
 
   if (documents.length === 0) {
     return { success: true, uploaded: 0 };
@@ -134,7 +162,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
 
     const candidates: DocumentUploadCandidate<DealDocumentTypeValue>[] = documents.map((doc) => {
       const meta = DEAL_DOCUMENT_TYPE_META[doc.type];
-      const originalName = doc.file.name;
+      const originalName = resolveUploadedFileName(doc.file);
       const baseTitle = meta?.title ?? originalName;
       const finalTitle = originalName && baseTitle ? `${baseTitle} (${originalName})` : baseTitle ?? originalName;
 
@@ -144,7 +172,7 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
         category: meta?.category ?? "required",
         title: finalTitle,
         metadata: {
-          label: meta?.title ?? doc.file.name,
+          label: meta?.title ?? originalName,
         },
       };
     });
@@ -182,6 +210,131 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
   } catch (error) {
     console.error("[operations] unexpected error while uploading deal documents", error);
     return { success: false, error: "Произошла ошибка при загрузке документов." };
+  }
+}
+
+export async function uploadSellerDocuments(formData: FormData): Promise<UploadSellerDocumentsResult> {
+  const base = {
+    dealId: formData.get("dealId"),
+    slug: formData.get("slug"),
+  } satisfies Record<string, unknown>;
+
+  const parsed = uploadSellerDocumentsSchema.safeParse(base);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid seller document upload payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные документа продавца." };
+  }
+
+  const { dealId, slug } = parsed.data;
+
+  const documentsMap = new Map<
+    number,
+    {
+      title?: string;
+      file?: FileLike | null;
+    }
+  >();
+
+  for (const [key, value] of formData.entries()) {
+    const match = /^documents\[(\d+)\]\[(title|file)\]$/.exec(key);
+    if (!match) continue;
+    const index = Number.parseInt(match[1] ?? "", 10);
+    if (Number.isNaN(index)) continue;
+    const existing = documentsMap.get(index) ?? {};
+    if (match[2] === "title" && typeof value === "string") {
+      existing.title = value;
+    }
+    if (match[2] === "file" && isFileLike(value)) {
+      existing.file = value;
+    }
+    documentsMap.set(index, existing);
+  }
+
+  const rawDocuments = Array.from(documentsMap.values());
+
+  const hasIncomplete = rawDocuments.some((entry) => {
+    const title = typeof entry.title === "string" ? entry.title.trim() : "";
+    const hasFile = isFileLike(entry.file) && entry.file.size > 0;
+    return (title && !hasFile) || (hasFile && !title);
+  });
+
+  if (hasIncomplete) {
+    return { success: false, error: "Для каждого документа заполните название и выберите файл." };
+  }
+
+  const documents = rawDocuments
+    .map((entry) => {
+      const title = typeof entry.title === "string" ? entry.title.trim() : "";
+      const file = isFileLike(entry.file) && entry.file.size > 0 ? entry.file : null;
+      if (!title || !file) {
+        return null;
+      }
+      return { title, file };
+    })
+    .filter((entry): entry is { title: string; file: FileLike } => entry !== null);
+
+  if (documents.length === 0) {
+    return { success: true, documents: [] };
+  }
+
+  try {
+    const supabase = await createSupabaseServiceClient();
+
+    const results: UploadedSellerDocument[] = [];
+
+    for (const document of documents) {
+      const originalName = resolveUploadedFileName(document.file);
+      console.log("[operations] seller document upload requested", {
+        dealId,
+        title: document.title,
+        fileName: originalName,
+        size: document.file.size,
+      });
+      const sanitizedName = originalName.replace(/[^a-zA-Z0-9.\-_]/g, "-");
+      const path = `${dealId}/seller/${Date.now()}-${sanitizedName}`;
+      const arrayBuffer = await document.file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      const { error: uploadError } = await supabase.storage
+        .from(SELLER_DOCUMENTS_BUCKET)
+        .upload(path, buffer, {
+          upsert: false,
+          contentType: document.file.type || "application/octet-stream",
+        });
+
+      if (uploadError) {
+        console.error("[operations] failed to upload seller document", uploadError);
+        return { success: false, error: "Не удалось загрузить документ продавца." };
+      }
+
+      results.push({
+        id: randomUUID(),
+        title: document.title,
+        bucket: SELLER_DOCUMENTS_BUCKET,
+        storage_path: path,
+        uploaded_at: new Date().toISOString(),
+      });
+      console.log("[operations] seller document uploaded", {
+        dealId,
+        title: document.title,
+        path,
+      });
+    }
+
+    for (const path of getWorkspacePaths("deals")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/deals/${slug}`);
+
+    console.log("[operations] seller document upload batch complete", {
+      dealId,
+      uploaded: results.length,
+    });
+    return { success: true, documents: results };
+  } catch (error) {
+    console.error("[operations] unexpected error while uploading seller document", error);
+    return { success: false, error: "Произошла ошибка при загрузке документов продавца." };
   }
 }
 
@@ -292,6 +445,19 @@ const updateDealSchema = z.object({
   firstPaymentDate: z.string().optional(),
   activatedAt: z.string().optional(),
   completedAt: z.string().optional(),
+  sellerDocuments: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        title: z.string().optional(),
+        url: z.string().optional(),
+        status: z.string().optional(),
+        uploadedAt: z.string().optional(),
+        bucket: z.string().optional(),
+        storagePath: z.string().optional(),
+      }),
+    )
+    .optional(),
 });
 
 const verifyDealDeletionSchema = z.object({
@@ -353,6 +519,73 @@ function normalizeDateTimeLocal(value?: string | null): string | null {
     return null;
   }
   return date.toISOString();
+}
+
+type SellerDocumentInput = {
+  id?: string | null;
+  title?: string | null;
+  url?: string | null;
+  status?: string | null;
+  uploadedAt?: string | null;
+  bucket?: string | null;
+  storagePath?: string | null;
+};
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function ensureIsoDate(value?: string | null): string {
+  if (!value) {
+    return new Date().toISOString();
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString();
+  }
+  return parsed.toISOString();
+}
+
+type NormalizedSellerDocument = {
+  id?: string;
+  title: string;
+  url?: string;
+  status?: string;
+  uploaded_at: string;
+  bucket?: string;
+  storage_path?: string;
+};
+
+function sanitizeSellerDocuments(input?: SellerDocumentInput[]): NormalizedSellerDocument[] {
+  if (!input || input.length === 0) {
+    return [];
+  }
+  return input
+    .map((doc) => {
+      const title = normalizeText(doc.title);
+      const url = normalizeText(doc.url);
+      const hasFileReference = Boolean(
+        (doc.bucket && doc.storagePath) || (doc.storagePath && !doc.bucket) || url,
+      );
+      if (!title || !hasFileReference) {
+        return null;
+      }
+      const status = normalizeText(doc.status);
+      const uploadedAt = doc.uploadedAt ? ensureIsoDate(doc.uploadedAt) : new Date().toISOString();
+      const identifier = normalizeText(doc.id);
+      const bucket = normalizeText(doc.bucket);
+      const storagePath = normalizeText(doc.storagePath);
+      return {
+        ...(identifier ? { id: identifier } : {}),
+        title,
+        ...(url ? { url } : {}),
+        ...(bucket && storagePath ? { bucket } : {}),
+        ...(storagePath ? { storage_path: storagePath } : {}),
+        ...(status ? { status } : {}),
+        uploaded_at: uploadedAt,
+      } satisfies NormalizedSellerDocument;
+    })
+    .filter((entry): entry is NormalizedSellerDocument => entry !== null);
 }
 
 export async function completeDealGuardAction(
@@ -530,10 +763,11 @@ export async function updateOperationsDeal(
     firstPaymentDate,
     activatedAt,
     completedAt,
+    sellerDocuments,
   } = parsed.data;
 
   const nextDealNumber = normalizeText(dealNumber);
-  const payload: Record<string, unknown> = {
+  const updateColumnsBase: Record<string, unknown> = {
     deal_number: nextDealNumber.length > 0 ? nextDealNumber : null,
     principal_amount: parseDecimalInput(principalAmount),
     total_amount: parseDecimalInput(totalAmount),
@@ -554,9 +788,32 @@ export async function updateOperationsDeal(
   try {
     const supabase = await createSupabaseServiceClient();
 
+    const { data: dealRow, error: dealLoadError } = await supabase
+      .from("deals")
+      .select("payload")
+      .eq("id", dealId)
+      .maybeSingle();
+
+    if (dealLoadError) {
+      console.error("[operations] failed to load deal payload before update", { dealId, error: dealLoadError });
+      return { success: false, error: "Не удалось загрузить данные сделки." };
+    }
+
+    if (!dealRow) {
+      return { success: false, error: "Сделка не найдена." };
+    }
+
+    const nextPayload = isPlainRecord(dealRow.payload) ? structuredClone(dealRow.payload) : {};
+    nextPayload.seller_documents = sanitizeSellerDocuments(sellerDocuments);
+
+    const updatePayload = {
+      ...updateColumnsBase,
+      payload: nextPayload,
+    } satisfies Record<string, unknown>;
+
     const { error } = await supabase
       .from("deals")
-      .update(payload)
+      .update(updatePayload)
       .eq("id", dealId);
 
     if (error) {

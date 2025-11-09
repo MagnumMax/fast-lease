@@ -35,6 +35,7 @@ import type {
   OpsDealProfile,
   OpsDealTimelineEvent,
   OpsDealWorkflowTask,
+  OpsSellerDocument,
   CarDetailResult,
   OpsCarRecord,
   OpsTone,
@@ -55,6 +56,16 @@ const humanizeKey = (key: string): string => {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/^./, (char) => char.toUpperCase());
+};
+
+// Optional flag to re-enable verbose deal-detail traces without spamming every local dev session.
+const opsDealDetailDebugEnabled = process.env.NEXT_PUBLIC_DEBUG_OPS_DEAL_DETAIL === "true";
+
+const logOpsDealDetailDebug = (...args: unknown[]): void => {
+  if (!opsDealDetailDebugEnabled) {
+    return;
+  }
+  console.log(...args);
 };
 
 // Константы workflow ролей и статусов
@@ -574,6 +585,218 @@ function formatShortDate(value: string | null | undefined): string {
   });
 }
 
+type VehicleDocumentRow = {
+  id?: string;
+  document_type?: string | null;
+  title?: string | null;
+  status?: string | null;
+  storage_path?: string | null;
+  uploaded_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+function resolveVehicleDocumentTone(statusRaw: string): OpsTone {
+  switch (statusRaw) {
+    case "uploaded":
+      return "info";
+    case "verified":
+      return "success";
+    case "expired":
+      return "warning";
+    case "archived":
+      return "muted";
+    default:
+      return "muted";
+  }
+}
+
+function resolveVehicleDocumentStatus(statusRaw: string): string {
+  switch (statusRaw) {
+    case "uploaded":
+      return "Загружен";
+    case "verified":
+      return "Проверен";
+    case "expired":
+      return "Просрочен";
+    case "archived":
+      return "Архив";
+    default:
+      if (!statusRaw) {
+        return "Не указан";
+      }
+      return humanizeKey(statusRaw.replace(/[_\.]+/g, " "));
+  }
+}
+
+async function buildVehicleDocumentList(
+  rows: VehicleDocumentRow[] | null | undefined,
+): Promise<OpsVehicleDocument[]> {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return [];
+  }
+
+  const documents = await Promise.all(
+    rows.map(async (doc, index) => {
+      const url =
+        doc?.storage_path && typeof doc.storage_path === "string" && doc.storage_path.length > 0
+          ? await createSignedStorageUrl({ bucket: "vehicle-documents", path: doc.storage_path })
+          : null;
+      const statusRaw = typeof doc?.status === "string" ? doc.status : "uploaded";
+      const rawTypeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
+      const normalizedTypeCode = normalizeVehicleDocumentType(rawTypeCode);
+      const resolvedTypeCode = normalizedTypeCode ?? (rawTypeCode ? rawTypeCode.trim() : undefined);
+      const typeLabel =
+        getVehicleDocumentLabel(rawTypeCode) ??
+        (resolvedTypeCode ? humanizeKey(resolvedTypeCode.replace(/\./g, " ")) : undefined);
+      const title = (() => {
+        const explicit = typeof doc?.title === "string" ? doc.title.trim() : "";
+        if (explicit.length > 0) {
+          return doc?.title as string;
+        }
+        if (typeLabel) {
+          return typeLabel;
+        }
+        if (resolvedTypeCode) {
+          return resolvedTypeCode
+            .replace(/[_\.]+/g, " ")
+            .split(" ")
+            .filter(Boolean)
+            .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+            .join(" ");
+        }
+        return "Документ";
+      })();
+      const uploadedAtIso = typeof doc?.uploaded_at === "string" ? doc.uploaded_at : null;
+      const dateLabel = formatShortDate(uploadedAtIso);
+      const identifier = typeof doc?.id === "string" && doc.id.length > 0 ? doc.id : `vehicle-doc-${index}`;
+
+      return {
+        id: identifier,
+        title,
+        status: resolveVehicleDocumentStatus(statusRaw),
+        statusTone: resolveVehicleDocumentTone(statusRaw),
+        typeCode: resolvedTypeCode,
+        type: typeLabel,
+        date: dateLabel !== "—" ? dateLabel : undefined,
+        uploadedAt: uploadedAtIso,
+        dealNumber: null,
+        url,
+        source: "vehicle",
+      } satisfies OpsVehicleDocument;
+    }),
+  );
+
+  return documents.sort((a, b) => {
+    const left = a.uploadedAt ?? a.date ?? "";
+    const right = b.uploadedAt ?? b.date ?? "";
+    return (right || "").localeCompare(left || "");
+  });
+}
+
+type SellerDocumentCandidate = Record<string, unknown>;
+
+function collectSellerDocumentCandidates(...sources: unknown[]): SellerDocumentCandidate[] {
+  const normalize = (value: unknown): SellerDocumentCandidate[] => {
+    if (Array.isArray(value)) {
+      return value.filter((entry): entry is SellerDocumentCandidate => isRecord(entry));
+    }
+    if (isRecord(value)) {
+      return [value];
+    }
+    return [];
+  };
+
+  return sources.flatMap((source) => normalize(source));
+}
+
+async function buildSellerDocumentList(
+  candidates: SellerDocumentCandidate[],
+): Promise<OpsSellerDocument[]> {
+  const documents = await Promise.all(
+    candidates.map(async (candidate, index) => {
+      const metadata = isRecord(candidate.metadata) ? (candidate.metadata as Record<string, unknown>) : null;
+      const idCandidate =
+        getString(candidate["id"]) ??
+        getString(candidate["document_id"]) ??
+        getString(candidate["uuid"]) ??
+        getString(metadata?.document_id);
+      const title =
+        getString(candidate["title"]) ??
+        getString(candidate["name"]) ??
+        getString(candidate["document_name"]) ??
+        getString(candidate["display_name"]) ??
+        getString(candidate["document_type"]) ??
+        getString(candidate["documentType"]) ??
+        "Документ продавца";
+      const status =
+        getString(candidate["status"]) ??
+        getString(candidate["state"]) ??
+        getString(candidate["stage"]) ??
+        getString(metadata?.status);
+      const documentType =
+        getString(candidate["document_type"]) ??
+        getString(candidate["documentType"]) ??
+        getString(metadata?.document_type);
+      const uploadedAt =
+        getString(candidate["uploaded_at"]) ??
+        getString(candidate["uploadedAt"]) ??
+        getString(candidate["created_at"]) ??
+        getString(candidate["createdAt"]) ??
+        getString(metadata?.uploaded_at);
+      let url =
+        getString(candidate["url"]) ??
+        getString(candidate["signed_url"]) ??
+        getString(candidate["download_url"]) ??
+        getString(metadata?.url) ??
+        null;
+      const storagePath =
+        getString(candidate["storage_path"]) ??
+        getString(candidate["storagePath"]) ??
+        getString(candidate["path"]) ??
+        getString(candidate["file_path"]) ??
+        getString(metadata?.storage_path) ??
+        getString(metadata?.path) ??
+        null;
+      const bucketCandidate =
+        getString(candidate["bucket"]) ??
+        getString(metadata?.bucket) ??
+        getString(metadata?.storage_bucket) ??
+        getString(metadata?.bucket_id) ??
+        (storagePath ? "seller-documents" : null);
+      if (!url && storagePath && bucketCandidate) {
+        try {
+          url = await createSignedStorageUrl({ bucket: bucketCandidate, path: storagePath });
+        } catch (error) {
+          console.error("[SERVER-OPS] failed to sign seller document", {
+            bucket: bucketCandidate,
+            storagePath,
+            error,
+          });
+        }
+      }
+
+      return {
+        id: idCandidate ?? `seller-doc-${index}`,
+        title,
+        status,
+        documentType,
+        uploadedAt,
+        url,
+        bucket: bucketCandidate ?? null,
+        storagePath,
+      } satisfies OpsSellerDocument;
+    }),
+  );
+
+  return documents
+    .filter((doc) => doc != null)
+    .sort((a, b) => {
+      const left = a.uploadedAt ?? "";
+      const right = b.uploadedAt ?? "";
+      return (right || "").localeCompare(left || "");
+    });
+}
+
 function resolveScore(payload: unknown): number | null {
   if (!payload || typeof payload !== "object") {
     return null;
@@ -936,6 +1159,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   console.log("[SERVER-OPS] getOperationsDeals called");
 
   const supabase = await createSupabaseServerClient();
+  const supabaseService = await createSupabaseServiceClient();
 
   const { data, error } = await supabase
     .from("deals")
@@ -2191,24 +2415,26 @@ type DealDetailResult = {
   editDefaults: OpsDealEditDefaults;
   clientDocuments: OpsClientDocument[];
   documents: OpsDealDocument[];
+  sellerDocuments: OpsSellerDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];
 };
 
 // Серверные функции для операций
 export async function getOperationsDealDetail(slug: string): Promise<DealDetailResult | null> {
-  console.log(`[SERVER-OPS] getOperationsDealDetail called with slug: "${slug}"`);
+  logOpsDealDetailDebug(`[SERVER-OPS] getOperationsDealDetail called with slug: "${slug}"`);
 
   const trimmedSlug = (slug ?? "").trim();
   const { id: extractedUuid, slug: slugWithoutId } = extractIdFromSlug(trimmedSlug);
   const normalizedSlug = toSlug(slugWithoutId || trimmedSlug);
-  console.log(`[SERVER-OPS] normalized slug: "${normalizedSlug}"`);
+  logOpsDealDetailDebug(`[SERVER-OPS] normalized slug: "${normalizedSlug}"`);
 
   const supabase = await createSupabaseServerClient();
+  const supabaseService = await createSupabaseServiceClient();
 
   // Check authentication
   const { data: userData, error: userError } = await supabase.auth.getUser();
-  console.log(`[SERVER-OPS] user authenticated:`, !!userData?.user, `error:`, userError);
+  logOpsDealDetailDebug(`[SERVER-OPS] user authenticated:`, !!userData?.user, `error:`, userError);
 
   // Загружаем данные сделки с связанными таблицами
   const fetchFields = `
@@ -2304,39 +2530,39 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const dealNumberCandidate = slugWithoutId || (!uuidCandidate ? trimmedSlug : "");
 
   if (uuidCandidate) {
-    console.log(`[SERVER-OPS] searching by extracted UUID: "${uuidCandidate}"`);
+    logOpsDealDetailDebug(`[SERVER-OPS] searching by extracted UUID: "${uuidCandidate}"`);
     const byId = await supabase.from("deals").select(fetchFields).eq("id", uuidCandidate).maybeSingle();
 
     if (byId.error) {
       console.error("[SERVER-OPS] failed to load deal detail by extracted id:", byId.error);
     } else {
-      console.log(`[SERVER-OPS] extracted UUID search result:`, !!byId.data);
+      logOpsDealDetailDebug(`[SERVER-OPS] extracted UUID search result:`, !!byId.data);
     }
 
     if (byId.data) {
-      console.log(`[SERVER-OPS] found deal by extracted UUID:`, byId.data.id);
+      logOpsDealDetailDebug(`[SERVER-OPS] found deal by extracted UUID:`, byId.data.id);
       dealRow = byId.data;
     }
   }
 
   if (!dealRow && slugIsUuidOnly) {
-    console.log(`[SERVER-OPS] slug itself is UUID, searching by id: "${slugIsUuidOnly}"`);
+    logOpsDealDetailDebug(`[SERVER-OPS] slug itself is UUID, searching by id: "${slugIsUuidOnly}"`);
     const byId = await supabase.from("deals").select(fetchFields).eq("id", slugIsUuidOnly).maybeSingle();
 
     if (byId.error) {
       console.error("[SERVER-OPS] failed to load deal detail by slug UUID:", byId.error);
     } else {
-      console.log(`[SERVER-OPS] slug UUID search result:`, !!byId.data);
+      logOpsDealDetailDebug(`[SERVER-OPS] slug UUID search result:`, !!byId.data);
     }
 
     if (byId.data) {
-      console.log(`[SERVER-OPS] found deal by slug UUID:`, byId.data.id);
+      logOpsDealDetailDebug(`[SERVER-OPS] found deal by slug UUID:`, byId.data.id);
       dealRow = byId.data;
     }
   }
 
   if (!dealRow && dealNumberCandidate) {
-    console.log(`[SERVER-OPS] searching by exact deal_number: "${dealNumberCandidate}"`);
+    logOpsDealDetailDebug(`[SERVER-OPS] searching by exact deal_number: "${dealNumberCandidate}"`);
     const byNumber = await supabase
       .from("deals")
       .select(fetchFields)
@@ -2346,11 +2572,11 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     if (byNumber.error) {
       console.error("[SERVER-OPS] failed to load deal detail by number:", byNumber.error);
     } else {
-      console.log(`[SERVER-OPS] search by number result:`, !!byNumber.data);
+      logOpsDealDetailDebug(`[SERVER-OPS] search by number result:`, !!byNumber.data);
     }
 
     if (byNumber.data) {
-      console.log(`[SERVER-OPS] found deal by number:`, byNumber.data.id);
+      logOpsDealDetailDebug(`[SERVER-OPS] found deal by number:`, byNumber.data.id);
       dealRow = byNumber.data;
     }
   }
@@ -2360,7 +2586,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     dealNumberCandidate &&
     dealNumberCandidate.toUpperCase() !== dealNumberCandidate
   ) {
-    console.log(
+    logOpsDealDetailDebug(
       `[SERVER-OPS] retrying exact deal_number search with uppercase: "${dealNumberCandidate.toUpperCase()}"`,
     );
     const byNumberUpper = await supabase
@@ -2372,17 +2598,17 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     if (byNumberUpper.error) {
       console.error("[SERVER-OPS] failed to load deal detail by uppercase number:", byNumberUpper.error);
     } else {
-      console.log(`[SERVER-OPS] uppercase number search result:`, !!byNumberUpper.data);
+      logOpsDealDetailDebug(`[SERVER-OPS] uppercase number search result:`, !!byNumberUpper.data);
     }
 
     if (byNumberUpper.data) {
-      console.log(`[SERVER-OPS] found deal by uppercase number:`, byNumberUpper.data.id);
+      logOpsDealDetailDebug(`[SERVER-OPS] found deal by uppercase number:`, byNumberUpper.data.id);
       dealRow = byNumberUpper.data;
     }
   }
 
   if (!dealRow && dealNumberCandidate) {
-    console.log(`[SERVER-OPS] searching by case-insensitive deal_number: "${dealNumberCandidate}"`);
+    logOpsDealDetailDebug(`[SERVER-OPS] searching by case-insensitive deal_number: "${dealNumberCandidate}"`);
     const { data: insensitiveMatch, error: insensitiveError } = await supabase
       .from("deals")
       .select(fetchFields)
@@ -2392,17 +2618,17 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     if (insensitiveError) {
       console.error("[SERVER-OPS] failed to load deal detail by insensitive number:", insensitiveError);
     } else {
-      console.log(`[SERVER-OPS] insensitive search result:`, !!insensitiveMatch);
+      logOpsDealDetailDebug(`[SERVER-OPS] insensitive search result:`, !!insensitiveMatch);
     }
 
     if (insensitiveMatch) {
-      console.log(`[SERVER-OPS] found deal by insensitive number:`, insensitiveMatch.id);
+      logOpsDealDetailDebug(`[SERVER-OPS] found deal by insensitive number:`, insensitiveMatch.id);
       dealRow = insensitiveMatch;
     }
   }
 
   if (!dealRow) {
-    console.log(`[SERVER-OPS] searching in last 50 deals for slug: "${normalizedSlug}"`);
+    logOpsDealDetailDebug(`[SERVER-OPS] searching in last 50 deals for slug: "${normalizedSlug}"`);
     const { data: fallbackData, error: fallbackError } = await supabase
       .from("deals")
       .select(fetchFields)
@@ -2412,27 +2638,27 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     if (fallbackError) {
       console.error("[SERVER-OPS] failed to load fallback deals:", fallbackError);
     } else {
-      console.log(`[SERVER-OPS] loaded ${fallbackData?.length || 0} recent deals for fallback search`);
+      logOpsDealDetailDebug(`[SERVER-OPS] loaded ${fallbackData?.length || 0} recent deals for fallback search`);
       fallbackData?.slice(0, 5).forEach((deal: SupabaseDealDetailRow, index: number) => {
-        console.log(`[SERVER-OPS] available deal ${index + 1}: ID=${deal.id}, deal_number=${deal.deal_number}`);
+        logOpsDealDetailDebug(`[SERVER-OPS] available deal ${index + 1}: ID=${deal.id}, deal_number=${deal.deal_number}`);
       });
     }
 
     const matched = fallbackData?.find((row: SupabaseDealDetailRow) => matchesDealSlug(row, normalizedSlug));
-    console.log(`[SERVER-OPS] fallback search result:`, !!matched);
+    logOpsDealDetailDebug(`[SERVER-OPS] fallback search result:`, !!matched);
 
     if (matched) {
-      console.log(`[SERVER-OPS] found deal in fallback search:`, matched.id);
+      logOpsDealDetailDebug(`[SERVER-OPS] found deal in fallback search:`, matched.id);
       dealRow = matched;
     }
   }
 
   if (!dealRow) {
-    console.log(`[SERVER-OPS] no deal found for slug: "${slug}" after all search attempts`);
+    logOpsDealDetailDebug(`[SERVER-OPS] no deal found for slug: "${slug}" after all search attempts`);
     return null;
   }
 
-  console.log(`[SERVER-OPS] successfully found deal:`, dealRow.id, `deal_number:`, dealRow.deal_number);
+  logOpsDealDetailDebug(`[SERVER-OPS] successfully found deal:`, dealRow.id, `deal_number:`, dealRow.deal_number);
 
   const statusKey = mapStatusToWorkflow(dealRow.status);
 
@@ -2487,10 +2713,10 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     : (dealRow.customer_contact ?? null);
 
   // Загружаем email из auth.users (если есть клиент)
-  let authUser: Awaited<ReturnType<typeof supabase.auth.admin.getUserById>>["data"] | null = null;
+  let authUser: Awaited<ReturnType<typeof supabaseService.auth.admin.getUserById>>["data"] | null = null;
   if (clientId) {
     try {
-      const { data: fetchedAuthUser, error: authUserError } = await supabase.auth.admin.getUserById(
+      const { data: fetchedAuthUser, error: authUserError } = await supabaseService.auth.admin.getUserById(
         clientId,
       );
 
@@ -2728,6 +2954,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   const workflowContact = (workflowContactResult as { data: WorkflowContactRecord | null }).data ?? null;
   const workflowAsset = (workflowAssetResult as { data: WorkflowAssetRecord | null }).data ?? null;
+  const workflowAssetMeta = isRecord(workflowAsset?.meta)
+    ? (workflowAsset?.meta as Record<string, unknown>)
+    : null;
   const workflowVersion = (workflowVersionResult as { data: WorkflowVersionRecord | null }).data ?? null;
   const applicationRecord = (applicationRecordResult as { data: ApplicationRecord | null }).data ?? null;
 
@@ -2763,12 +2992,12 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     });
   }
 
-  console.log(`[DEBUG] Client data query result:`, { clientData, clientError, clientId });
-  console.log(`[DEBUG] Client full_name: "${clientData?.full_name}"`);
-  console.log(`[DEBUG] Client phone: "${clientData?.phone}"`);
-  console.log(`[DEBUG] Auth user email: "${authUser?.user?.email}"`);
-  console.log(`[DEBUG] Client metadata:`, clientData?.metadata);
-  console.log(`[DEBUG] Application scoring results:`, applicationScoringData?.scoring_results);
+  logOpsDealDetailDebug(`[DEBUG] Client data query result:`, { clientData, clientError, clientId });
+  logOpsDealDetailDebug(`[DEBUG] Client full_name: "${clientData?.full_name}"`);
+  logOpsDealDetailDebug(`[DEBUG] Client phone: "${clientData?.phone}"`);
+  logOpsDealDetailDebug(`[DEBUG] Auth user email: "${authUser?.user?.email}"`);
+  logOpsDealDetailDebug(`[DEBUG] Client metadata:`, clientData?.metadata);
+  logOpsDealDetailDebug(`[DEBUG] Application scoring results:`, applicationScoringData?.scoring_results);
 
   const paymentScheduleRows = (paymentSchedules ?? []) as SupabasePaymentScheduleRow[];
   const pendingStatuses = new Set(["pending", "overdue", "draft"]);
@@ -3118,7 +3347,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     detailHref: clientDetailHref,
   };
 
-  console.log(`[DEBUG] Final client profile:`, {
+  logOpsDealDetailDebug(`[DEBUG] Final client profile:`, {
     name: clientProfile.name,
     phone: clientProfile.phone,
     email: clientProfile.email,
@@ -3134,6 +3363,16 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       : "Клиент не указан";
   const vehicleId = vehicleData?.id ?? null;
   const vehicleDetailSlug = vehicleId ? buildSlugWithId(vehicleName, vehicleId) || vehicleId : null;
+
+  const sellerDocumentCandidates = collectSellerDocumentCandidates(
+    dealRow.payload?.["seller_documents"],
+    dealRow.payload?.["sellerDocuments"],
+    dealRow.payload?.["supplier_documents"],
+    dealRow.payload?.["supplierDocuments"],
+    workflowAssetMeta?.["seller_documents"],
+    workflowAssetMeta?.["sellerDocuments"],
+  );
+  const sellerDocuments: OpsSellerDocument[] = await buildSellerDocumentList(sellerDocumentCandidates);
 
   const profile: DealDetailResult["profile"] = {
     dealId: dealRow.deal_number ?? computeFallbackDealNumber(dealRow.id),
@@ -3469,7 +3708,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     isEmpty: payloadData.isEmpty,
   });
 
-  const workflowAssetMetaData = formatJsonObject((workflowAsset?.meta as Record<string, unknown> | null) ?? null);
+  const workflowAssetMetaData = formatJsonObject(workflowAssetMeta);
   structuredData.push({
     label: "Workflow asset meta",
     json: workflowAssetMetaData.formatted,
@@ -3531,6 +3770,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     editDefaults,
     clientDocuments,
     documents,
+    sellerDocuments,
     invoices,
     timeline,
   };
@@ -4166,77 +4406,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     ? vehicleDetail.vehicle_documents
     : [];
 
-  const vehicleDocuments: OpsVehicleDocument[] = (
-    await Promise.all(
-      vehicleDocumentRows.map(async (doc) => {
-        const url = doc?.storage_path
-          ? await createSignedStorageUrl({ bucket: "vehicle-documents", path: doc.storage_path })
-          : null;
-        const statusRaw = typeof doc?.status === "string" ? doc.status : "uploaded";
-        const statusTone: OpsTone = (() => {
-          switch (statusRaw) {
-            case "uploaded":
-              return "info";
-          case "verified":
-            return "success";
-          case "expired":
-            return "warning";
-          case "archived":
-            return "muted";
-          default:
-            return "muted";
-        }
-      })();
-      const status = (() => {
-        switch (statusRaw) {
-          case "uploaded":
-            return "Загружен";
-          case "verified":
-            return "Проверен";
-          case "expired":
-            return "Просрочен";
-          case "archived":
-            return "Архив";
-          default:
-            if (!statusRaw) {
-              return "Не указан";
-            }
-            return humanizeKey(statusRaw.replace(/[_\.]+/g, " "));
-        }
-      })();
-      const rawTypeCode = typeof doc?.document_type === "string" ? doc.document_type : undefined;
-      const normalizedTypeCode = normalizeVehicleDocumentType(rawTypeCode);
-      const resolvedTypeCode = normalizedTypeCode ?? (rawTypeCode ? rawTypeCode.trim() : undefined);
-      const typeLabel =
-        getVehicleDocumentLabel(rawTypeCode) ??
-        (resolvedTypeCode ? humanizeKey(resolvedTypeCode.replace(/\./g, " ")) : undefined);
-      const uploadedAtIso = typeof doc?.uploaded_at === "string" ? doc.uploaded_at : null;
-      const dateLabel = formatShortDate(uploadedAtIso);
-      const documentId = doc?.id ?? `vehicle-doc-${Math.random().toString(36).slice(2)}`;
-      return {
-        id: documentId,
-        title: doc?.title ?? typeLabel ?? "Документ",
-        status,
-        statusTone,
-        typeCode: resolvedTypeCode,
-        type: typeLabel,
-        date: dateLabel !== "—" ? dateLabel : undefined,
-        uploadedAt: uploadedAtIso,
-        dealNumber: null,
-        url,
-        source: "vehicle",
-      } satisfies OpsVehicleDocument;
-      }),
-    )
-  );
-
-  const documents: OpsVehicleDocument[] = vehicleDocuments;
-
-  documents.sort((a, b) => {
-    const left = a.uploadedAt ?? a.date ?? "";
-    const right = b.uploadedAt ?? b.date ?? "";
-    return right.localeCompare(left, "ru");
-  });
+  const documents: OpsVehicleDocument[] = await buildVehicleDocumentList(vehicleDocumentRows);
 
   const serviceRows = Array.isArray(vehicleDetail.vehicle_services)
     ? vehicleDetail.vehicle_services
