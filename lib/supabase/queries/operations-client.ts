@@ -473,7 +473,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
         customer_id,
         vehicle_id,
         payload,
-        vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, status)
+        vehicles!vehicle_id(id, vin, license_plate, make, model, year, body_type, mileage, status)
       `,
     )
     .order("updated_at", { ascending: false });
@@ -551,6 +551,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,
       vehicleVin: typeof vehicleData?.vin === "string" ? vehicleData.vin : null,
+      vehicleRegistration: getString(vehicleData?.license_plate) ?? null,
       updatedAt,
       stage: statusMeta.description,
       statusKey,

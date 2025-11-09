@@ -458,6 +458,7 @@ export type OpsDealSummary = {
   vehicleId?: string | null;
   vehicle: string;
   vehicleVin?: string | null;
+  vehicleRegistration?: string | null;
   updatedAt: string;
   stage: string;
   statusKey: OpsDealStatusKey;

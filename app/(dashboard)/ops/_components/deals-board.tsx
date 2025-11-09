@@ -644,7 +644,7 @@ export function OpsDealsBoard({
     const query = searchQuery.trim().toLowerCase();
     const normalizedVinQuery = normalizeVin(searchQuery);
     return deals.filter((deal) => {
-      const searchableText = `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.source} ${deal.contractStartDate ?? ""} ${deal.vehicleVin ?? ""}`
+      const searchableText = `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.vehicleRegistration ?? ""} ${deal.source} ${deal.contractStartDate ?? ""} ${deal.vehicleVin ?? ""}`
         .toLowerCase();
       const matchesText = !query || searchableText.includes(query);
       const matchesVin =
@@ -671,6 +671,13 @@ export function OpsDealsBoard({
           comparison = (a.vehicle ?? "").localeCompare(b.vehicle ?? "", undefined, {
             sensitivity: "base",
           });
+          if (comparison === 0) {
+            comparison = (a.vehicleRegistration ?? "").localeCompare(
+              b.vehicleRegistration ?? "",
+              undefined,
+              { sensitivity: "base" },
+            );
+          }
           if (comparison === 0) {
             comparison = (a.source ?? "").localeCompare(b.source ?? "", undefined, {
               sensitivity: "base",
@@ -1288,6 +1295,7 @@ export function OpsDealsBoard({
               <TableBody>
                 {sortedDeals.map((deal) => {
                   const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
+                  const registrationLabel = deal.vehicleRegistration ?? deal.vehicleVin ?? null;
                   return (
                     <TableRow key={deal.id}>
                       <TableCell className="font-medium">
@@ -1301,7 +1309,9 @@ export function OpsDealsBoard({
                       <TableCell>
                         <div className="flex flex-col">
                           <span>{deal.vehicle}</span>
-                          <span className="text-xs text-muted-foreground">{deal.source}</span>
+                          {registrationLabel ? (
+                            <span className="text-xs text-muted-foreground">{registrationLabel}</span>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell>{deal.client}</TableCell>
@@ -1312,16 +1322,14 @@ export function OpsDealsBoard({
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{deal.nextAction}</TableCell>
                       <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <TableCell className="align-top">
+                        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                           <Link className="hover:text-foreground" href="/ops/clients">
                             Client
                           </Link>
-                          <span>·</span>
                           <Link className="hover:text-foreground" href="/ops/cars">
                             Vehicle
                           </Link>
-                          <span>·</span>
                           <Link className="hover:text-foreground" href="/client/invoices">
                             Invoices
                           </Link>

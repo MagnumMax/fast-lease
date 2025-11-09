@@ -350,6 +350,7 @@ export type SupabaseClientData = {
 export type SupabaseVehicleData = {
   id: string;
   vin: string | null;
+  license_plate?: string | null;
   make: string | null;
   model: string | null;
   variant?: string | null;
@@ -1142,6 +1143,7 @@ type OperationsDeal = {
   vehicleId?: string | null;
   vehicle: string;
   vehicleVin?: string | null;
+  vehicleRegistration?: string | null;
   updatedAt: string;
   stage: string;
   statusKey: OpsDealStatusKey;
@@ -1177,7 +1179,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       contract_start_date,
       total_amount,
       payload,
-      vehicles!vehicle_id(id, vin, make, model, year, body_type, mileage, status)
+      vehicles!vehicle_id(id, vin, license_plate, make, model, year, body_type, mileage, status)
     `)
     .order("updated_at", { ascending: false });
 
@@ -1443,6 +1445,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,
       vehicleVin: typeof vehicleData?.vin === "string" ? vehicleData.vin : null,
+      vehicleRegistration: getString(vehicleData?.license_plate) ?? null,
       updatedAt,
       stage: statusMeta.description,
       statusKey,
