@@ -14,7 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePickerInput } from "@/components/ui/date-picker";
@@ -27,12 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DEAL_DOCUMENT_TYPES,
-  type DealDocumentCategory,
-  type DealDocumentTypeValue,
-  type OpsDealDetail,
-} from "@/lib/supabase/queries/operations";
+import { DEAL_DOCUMENT_TYPES, type DealDocumentTypeValue, type OpsDealDetail } from "@/lib/supabase/queries/operations";
 import {
   updateOperationsDeal,
   uploadDealDocuments,
@@ -95,13 +89,6 @@ type SellerDocumentDraft = {
   bucket?: string | null;
   storagePath?: string | null;
   uploadedAt?: string;
-};
-
-const DEAL_DOCUMENT_CATEGORY_LABEL_MAP: Record<DealDocumentCategory, string> = {
-  required: "Обязательный",
-  signature: "Подписание",
-  archived: "Архив",
-  other: "Другое",
 };
 
 const DEAL_BLOCKER_LABELS: Record<DealDeletionBlockerType, string> = {
@@ -276,6 +263,14 @@ export function DealEditDialog({
   const documentTypeOptions = useMemo(
     () => sortDocumentOptions(DEAL_DOCUMENT_TYPES),
     [],
+  );
+  const existingSellerDocuments = useMemo(
+    () => sellerDocumentDrafts.filter((doc) => Boolean(doc.url || doc.storagePath)),
+    [sellerDocumentDrafts],
+  );
+  const newSellerDocumentDrafts = useMemo(
+    () => sellerDocumentDrafts.filter((doc) => !doc.url && !doc.storagePath),
+    [sellerDocumentDrafts],
   );
 
   const isDocumentDeleting = (documentId: string) => deletingDocumentIds.has(documentId);
@@ -646,17 +641,10 @@ export function DealEditDialog({
                             key={doc.id}
                             className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
                           >
-                            <div className="space-y-1">
+                            <div>
                               <p className="text-sm font-semibold text-foreground">{doc.title}</p>
-                              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                <span>{DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category] ?? "Документ"}</span>
-                                {doc.status ? <span>{doc.status}</span> : null}
-                              </div>
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="outline" className="rounded-lg text-xs capitalize">
-                                {DEAL_DOCUMENT_CATEGORY_LABEL_MAP[doc.category]}
-                              </Badge>
                               {doc.url ? (
                                 <Button asChild size="sm" variant="outline" className="rounded-lg">
                                   <a href={doc.url} target="_blank" rel="noopener noreferrer">
@@ -780,18 +768,57 @@ export function DealEditDialog({
               description="Сохраните ссылки на документы, которые передал дилер или поставщик."
               columns={1}
             >
-              <div className="space-y-3">
-                {sellerDocumentDrafts.length ? (
-                  sellerDocumentDrafts.map((doc) => {
+              <div className="space-y-4">
+                {existingSellerDocuments.length ? (
+                  <div className="space-y-2 rounded-2xl border border-border/60 bg-background/60 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Уже загружено
+                    </p>
+                    <ul className="space-y-2">
+                      {existingSellerDocuments.map((doc) => {
+                        const title = doc.title?.trim().length ? doc.title : "Документ продавца";
+                        return (
+                          <li
+                            key={doc.id}
+                            className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">{title}</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {doc.url ? (
+                                <Button asChild size="sm" variant="outline" className="rounded-lg">
+                                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
+                                    <Paperclip className="mr-2 h-3.5 w-3.5" /> Открыть
+                                  </a>
+                                </Button>
+                              ) : null}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => removeSellerDocumentDraft(doc.id)}
+                                className="rounded-lg text-muted-foreground hover:text-destructive"
+                                aria-label="Удалить документ продавца"
+                              >
+                                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              </Button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Документы продавца пока не добавлены.</p>
+                )}
+
+                <div className="space-y-3 rounded-2xl border border-dashed border-border/60 bg-background/50 p-3">
+                  {newSellerDocumentDrafts.map((doc) => {
                     const hasTitle = doc.title.trim().length > 0;
-                    const hasExistingFile = Boolean(doc.url || doc.storagePath);
-                    const hasUrl = (doc.url ?? "").trim().length > 0;
-                    const hasFileRef = hasExistingFile || (doc.file instanceof File && doc.file.size > 0);
+                    const hasFile = doc.file instanceof File && doc.file.size > 0;
                     return (
-                      <div
-                        key={doc.id}
-                        className="space-y-3 rounded-xl border border-border/60 bg-background/60 p-3"
-                      >
+                      <div key={doc.id} className="space-y-3 rounded-xl border border-border/50 bg-background/60 p-3">
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="space-y-1">
                             <Label>Название документа</Label>
@@ -821,12 +848,6 @@ export function DealEditDialog({
                             />
                             {doc.file ? (
                               <p className="text-xs text-muted-foreground">{doc.file.name}</p>
-                            ) : doc.url ? (
-                              <Button asChild size="sm" variant="outline" className="mt-2 rounded-lg">
-                                <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                  <Paperclip className="mr-1.5 h-3.5 w-3.5" /> Открыть текущий файл
-                                </a>
-                              </Button>
                             ) : null}
                           </div>
                         </div>
@@ -841,29 +862,28 @@ export function DealEditDialog({
                             Удалить
                           </Button>
                         </div>
-                        {(!hasTitle && !hasFileRef) || (hasTitle && hasFileRef) ? null : (
+                        {(!hasTitle && !hasFile) || (hasTitle && hasFile) ? null : (
                           <p className="text-xs text-destructive">Укажите и название, и выберите файл.</p>
                         )}
                       </div>
                     );
-                  })
-                ) : (
-                  <p className="text-sm text-muted-foreground">Документы продавца пока не добавлены.</p>
-                )}
-                {sellerDocumentsValidationMessage ? (
-                  <p className="text-xs text-destructive">{sellerDocumentsValidationMessage}</p>
-                ) : null}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addSellerDocumentDraft}
-                    className="flex items-center gap-2 rounded-lg"
-                    disabled={isPending}
-                  >
-                    <Plus className="h-4 w-4" /> Добавить документ продавца
-                  </Button>
+                  })}
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addSellerDocumentDraft}
+                      className="flex items-center gap-2 rounded-lg"
+                      disabled={isPending}
+                    >
+                      <Plus className="h-4 w-4" /> Добавить документ продавца
+                    </Button>
+                    <p className="text-xs text-muted-foreground">Допустимые форматы: PDF, JPG, PNG (до 10 МБ).</p>
+                  </div>
+                  {sellerDocumentsValidationMessage ? (
+                    <p className="text-xs text-destructive">{sellerDocumentsValidationMessage}</p>
+                  ) : null}
                 </div>
               </div>
             </FormSection>

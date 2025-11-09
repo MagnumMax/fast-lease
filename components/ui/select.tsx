@@ -67,8 +67,8 @@ const SelectContent = React.forwardRef<
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
-      className={cn(
-        "z-50 min-w-[12rem] overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-xl",
+    className={cn(
+      "z-[90] min-w-[12rem] overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-xl",
         position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1",
         className,
       )}
@@ -109,7 +109,9 @@ const SelectItem = React.forwardRef<
     )}
     {...props}
   >
-    <span className="flex flex-1 items-center text-left">{children}</span>
+    <SelectPrimitive.ItemText className="flex flex-1 items-center text-left">
+      {children}
+    </SelectPrimitive.ItemText>
     <SelectPrimitive.ItemIndicator>
       <Check className="h-4 w-4 text-brand-600" aria-hidden="true" />
     </SelectPrimitive.ItemIndicator>
