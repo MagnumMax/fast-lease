@@ -7,12 +7,19 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 import { completeTaskFormAction } from "./actions";
+import {
+  evaluateClientDocumentChecklist,
+  extractChecklistFromTaskPayload,
+  type ClientDocumentChecklist,
+  type ClientDocumentSummary,
+} from "@/lib/workflow/documents-checklist";
 
 type TaskPageParams = {
   params: Promise<{ id: string }>;
 };
 
-const STORAGE_BUCKET = "deal-documents";
+const DEAL_STORAGE_BUCKET = "deal-documents";
+const CLIENT_STORAGE_BUCKET = "client-documents";
 
 export default async function TaskDetailPage({ params }: TaskPageParams) {
   const { id } = await params;
@@ -32,14 +39,18 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     note: string | null;
     attachmentPath: string | null;
     attachmentUrl: string | null;
+    documentType: string | null;
   } | null = null;
   let dealSummary: { id: string; dealNumber: string | null; clientId: string | null; vehicleId: string | null } | null = null;
+  let clientChecklist: ClientDocumentChecklist | null = null;
 
   if (task.dealId) {
     const supabase = await createSupabaseServerClient();
     const { data: dealRow, error: dealError } = await supabase
       .from("deals")
-      .select("id, deal_number, client_id, vehicle_id, payload, deal_documents (document_type, storage_path, title)")
+      .select(
+        "id, deal_number, client_id, customer_id, vehicle_id, payload, deal_documents (document_type, storage_path, title, metadata)",
+      )
       .eq("id", task.dealId)
       .maybeSingle();
 
@@ -48,12 +59,27 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     }
 
     if (dealRow) {
+      const effectiveClientId = (dealRow.client_id as string | null) ?? (dealRow.customer_id as string | null) ?? null;
       dealSummary = {
         id: dealRow.id,
         dealNumber: dealRow.deal_number ?? null,
-        clientId: dealRow.client_id ?? null,
+        clientId: effectiveClientId,
         vehicleId: dealRow.vehicle_id ?? null,
       };
+
+      let clientDocuments: ClientDocumentSummary[] = [];
+      if (effectiveClientId) {
+        const { data: clientDocsData, error: clientDocsError } = await supabase
+          .from("client_documents")
+          .select("id, document_type, title, status, storage_path")
+          .eq("client_id", effectiveClientId);
+
+        if (clientDocsError) {
+          console.error("[workflow] failed to load client documents for task page", clientDocsError);
+        } else if (Array.isArray(clientDocsData)) {
+          clientDocuments = clientDocsData as ClientDocumentSummary[];
+        }
+      }
 
       if (guardKey) {
         const guardBranch =
@@ -74,19 +100,55 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           guardEntry && typeof guardEntry.attachment_path === "string"
             ? (guardEntry.attachment_path as string)
             : null;
+        let resolvedDocumentType =
+          guardEntry && typeof guardEntry.document_type === "string"
+            ? (guardEntry.document_type as string)
+            : null;
 
-        if (!attachmentPath && Array.isArray(dealRow.deal_documents)) {
-          const matchingDoc = dealRow.deal_documents.find(
-            (document: { document_type: string | null; storage_path: string | null }) =>
-              document.document_type === guardKey && document.storage_path,
-          );
-          attachmentPath = matchingDoc?.storage_path ?? null;
+        if (Array.isArray(dealRow.deal_documents)) {
+          const matchingDoc = dealRow.deal_documents.find((document: {
+            document_type: string | null;
+            storage_path: string | null;
+            metadata: unknown;
+          }) => {
+            const metadata =
+              document.metadata && typeof document.metadata === "object" && !Array.isArray(document.metadata)
+                ? (document.metadata as Record<string, unknown>)
+                : null;
+            const metadataGuardKey =
+              metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
+            if (metadataGuardKey && metadataGuardKey === guardKey) {
+              return true;
+            }
+            return document.document_type === guardKey && Boolean(document.storage_path);
+          });
+
+          attachmentPath = attachmentPath ?? matchingDoc?.storage_path ?? null;
+
+          if (!resolvedDocumentType && matchingDoc) {
+            const metadata =
+              matchingDoc.metadata && typeof matchingDoc.metadata === "object" && !Array.isArray(matchingDoc.metadata)
+                ? (matchingDoc.metadata as Record<string, unknown>)
+                : null;
+            const metadataDocType =
+              metadata && typeof metadata.guard_document_type === "string"
+                ? (metadata.guard_document_type as string)
+                : null;
+            resolvedDocumentType =
+              metadataDocType ?? (matchingDoc.document_type ? (matchingDoc.document_type as string) : null);
+          }
         }
 
-        const attachmentUrl =
-          attachmentPath != null
-            ? await createSignedStorageUrl({ bucket: STORAGE_BUCKET, path: attachmentPath })
-            : null;
+        let attachmentUrl: string | null = null;
+        if (attachmentPath != null) {
+          const bucketsToTry = [CLIENT_STORAGE_BUCKET, DEAL_STORAGE_BUCKET];
+          for (const bucket of bucketsToTry) {
+            attachmentUrl = await createSignedStorageUrl({ bucket, path: attachmentPath });
+            if (attachmentUrl) {
+              break;
+            }
+          }
+        }
 
         guardState = {
           note:
@@ -95,7 +157,24 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
               : null,
           attachmentPath,
           attachmentUrl,
+          documentType: resolvedDocumentType ?? null,
         };
+
+        const requiredChecklist = extractChecklistFromTaskPayload(task.payload ?? null);
+        if (requiredChecklist.length > 0 && clientDocuments.length > 0) {
+          clientChecklist = evaluateClientDocumentChecklist(requiredChecklist, clientDocuments);
+        } else if (requiredChecklist.length > 0) {
+          clientChecklist = {
+            items: requiredChecklist.map((key) => ({
+              key,
+              normalizedType: null,
+              label: key,
+              fulfilled: false,
+              matches: [],
+            })),
+            fulfilled: false,
+          };
+        }
       }
     }
   }
@@ -113,6 +192,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           : null
       }
       guardState={guardState}
+      checklist={clientChecklist}
       deal={dealSummary}
       stageTitle={stageMeta?.title ?? null}
       completeAction={completeTaskFormAction}

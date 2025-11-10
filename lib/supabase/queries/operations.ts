@@ -861,6 +861,8 @@ const CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES = [
   ["personal_identification", "identity_document"],
   ["national_id", "identity_document"],
   ["passport_copy", "passport"],
+  ["driver_license", "driving_license"],
+  ["drivers_license", "driving_license"],
   ["bank_statements", "bank_statement"],
   ["proof_of_income", "salary_certificate"],
   ["salary_cert", "salary_certificate"],

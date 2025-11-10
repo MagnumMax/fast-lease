@@ -23,6 +23,7 @@ export type DealRow = {
    id: string;
    workflow_id: string;
    workflow_version_id: string | null;
+   client_id: string | null;
    customer_id: string | null;
    asset_id: string | null;
    vehicle_id: string | null;
@@ -545,6 +546,32 @@ export async function createDealWithWorkflow(
       }
     }
 
+    let resolvedClientId: string | null = null;
+    if (customerId) {
+      const { data: ensuredClientId, error: ensureClientError } = await supabase.rpc("ensure_client_for_contact", {
+        contact_id: customerId,
+      });
+
+      if (ensureClientError) {
+        console.error("[workflow] failed to ensure client for contact", ensureClientError);
+        return {
+          success: false,
+          statusCode: 500,
+          message: "Не удалось подготовить клиента для сделки",
+        };
+      }
+
+      resolvedClientId = ensuredClientId ?? null;
+    }
+
+    if (!resolvedClientId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Не удалось определить клиента для сделки",
+      };
+    }
+
     const mergedPayload = deepMergePayload(
       DEFAULT_GUARD_PAYLOAD,
       payload.payload ?? null,
@@ -574,6 +601,7 @@ export async function createDealWithWorkflow(
       .insert({
         workflow_id: activeVersion.workflowId,
         workflow_version_id: activeVersion.id,
+        client_id: resolvedClientId,
         customer_id: customerId,
         asset_id: assetId,
         vehicle_id: vehicleId,
@@ -584,7 +612,7 @@ export async function createDealWithWorkflow(
         payload: enrichedPayload,
       })
       .select(
-        "id, workflow_id, workflow_version_id, customer_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, created_at, updated_at, payload",
+        "id, workflow_id, workflow_version_id, client_id, customer_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, created_at, updated_at, payload",
       )
       .single<DealRow>();
 

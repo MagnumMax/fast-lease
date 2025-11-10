@@ -61,12 +61,6 @@ export const applicationDocuments: Record<
       title: "Income certificate or employer letter",
       description: "Must be issued no later than 30 days ago.",
     },
-    {
-      id: "bank_statements",
-      title: "Bank statement for 3 months",
-      description: "PDF format, multiple files can be uploaded.",
-      optional: true,
-    },
   ],
   nonresident: [
     {
@@ -83,11 +77,6 @@ export const applicationDocuments: Record<
       id: "license",
       title: "Driving license from your country",
       description: "Attach international license if necessary.",
-    },
-    {
-      id: "proof_of_income",
-      title: "Proof of income",
-      description: "Work certificate, tax return or contract.",
     },
     {
       id: "uae_contact",

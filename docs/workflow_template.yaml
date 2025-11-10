@@ -177,8 +177,6 @@ statuses:
               - passport
               - emirates_id
               - driver_license
-              - bank_statements
-              - proof_of_income
     exit_requirements:
       - key: docs.required.allUploaded
         rule: "== true"
@@ -449,14 +447,14 @@ transitions:
 
   - from: OFFER_PREP
     to: VEHICLE_CHECK
-    by_roles: [TECH_SPECIALIST]
+    by_roles: [OP_MANAGER, TECH_SPECIALIST]
     guards:
       - key: quotationPrepared
         rule: "== true"
 
   - from: VEHICLE_CHECK
     to: DOCS_COLLECT
-    by_roles: [TECH_SPECIALIST]
+    by_roles: [OP_MANAGER, TECH_SPECIALIST]
     guards:
       - key: vehicle.verified
         rule: "== true"
@@ -470,35 +468,35 @@ transitions:
 
   - from: RISK_REVIEW
     to: FINANCE_REVIEW
-    by_roles: [RISK_MANAGER]
+    by_roles: [OP_MANAGER, RISK_MANAGER]
     guards:
       - key: risk.approved
         rule: "== true"
 
   - from: FINANCE_REVIEW
     to: INVESTOR_PENDING
-    by_roles: [FINANCE]
+    by_roles: [OP_MANAGER, FINANCE]
     guards:
       - key: finance.approved
         rule: "== true"
 
   - from: INVESTOR_PENDING
     to: CONTRACT_PREP
-    by_roles: [INVESTOR]
+    by_roles: [OP_MANAGER, INVESTOR]
     guards:
       - key: investor.approved
         rule: "== true"
 
   - from: CONTRACT_PREP
     to: SIGNING_FUNDING
-    by_roles: [LEGAL]
+    by_roles: [OP_MANAGER, LEGAL]
     guards:
       - key: legal.contractReady
         rule: "== true"
 
   - from: SIGNING_FUNDING
     to: VEHICLE_DELIVERY
-    by_roles: [TECH_SPECIALIST]
+    by_roles: [OP_MANAGER, TECH_SPECIALIST]
     guards:
       - key: esign.allSigned
         rule: "== true"
@@ -509,7 +507,7 @@ transitions:
 
   - from: VEHICLE_DELIVERY
     to: ACTIVE
-    by_roles: [TECH_SPECIALIST]
+    by_roles: [OP_MANAGER, TECH_SPECIALIST]
     guards:
       - key: delivery.confirmed
         rule: "== true"
@@ -523,7 +521,7 @@ transitions:
     by_roles: [OP_MANAGER]
   - from: VEHICLE_CHECK
     to: CANCELLED
-    by_roles: [TECH_SPECIALIST]
+    by_roles: [OP_MANAGER, TECH_SPECIALIST]
   - from: DOCS_COLLECT
     to: CANCELLED
     by_roles: [OP_MANAGER]
@@ -544,7 +542,7 @@ transitions:
     by_roles: [OP_MANAGER]
   - from: VEHICLE_DELIVERY
     to: CANCELLED
-    by_roles: [TECH_SPECIALIST]
+    by_roles: [OP_MANAGER, TECH_SPECIALIST]
 
 permissions:
   # Пример матрицы доступа: кто может менять что

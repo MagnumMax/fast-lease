@@ -203,6 +203,13 @@ export async function handleTaskCompletion(
     const guardAttachmentPath =
       guardAttachmentPathCandidate ??
       (typeof guardBase.attachment_path === "string" ? (guardBase.attachment_path as string) : null);
+    const guardDocumentTypeCandidate =
+      typeof context.taskPayload?.guard_document_type === "string"
+        ? (context.taskPayload.guard_document_type as string)
+        : null;
+    const guardDocumentType =
+      guardDocumentTypeCandidate ??
+      (typeof guardBase.document_type === "string" ? (guardBase.document_type as string) : null);
 
     dealPayload.guard_tasks[guardKey] = {
       ...guardBase,
@@ -213,6 +220,7 @@ export async function handleTaskCompletion(
       status_key: context.taskPayload?.status_key,
       note: guardNote,
       attachment_path: guardAttachmentPath,
+      document_type: guardDocumentType,
     };
 
     // Обновляем payload сделки в базе данных

@@ -1,25 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, type JSX } from "react";
+import { useActionState, useMemo, useRef, useState, type ChangeEvent, type JSX } from "react";
 
-import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Paperclip } from "lucide-react";
+import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Paperclip, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  CLIENT_DOCUMENT_TYPES,
+  getClientDocumentLabel,
+  normalizeClientDocumentType,
+} from "@/lib/supabase/queries/operations";
+import { sortDocumentOptions } from "@/lib/documents/options";
+import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
 
 import type { FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
 
 type TaskDetailViewProps = {
   task: WorkspaceTask;
   guardMeta: { key: string; label: string; requiresDocument: boolean } | null;
-  guardState: { note: string | null; attachmentPath: string | null; attachmentUrl: string | null } | null;
+  guardState: {
+    note: string | null;
+    attachmentPath: string | null;
+    attachmentUrl: string | null;
+    documentType: string | null;
+  } | null;
+  checklist: ClientDocumentChecklist | null;
   deal: { id: string; dealNumber: string | null; clientId: string | null; vehicleId: string | null } | null;
   stageTitle: string | null;
   completeAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
@@ -43,7 +57,28 @@ type TaskPayload = {
   defaults?: Record<string, unknown>;
 };
 
+type DocumentDraft = {
+  id: string;
+  type: string;
+  fileName: string | null;
+  hasFile: boolean;
+};
+
 const INITIAL_STATE: FormStatus = { status: "idle" };
+const EMPTY_DOCUMENT_TYPE_VALUE = "__empty__";
+const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+
+function createDocumentDraft(): DocumentDraft {
+  const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `draft-${Math.random().toString(36).slice(2)}`;
+  return {
+    id,
+    type: "",
+    fileName: null,
+    hasFile: false,
+  };
+}
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -60,10 +95,34 @@ function resolveFieldValue(fieldId: string, payload: TaskPayload | undefined): s
   const defaults = payload.defaults ?? {};
 
   const candidate = fields[fieldId] ?? defaults[fieldId];
+  if (fieldId === "checklist") {
+    const normalized = normalizeChecklistCandidate(candidate);
+    if (normalized) {
+      const filtered = filterChecklistTypes(normalized);
+      return JSON.stringify(filtered);
+    }
+  }
   if (candidate == null) return "";
   if (typeof candidate === "string") return candidate;
   if (typeof candidate === "number") return candidate.toString();
   return JSON.stringify(candidate);
+}
+
+function normalizeChecklistCandidate(candidate: unknown): string[] | null {
+  if (Array.isArray(candidate)) {
+    return candidate.filter((value): value is string => typeof value === "string");
+  }
+  if (typeof candidate === "string") {
+    try {
+      const parsed = JSON.parse(candidate);
+      return Array.isArray(parsed)
+        ? parsed.filter((value): value is string => typeof value === "string")
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 function getTaskStatusMeta(status: string): { label: string; variant: "success" | "warning" | "secondary"; icon: JSX.Element } {
@@ -87,22 +146,27 @@ export function TaskDetailView({
   task,
   guardMeta,
   guardState,
+  checklist,
   deal,
   stageTitle,
   completeAction,
 }: TaskDetailViewProps) {
   const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
+  const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([createDocumentDraft()]);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
   const editableFields = schemaFields.filter((field) => isEditableField(field));
+  const sortedDocumentTypeOptions = useMemo(() => sortDocumentOptions(CLIENT_DOCUMENT_TYPES), []);
 
   const statusMeta = getTaskStatusMeta(task.status);
   const slaInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const requiresDocument = guardMeta?.requiresDocument ?? false;
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
-  const mustUploadAttachment = requiresDocument && !hasExistingAttachment;
+  const hasAnyNewFiles = documentDrafts.some((draft) => draft.hasFile);
+  const mustProvideDocument = requiresDocument && !hasExistingAttachment;
   const hasForm = task.status !== "DONE";
   const isCompletedWorkflow = !hasForm && task.isWorkflow;
   const dealSlug = deal ? buildSlugWithId(deal.dealNumber ?? null, deal.id) || deal.id : null;
@@ -112,6 +176,51 @@ export function TaskDetailView({
   const vehicleSlug = deal?.vehicleId
     ? buildSlugWithId(task.dealVehicleName ?? null, deal.vehicleId) || deal.vehicleId
     : null;
+  const guardDocumentTypeLabel = guardState?.documentType
+    ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
+    : null;
+  const showDocumentWarning = mustProvideDocument && !hasAnyNewFiles;
+
+  function registerFileInput(id: string, node: HTMLInputElement | null) {
+    fileInputRefs.current[id] = node;
+  }
+
+  function handleDraftTypeChange(id: string, value: string) {
+    setDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, type: value === EMPTY_DOCUMENT_TYPE_VALUE ? "" : value } : draft)),
+    );
+  }
+
+  function handleDraftFileChange(id: string, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0] ?? null;
+    setDocumentDrafts((prev) =>
+      prev.map((draft) =>
+        draft.id === id ? { ...draft, fileName: file ? file.name : null, hasFile: Boolean(file) } : draft,
+      ),
+    );
+  }
+
+  function clearDraftFile(id: string) {
+    const input = fileInputRefs.current[id];
+    if (input) {
+      input.value = "";
+    }
+    setDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, fileName: null, hasFile: false } : draft)),
+    );
+  }
+
+  function addDocumentDraft() {
+    setDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
+  }
+
+  function removeDocumentDraft(id: string) {
+    setDocumentDrafts((prev) => {
+      const next = prev.filter((draft) => draft.id !== id);
+      return next.length > 0 ? next : [createDocumentDraft()];
+    });
+    delete fileInputRefs.current[id];
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -191,14 +300,6 @@ export function TaskDetailView({
               <span>Завершена: {completedInfo}</span>
             </div>
           ) : null}
-          {guardMeta ? (
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                Guard условие
-              </span>
-              <span className="text-sm text-foreground">{guardMeta.label}</span>
-            </div>
-          ) : null}
           {guardState?.attachmentUrl ? (
             <Link
               href={guardState.attachmentUrl}
@@ -208,6 +309,39 @@ export function TaskDetailView({
               <Paperclip className="h-3 w-3" />
               Просмотреть текущее вложение
             </Link>
+          ) : null}
+          {guardDocumentTypeLabel ? (
+            <p className="text-xs text-muted-foreground">Тип документа: {guardDocumentTypeLabel}</p>
+          ) : null}
+          {checklist && checklist.items.length > 0 ? (
+            <div className="mt-4 space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                <span>Чек-лист клиента</span>
+                <Badge variant={checklist.fulfilled ? "success" : "secondary"} className="rounded-lg text-[11px]">
+                  {checklist.fulfilled ? "Готово" : "Ожидает"}
+                </Badge>
+              </div>
+              <ul className="space-y-2 text-xs text-muted-foreground">
+                {checklist.items.map((item) => (
+                  <li
+                    key={item.key}
+                    className="flex items-center justify-between gap-3 rounded-md bg-background/40 px-3 py-2 text-foreground"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">{item.label}</span>
+                      <span>
+                        {item.fulfilled
+                          ? `Загружено файлов: ${item.matches.length}`
+                          : "Документ отсутствует"}
+                      </span>
+                    </div>
+                    <Badge variant={item.fulfilled ? "success" : "secondary"} className="rounded-lg text-[11px]">
+                      {item.fulfilled ? "OK" : "Нет"}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
         </CardContent>
       </Card>
@@ -275,6 +409,36 @@ export function TaskDetailView({
                         );
                       }
 
+                      if (type === "checklist") {
+                        const parsedChecklist = normalizeChecklistCandidate(value);
+                        const checklist = parsedChecklist ? filterChecklistTypes(parsedChecklist) : [];
+                        return (
+                          <div key={fieldId} className="space-y-2">
+                            <Label htmlFor={`field-${fieldId}`}>{label}</Label>
+                            <input
+                              type="hidden"
+                              id={`field-${fieldId}`}
+                              name={`field:${fieldId}`}
+                              value={JSON.stringify(checklist)}
+                            />
+                            {checklist.length > 0 ? (
+                              <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+                                {checklist.map((item) => (
+                                  <Badge key={item} variant="secondary" className="rounded-lg text-xs">
+                                    {getClientDocumentLabel(item) ?? item}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-xs text-muted-foreground">
+                                Чек-лист пуст.
+                              </p>
+                            )}
+                            {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+                          </div>
+                        );
+                      }
+
                       return (
                         <div key={fieldId} className="space-y-2">
                           <Label htmlFor={`field-${fieldId}`}>{label}</Label>
@@ -307,38 +471,111 @@ export function TaskDetailView({
                 />
               </div>
 
-              {requiresDocument ? (
-                <div className="space-y-2">
-                  <Label htmlFor="task-attachment">
-                    Вложение{" "}
-                    {mustUploadAttachment ? (
-                      <span className="text-rose-500">*</span>
-                    ) : (
-                      <span className="text-xs font-medium text-muted-foreground">(уже загружено)</span>
-                    )}
-                  </Label>
-                  <Input
-                    id="task-attachment"
-                    name="attachment"
-                    type="file"
-                    required={mustUploadAttachment}
-                    className="rounded-lg"
-                  />
-                  {hasExistingAttachment ? (
-                    <p className="text-xs text-muted-foreground">
-                      Документ уже прикреплён. Загрузите новый файл только при необходимости заменить текущий.
-                    </p>
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                    Загрузка документов
+                  </span>
+                  {showDocumentWarning ? (
+                    <Badge variant="destructive" className="rounded-lg text-[11px]">
+                      Требуется документ
+                    </Badge>
                   ) : null}
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <Label htmlFor="task-attachment">Вложение</Label>
-                  <Input id="task-attachment" name="attachment" type="file" className="rounded-lg" />
+
+                <div className="space-y-3">
+                  {documentDrafts.map((draft) => {
+                    const namePrefix = `documents[${draft.id}]`;
+                    return (
+                      <div
+                        key={draft.id}
+                        className="space-y-3 rounded-xl border border-dashed border-border/60 bg-muted/20 p-4"
+                      >
+                        <div className="grid gap-3 md:grid-cols-[minmax(0,260px)_1fr_auto]">
+                          <div className="space-y-1">
+                            <Label>Тип документа</Label>
+                            <Select
+                              value={draft.type || EMPTY_DOCUMENT_TYPE_VALUE}
+                              onValueChange={(value) => handleDraftTypeChange(draft.id, value)}
+                            >
+                              <SelectTrigger className="h-10 rounded-lg border border-border bg-background/80 text-sm">
+                                <SelectValue placeholder="Выберите тип" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={EMPTY_DOCUMENT_TYPE_VALUE}>Выберите тип</SelectItem>
+                                {sortedDocumentTypeOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <input type="hidden" name={`${namePrefix}[type]`} value={draft.type} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label>Файл</Label>
+                            <Input
+                              ref={(node) => registerFileInput(draft.id, node)}
+                              name={`${namePrefix}[file]`}
+                              type="file"
+                              accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                              className="cursor-pointer rounded-lg"
+                              onChange={(event) => handleDraftFileChange(draft.id, event)}
+                            />
+                            {draft.fileName ? (
+                              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                <span className="truncate">{draft.fileName}</span>
+                                <button
+                                  type="button"
+                                  className="font-medium text-brand-600"
+                                  onClick={() => clearDraftFile(draft.id)}
+                                >
+                                  Очистить
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">
+                                Допустимые форматы: PDF, JPG, PNG (до 10 МБ).
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-end justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="rounded-lg text-muted-foreground hover:text-destructive"
+                              onClick={() => removeDocumentDraft(draft.id)}
+                              disabled={documentDrafts.length === 1 && !draft.hasFile && !draft.type}
+                            >
+                              <Trash2 className="mr-1 h-4 w-4" /> Удалить
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 rounded-lg"
+                    onClick={addDocumentDraft}
+                  >
+                    <Plus className="h-4 w-4" /> Добавить документ
+                  </Button>
+                  <p className="text-xs text-muted-foreground">Форматы: PDF, JPG, PNG (до 10 МБ).</p>
+                </div>
+                {showDocumentWarning ? (
+                  <p className="text-xs text-destructive">Загрузите хотя бы один документ.</p>
+                ) : null}
+              </div>
 
               <div className="flex items-center justify-end gap-3">
-                <Button type="submit" className="rounded-lg" disabled={pending}>
+                <Button type="submit" className="rounded-lg" disabled={pending || showDocumentWarning}>
                   {pending ? "Сохраняем..." : "Завершить задачу"}
                 </Button>
               </div>
