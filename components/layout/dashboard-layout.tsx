@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import * as React from "react";
-import { ChevronDown, Menu } from "lucide-react";
+import { CircleUserRound, Menu } from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
 import type { AppRole } from "@/lib/auth/types";
@@ -148,51 +148,6 @@ export function DashboardLayout({
             );
           })}
         </nav>
-        <div className="dashboard-sidebar__profile" ref={profileMenuRef}>
-          <DropdownMenu open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
-            <DropdownMenuTrigger
-              asChild
-              id={profileMenuId}
-              aria-label="User menu"
-            >
-              <button type="button" className="dashboard-sidebar__profile-trigger">
-                <span className="dashboard-sidebar__profile-label">Профиль</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              side="top"
-              sideOffset={12}
-              className="w-64"
-            >
-              <DropdownMenuLabel className="flex flex-col gap-0.5 text-left">
-                <span className="font-semibold leading-tight">{dropdownName}</span>
-                {showEmailInMenu ? (
-                  <span className="text-xs text-muted-foreground">{user?.email}</span>
-                ) : null}
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {roleLabel}
-                </span>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild className="justify-between">
-                <div className="flex w-full items-center justify-between">
-                  <span>Theme</span>
-                  <ThemeToggle />
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <form action={signOutAction}>
-                <DropdownMenuItem asChild>
-                  <button type="submit" className="w-full text-left">
-                    Sign out
-                  </button>
-                </DropdownMenuItem>
-              </form>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
       </aside>
 
       {sidebarOpen ? (
@@ -224,6 +179,59 @@ export function DashboardLayout({
                 {activeItem?.label ?? "Dashboard"}
               </h1>
             </div>
+          </div>
+          <div className="dashboard-header__actions" ref={profileMenuRef}>
+            <DropdownMenu open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
+              <DropdownMenuTrigger
+                asChild
+                id={profileMenuId}
+                aria-label="User menu"
+              >
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="dashboard-header__profile-trigger"
+                  aria-expanded={profileMenuOpen}
+                  aria-controls={profileMenuId ? `${profileMenuId}-menu` : undefined}
+                >
+                  <CircleUserRound className="h-5 w-5" aria-hidden="true" />
+                  <span className="sr-only">Профиль пользователя</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                id={profileMenuId ? `${profileMenuId}-menu` : undefined}
+                align="end"
+                side="bottom"
+                sideOffset={12}
+                className="w-64"
+              >
+                <DropdownMenuLabel className="flex flex-col gap-0.5 text-left">
+                  <span className="font-semibold leading-tight">{dropdownName}</span>
+                  {showEmailInMenu ? (
+                    <span className="text-xs text-muted-foreground">{user?.email}</span>
+                  ) : null}
+                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {roleLabel}
+                  </span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="justify-between">
+                  <div className="flex w-full items-center justify-between">
+                    <span>Theme</span>
+                    <ThemeToggle />
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <form action={signOutAction}>
+                  <DropdownMenuItem asChild>
+                    <button type="submit" className="w-full text-left">
+                      Sign out
+                    </button>
+                  </DropdownMenuItem>
+                </form>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
