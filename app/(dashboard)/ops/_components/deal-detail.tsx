@@ -26,6 +26,7 @@ import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dial
 import { DocumentList } from "./document-list";
 import { VehicleGallery } from "./vehicle-gallery";
 import { buildSlugWithId } from "@/lib/utils/slugs";
+import { getDealStatusBadgeMeta } from "@/app/(dashboard)/ops/_components/deal-status-badge-meta";
 
 type DealDetailProps = {
   detail: OpsDealDetail;
@@ -150,7 +151,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const filteredKeyInformation = keyInformation.filter(
     (item) => item.label.toLowerCase() !== "odoo card",
   );
-  const briefHref = `/ops/deals/${slug}/brief.pdf`;
   const overdueInvoices = invoices.filter((invoice) =>
     invoice.status.toLowerCase().includes("overdue"),
   );
@@ -190,6 +190,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
   );
   const dueAmountValue = parseCurrencyValue(profile.dueAmount);
   const hasDebt = (dueAmountValue ?? 0) > 0 || overdueInvoices.length > 0;
+  const statusBadgeMeta = getDealStatusBadgeMeta(detail.statusKey);
   const insuranceEntries = [
     { label: "Провайдер", value: insurance?.provider ?? "—" },
     { label: "Номер полиса", value: insurance?.policyNumber ?? "—" },
@@ -366,7 +367,15 @@ export function DealDetailView({ detail }: DealDetailProps) {
               </div>
               <div className="space-y-1">
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Номер сделки</p>
-                <CardTitle className="text-2xl">{dealTitle}</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-2xl">{dealTitle}</CardTitle>
+                  <Badge
+                    variant={statusBadgeMeta.variant}
+                    className="ml-auto rounded-lg px-3 py-1.5 text-[0.75rem] uppercase tracking-wide"
+                  >
+                    {statusBadgeMeta.label}
+                  </Badge>
+                </div>
               </div>
               <CardDescription className="text-sm text-muted-foreground">
                 {clientVehicleLine}
@@ -387,14 +396,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   );
                 })}
               </dl>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" size="sm" asChild className="rounded-lg">
-                  <Link href={briefHref}>
-                    <Download className="mr-1.5 h-3.5 w-3.5" />
-                    Скачать brief (PDF)
-                  </Link>
-                </Button>
-              </div>
             </div>
             <div className="space-y-2">
               <VehicleGallery
@@ -475,44 +476,24 @@ export function DealDetailView({ detail }: DealDetailProps) {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-              <CardTitle className="text-left">Автомобиль</CardTitle>
-              <Button variant="outline" size="sm" asChild className="rounded-lg">
-                <Link href={vehicleHref}>Открыть карточку</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {filteredKeyInformation.map((item) => {
-                  const InfoIcon = getVehicleInfoIcon(item.label);
-                  return (
-                    <div key={item.label}>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
-                      <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
-                        <InfoIcon className="h-4 w-4 text-muted-foreground" /> {item.value}
-                      </dd>
+          {contract.length ? (
+            <Card className="bg-card/60 backdrop-blur">
+              <CardHeader>
+                <CardTitle>Договор</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="grid gap-3 md:grid-cols-2">
+                  {contract.map((entry, index) => (
+                    <div key={`${entry.label}-${index}`}>
+                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
+                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
                     </div>
-                  );
-                })}
-              </dl>
-              {vehicleChecklist.length ? (
-                <div className="rounded-lg border border-border/60 bg-surface-subtle p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Чек-лист инспекций</p>
-                  <ul className="mt-2 space-y-2 text-sm">
-                    {vehicleChecklist.map((item) => (
-                      <li key={item.id} className="flex items-center gap-2">
-                        <Badge variant={item.fulfilled ? "success" : "outline"} className="rounded-lg">
-                          {item.fulfilled ? "Готово" : "В работе"}
-                        </Badge>
-                        <span>{item.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+                  ))}
+                </dl>
+              </CardContent>
+            </Card>
+          ) : null}
+
           {financials.length ? (
             <Card className="bg-card/60 backdrop-blur">
               <CardHeader>
@@ -554,24 +535,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
             </CardContent>
           </Card>
 
-          {contract.length ? (
-            <Card className="bg-card/60 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Договор</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-3 md:grid-cols-2">
-                  {contract.map((entry, index) => (
-                    <div key={`${entry.label}-${index}`}>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
-                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          ) : null}
-
           <Card className="bg-card/60 backdrop-blur">
             <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div>
@@ -599,6 +562,45 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 documents={sellerDocumentItems}
                 emptyMessage="Документы продавца пока не добавлены."
               />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card/60 backdrop-blur">
+            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+              <CardTitle className="text-left">Автомобиль</CardTitle>
+              <Button variant="outline" size="sm" asChild className="rounded-lg">
+                <Link href={vehicleHref}>Открыть карточку</Link>
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {filteredKeyInformation.map((item) => {
+                  const InfoIcon = getVehicleInfoIcon(item.label);
+                  return (
+                    <div key={item.label}>
+                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
+                      <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" /> {item.value}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+              {vehicleChecklist.length ? (
+                <div className="rounded-lg border border-border/60 bg-surface-subtle p-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Чек-лист инспекций</p>
+                  <ul className="mt-2 space-y-2 text-sm">
+                    {vehicleChecklist.map((item) => (
+                      <li key={item.id} className="flex items-center gap-2">
+                        <Badge variant={item.fulfilled ? "success" : "outline"} className="rounded-lg">
+                          {item.fulfilled ? "Готово" : "В работе"}
+                        </Badge>
+                        <span>{item.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
 
@@ -677,7 +679,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
 
           <Card className="bg-card/60 backdrop-blur" id="timeline">
             <CardHeader>
-              <CardTitle>Хронология</CardTitle>
+              <CardTitle>История действий</CardTitle>
             </CardHeader>
             <CardContent>
               {timelineWithTone.length > 0 ? (

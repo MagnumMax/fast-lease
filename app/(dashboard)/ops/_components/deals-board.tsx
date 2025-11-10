@@ -83,6 +83,7 @@ import { cn } from "@/lib/utils";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
 import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
+import { DEAL_STATUS_BADGE_VARIANTS } from "@/app/(dashboard)/ops/_components/deal-status-badge-meta";
 
 // Обновляем тип для включения deal_number
 type DealRowWithDealNumber = DealRow & {
@@ -189,20 +190,6 @@ const STATUS_POSITION = STATUS_ORDER.reduce<Record<OpsDealStatusKey, number>>((a
   return acc;
 }, {} as Record<OpsDealStatusKey, number>);
 
-const STATUS_BADGES: Record<OpsDealStatusKey, ComponentProps<typeof Badge>["variant"]> = {
-  NEW: "info",
-  OFFER_PREP: "info",
-  VEHICLE_CHECK: "warning",
-  DOCS_COLLECT: "warning",
-  RISK_REVIEW: "danger",
-  FINANCE_REVIEW: "warning",
-  INVESTOR_PENDING: "secondary",
-  CONTRACT_PREP: "outline",
-  SIGNING_FUNDING: "info",
-  VEHICLE_DELIVERY: "warning",
-  ACTIVE: "success",
-  CANCELLED: "danger",
-};
 
 function normalizeVin(value: string | null | undefined) {
   return value ? value.replace(/[^a-z0-9]/gi, "").toLowerCase() : "";
@@ -1140,7 +1127,7 @@ export function OpsDealsBoard({
                       <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
                         {STATUS_LABELS[status]}
                       </p>
-                      <Badge variant={STATUS_BADGES[status]}>{columnDeals.length}</Badge>
+                      <Badge variant={DEAL_STATUS_BADGE_VARIANTS[status]}>{columnDeals.length}</Badge>
                     </div>
                   </header>
                   <div className="flex flex-1 flex-col gap-3">
@@ -1316,7 +1303,7 @@ export function OpsDealsBoard({
                       </TableCell>
                       <TableCell>{deal.client}</TableCell>
                       <TableCell>
-                        <Badge variant={STATUS_BADGES[deal.statusKey]} className="rounded-lg">
+                        <Badge variant={DEAL_STATUS_BADGE_VARIANTS[deal.statusKey]} className="rounded-lg">
                           {STATUS_LABELS[deal.statusKey]}
                         </Badge>
                       </TableCell>
