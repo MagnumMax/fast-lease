@@ -682,7 +682,7 @@ FROM generate_series(1, 25);
 
 -- 5.1 Просроченная задолженность (45 записей)
 INSERT INTO accounts_receivable (
-    id, customer_id, deal_id, invoice_number, amount_due, amount_paid,
+    id, client_id, deal_id, invoice_number, amount_due, amount_paid,
     outstanding_amount, due_date, days_overdue, payment_status,
     collection_stage, collector_notes, last_contact_date, created_at
 ) 
@@ -720,7 +720,7 @@ LIMIT 45;
 
 -- 5.2 Резервы по сомнительным долгам
 INSERT INTO doubtful_debt_reserves (
-    id, customer_id, original_amount, reserved_amount, reserve_rate,
+    id, client_id, original_amount, reserved_amount, reserve_rate,
     risk_category, assessment_date, reserve_reason, status,
     created_by, created_at, reviewed_by, reviewed_at
 ) VALUES

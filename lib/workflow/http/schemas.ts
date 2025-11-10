@@ -7,7 +7,7 @@ const createDealBaseSchema = z.object({
 });
 
 const createDealFromReferencesSchema = createDealBaseSchema.extend({
-  customer_id: z.string().uuid(),
+  client_id: z.string().uuid(),
   asset_id: z.string().uuid(),
 });
 

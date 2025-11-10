@@ -52,7 +52,7 @@ function computeSlaDueAt(hours: number | undefined): string | null {
 type DealSnapshot = {
   id: string;
   payload: Record<string, unknown> | null;
-  customer_id: string | null;
+  client_id: string | null;
   asset_id: string | null;
   source: string | null;
   op_manager_id: string | null;
@@ -62,7 +62,7 @@ async function loadDealSnapshot(client: SupabaseClient, dealId: string): Promise
   const { data, error } = await client
     .from("deals")
     .select(
-      "id, payload, customer_id, asset_id, source, op_manager_id",
+      "id, payload, client_id, asset_id, source, op_manager_id",
     )
     .eq("id", dealId)
     .maybeSingle();

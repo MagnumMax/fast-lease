@@ -39,7 +39,7 @@ INSERT INTO workflow_assets (type, vin, make, model, trim, year, supplier, price
 -- 3. Создание сделок (deals)
 WITH source_data AS (
   SELECT
-    c.id AS customer_id,
+    public.ensure_client_for_contact(c.id) AS client_id,
     a.id AS asset_id,
     a.vin,
     ROW_NUMBER() OVER () AS global_seq,
@@ -61,7 +61,7 @@ WITH source_data AS (
 )
 INSERT INTO deals (
   deal_number,
-  customer_id,
+  client_id,
   asset_id,
   status,
   source,
@@ -90,7 +90,7 @@ SELECT
       LPAD(numbered.vin_seq::text, 2, '0')
     )
   END,
-  numbered.customer_id,
+  numbered.client_id,
   numbered.asset_id,
   (ARRAY['NEW', 'OFFER_PREP', 'VEHICLE_CHECK', 'DOCS_COLLECT', 'RISK_REVIEW', 'FINANCE_REVIEW', 'INVESTOR_PENDING', 'CONTRACT_PREP', 'SIGNING_FUNDING', 'VEHICLE_DELIVERY', 'ACTIVE', 'CANCELLED'])[(RANDOM() * 11 + 1)::int],
   (ARRAY['Website', 'Broker', 'Referral', 'Partner'])[(RANDOM() * 3 + 1)::int],

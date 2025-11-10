@@ -372,7 +372,6 @@ begin
     updated_at,
     workflow_id,
     workflow_version_id,
-    customer_id,
     asset_id,
     source,
     payload,
@@ -416,7 +415,6 @@ begin
     now() - interval '1 days',
     'fast-lease-v1',
     workflow_version_id,
-    contact_michael_id,
     (select id from public.workflow_assets where vin = 'WF-ROLLS-001' limit 1),
     'Website',
     jsonb_build_object(
@@ -454,7 +452,6 @@ begin
     updated_at,
     workflow_id,
     workflow_version_id,
-    customer_id,
     asset_id,
     source,
     payload,
@@ -498,7 +495,6 @@ begin
     now() - interval '3 days',
     'fast-lease-v1',
     workflow_version_id,
-    contact_aisha_id,
     (select id from public.workflow_assets where vin = 'WF-LAMBO-002' limit 1),
     'Broker',
     jsonb_build_object(
@@ -538,7 +534,6 @@ begin
     updated_at,
     workflow_id,
     workflow_version_id,
-    customer_id,
     asset_id,
     source,
     payload,
@@ -582,7 +577,6 @@ begin
     now() - interval '4 days',
     'fast-lease-v1',
     workflow_version_id,
-    contact_noah_id,
     (select id from public.workflow_assets where vin = 'WF-VOLVO-003' limit 1),
     'Referral',
     jsonb_build_object(

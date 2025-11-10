@@ -470,7 +470,6 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
         created_at,
         updated_at,
         client_id,
-        customer_id,
         vehicle_id,
         payload,
         vehicles!vehicle_id(id, vin, license_plate, make, model, year, body_type, mileage, status)
@@ -530,7 +529,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
 
     // Формируем название клиента
     const clientName = clientData?.full_name ||
-      `Client ${((row.customer_id as string) ?? (row.client_id as string) ?? "").slice(-4) || "0000"}`;
+      `Client ${(row.client_id as string)?.slice(-4) ?? "0000"}`;
 
     // Формируем название автомобиля
     const vehicleName = vehicleData?.make && vehicleData?.model
@@ -546,7 +545,6 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       id: row.id as string,
       dealId: dealNumber,
       clientId: row.client_id as string,
-      customerId: (row.customer_id as string | null) ?? null,
       client: clientName,
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,

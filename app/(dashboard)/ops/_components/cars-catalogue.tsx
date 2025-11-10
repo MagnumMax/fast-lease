@@ -232,9 +232,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
       <DialogContent className="max-w-2xl rounded-3xl">
         <DialogHeader>
           <DialogTitle>Добавить автомобиль</DialogTitle>
-          <DialogDescription>
-            Заполните основные характеристики, чтобы пополнить каталог.
-          </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
           <div className="grid gap-3 sm:grid-cols-2">

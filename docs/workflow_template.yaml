@@ -164,14 +164,9 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: customer_name
-                type: text
-                label: "Клиент"
               - id: checklist
                 type: checklist
                 label: "Обязательные документы"
-          bindings:
-            customer_name: "{{payload.customer.full_name}}"
           defaults:
             checklist:
               - passport
@@ -196,22 +191,17 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: customer_name
-                type: text
-                label: "Клиент"
               - id: score_target
                 type: number
                 label: "Минимальный скоринговый балл"
               - id: notes
                 type: textarea
                 label: "Комментарии"
-          bindings:
-            customer_name: "{{payload.customer.full_name}}"
           defaults:
             score_target: 720
       - type: WEBHOOK
         endpoint: "aecb.request"
-        payload: { dealId: "{{deal.id}}", customerId: "{{deal.customer_id}}" }
+        payload: { dealId: "{{deal.id}}", clientId: "{{deal.client_id}}" }
     exit_requirements:
       - key: risk.approved
         rule: "== true"

@@ -49,7 +49,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     const { data: dealRow, error: dealError } = await supabase
       .from("deals")
       .select(
-        "id, deal_number, client_id, customer_id, vehicle_id, payload, deal_documents (document_type, storage_path, title, metadata)",
+        "id, deal_number, client_id, vehicle_id, payload, deal_documents (document_type, storage_path, title, metadata)",
       )
       .eq("id", task.dealId)
       .maybeSingle();
@@ -59,7 +59,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     }
 
     if (dealRow) {
-      const effectiveClientId = (dealRow.client_id as string | null) ?? (dealRow.customer_id as string | null) ?? null;
+      const effectiveClientId = (dealRow.client_id as string | null) ?? null;
       dealSummary = {
         id: dealRow.id,
         dealNumber: dealRow.deal_number ?? null,

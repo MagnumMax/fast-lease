@@ -23,7 +23,7 @@ const createSupabaseMock = () => {
   const dealsChain = createSelectChain({
     id: "deal-1",
     payload: { finance: { monthly_payment: 1200 } },
-    customer_id: "customer-1",
+    client_id: "client-1",
     asset_id: "asset-1",
     source: "web",
     op_manager_id: "user-ops",

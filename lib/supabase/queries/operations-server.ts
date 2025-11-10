@@ -164,6 +164,7 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "docs.required.allUploaded",
         label: "Все обязательные документы загружены",
+        requiresDocument: true,
       },
     ],
   },
@@ -217,6 +218,7 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "legal.contractReady",
         label: "Договор готов к подписанию",
+        requiresDocument: true,
       },
     ],
   },
@@ -234,10 +236,12 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "payments.advanceReceived",
         label: "Аванс получен",
+        requiresDocument: true,
       },
       {
         key: "payments.supplierPaid",
         label: "Поставщику оплачено",
+        requiresDocument: true,
       },
     ],
   },
@@ -251,6 +255,7 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "delivery.confirmed",
         label: "Акт выдачи подтверждён",
+        requiresDocument: true,
       },
     ],
   },
@@ -1307,7 +1312,6 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       created_at,
       updated_at,
       client_id,
-      customer_id,
       vehicle_id,
       contract_start_date,
       total_amount,
@@ -1342,7 +1346,6 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
 
   // Загружаем уникальные client_id для запроса данных клиентов
   const uniqueClientIds = [...new Set(data.map(deal => deal.client_id).filter(Boolean))];
-  const uniqueCustomerIds = [...new Set(data.map(deal => deal.customer_id).filter(Boolean))];
 
   // Загружаем данные клиентов отдельным запросом
   console.log(`[DEBUG] Loading clients for IDs:`, uniqueClientIds.slice(0, 5), `... (total: ${uniqueClientIds.length})`);
@@ -1371,30 +1374,6 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   (clientsData || []).forEach(client => {
     clientsMap.set(client.user_id, client);
   });
-
-  type ContactData = {
-    id: string;
-    full_name: string | null;
-    email: string | null;
-    phone: string | null;
-  };
-
-  const contactsMap = new Map<string, ContactData>();
-
-  if (uniqueCustomerIds.length > 0) {
-    const { data: contactsData, error: contactsError } = await supabase
-      .from("workflow_contacts")
-      .select("id, full_name, email, phone")
-      .in("id", uniqueCustomerIds);
-
-    if (contactsError) {
-      console.error("[SERVER-OPS] failed to load workflow contacts:", contactsError);
-    } else {
-      (contactsData || []).forEach((contact) => {
-        contactsMap.set(contact.id, contact as ContactData);
-      });
-    }
-  }
 
   console.log(`[DEBUG] Clients loaded: ${clientsData?.length || 0}`);
   console.log(`[DEBUG] Unique client IDs from deals: ${uniqueClientIds.length}`);
@@ -1523,22 +1502,16 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
 
     // Получаем данные клиента из карты
     const clientData = clientsMap.get(row.client_id as string);
-    const contactData = contactsMap.get(row.customer_id as string);
 
     // Формируем название клиента
     const resolvedClientId =
       typeof row.client_id === "string" && row.client_id.trim().length > 0
         ? (row.client_id as string)
-        : typeof row.customer_id === "string" && row.customer_id.trim().length > 0
-          ? (row.customer_id as string)
-          : null;
-
-    const clientIdentifier = resolvedClientId ?? "";
+        : null;
 
     const clientName =
       clientData?.full_name ||
-      contactData?.full_name ||
-      `Client ${clientIdentifier.slice(-4) || "0000"}`;
+      `Client ${(resolvedClientId ?? "").slice(-4) || "0000"}`;
 
     // Формируем название автомобиля
     const vehicleName = vehicleData?.make && vehicleData?.model
@@ -1573,7 +1546,6 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       id: row.id as string,
       dealId: dealNumber,
       clientId: resolvedClientId,
-      customerId: typeof row.customer_id === "string" ? (row.customer_id as string) : null,
       client: clientName,
       vehicleId: vehicleData?.id || row.vehicle_id as string,
       vehicle: vehicleName,
@@ -2616,10 +2588,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     workflow_version_id,
     op_manager_id,
     assigned_account_manager,
-    customer_id,
     asset_id,
     vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
-    customer_contact:customer_id(id, full_name, email, phone, emirates_id),
     deal_documents(id, document_type, title, storage_path, status, signed_at, created_at, document_category, metadata, mime_type, file_size, uploaded_at, uploaded_by)
   `;
 
@@ -2652,22 +2622,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     workflow_version_id: string | null;
     op_manager_id: string | null;
     assigned_account_manager: string | null;
-    customer_id: string | null;
     asset_id: string | null;
     vehicles?: SupabaseVehicleData[] | SupabaseVehicleData | null;
-    customer_contact?: {
-      id: string;
-      full_name: string | null;
-      email: string | null;
-      phone: string | null;
-      emirates_id: string | null;
-    } | Array<{
-      id: string;
-      full_name: string | null;
-      email: string | null;
-      phone: string | null;
-      emirates_id: string | null;
-    }> | null;
     deal_documents?: SupabaseDealDocument[];
   };
 
@@ -2858,9 +2814,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     });
   }
 
-  const contactRecord = Array.isArray(dealRow.customer_contact)
-    ? (dealRow.customer_contact[0] ?? null)
-    : (dealRow.customer_contact ?? null);
 
   // Загружаем email из auth.users (если есть клиент)
   let authUser: Awaited<ReturnType<typeof supabaseService.auth.admin.getUserById>>["data"] | null = null;
@@ -3028,15 +2981,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     }
   }
 
-  type WorkflowContactRecord = {
-    id: string;
-    full_name: string | null;
-    email: string | null;
-    phone: string | null;
-    emirates_id: string | null;
-    created_at: string | null;
-  };
-
   type WorkflowAssetRecord = {
     id: string;
     type: string | null;
@@ -3070,15 +3014,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     updated_at: string | null;
   };
 
-  const [workflowContactResult, workflowAssetResult, workflowVersionResult, applicationRecordResult] =
+  const [workflowAssetResult, workflowVersionResult, applicationRecordResult] =
     await Promise.all([
-      dealRow.customer_id
-        ? supabase
-            .from("workflow_contacts")
-            .select("id, full_name, email, phone, emirates_id, created_at")
-            .eq("id", dealRow.customer_id)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
       dealRow.asset_id
         ? supabase
             .from("workflow_assets")
@@ -3102,21 +3039,12 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         : Promise.resolve({ data: null, error: null }),
     ]);
 
-  const workflowContact = (workflowContactResult as { data: WorkflowContactRecord | null }).data ?? null;
   const workflowAsset = (workflowAssetResult as { data: WorkflowAssetRecord | null }).data ?? null;
   const workflowAssetMeta = isRecord(workflowAsset?.meta)
     ? (workflowAsset?.meta as Record<string, unknown>)
     : null;
   const workflowVersion = (workflowVersionResult as { data: WorkflowVersionRecord | null }).data ?? null;
   const applicationRecord = (applicationRecordResult as { data: ApplicationRecord | null }).data ?? null;
-
-  if ((workflowContactResult as { error?: unknown }).error) {
-    console.error("[SERVER-OPS] failed to load workflow contact", {
-      dealId: dealRow.id,
-      customerId: dealRow.customer_id,
-      error: (workflowContactResult as { error?: unknown }).error,
-    });
-  }
 
   if ((workflowAssetResult as { error?: unknown }).error) {
     console.error("[SERVER-OPS] failed to load workflow asset", {
@@ -3443,12 +3371,11 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   const resolvedClientName =
     clientData?.full_name ??
-    contactRecord?.full_name ??
     (typeof authUser?.user?.user_metadata?.full_name === "string"
       ? authUser.user.user_metadata.full_name
       : null);
-  const resolvedClientPhone = clientData?.phone ?? contactRecord?.phone ?? null;
-  const resolvedClientEmail = metadataEmail ?? contactRecord?.email ?? authUser?.user?.email ?? "—";
+  const resolvedClientPhone = clientData?.phone ?? null;
+  const resolvedClientEmail = metadataEmail ?? authUser?.user?.email ?? "—";
   const profileSourceRaw = typeof clientData?.source === "string" ? clientData.source : null;
   const profileSource = profileSourceRaw ? profileSourceRaw.trim() : "";
   const payloadSourceCandidates = [
@@ -3469,9 +3396,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   if (clientData?.nationality) {
     clientNotesParts.push(`Гражданство: ${clientData.nationality}`);
   }
-  if (contactRecord?.emirates_id) {
-    clientNotesParts.push(`Emirates ID: ${contactRecord.emirates_id}`);
-  }
+  // contact-specific notes removed; rely on client profile only
 
   const scoringValue = resolveScore(applicationScoringData?.scoring_results);
   const scoringDisplay =
@@ -3506,11 +3431,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     notes: clientProfile.notes,
   });
 
-  const profileDescription = resolvedClientName
-    ? `Клиент: ${resolvedClientName}`
-    : contactRecord?.full_name
-      ? `Контакт: ${contactRecord.full_name}`
-      : "Клиент не указан";
+  const profileDescription = resolvedClientName ? `Клиент: ${resolvedClientName}` : "Клиент не указан";
   const vehicleId = vehicleData?.id ?? null;
   const vehicleDetailSlug = vehicleId ? buildSlugWithId(vehicleName, vehicleId) || vehicleId : null;
 
@@ -3704,7 +3625,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       label: "Operations manager",
       value: formatProfileValue(dealRow.op_manager_id, operationsManagerProfileEntry),
     },
-    { label: "Customer record ID", value: dealRow.customer_id ?? "—" },
     { label: "Workflow asset ID", value: dealRow.asset_id ?? "—" },
     { label: "Client source", value: clientProfile.source ?? "—" },
     {
@@ -3771,33 +3691,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
                 : "Нет",
         },
         { label: "Создана", value: formatDateTime(workflowVersion.created_at) },
-      ],
-    });
-  }
-
-  if (workflowContact) {
-    relatedEntities.push({
-      label: "Workflow контакт",
-      entries: [
-        { label: "ID", value: workflowContact.id },
-        { label: "ФИО", value: workflowContact.full_name ?? "—" },
-        { label: "Email", value: workflowContact.email ?? "—" },
-        { label: "Телефон", value: workflowContact.phone ?? "—" },
-        { label: "Emirates ID", value: workflowContact.emirates_id ?? "—" },
-        { label: "Создан", value: formatDateTime(workflowContact.created_at) },
-      ],
-    });
-  }
-
-  if (contactRecord) {
-    relatedEntities.push({
-      label: "Customer contact (deals)",
-      entries: [
-        { label: "ID", value: contactRecord.id },
-        { label: "ФИО", value: contactRecord.full_name ?? "—" },
-        { label: "Email", value: contactRecord.email ?? "—" },
-        { label: "Телефон", value: contactRecord.phone ?? "—" },
-        { label: "Emirates ID", value: contactRecord.emirates_id ?? "—" },
       ],
     });
   }

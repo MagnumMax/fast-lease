@@ -378,9 +378,8 @@ function mapDealRowToSummary(
   return {
     id: row.id,
     dealId: dealIdentifier,
-    clientId: row.customer_id,
-    customerId: row.customer_id ?? null,
-    client: clientName ?? `Client ${row.customer_id?.slice(-4) ?? "0000"}`,
+    clientId: row.client_id,
+    client: clientName ?? `Client ${row.client_id?.slice(-4) ?? "0000"}`,
     vehicleId: row.asset_id,
     vehicle: vehicleLabel ?? FALLBACK_VEHICLE,
     updatedAt,
@@ -464,7 +463,7 @@ export function OpsDealsBoard({
     });
     deals.forEach((deal) => {
       if (deal.client && !/^Client\s/i.test(deal.client)) {
-        const identifiers = [deal.clientId, deal.customerId].filter(
+        const identifiers = [deal.clientId].filter(
           (value): value is string => typeof value === "string" && value.length > 0,
         );
         identifiers.forEach((identifier) => {

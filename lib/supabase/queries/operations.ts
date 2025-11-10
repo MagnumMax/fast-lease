@@ -96,6 +96,7 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "docs.required.allUploaded",
         label: "Все обязательные документы загружены",
+        requiresDocument: true,
       },
     ],
   },
@@ -149,6 +150,7 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "legal.contractReady",
         label: "Договор готов к подписанию",
+        requiresDocument: true,
       },
     ],
   },
@@ -166,10 +168,12 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "payments.advanceReceived",
         label: "Аванс получен",
+        requiresDocument: true,
       },
       {
         key: "payments.supplierPaid",
         label: "Поставщику оплачено",
+        requiresDocument: true,
       },
     ],
   },
@@ -183,6 +187,7 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "delivery.confirmed",
         label: "Акт выдачи подтверждён",
+        requiresDocument: true,
       },
     ],
   },
@@ -322,7 +327,6 @@ export type SupabaseDealRow = {
   updated_at: string | null;
   created_at: string | null;
   client_id: string;
-  customer_id?: string | null;
   application_id: string;
   vehicle_id: string;
   activated_at?: string | null;
@@ -455,7 +459,6 @@ export type OpsDealSummary = {
   id: string;
   dealId: string;
   clientId?: string | null;
-  customerId?: string | null;
   client: string;
   vehicleId?: string | null;
   vehicle: string;

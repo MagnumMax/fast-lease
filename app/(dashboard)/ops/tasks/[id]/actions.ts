@@ -33,6 +33,7 @@ const COMPLETE_FORM_SCHEMA = z.object({
   guardLabel: z.string().optional(),
   requiresDocument: z.enum(["true", "false"]).default("false"),
   initialNote: z.string().optional(),
+  intent: z.enum(["save", "complete"]).optional(),
 });
 
 const CLIENT_DOCUMENT_BUCKET = "client-documents";
@@ -365,6 +366,7 @@ export async function completeTaskFormAction(
     guardLabel: formData.get("guardLabel") || undefined,
     requiresDocument: (formData.get("requiresDocument") ?? "false").toString(),
     initialNote: formData.get("initialNote") || undefined,
+    intent: (formData.get("intent") as string | null) || undefined,
   });
 
   if (!parsed.success) {
@@ -372,6 +374,7 @@ export async function completeTaskFormAction(
   }
 
   const { taskId, dealId, guardKey, guardLabel, requiresDocument, initialNote } = parsed.data;
+  const intent = parsed.data.intent ?? "complete";
   const requiresDoc = requiresDocument === "true";
   const fields = parseFieldEntries(formData);
   const documentUploads = extractDocumentUploads(formData);
@@ -451,7 +454,7 @@ export async function completeTaskFormAction(
 
   const { data: dealRow, error: dealError } = await supabase
     .from("deals")
-    .select("payload, status, deal_number, client_id, customer_id")
+    .select("payload, status, deal_number, client_id")
     .eq("id", dealId)
     .maybeSingle();
 
@@ -464,19 +467,9 @@ export async function completeTaskFormAction(
     return { status: "error", message: "Связанная сделка не найдена" };
   }
 
-  const clientId = (() => {
-    const explicitClient = typeof dealRow.client_id === "string" && dealRow.client_id.trim().length > 0
-      ? (dealRow.client_id as string)
-      : null;
-    if (explicitClient) {
-      return explicitClient;
-    }
-    const fallbackCustomer =
-      typeof dealRow.customer_id === "string" && dealRow.customer_id.trim().length > 0
-        ? (dealRow.customer_id as string)
-        : null;
-    return fallbackCustomer;
-  })();
+  const clientId = typeof dealRow.client_id === "string" && dealRow.client_id.trim().length > 0
+    ? (dealRow.client_id as string)
+    : null;
 
   const dealPayload = (dealRow.payload as Record<string, unknown> | null) ?? null;
   let existingGuardAttachmentPath: string | null = null;
@@ -494,7 +487,7 @@ export async function completeTaskFormAction(
   }
 
   const mustUploadDocuments = requiresDoc && !existingGuardAttachmentPath;
-  if (mustUploadDocuments && documentUploads.length === 0) {
+  if (intent === "complete" && mustUploadDocuments && documentUploads.length === 0) {
     return { status: "error", message: "Необходимо приложить документ" };
   }
 
@@ -534,8 +527,9 @@ export async function completeTaskFormAction(
   });
 
   const requiredChecklist = extractChecklistFromTaskPayload(existing.payload ?? null);
+  let syncedChecklist: ClientDocumentChecklist | null = null;
   if (clientId && guardKey && requiredChecklist.length > 0) {
-    await evaluateAndSyncDocsGuard({
+    syncedChecklist = await evaluateAndSyncDocsGuard({
       supabase,
       clientId,
       dealId,
@@ -546,6 +540,75 @@ export async function completeTaskFormAction(
   }
 
   const dealSlug = typeof dealRow.deal_number === "string" ? (dealRow.deal_number as string) : null;
+
+  if (intent === "save") {
+    const updatePayload: Record<string, unknown> = {
+      payload: mergedPayload,
+    };
+    if (existing.status === "OPEN") {
+      updatePayload.status = "IN_PROGRESS";
+    }
+    if (effectiveAssignee) {
+      updatePayload.assignee_user_id = effectiveAssignee;
+    }
+
+    const { error: draftError } = await supabase.from("tasks").update(updatePayload).eq("id", taskId);
+    if (draftError) {
+      console.error("[workflow] failed to save task draft", draftError);
+      return { status: "error", message: "Не удалось сохранить черновик" };
+    }
+
+    for (const path of buildPathsToRevalidate(taskId, dealId, dealSlug)) {
+      revalidatePath(path);
+    }
+
+    if (clientId) {
+      for (const path of getWorkspacePaths("clients")) {
+        revalidatePath(path);
+      }
+      revalidatePath("/ops/clients");
+      revalidatePath(`/ops/clients/${clientId}`);
+    }
+
+    return { status: "success", message: "Черновик сохранён" };
+  }
+
+  if (intent === "complete" && requiresDoc) {
+    const checklistState = syncedChecklist;
+    if (requiredChecklist.length > 0) {
+      if (!checklistState || !checklistState.fulfilled) {
+        const fallbackItems: ClientDocumentChecklist["items"] = requiredChecklist.map((key) => {
+          const normalizedType = normalizeClientDocumentType(key) ?? null;
+          const label =
+            (normalizedType ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalizedType] : undefined) ??
+            CLIENT_DOCUMENT_TYPE_LABEL_MAP[key as ClientDocumentTypeValue] ??
+            key;
+          return {
+            key,
+            normalizedType,
+            label,
+            fulfilled: false,
+            matches: [],
+          };
+        });
+
+        const missingLabels = (checklistState?.items ?? fallbackItems)
+          .filter((item) => !item.fulfilled)
+          .map((item) => {
+            const normalized = item.normalizedType ?? (item.key as ClientDocumentTypeValue);
+            return CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalized] ?? item.label ?? item.key;
+          })
+          .filter(Boolean);
+        return {
+          status: "error",
+          message:
+            missingLabels.length > 0
+              ? `Загрузите обязательные документы: ${missingLabels.join(", ")}`
+              : "Не все обязательные документы загружены",
+        };
+      }
+    }
+  }
 
   const completionContext = {
     taskId,

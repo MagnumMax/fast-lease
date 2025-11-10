@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   let dbQuery = supabase
     .from("deals")
     .select(
-      "id, workflow_id, workflow_version_id, customer_id, asset_id, source, status, op_manager_id, created_at, updated_at, payload",
+      "id, workflow_id, workflow_version_id, client_id, asset_id, source, status, op_manager_id, created_at, updated_at, payload",
     )
     .order("created_at", { ascending: false })
     .limit(limit + 1);

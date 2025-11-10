@@ -429,7 +429,7 @@ export class WorkflowQueueProcessor {
     const { data, error } = await this.client
       .from("deals")
       .select(
-        "id, workflow_id, workflow_version_id, status, payload, customer_id, asset_id, source, op_manager_id",
+        "id, workflow_id, workflow_version_id, status, payload, asset_id, source, op_manager_id",
       )
       .eq("id", dealId)
       .maybeSingle();

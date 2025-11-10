@@ -226,7 +226,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         workflow_id: { type: string }
-        customer_id: { type: string, format: uuid }
+        client_id: { type: string, format: uuid }
         asset_id: { type: string, format: uuid }
         source: { type: string }
         status:
@@ -323,9 +323,9 @@ components:
 
     CreateDealRequest:
       type: object
-      required: [customer_id, asset_id, source]
+      required: [client_id, asset_id, source]
       properties:
-        customer_id: { type: string, format: uuid }
+        client_id: { type: string, format: uuid }
         asset_id: { type: string, format: uuid }
         source: { type: string, example: website }
         op_manager_id: { type: string, format: uuid }

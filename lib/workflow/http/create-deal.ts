@@ -12,6 +12,7 @@ import {
   type WorkflowVersionRecord,
 } from "@/lib/workflow/versioning";
 import type {
+  CreateDealFromReferencesRequest,
   CreateDealRequest,
   CreateDealWithEntitiesRequest,
 } from "@/lib/workflow";
@@ -24,7 +25,6 @@ export type DealRow = {
    workflow_id: string;
    workflow_version_id: string | null;
    client_id: string | null;
-   customer_id: string | null;
    asset_id: string | null;
    vehicle_id: string | null;
    source: string | null;
@@ -280,6 +280,55 @@ async function loadWorkflowContact(
   return data as WorkflowContactSnapshot;
 }
 
+async function loadClientCustomerSnapshot(
+  supabase: SupabaseServerClient,
+  clientId: string,
+): Promise<WorkflowContactSnapshot | null> {
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("user_id, full_name, phone, metadata")
+    .eq("user_id", clientId)
+    .maybeSingle();
+
+  if (profileError) {
+    console.error("[workflow] failed to load profile for client snapshot", {
+      clientId,
+      error: profileError,
+    });
+    return null;
+  }
+
+  if (!profile) {
+    return null;
+  }
+
+  let email: string | null = null;
+  try {
+    const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(clientId);
+    if (authError) {
+      console.error("[workflow] failed to load auth user for client snapshot", {
+        clientId,
+        error: authError,
+      });
+    } else {
+      email = authUser?.user?.email ?? null;
+    }
+  } catch (adminError) {
+    console.error("[workflow] unexpected admin error while loading client snapshot", adminError);
+  }
+
+  const metadata = (profile.metadata as Record<string, unknown> | null) ?? null;
+  const fallbackPhone =
+    typeof metadata?.source_phone === "string" ? (metadata.source_phone as string) : null;
+
+  return {
+    id: clientId,
+    full_name: profile.full_name,
+    email,
+    phone: profile.phone ?? fallbackPhone,
+  };
+}
+
 async function loadWorkflowAsset(
   supabase: SupabaseServerClient,
   id: string,
@@ -378,28 +427,31 @@ export async function createDealWithWorkflow(
       };
     }
 
-    let customerId: string | null = null;
+    let contactId: string | null = null;
     let assetId: string | null = null;
     let vehicleId: string | null = null;
-    let createdCustomer = false;
+    let createdContact = false;
     let createdAsset = false;
 
     let customerSnapshot: WorkflowContactSnapshot | null = null;
     let assetSnapshot: WorkflowAssetSnapshot | null = null;
+    let resolvedClientId: string | null = null;
 
-    if ("customer_id" in payload && "asset_id" in payload) {
-      customerId = payload.customer_id;
-      assetId = payload.asset_id;
-      customerSnapshot = await loadWorkflowContact(supabase, customerId);
-      assetSnapshot = await loadWorkflowAsset(supabase, assetId);
+    if ("client_id" in payload && "asset_id" in payload) {
+      const referencePayload = payload as CreateDealFromReferencesRequest;
+      resolvedClientId = referencePayload.client_id;
+      assetId = referencePayload.asset_id;
 
+      customerSnapshot = await loadClientCustomerSnapshot(supabase, resolvedClientId);
       if (!customerSnapshot) {
         return {
           success: false,
           statusCode: 404,
-          message: "Referenced customer not found",
+          message: "Client profile snapshot not found",
         };
       }
+
+      assetSnapshot = await loadWorkflowAsset(supabase, assetId);
 
       if (!assetSnapshot) {
         return {
@@ -436,8 +488,8 @@ export async function createDealWithWorkflow(
           };
         }
       } else {
-        customerId = customerInsert.data.id;
-        createdCustomer = true;
+        contactId = customerInsert.data.id;
+        createdContact = true;
         customerSnapshot = customerInsert.data as WorkflowContactSnapshot;
       }
 
@@ -464,19 +516,19 @@ export async function createDealWithWorkflow(
             assetInsert.error,
           );
         } else {
-          if (createdCustomer && customerId) {
+          if (createdContact && contactId) {
             const cleanupContact = await supabase
               .from("workflow_contacts")
               .delete()
-              .eq("id", customerId);
+              .eq("id", contactId);
             if (cleanupContact.error) {
               console.error(
                 "[workflow] failed to cleanup contact after asset error",
                 cleanupContact.error,
               );
             }
-            customerId = null;
-            createdCustomer = false;
+            contactId = null;
+            createdContact = false;
           }
 
           console.error("[workflow] failed to create asset", assetInsert.error);
@@ -529,8 +581,8 @@ export async function createDealWithWorkflow(
 
         if (vehicleInsert.error) {
           console.error("[workflow] failed to create vehicle record", vehicleInsert.error);
-          if (createdCustomer && customerId) {
-            await supabase.from("workflow_contacts").delete().eq("id", customerId);
+          if (createdContact && contactId) {
+            await supabase.from("workflow_contacts").delete().eq("id", contactId);
           }
           if (createdAsset && assetId) {
             await supabase.from("workflow_assets").delete().eq("id", assetId);
@@ -546,10 +598,9 @@ export async function createDealWithWorkflow(
       }
     }
 
-    let resolvedClientId: string | null = null;
-    if (customerId) {
+    if (!resolvedClientId && contactId) {
       const { data: ensuredClientId, error: ensureClientError } = await supabase.rpc("ensure_client_for_contact", {
-        contact_id: customerId,
+        contact_id: contactId,
       });
 
       if (ensureClientError) {
@@ -602,7 +653,6 @@ export async function createDealWithWorkflow(
         workflow_id: activeVersion.workflowId,
         workflow_version_id: activeVersion.id,
         client_id: resolvedClientId,
-        customer_id: customerId,
         asset_id: assetId,
         vehicle_id: vehicleId,
         source: payload.source,
@@ -612,17 +662,17 @@ export async function createDealWithWorkflow(
         payload: enrichedPayload,
       })
       .select(
-        "id, workflow_id, workflow_version_id, client_id, customer_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, created_at, updated_at, payload",
+        "id, workflow_id, workflow_version_id, client_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, created_at, updated_at, payload",
       )
       .single<DealRow>();
 
     if (error || !data) {
       console.error(`[DEBUG] failed to create deal in database:`, error);
-      if (createdCustomer && customerId) {
+      if (createdContact && contactId) {
         const cleanupContact = await supabase
           .from("workflow_contacts")
           .delete()
-          .eq("id", customerId);
+          .eq("id", contactId);
         if (cleanupContact.error) {
           console.error(
             "[workflow] failed to cleanup contact after deal error",

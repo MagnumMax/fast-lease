@@ -6,6 +6,7 @@
 - Provide deterministic local runs that mirror CI (identical reporters, coverage outputs, and env setup).
 
 ## Tooling & Layout
+- Environment: Node.js ≥ 20.9.0 (Next 16 hard requirement). Если локальный `node` отстаёт, скачайте архив `node-v20.11.1-darwin-arm64.tar.xz` в `.tools/` и добавляйте `$(pwd)/.tools/node-v20.11.1-darwin-arm64/bin` в `PATH` перед запуском `npm`/`pnpm` (`PATH="$(pwd)/.tools/node-v20.11.1-darwin-arm64/bin:$PATH" npm run build`).
 - Framework: Vitest (`pnpm test`) with globals enabled.
 - File structure: colocated `*.test.ts` under `app/` and `lib/`, shared helpers in `tests/setup.ts`.
 - Setup file responsibilities:

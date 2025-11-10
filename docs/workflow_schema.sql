@@ -77,7 +77,6 @@ CREATE TABLE deals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   workflow_id TEXT NOT NULL DEFAULT 'fast-lease-v1',
   workflow_version_id UUID REFERENCES workflow_versions(id) ON UPDATE CASCADE,
-  customer_id UUID REFERENCES contacts(id),
   asset_id UUID REFERENCES assets(id),
   source TEXT,                             -- website/broker/other
   status TEXT REFERENCES deal_statuses(code),

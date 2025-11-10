@@ -2,7 +2,7 @@
   "name": "fast-lease",
   "version": "0.1.0",
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=20.9.0"
   },
   "private": true,
   "scripts": {

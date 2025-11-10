@@ -477,7 +477,7 @@ export function TaskDetailView({
                     Загрузка документов
                   </span>
                   {showDocumentWarning ? (
-                    <Badge variant="destructive" className="rounded-lg text-[11px]">
+                    <Badge variant="danger" className="rounded-lg text-[11px]">
                       Требуется документ
                     </Badge>
                   ) : null}
@@ -574,8 +574,24 @@ export function TaskDetailView({
                 ) : null}
               </div>
 
-              <div className="flex items-center justify-end gap-3">
-                <Button type="submit" className="rounded-lg" disabled={pending || showDocumentWarning}>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  className="rounded-lg"
+                  name="intent"
+                  value="save"
+                  disabled={pending}
+                >
+                  {pending ? "Сохраняем..." : "Сохранить черновик"}
+                </Button>
+                <Button
+                  type="submit"
+                  className="rounded-lg"
+                  name="intent"
+                  value="complete"
+                  disabled={pending || showDocumentWarning}
+                >
                   {pending ? "Сохраняем..." : "Завершить задачу"}
                 </Button>
               </div>
