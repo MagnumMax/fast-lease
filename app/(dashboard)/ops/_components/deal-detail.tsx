@@ -95,6 +95,7 @@ function resolveTimelineTone(text: string): TimelineTone {
 export function DealDetailView({ detail }: DealDetailProps) {
   const {
     profile,
+    company,
     client,
     clientDocuments,
     keyInformation,
@@ -369,6 +370,11 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Номер сделки</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-2xl">{dealTitle}</CardTitle>
+                  {company ? (
+                    <Badge variant="outline" className="rounded-lg border-dashed px-3 py-1 text-[0.75rem] uppercase tracking-wide">
+                      {company.prefix} · {company.name}
+                    </Badge>
+                  ) : null}
                   <Badge
                     variant={statusBadgeMeta.variant}
                     className="ml-auto rounded-lg px-3 py-1.5 text-[0.75rem] uppercase tracking-wide"

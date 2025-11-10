@@ -7,11 +7,13 @@ import { createDealWithWorkflow } from "@/lib/workflow/http/create-deal";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
 import type { CreateDealWithEntitiesRequest } from "@/lib/workflow";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
+import { DEAL_COMPANY_CODES, DEFAULT_DEAL_COMPANY_CODE } from "@/lib/data/deal-companies";
 
 const inputSchema = z.object({
   source: z.string().min(1),
   reference: z.string().optional(),
   opManagerId: z.string().uuid().optional(),
+  companyCode: z.enum(DEAL_COMPANY_CODES).default(DEFAULT_DEAL_COMPANY_CODE),
   customer: z.object({
     full_name: z.string().min(1),
     email: z.string().email().optional(),
@@ -51,6 +53,7 @@ export async function createOperationsDeal(
 
   const payload: CreateDealWithEntitiesRequest = {
     source: parsed.data.source,
+    company_code: parsed.data.companyCode ?? DEFAULT_DEAL_COMPANY_CODE,
     op_manager_id: parsed.data.opManagerId,
     customer: {
       full_name: parsed.data.customer.full_name,

@@ -42,17 +42,20 @@ export function buildDealNumberCandidate(
   date: Date,
   vin: string | null,
   attempt = 1,
+  prefix?: string | null,
 ): string {
   const datePart = formatDealNumberDatePart(date);
   const vinPart = formatVinSegment(vin);
   const suffix = attempt <= 1 ? "" : `-${attempt.toString().padStart(2, "0")}`;
-  return `${DEAL_NUMBER_PREFIX}-${datePart}-${vinPart}${suffix}`;
+  const normalizedPrefix = prefix?.trim().toUpperCase() || DEAL_NUMBER_PREFIX;
+  return `${normalizedPrefix}-${datePart}-${vinPart}${suffix}`;
 }
 
 export function formatFallbackDealNumber(options?: {
   createdAt?: string | Date | null;
   vin?: string | null;
   id?: string | null;
+  prefix?: string | null;
 }): string {
   const createdAtInput = options?.createdAt
     ? options.createdAt instanceof Date
@@ -60,5 +63,10 @@ export function formatFallbackDealNumber(options?: {
       : new Date(options.createdAt)
     : new Date();
   const vinCandidate = options?.vin ?? deriveVinFromId(options?.id ?? null);
-  return buildDealNumberCandidate(createdAtInput, vinCandidate ?? null);
+  return buildDealNumberCandidate(
+    createdAtInput,
+    vinCandidate ?? null,
+    1,
+    options?.prefix ?? DEAL_NUMBER_PREFIX,
+  );
 }

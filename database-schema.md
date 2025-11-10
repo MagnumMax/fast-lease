@@ -232,6 +232,7 @@ verified_by: uuid → auth.users(id)
 ```sql
 id: uuid (PK)
 deal_number: text (unique)
+company_code: text → deal_companies(code)
 application_id: uuid → applications(id) (RESTRICT)
 vehicle_id: uuid → vehicles(id) (RESTRICT)
 client_id: uuid → auth.users(id) (RESTRICT)
@@ -256,6 +257,18 @@ completed_at: timestamptz
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
 ```
+
+#### `deal_companies`
+Справочник юридических лиц/брендов сделок
+```sql
+code: text (PK)
+name: text (название компании)
+prefix: text (префикс в номере сделки, например FLS)
+is_active: boolean (default true)
+created_at: timestamptz (auto)
+```
+
+> **Примечание по нумерации сделок:** человекочитаемые номера формируются по формуле `<prefix>-<DDMMYY>-<VIN4>`, где `prefix` всегда берётся из `deal_companies.prefix`. Любые пользовательские вводы `company_code` нормализуются до допустимого списка (`FLS`, `SND`, `ENT`), а при отсутствии валидного значения система откатывается к дефолтной компании `FLS`. Это гарантирует, что номера сделок и метрики в операционных дашбордах всегда синхронизированы с актуальным справочником компаний.
 
 Поле `insurance_details` хранит структуру страхового полиса и включает ключи:
 

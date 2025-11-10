@@ -2,6 +2,7 @@ import { getSessionUser } from "@/lib/auth/session";
 import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { formatFallbackDealNumber } from "@/lib/deals/deal-number";
+import { getDealCompanyPrefix, toDealCompanyCode } from "@/lib/data/deal-companies";
 import {
   OPS_DEAL_STATUS_META,
   OPS_WORKFLOW_STATUS_MAP,
@@ -333,6 +334,7 @@ export async function getOperationsDashboardSnapshotClient(): Promise<OpsDashboa
         `
           id,
           deal_number,
+          company_code,
           status,
           created_at,
           updated_at,
@@ -504,9 +506,15 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
   });
 
   return data.map((row) => {
+    const companyCode =
+      toDealCompanyCode((row as { company_code?: string | null }).company_code ?? null) ?? null;
     const dealNumber =
       (row.deal_number as string) ??
-      formatFallbackDealNumber({ id: row.id as string, createdAt: row.created_at as string });
+      formatFallbackDealNumber({
+        id: row.id as string,
+        createdAt: row.created_at as string,
+        prefix: getDealCompanyPrefix(companyCode),
+      });
 
     const payload = (row.payload as Record<string, unknown> | null) ?? null;
     const updatedAt =
@@ -560,6 +568,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       source,
       nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
       guardStatuses: [],
+      companyCode,
     };
   });
 }

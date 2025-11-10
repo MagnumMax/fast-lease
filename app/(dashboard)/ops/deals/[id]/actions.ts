@@ -21,6 +21,7 @@ import {
   isFileLike,
   type FileLike,
 } from "@/lib/documents/upload";
+import { DEAL_COMPANY_CODES, DEFAULT_DEAL_COMPANY_CODE } from "@/lib/data/deal-companies";
 
 const inputSchema = z.object({
   dealId: z.string().uuid(),
@@ -431,6 +432,7 @@ const updateDealSchema = z.object({
   dealId: z.string().uuid(),
   slug: z.string().min(1),
   dealNumber: z.string().optional(),
+  companyCode: z.enum(DEAL_COMPANY_CODES).optional(),
   principalAmount: z.string().optional(),
   totalAmount: z.string().optional(),
   monthlyPayment: z.string().optional(),
@@ -835,11 +837,15 @@ export async function updateOperationsDeal(
     insuranceLastPaymentDate,
     insuranceNotes,
     sellerDocuments,
+    companyCode,
   } = parsed.data;
 
   const nextDealNumber = normalizeText(dealNumber);
+  const normalizedCompanyCode = (companyCode ?? DEFAULT_DEAL_COMPANY_CODE).toUpperCase();
+
   const updateColumnsBase: Record<string, unknown> = {
     deal_number: nextDealNumber.length > 0 ? nextDealNumber : null,
+    company_code: normalizedCompanyCode,
     principal_amount: parseDecimalInput(principalAmount),
     total_amount: parseDecimalInput(totalAmount),
     monthly_payment: parseDecimalInput(monthlyPayment),

@@ -3,6 +3,14 @@ import { z } from "zod";
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
 import { formatFallbackDealNumber } from "@/lib/deals/deal-number";
+import {
+  DEFAULT_DEAL_COMPANY_CODE,
+  getDealCompanyName,
+  getDealCompanyPrefix,
+  resolveDealCompanyCode,
+  toDealCompanyCode,
+  type DealCompanyCode,
+} from "@/lib/data/deal-companies";
 import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 import { buildSlugWithId, extractIdFromSlug, slugify } from "@/lib/utils/slugs";
 import {
@@ -25,6 +33,7 @@ import type {
   OpsClientReferralSummary,
   OpsClientSupportTicket,
   OpsDealClientProfile,
+  OpsDealCompany,
   OpsDealDetailJsonBlock,
   OpsDealDetailsEntry,
   OpsDealDocument,
@@ -32,6 +41,7 @@ import type {
   OpsDealInvoice,
   OpsDealKeyInfoEntry,
   OpsDealRelatedSection,
+  OpsDealSummary,
   OpsDealEditDefaults,
   OpsDealProfile,
   OpsDealTimelineEvent,
@@ -1259,44 +1269,27 @@ type DealRow = {
   id: string;
   deal_number: string | null;
   created_at?: string | null;
+  company_code?: string | null;
 };
 
 function matchesDealSlug(row: DealRow, slug: string) {
   const normalizedSlug = slug.toLowerCase();
   const byNumber = row.deal_number ? toSlug(row.deal_number).toLowerCase() : "";
   const byId = toSlug(row.id).toLowerCase();
+  const normalizedCompanyCode = toDealCompanyCode(row.company_code ?? null);
   const fallback = toSlug(
-    formatFallbackDealNumber({ id: row.id, createdAt: row.created_at ?? null }),
+    formatFallbackDealNumber({
+      id: row.id,
+      createdAt: row.created_at ?? null,
+      prefix: getDealCompanyPrefix(normalizedCompanyCode ?? null),
+    }),
   ).toLowerCase();
 
   return normalizedSlug === byNumber || normalizedSlug === byId || normalizedSlug === fallback;
 }
 
 // Серверные функции для операций
-type OperationsDeal = {
-  id: string;
-  dealId: string;
-  clientId?: string | null;
-  client: string;
-  vehicleId?: string | null;
-  vehicle: string;
-  vehicleVin?: string | null;
-  vehicleRegistration?: string | null;
-  updatedAt: string;
-  stage: string;
-  statusKey: OpsDealStatusKey;
-  ownerRole: WorkflowRole;
-  ownerRoleLabel?: string | null;
-  ownerName?: string | null;
-  ownerUserId?: string | null;
-  source: string;
-  nextAction: string;
-  guardStatuses: OpsDealGuardStatus[];
-  amount?: string;
-  contractStartDate?: string | null;
-};
-
-export async function getOperationsDeals(): Promise<OperationsDeal[]> {
+export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
   console.log("[SERVER-OPS] getOperationsDeals called");
 
   const supabase = await createSupabaseServerClient();
@@ -1307,6 +1300,7 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
     .select(`
       id,
       deal_number,
+      company_code,
       op_manager_id,
       status,
       created_at,
@@ -1478,9 +1472,15 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
   }
 
   return data.map((row, index) => {
+    const rawCompanyCode = (row as { company_code?: string | null }).company_code ?? null;
+    const companyCode = toDealCompanyCode(rawCompanyCode) ?? null;
     const dealNumber =
       (row.deal_number as string) ??
-      formatFallbackDealNumber({ id: row.id as string, createdAt: row.created_at as string });
+      formatFallbackDealNumber({
+        id: row.id as string,
+        createdAt: row.created_at as string,
+        prefix: getDealCompanyPrefix(companyCode),
+      });
 
     const payload = (row.payload as Record<string, unknown> | null) ?? null;
     const updatedAt = (row.updated_at as string) ?? (row.created_at as string) ?? new Date().toISOString();
@@ -1563,7 +1563,8 @@ export async function getOperationsDeals(): Promise<OperationsDeal[]> {
       guardStatuses,
       amount: row.total_amount ? `AED ${Number(row.total_amount).toLocaleString("en-US")}` : undefined,
       contractStartDate: getString((row as Record<string, unknown>).contract_start_date),
-    };
+      companyCode,
+    } satisfies OpsDealSummary;
     if (index < 3) {
       console.log("[SERVER-OPS] deal assignment snapshot:", {
         dealId: result.dealId,
@@ -1637,6 +1638,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
   let leasingRows: Array<{
     client_id: string;
     deal_number: string | null;
+    company_code: string | null;
     vehicle_name: string | null;
     vehicle_vin: string | null;
     total_amount: number | null;
@@ -1647,7 +1649,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     const leasingResult = await supabase
       .from("deals")
       .select(
-        "client_id, deal_number, total_amount, contract_start_date, vehicles:vehicle_id(make, model, vin)",
+        "client_id, deal_number, company_code, total_amount, contract_start_date, vehicles:vehicle_id(make, model, vin)",
       )
       .in("client_id", clientIds)
       .order("contract_start_date", { ascending: false, nullsFirst: false });
@@ -1668,6 +1670,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         return {
           client_id: row.client_id as string,
           deal_number: getString(row.deal_number),
+          company_code: getString(row.company_code),
           total_amount: typeof row.total_amount === "number" ? row.total_amount : null,
           contract_start_date: getString(row.contract_start_date),
           vehicle_name: vehicleName && vehicleName.length ? vehicleName : null,
@@ -2059,7 +2062,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     supabase
       .from("deals")
       .select(
-        `id, deal_number, status, created_at, updated_at, monthly_payment, total_amount,
+        `id, deal_number, company_code, status, created_at, updated_at, monthly_payment, total_amount,
          principal_amount, term_months, contract_start_date, contract_end_date, first_payment_date,
          source, assigned_account_manager, vehicle_id,
          vehicles!vehicle_id (id, vin, make, model, year)`
@@ -2226,10 +2229,18 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
       }
     }
 
+    const companyCode =
+      toDealCompanyCode((deal as { company_code?: string | null }).company_code ?? null) ?? null;
+
     return {
       id: deal.id,
       dealNumber:
-        deal.deal_number ?? formatFallbackDealNumber({ id: deal.id, createdAt: deal.created_at }),
+        deal.deal_number ??
+        formatFallbackDealNumber({
+          id: deal.id,
+          createdAt: deal.created_at,
+          prefix: getDealCompanyPrefix(companyCode),
+        }),
       status: (deal.status ?? "unknown").toUpperCase(),
       statusKey,
       stageLabel: statusMeta?.title ?? null,
@@ -2524,6 +2535,7 @@ type DealDetailResult = {
   guardStatuses: OpsDealGuardStatus[];
   workflowTasks: OpsDealWorkflowTask[];
   profile: OpsDealProfile;
+  company: OpsDealCompany;
   client: OpsDealClientProfile;
   keyInformation: OpsDealKeyInfoEntry[];
   overview: OpsDealDetailsEntry[];
@@ -2562,6 +2574,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const fetchFields = `
     id,
     deal_number,
+    company_code,
     application_id,
     status,
     created_at,
@@ -2589,6 +2602,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     op_manager_id,
     assigned_account_manager,
     asset_id,
+    company:deal_companies(code, name, prefix),
     vehicles!vehicle_id(id, vin, make, model, variant, year, body_type, mileage, status, fuel_type, transmission, color_exterior, color_interior, vehicle_images(id, storage_path, label, is_primary, sort_order)),
     deal_documents(id, document_type, title, storage_path, status, signed_at, created_at, document_category, metadata, mime_type, file_size, uploaded_at, uploaded_by)
   `;
@@ -2596,6 +2610,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   type SupabaseDealDetailRow = {
     id: string;
     deal_number: string | null;
+    company_code: string | null;
     application_id: string | null;
     status: string;
     created_at: string | null;
@@ -2625,6 +2640,11 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     asset_id: string | null;
     vehicles?: SupabaseVehicleData[] | SupabaseVehicleData | null;
     deal_documents?: SupabaseDealDocument[];
+    company?: { code?: string | null; name?: string | null; prefix?: string | null } | Array<{
+      code?: string | null;
+      name?: string | null;
+      prefix?: string | null;
+    }> | null;
   };
 
   let dealRow: SupabaseDealDetailRow | null = null;
@@ -2766,7 +2786,28 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   logOpsDealDetailDebug(`[SERVER-OPS] successfully found deal:`, dealRow.id, `deal_number:`, dealRow.deal_number);
 
+  const normalizedCompanyCodeValue = resolveDealCompanyCode(dealRow.company_code ?? null);
+  const companyRelation = Array.isArray(dealRow.company) ? dealRow.company[0] : dealRow.company;
+  const resolvedCompanyPrefix =
+    typeof companyRelation?.prefix === "string" && companyRelation.prefix.trim().length > 0
+      ? companyRelation.prefix.trim().toUpperCase()
+      : getDealCompanyPrefix(normalizedCompanyCodeValue);
+  const resolvedCompanyName =
+    typeof companyRelation?.name === "string" && companyRelation.name.trim().length > 0
+      ? companyRelation.name.trim()
+      : getDealCompanyName(normalizedCompanyCodeValue);
+  const dealCompany: OpsDealCompany = {
+    code: normalizedCompanyCodeValue,
+    prefix: resolvedCompanyPrefix,
+    name: resolvedCompanyName,
+  };
+
   const statusKey = mapStatusToWorkflow(dealRow.status);
+  const fallbackDealNumber = formatFallbackDealNumber({
+    id: dealRow.id,
+    createdAt: dealRow.created_at ?? null,
+    prefix: dealCompany.prefix,
+  });
 
   // Загружаем данные клиента отдельным запросом
   const clientIdRaw = typeof dealRow.client_id === "string" ? dealRow.client_id.trim() : "";
@@ -3447,8 +3488,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   const profile: DealDetailResult["profile"] = {
     dealId:
-      dealRow.deal_number ??
-      formatFallbackDealNumber({ id: dealRow.id, createdAt: dealRow.created_at ?? null }),
+      dealRow.deal_number ?? fallbackDealNumber,
     vehicleName: vehicleName ?? "Автомобиль не выбран",
     status: statusKey,
     description: profileDescription,
@@ -3530,10 +3570,12 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       value: formatDateTime(dealRow.created_at),
     },
     {
+      label: "Company",
+      value: `${dealCompany.name} (${dealCompany.prefix})`,
+    },
+    {
       label: "Deal Number",
-      value:
-        dealRow.deal_number ||
-        formatFallbackDealNumber({ id: dealRow.id, createdAt: dealRow.created_at ?? null }),
+      value: dealRow.deal_number || fallbackDealNumber,
     },
     {
       label: "Last status update",
@@ -3774,8 +3816,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   });
 
   const editDefaults: OpsDealEditDefaults = {
-    dealNumber: dealRow.deal_number ?? "",
+    dealNumber: dealRow.deal_number ?? fallbackDealNumber,
     statusKey,
+    companyCode: dealCompany.code,
     principalAmount: getNumber(dealRow.principal_amount),
     totalAmount: getNumber(dealRow.total_amount),
     monthlyPayment: getNumber(dealRow.monthly_payment),
@@ -3798,8 +3841,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
   const canonicalDealSlug =
     buildSlugWithId(
-      dealRow.deal_number ??
-        formatFallbackDealNumber({ id: dealRow.id, createdAt: dealRow.created_at ?? null }),
+      dealRow.deal_number ?? fallbackDealNumber,
       dealRow.id,
     ) || dealRow.id;
 
@@ -3812,6 +3854,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     guardStatuses,
     workflowTasks,
     profile,
+    company: dealCompany,
     client: clientProfile,
     keyInformation,
     overview,
@@ -4308,8 +4351,15 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
   const vehicleDeals: OpsVehicleDeal[] = deals.map((deal) => {
     const dealId = getString(deal.id) ?? crypto.randomUUID();
     const rawNumber = getString(deal.deal_number);
+    const companyCode =
+      toDealCompanyCode((deal as { company_code?: string | null }).company_code ?? null) ?? null;
     const dealNumber =
-      rawNumber ?? formatFallbackDealNumber({ id: dealId, createdAt: getString(deal.created_at) });
+      rawNumber ??
+      formatFallbackDealNumber({
+        id: dealId,
+        createdAt: getString(deal.created_at),
+        prefix: getDealCompanyPrefix(companyCode),
+      });
     const statusRaw = getString(deal.status);
     const statusKey = statusRaw ? statusRaw.toLowerCase() : null;
     const statusMeta = statusKey ? OPS_DEAL_STATUS_META[statusKey] ?? null : null;

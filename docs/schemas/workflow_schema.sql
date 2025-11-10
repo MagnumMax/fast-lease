@@ -20,6 +20,15 @@ CREATE TABLE deal_statuses (
   sort_order INT NOT NULL                  -- Для канбана/воронки
 );
 
+-- Компании, к которым может относиться сделка (бренд/юридическое лицо)
+CREATE TABLE deal_companies (
+  code TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  prefix TEXT NOT NULL,
+  is_active BOOL NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Разрешённые переходы между статусами
 CREATE TABLE deal_transitions (
   from_status TEXT REFERENCES deal_statuses(code) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -77,6 +86,7 @@ CREATE TABLE deals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   workflow_id TEXT NOT NULL DEFAULT 'fast-lease-v1',
   workflow_version_id UUID REFERENCES workflow_versions(id) ON UPDATE CASCADE,
+  company_code TEXT NOT NULL DEFAULT 'FLS' REFERENCES deal_companies(code),
   asset_id UUID REFERENCES assets(id),
   source TEXT,                             -- website/broker/other
   status TEXT REFERENCES deal_statuses(code),

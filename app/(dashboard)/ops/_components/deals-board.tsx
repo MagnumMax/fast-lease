@@ -77,6 +77,13 @@ import {
   type WorkflowStatusItem,
 } from "@/lib/supabase/queries/operations";
 import { formatFallbackDealNumber } from "@/lib/deals/deal-number";
+import {
+  DEAL_COMPANY_SELECT_OPTIONS,
+  DEFAULT_DEAL_COMPANY_CODE,
+  getDealCompanyPrefix,
+  toDealCompanyCode,
+  type DealCompanyCode,
+} from "@/lib/data/deal-companies";
 
 import { type OpsCarRecord, type OpsClientRecord } from "@/lib/supabase/queries/operations";
 import { cn } from "@/lib/utils";
@@ -300,6 +307,7 @@ type DealFormState = {
   clientId: string;
   vehicleVin: string;
   source: string;
+  companyCode: DealCompanyCode;
 };
 
 function getPayloadValue(
@@ -350,7 +358,13 @@ function mapDealRowToSummary(
   const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
   const guardStatuses = createGuardStatusesFromMeta(statusKey, row.payload);
 
-  const fallbackId = formatFallbackDealNumber({ id: row.id ?? null, createdAt: row.created_at ?? null });
+  const companyCode =
+    toDealCompanyCode((row as { company_code?: string | null }).company_code ?? null) ?? null;
+  const fallbackId = formatFallbackDealNumber({
+    id: row.id ?? null,
+    createdAt: row.created_at ?? null,
+    prefix: getDealCompanyPrefix(companyCode),
+  });
   const dealIdentifier = row.deal_number?.trim() || reference?.trim() || fallbackId;
 
   console.log(`[DEBUG] mapDealRowToSummary:`, {
@@ -394,6 +408,7 @@ function mapDealRowToSummary(
     slaDueAt,
     guardStatuses,
     contractStartDate: null,
+    companyCode,
   };
 }
 
@@ -563,6 +578,7 @@ export function OpsDealsBoard({
     clientId: clientDirectory[0]?.id ?? "",
     vehicleVin: vehicleOptions[0]?.optionValue ?? "",
     source: defaultSource,
+    companyCode: DEFAULT_DEAL_COMPANY_CODE,
   }));
   const [showCustomSource, setShowCustomSource] = useState(false);
 
@@ -793,6 +809,7 @@ export function OpsDealsBoard({
 
     const reference = formState.reference.trim();
     const normalizedSource = formState.source?.trim() || FALLBACK_SOURCE;
+    const selectedCompanyCode = formState.companyCode || DEFAULT_DEAL_COMPANY_CODE;
     const resetSource = sourceOptions[0] ?? FALLBACK_SOURCE;
     const vehicleNameParts = selectedVehicle.name.trim().split(/\s+/);
     const vehicleMake = vehicleNameParts[0] ?? selectedVehicle.name;
@@ -828,6 +845,7 @@ export function OpsDealsBoard({
 
       const result = await createOperationsDeal({
         source: normalizedSource,
+        companyCode: selectedCompanyCode,
         reference,
         customer: {
           full_name: selectedClient.name,
@@ -883,6 +901,7 @@ export function OpsDealsBoard({
         clientId: clientDirectory[0]?.id ?? "",
         vehicleVin: vehicleOptions[0]?.optionValue ?? "",
         source: resetSource,
+        companyCode: DEFAULT_DEAL_COMPANY_CODE,
       });
       setIsCreateOpen(false);
       router.refresh();
@@ -930,6 +949,27 @@ export function OpsDealsBoard({
               placeholder="LTR-081125-3782"
               className="rounded-xl"
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground/80">Компания</label>
+            <Select
+              value={formState.companyCode}
+              onValueChange={(value) =>
+                setFormState((prev) => ({ ...prev, companyCode: value as DealCompanyCode }))
+              }
+            >
+              <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
+                <SelectValue placeholder="Выберите компанию" />
+              </SelectTrigger>
+              <SelectContent>
+                {DEAL_COMPANY_SELECT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

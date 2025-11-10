@@ -1,8 +1,10 @@
 import { z } from "zod";
+import { DEAL_COMPANY_CODES, DEFAULT_DEAL_COMPANY_CODE } from "@/lib/data/deal-companies";
 
 const createDealBaseSchema = z.object({
   source: z.string().min(1),
   op_manager_id: z.string().uuid().optional(),
+  company_code: z.enum(DEAL_COMPANY_CODES).default(DEFAULT_DEAL_COMPANY_CODE),
   payload: z.record(z.string(), z.unknown()).optional(),
 });
 

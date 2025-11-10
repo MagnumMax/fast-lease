@@ -1,4 +1,5 @@
 import type { EmiratesCode } from "@/lib/utils/license-plate";
+import type { DealCompanyCode } from "@/lib/data/deal-companies";
 
 // Типы и константы для операций
 // Серверные функции перемещены в operations-server.ts
@@ -478,6 +479,7 @@ export type OpsDealSummary = {
   guardStatuses: OpsDealGuardStatus[];
   amount?: string;
   contractStartDate?: string | null;
+  companyCode?: DealCompanyCode | null;
 };
 
 export type OpsDealGuardStatus = {
@@ -568,6 +570,12 @@ export type OpsDealClientProfile = {
   detailHref?: string | null;
 };
 
+export type OpsDealCompany = {
+  code: DealCompanyCode;
+  name: string;
+  prefix: string;
+};
+
 export type OpsDealKeyInfoEntry = {
   label: string;
   value: string;
@@ -592,6 +600,7 @@ export type OpsDealRelatedSection = {
 export type OpsDealEditDefaults = {
   dealNumber: string;
   statusKey: OpsDealStatusKey;
+  companyCode: DealCompanyCode | null;
   principalAmount: number | null;
   totalAmount: number | null;
   monthlyPayment: number | null;
@@ -1186,6 +1195,7 @@ export type OpsDealDetail = {
   guardStatuses: OpsDealGuardStatus[];
   workflowTasks: OpsDealWorkflowTask[];
   profile: OpsDealProfile;
+  company: OpsDealCompany | null;
   client: OpsDealClientProfile;
   keyInformation: OpsDealKeyInfoEntry[];
   overview: OpsDealDetailsEntry[];

@@ -1,0 +1,184 @@
+
+> fast-lease@0.1.0 build /Users/maksymholovakhin/fast-lease
+> next build --turbopack
+
+   ▲ Next.js 16.0.1 (Turbopack)
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 22.6s
+   Running TypeScript ...
+   Collecting page data ...
+   Generating static pages (0/92) ...
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+   Generating static pages (23/92) 
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+   Generating static pages (46/92) 
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsCars called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+   Generating static pages (69/92) 
+[SERVER-OPS] getOperationsClients called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+ ✓ Generating static pages (92/92) in 2.0s
+   Finalizing page optimization ...
+
+Route (app)                       Revalidate  Expire
+┌ ○ /                                     1m      1y
+├ ○ /_not-found
+├ ƒ /accounting/cars
+├ ƒ /accounting/clients
+├ ƒ /accounting/closings
+├ ƒ /accounting/dashboard
+├ ƒ /accounting/deals
+├ ƒ /accounting/ledgers
+├ ƒ /accounting/tasks
+├ ƒ /admin/bpm
+├ ƒ /admin/cars
+├ ƒ /admin/clients
+├ ƒ /admin/dashboard
+├ ƒ /admin/deals
+├ ƒ /admin/integrations
+├ ƒ /admin/roles
+├ ƒ /admin/tasks
+├ ƒ /admin/users
+├ ƒ /api/admin/roles/permissions
+├ ƒ /api/admin/users/access
+├ ƒ /api/deals
+├ ƒ /api/deals/[id]
+├ ƒ /api/deals/[id]/cancel
+├ ƒ /api/deals/[id]/tasks
+├ ƒ /api/deals/[id]/transition
+├ ƒ /api/metrics/process
+├ ƒ /api/tasks
+├ ƒ /api/tasks/[id]/complete
+├ ƒ /api/tasks/[id]/start
+├ ƒ /api/webhooks/aecb
+├ ƒ /api/webhooks/bank
+├ ƒ /api/webhooks/esign
+├ ƒ /api/workflow/queues/run
+├ ƒ /apply/documents
+├ ○ /apply/start
+├ ƒ /apply/status
+├ ƒ /apply/summary
+├ ƒ /auth/callback
+├ ƒ /beta/[...slug]
+├ ƒ /beta/assets/[...asset]
+├ ƒ /client/dashboard
+├ ƒ /client/documents
+├ ƒ /client/invoices
+├ ƒ /client/invoices/[id]
+├ ƒ /client/profile
+├ ƒ /client/referrals
+├ ƒ /client/support
+├ ƒ /client/vehicle
+├ ○ /faq
+├ ƒ /finance/cars
+├ ƒ /finance/clients
+├ ƒ /finance/dashboard
+├ ƒ /finance/deals
+├ ƒ /finance/disbursements
+├ ƒ /finance/receivables
+├ ƒ /finance/reports
+├ ƒ /finance/tasks
+├ ƒ /investor/assets/[id]
+├ ƒ /investor/dashboard
+├ ƒ /investor/portfolio
+├ ƒ /investor/reports
+├ ƒ /legal/cars
+├ ƒ /legal/clients
+├ ƒ /legal/contracts
+├ ƒ /legal/dashboard
+├ ƒ /legal/deals
+├ ƒ /legal/requests
+├ ƒ /legal/tasks
+├ ○ /login
+├ ○ /offer
+├ ƒ /ops/cars
+├ ƒ /ops/cars/[id]
+├ ƒ /ops/clients
+├ ƒ /ops/clients/[id]
+├ ƒ /ops/dashboard
+├ ƒ /ops/deals
+├ ƒ /ops/deals/[id]
+├ ƒ /ops/tasks
+├ ƒ /ops/tasks/[id]
+├ ○ /register
+├ ƒ /risk/cars
+├ ƒ /risk/clients
+├ ƒ /risk/dashboard
+├ ƒ /risk/deals
+├ ƒ /risk/pipeline
+├ ƒ /risk/reports
+├ ƒ /risk/tasks
+├ ○ /support
+├ ƒ /support/cars
+├ ƒ /support/clients
+├ ƒ /support/dashboard
+├ ƒ /support/deals
+├ ƒ /support/knowledge
+├ ƒ /support/queues
+├ ƒ /support/tasks
+├ ƒ /tech/cars
+├ ƒ /tech/clients
+├ ƒ /tech/dashboard
+├ ƒ /tech/deals
+├ ƒ /tech/inspections
+├ ƒ /tech/service-orders
+├ ƒ /tech/tasks
+├ ƒ /workspace/cars
+├ ƒ /workspace/clients
+├ ƒ /workspace/deals
+└ ƒ /workspace/tasks
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

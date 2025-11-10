@@ -41,6 +41,11 @@ import {
   type DeleteDealDocumentResult,
 } from "@/app/(dashboard)/ops/deals/[id]/actions";
 import { sortDocumentOptions } from "@/lib/documents/options";
+import {
+  DEAL_COMPANY_SELECT_OPTIONS,
+  DEFAULT_DEAL_COMPANY_CODE,
+  type DealCompanyCode,
+} from "@/lib/data/deal-companies";
 
 const EMPTY_SELECT_VALUE = "__empty";
 
@@ -53,6 +58,7 @@ type DealEditDialogProps = {
 
 type FormState = {
   dealNumber: string;
+  companyCode: DealCompanyCode;
   principalAmount: string;
   totalAmount: string;
   monthlyPayment: string;
@@ -167,6 +173,18 @@ function formatDateTimeInput(value: string | null | undefined) {
   return localTime.toISOString().slice(0, 16);
 }
 
+function applyCompanyPrefixToDealNumber(value: string, companyCode: string) {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const normalizedPrefix = `${companyCode.toUpperCase()}-`;
+  if (trimmed.toUpperCase().startsWith(normalizedPrefix)) {
+    return trimmed;
+  }
+  const sanitized = trimmed.includes("-") ? trimmed.replace(/^[^-]+-/, "") : trimmed;
+  return `${normalizedPrefix}${sanitized}`;
+}
+
 function isDealDocumentDraftIncomplete(drafts: DealDocumentDraft[]): boolean {
   return drafts.some((draft) => {
     const hasType = draft.type !== "";
@@ -232,6 +250,7 @@ export function DealEditDialog({
     const insuranceDefaults = defaults.insurance ?? null;
     return {
       dealNumber: defaults.dealNumber ?? "",
+      companyCode: defaults.companyCode ?? DEFAULT_DEAL_COMPANY_CODE,
       principalAmount: formatNumberInput(defaults.principalAmount, 2),
       totalAmount: formatNumberInput(defaults.totalAmount, 2),
       monthlyPayment: formatNumberInput(defaults.monthlyPayment, 2),
@@ -340,10 +359,20 @@ export function DealEditDialog({
   }
 
   function handleChange(field: keyof FormState) {
-    return (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    return (
+      event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+    ) => {
       const { value } = event.currentTarget;
       setForm((prev) => ({ ...prev, [field]: value }));
     };
+  }
+
+  function handleCompanyChange(value: DealCompanyCode) {
+    setForm((prev) => ({
+      ...prev,
+      companyCode: value,
+      dealNumber: applyCompanyPrefixToDealNumber(prev.dealNumber, value),
+    }));
   }
 
   function addDealDocumentDraft() {
@@ -561,6 +590,7 @@ export function DealEditDialog({
         dealId: detail.dealUuid,
         slug: detail.slug,
         dealNumber: form.dealNumber,
+        companyCode: form.companyCode,
         principalAmount: form.principalAmount,
         totalAmount: form.totalAmount,
         monthlyPayment: form.monthlyPayment,
@@ -656,6 +686,21 @@ export function DealEditDialog({
                   placeholder="LTR-081125-3782"
                   className="rounded-lg"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Компания</Label>
+                <Select value={form.companyCode} onValueChange={(value) => handleCompanyChange(value as DealCompanyCode)}>
+                  <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background text-sm">
+                    <SelectValue placeholder="Выберите компанию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEAL_COMPANY_SELECT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </FormSection>
 

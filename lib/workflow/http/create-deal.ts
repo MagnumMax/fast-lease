@@ -4,13 +4,18 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
-import { buildDealNumberCandidate } from "@/lib/deals/deal-number";
+import { buildDealNumberCandidate, DEAL_NUMBER_PREFIX } from "@/lib/deals/deal-number";
 import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseWorkflowVersionRepository } from "@/lib/supabase/queries/workflow-versions";
 import {
   WorkflowVersionService,
   type WorkflowVersionRecord,
 } from "@/lib/workflow/versioning";
+import {
+  DEFAULT_DEAL_COMPANY_CODE,
+  getDealCompanyPrefix,
+  type DealCompanyCode,
+} from "@/lib/data/deal-companies";
 import type {
   CreateDealFromReferencesRequest,
   CreateDealRequest,
@@ -31,6 +36,7 @@ export type DealRow = {
    status: string;
    op_manager_id: string | null;
    deal_number: string | null;
+   company_code: string | null;
    created_at: string;
    updated_at: string;
    payload: Record<string, unknown> | null;
@@ -46,12 +52,12 @@ const DEAL_NUMBER_MAX_ATTEMPTS = 50;
 
 async function generateFormattedDealNumber(
   client: SupabaseServerClient,
-  options: { createdAt: Date; vin?: string | null },
+  options: { createdAt: Date; vin?: string | null; prefix?: string | null },
 ): Promise<string> {
-  const { createdAt, vin = null } = options;
+  const { createdAt, vin = null, prefix = DEAL_NUMBER_PREFIX } = options;
 
   for (let attempt = 1; attempt <= DEAL_NUMBER_MAX_ATTEMPTS; attempt++) {
-    const candidate = buildDealNumberCandidate(createdAt, vin, attempt);
+    const candidate = buildDealNumberCandidate(createdAt, vin, attempt, prefix);
     const { count, error } = await client
       .from("deals")
       .select("id", { head: true, count: "exact" })
@@ -235,6 +241,53 @@ export async function ensureActiveWorkflowVersion(
     }
 
     return null;
+  }
+}
+
+type DealCompanyMeta = {
+  code: DealCompanyCode;
+  prefix: string;
+};
+
+async function resolveDealCompanyMeta(
+  client: SupabaseServerClient,
+  requestedCode?: string | null,
+): Promise<DealCompanyMeta> {
+  const fallback: DealCompanyMeta = {
+    code: DEFAULT_DEAL_COMPANY_CODE,
+    prefix: getDealCompanyPrefix(DEFAULT_DEAL_COMPANY_CODE),
+  };
+
+  const normalizedCode = (requestedCode ?? DEFAULT_DEAL_COMPANY_CODE).toUpperCase();
+
+  try {
+    const { data, error } = await client
+      .from("deal_companies")
+      .select("code, prefix")
+      .eq("code", normalizedCode)
+      .maybeSingle();
+
+    if (error) {
+      if (!isMissingTableError(error)) {
+        console.error("[workflow] failed to load deal company", error);
+      }
+      return fallback;
+    }
+
+    if (!data) {
+      return fallback;
+    }
+
+    const prefix = typeof data.prefix === "string" && data.prefix.trim().length > 0
+      ? data.prefix.trim().toUpperCase()
+      : fallback.prefix;
+
+    const code = (data.code as DealCompanyCode | null) ?? fallback.code;
+
+    return { code, prefix };
+  } catch (error) {
+    console.error("[workflow] unexpected error while resolving deal company", error);
+    return fallback;
   }
 }
 
@@ -426,6 +479,12 @@ export async function createDealWithWorkflow(
         message: "Workflow version is not configured",
       };
     }
+
+    const baseCompanyCode =
+      "company_code" in payload && typeof payload.company_code === "string"
+        ? payload.company_code
+        : DEFAULT_DEAL_COMPANY_CODE;
+    const companyMeta = await resolveDealCompanyMeta(supabase, baseCompanyCode);
 
     let contactId: string | null = null;
     let assetId: string | null = null;
@@ -638,12 +697,17 @@ export async function createDealWithWorkflow(
         },
       }),
     );
+    enrichedPayload.company = {
+      code: companyMeta.code,
+      prefix: companyMeta.prefix,
+    } satisfies Record<string, unknown>;
 
     const actorRole = resolveActorRole("OP_MANAGER");
 
     const dealNumber = await generateFormattedDealNumber(supabase, {
       createdAt: new Date(),
       vin: assetSnapshot?.vin ?? null,
+      prefix: companyMeta.prefix,
     });
     console.log(`[DEBUG] Generated formatted deal number: ${dealNumber}`);
 
@@ -659,10 +723,11 @@ export async function createDealWithWorkflow(
         status: "NEW",
         op_manager_id: payload.op_manager_id ?? null,
         deal_number: dealNumber,
+        company_code: companyMeta.code,
         payload: enrichedPayload,
       })
       .select(
-        "id, workflow_id, workflow_version_id, client_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, created_at, updated_at, payload",
+        "id, workflow_id, workflow_version_id, client_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, company_code, created_at, updated_at, payload",
       )
       .single<DealRow>();
 
