@@ -291,6 +291,8 @@ export type SupabaseVehicleData = {
   mileage: number | null;
   status: string | null;
   image?: string | null;
+  license_plate?: string | null;
+  license_plate_display?: string | null;
 };
 
 export type SupabaseDealDocument = {
@@ -601,6 +603,7 @@ export type OpsDealEditDefaults = {
   firstPaymentDate: string | null;
   activatedAt: string | null;
   completedAt: string | null;
+  insurance: OpsInsuranceEditDefaults | null;
 };
 
 export type OpsDealTimelineEvent = {
@@ -972,6 +975,44 @@ export type OpsVehicleServiceLogEntry = {
   attachments?: Array<{ label: string; url: string | null; path?: string | null }>;
 };
 
+export type OpsInsuranceInfo = {
+  provider: string | null;
+  policyNumber: string | null;
+  policyType: string | null;
+  premiumAmount: string | null;
+  premiumValue: number | null;
+  paymentFrequency: string | null;
+  paymentFrequencyLabel: string | null;
+  nextPaymentDue: string | null;
+  nextPaymentDueLabel: string | null;
+  coverageStart: string | null;
+  coverageEnd: string | null;
+  coveragePeriodLabel: string | null;
+  deductible: string | null;
+  deductibleValue: number | null;
+  lastPaymentStatus: string | null;
+  lastPaymentStatusLabel: string | null;
+  lastPaymentDate: string | null;
+  lastPaymentDateLabel: string | null;
+  contact?: string | null;
+  notes?: string | null;
+};
+
+export type OpsInsuranceEditDefaults = {
+  provider: string | null;
+  policyNumber: string | null;
+  policyType: string | null;
+  premiumAmount: number | null;
+  paymentFrequency: string | null;
+  nextPaymentDue: string | null;
+  coverageStart: string | null;
+  coverageEnd: string | null;
+  deductible: number | null;
+  lastPaymentStatus: string | null;
+  lastPaymentDate: string | null;
+  notes?: string | null;
+};
+
 export type OpsVehicleProfile = {
   heading: string;
   subtitle: string;
@@ -1020,6 +1061,7 @@ export type CarDetailResult = {
   profile: OpsVehicleProfile;
   documents: OpsVehicleDocument[];
   serviceLog: OpsVehicleServiceLogEntry[];
+  insurance: OpsInsuranceInfo | null;
 };
 
 export type OpsKpiMetric = {
@@ -1154,6 +1196,7 @@ export type OpsDealDetail = {
   sellerDocuments: OpsSellerDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];
+  insurance: OpsInsuranceInfo | null;
 };
 
 // Вспомогательные функции перемещены в operations-server.ts

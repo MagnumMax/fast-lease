@@ -368,7 +368,15 @@ SELECT
     jsonb_build_object(
         'provider', 'AXA Insurance',
         'policy_type', 'comprehensive',
-        'deductible', 500
+        'policy_number', format('AXA-%s', ra.vin_part),
+        'premium_amount', ROUND(ra.monthly_payment * 0.35, 2),
+        'payment_frequency', 'monthly',
+        'next_payment_due', to_char(current_date + interval '30 days', 'YYYY-MM-DD'),
+        'coverage_start', to_char(current_date - interval '15 days', 'YYYY-MM-DD'),
+        'coverage_end', to_char(current_date + interval '11 months', 'YYYY-MM-DD'),
+        'deductible', 500,
+        'last_payment_status', 'paid',
+        'last_payment_date', to_char(current_date - interval '10 days', 'YYYY-MM-DD')
     ),
     ra.assigned_to,
     CASE

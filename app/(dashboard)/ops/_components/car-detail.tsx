@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type {
+  OpsInsuranceInfo,
   OpsTone,
   OpsVehicleActiveDeal,
   OpsVehicleDeal,
@@ -55,9 +56,10 @@ type CarDetailProps = {
   profile: OpsVehicleProfile;
   documents: OpsVehicleDocument[];
   serviceLog: OpsVehicleServiceLogEntry[];
+  insurance: OpsInsuranceInfo | null;
 };
 
-export function CarDetailView({ slug, deals, vehicle, profile, documents, serviceLog }: CarDetailProps) {
+export function CarDetailView({ slug, deals, vehicle, profile, documents, serviceLog, insurance }: CarDetailProps) {
   const VEHICLE_PLACEHOLDER_PATH = "/assets/vehicle-placeholder.svg";
   const toneClassMap: Record<OpsTone, string> = {
     success: "border-emerald-400/80 bg-emerald-500/10 text-emerald-700",
@@ -191,7 +193,17 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
           {hasPrimaryDetails ? (
             <div className="space-y-3">
               <div className="grid gap-4 sm:grid-cols-2">
-                {primarySpecs.map((spec) => (
+                {[...primarySpecs, (() => {
+                  if (!insurance) {
+                    return null;
+                  }
+                  const value = insurance.nextPaymentDueLabel ?? "—";
+                  const frequency = insurance.paymentFrequencyLabel ?? insurance.paymentFrequency ?? null;
+                  return {
+                    label: "Следующий платёж по страховке",
+                    value: frequency && value !== "—" ? `${value} • ${frequency}` : value,
+                  };
+                })()].filter((spec): spec is { label: string; value: string } => Boolean(spec)).map((spec) => (
                   <InfoCell key={`primary-${spec.label}`} label={spec.label}>
                     {spec.value}
                   </InfoCell>
@@ -231,6 +243,52 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
             </CardContent>
           </Card>
         ))}
+
+        <Card className="bg-card/60 backdrop-blur">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold">Страховка</CardTitle>
+            {insurance?.provider ? (
+              <CardDescription>{insurance.provider}</CardDescription>
+            ) : null}
+          </CardHeader>
+          <CardContent>
+            <dl className="grid gap-4 sm:grid-cols-2">
+              {[{
+                label: "Номер полиса",
+                value: insurance?.policyNumber ?? "—",
+              }, {
+                label: "Тип покрытия",
+                value: insurance?.policyType ?? "—",
+              }, {
+                label: "Премия",
+                value: insurance?.premiumAmount ?? "—",
+              }, {
+                label: "Частота платежей",
+                value: insurance?.paymentFrequencyLabel ?? insurance?.paymentFrequency ?? "—",
+              }, {
+                label: "Следующий платёж",
+                value: insurance?.nextPaymentDueLabel ?? "—",
+              }, {
+                label: "Период действия",
+                value: insurance?.coveragePeriodLabel ?? "—",
+              }, {
+                label: "Франшиза",
+                value: insurance?.deductible ?? "—",
+              }, {
+                label: "Статус последнего платежа",
+                value: insurance?.lastPaymentStatusLabel ?? insurance?.lastPaymentStatus ?? "—",
+              }, {
+                label: "Дата последнего платежа",
+                value: insurance?.lastPaymentDateLabel ?? "—",
+              }].map((entry) => (
+                <div key={entry.label}>
+                  <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{entry.label}</dt>
+                  <dd className="mt-1 text-sm font-medium text-foreground">{entry.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
 
         {profile.features?.length ? (
           <Card className="bg-card/60 backdrop-blur xl:col-span-2">

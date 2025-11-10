@@ -36,6 +36,8 @@ import type {
   OpsDealProfile,
   OpsDealTimelineEvent,
   OpsDealWorkflowTask,
+  OpsInsuranceInfo,
+  OpsInsuranceEditDefaults,
   OpsSellerDocument,
   CarDetailResult,
   OpsCarRecord,
@@ -585,6 +587,137 @@ function formatShortDate(value: string | null | undefined): string {
     month: "short",
     year: "numeric",
   });
+}
+
+const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
+  monthly: "Ежемесячно",
+  quarterly: "Ежеквартально",
+  yearly: "Ежегодно",
+  annual: "Ежегодно",
+  semiannual: "Раз в полгода",
+  weekly: "Еженедельно",
+};
+
+function formatInsuranceFrequency(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  return PAYMENT_FREQUENCY_LABELS[normalized] ?? humanizeKey(value);
+}
+
+function resolveInsuranceDetails(
+  raw: unknown,
+): { info: OpsInsuranceInfo | null; editDefaults: OpsInsuranceEditDefaults | null } {
+  if (!isRecord(raw) || Object.keys(raw).length === 0) {
+    return { info: null, editDefaults: null };
+  }
+
+  const pickString = (...keys: string[]): string | null => {
+    for (const key of keys) {
+      if (key in raw) {
+        const value = getString(raw[key]);
+        if (value) {
+          return value;
+        }
+      }
+    }
+    return null;
+  };
+
+  const pickNumber = (...keys: string[]): number | null => {
+    for (const key of keys) {
+      if (key in raw) {
+        const value = getNumber(raw[key]);
+        if (value != null) {
+          return value;
+        }
+      }
+    }
+    return null;
+  };
+
+  const provider = pickString("provider", "provider_name", "company");
+  const policyNumber = pickString("policy_number", "policyNumber", "number");
+  const policyType = pickString("policy_type", "policyType", "coverage_type", "coverageType");
+  const premiumValue = pickNumber("premium_amount", "premiumAmount");
+  const premiumAmount = premiumValue != null
+    ? formatCurrency(premiumValue)
+    : pickString("premium_amount_label", "premiumLabel", "premium_amount_display");
+  const paymentFrequencyRaw = pickString("payment_frequency", "paymentFrequency");
+  const paymentFrequencyLabel = formatInsuranceFrequency(paymentFrequencyRaw);
+  const nextPaymentDue = pickString("next_payment_due", "nextPaymentDue");
+  const nextPaymentDueLabel = nextPaymentDue ? formatShortDate(nextPaymentDue) : null;
+  const coverageStart = pickString("coverage_start", "coverageStart", "effective_date");
+  const coverageEnd = pickString("coverage_end", "coverageEnd", "expiry_date", "expiration_date");
+  const coveragePeriodLabel = coverageStart || coverageEnd
+    ? [coverageStart ? formatShortDate(coverageStart) : null, coverageEnd ? formatShortDate(coverageEnd) : null]
+        .filter((value): value is string => Boolean(value))
+        .join(" → ") || null
+    : null;
+  const deductibleValue = pickNumber("deductible", "deductible_amount", "deductibleAmount");
+  const deductible = deductibleValue != null
+    ? formatCurrency(deductibleValue)
+    : pickString("deductible_label", "deductible_display");
+  const lastPaymentStatus = pickString("last_payment_status", "lastPaymentStatus");
+  const lastPaymentStatusLabel = lastPaymentStatus ? humanizeKey(lastPaymentStatus) : null;
+  const lastPaymentDate = pickString("last_payment_date", "lastPaymentDate");
+  const lastPaymentDateLabel = lastPaymentDate ? formatShortDate(lastPaymentDate) : null;
+  const notes = pickString("notes", "comments");
+  const contact = pickString("contact", "contact_name", "broker_contact");
+
+  const info: OpsInsuranceInfo = {
+    provider: provider ?? null,
+    policyNumber: policyNumber ?? null,
+    policyType: policyType ?? null,
+    premiumAmount: premiumAmount ?? null,
+    premiumValue,
+    paymentFrequency: paymentFrequencyRaw ?? null,
+    paymentFrequencyLabel,
+    nextPaymentDue: nextPaymentDue ?? null,
+    nextPaymentDueLabel,
+    coverageStart: coverageStart ?? null,
+    coverageEnd: coverageEnd ?? null,
+    coveragePeriodLabel,
+    deductible: deductible ?? null,
+    deductibleValue,
+    lastPaymentStatus: lastPaymentStatus ?? null,
+    lastPaymentStatusLabel,
+    lastPaymentDate: lastPaymentDate ?? null,
+    lastPaymentDateLabel,
+    contact: contact ?? null,
+    notes: notes ?? null,
+  };
+
+  const editDefaults: OpsInsuranceEditDefaults = {
+    provider: provider ?? null,
+    policyNumber: policyNumber ?? null,
+    policyType: policyType ?? null,
+    premiumAmount: premiumValue,
+    paymentFrequency: paymentFrequencyRaw ?? null,
+    nextPaymentDue: nextPaymentDue ?? null,
+    coverageStart: coverageStart ?? null,
+    coverageEnd: coverageEnd ?? null,
+    deductible: deductibleValue,
+    lastPaymentStatus: lastPaymentStatus ?? null,
+    lastPaymentDate: lastPaymentDate ?? null,
+    notes: notes ?? null,
+  };
+
+  const hasDisplayValue = Object.values(info).some((value) => {
+    if (value == null) {
+      return false;
+    }
+    if (typeof value === "string") {
+      return value.trim().length > 0;
+    }
+    return true;
+  });
+
+  return {
+    info: hasDisplayValue ? info : null,
+    editDefaults,
+  };
 }
 
 type VehicleDocumentRow = {
@@ -2434,6 +2567,7 @@ type DealDetailResult = {
   sellerDocuments: OpsSellerDocument[];
   invoices: OpsDealInvoice[];
   timeline: OpsDealTimelineEvent[];
+  insurance: OpsInsuranceInfo | null;
 };
 
 // Серверные функции для операций
@@ -3705,6 +3839,10 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     });
   }
 
+  const { info: insuranceInfo, editDefaults: insuranceEditDefaults } = resolveInsuranceDetails(
+    dealRow.insurance_details,
+  );
+
   const structuredData: OpsDealDetailJsonBlock[] = [];
 
   const contractTermsData = formatJsonObject(dealRow.contract_terms);
@@ -3762,6 +3900,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     firstPaymentDate: getString(dealRow.first_payment_date),
     activatedAt: getString(dealRow.activated_at),
     completedAt: getString(dealRow.completed_at),
+    insurance: insuranceEditDefaults,
   };
 
   const canonicalDealSlug =
@@ -3795,6 +3934,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     sellerDocuments,
     invoices,
     timeline,
+    insurance: insuranceInfo,
   };
 }
 
@@ -3896,6 +4036,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
           contract_start_date,
           contract_end_date,
           first_payment_date,
+          insurance_details,
           source,
           deal_documents(id, title, document_type, status, storage_path, signed_at, created_at, document_category, metadata, mime_type, file_size, uploaded_at, uploaded_by)
         )
@@ -4108,6 +4249,7 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     contract_end_date: string | null;
     first_payment_date: string | null;
     source: string | null;
+    insurance_details?: Record<string, unknown> | null;
     deal_documents:
       | Array<{
           id: string | null;
@@ -4261,6 +4403,10 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
         monthlyLeaseRateValue: activeDealMonthlyRateValue,
         href: activeDealSlug ? `/ops/deals/${activeDealSlug}` : null,
       }
+    : null;
+
+  const activeDealInsurance = activeDealRow
+    ? resolveInsuranceDetails((activeDealRow as { insurance_details?: unknown }).insurance_details).info
     : null;
 
   const scheduleNow = new Date();
@@ -4593,5 +4739,6 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     profile,
     documents,
     serviceLog,
+    insurance: activeDealInsurance,
   };
 }

@@ -445,6 +445,18 @@ const updateDealSchema = z.object({
   firstPaymentDate: z.string().optional(),
   activatedAt: z.string().optional(),
   completedAt: z.string().optional(),
+  insuranceProvider: z.string().optional(),
+  insurancePolicyNumber: z.string().optional(),
+  insurancePolicyType: z.string().optional(),
+  insurancePremiumAmount: z.string().optional(),
+  insurancePaymentFrequency: z.string().optional(),
+  insuranceNextPaymentDue: z.string().optional(),
+  insuranceCoverageStart: z.string().optional(),
+  insuranceCoverageEnd: z.string().optional(),
+  insuranceDeductible: z.string().optional(),
+  insuranceLastPaymentStatus: z.string().optional(),
+  insuranceLastPaymentDate: z.string().optional(),
+  insuranceNotes: z.string().optional(),
   sellerDocuments: z
     .array(
       z.object({
@@ -473,6 +485,11 @@ function normalizeText(value?: string | null) {
   if (!value) return "";
   const trimmed = value.trim();
   return trimmed;
+}
+
+function normalizeOptionalText(value?: string | null): string | null {
+  const text = normalizeText(value);
+  return text.length > 0 ? text : null;
 }
 
 function parseDecimalInput(value?: string | null): number | null {
@@ -586,6 +603,48 @@ function sanitizeSellerDocuments(input?: SellerDocumentInput[]): NormalizedSelle
       } satisfies NormalizedSellerDocument;
     })
     .filter((entry): entry is NormalizedSellerDocument => entry !== null);
+}
+
+function sanitizeInsuranceDetails(
+  current: Record<string, unknown> | null | undefined,
+  input: {
+    provider: string | null;
+    policyNumber: string | null;
+    policyType: string | null;
+    premiumAmount: number | null;
+    paymentFrequency: string | null;
+    nextPaymentDue: string | null;
+    coverageStart: string | null;
+    coverageEnd: string | null;
+    deductible: number | null;
+    lastPaymentStatus: string | null;
+    lastPaymentDate: string | null;
+    notes: string | null;
+  },
+): Record<string, unknown> {
+  const base = isPlainRecord(current) ? structuredClone(current) : {};
+  const assign = (key: string, value: string | number | null) => {
+    if (value == null || value === "") {
+      delete base[key];
+      return;
+    }
+    base[key] = value;
+  };
+
+  assign("provider", input.provider);
+  assign("policy_number", input.policyNumber);
+  assign("policy_type", input.policyType);
+  assign("premium_amount", input.premiumAmount);
+  assign("payment_frequency", input.paymentFrequency ? input.paymentFrequency.toLowerCase() : null);
+  assign("next_payment_due", input.nextPaymentDue);
+  assign("coverage_start", input.coverageStart);
+  assign("coverage_end", input.coverageEnd);
+  assign("deductible", input.deductible);
+  assign("last_payment_status", input.lastPaymentStatus ? input.lastPaymentStatus.toLowerCase() : null);
+  assign("last_payment_date", input.lastPaymentDate);
+  assign("notes", input.notes);
+
+  return Object.keys(base).length > 0 ? base : {};
 }
 
 export async function completeDealGuardAction(
@@ -763,6 +822,18 @@ export async function updateOperationsDeal(
     firstPaymentDate,
     activatedAt,
     completedAt,
+    insuranceProvider,
+    insurancePolicyNumber,
+    insurancePolicyType,
+    insurancePremiumAmount,
+    insurancePaymentFrequency,
+    insuranceNextPaymentDue,
+    insuranceCoverageStart,
+    insuranceCoverageEnd,
+    insuranceDeductible,
+    insuranceLastPaymentStatus,
+    insuranceLastPaymentDate,
+    insuranceNotes,
     sellerDocuments,
   } = parsed.data;
 
@@ -790,7 +861,7 @@ export async function updateOperationsDeal(
 
     const { data: dealRow, error: dealLoadError } = await supabase
       .from("deals")
-      .select("payload")
+      .select("payload, insurance_details")
       .eq("id", dealId)
       .maybeSingle();
 
@@ -806,9 +877,28 @@ export async function updateOperationsDeal(
     const nextPayload = isPlainRecord(dealRow.payload) ? structuredClone(dealRow.payload) : {};
     nextPayload.seller_documents = sanitizeSellerDocuments(sellerDocuments);
 
+    const insuranceDetails = sanitizeInsuranceDetails(
+      (dealRow as { insurance_details?: Record<string, unknown> | null }).insurance_details,
+      {
+        provider: normalizeOptionalText(insuranceProvider),
+        policyNumber: normalizeOptionalText(insurancePolicyNumber),
+        policyType: normalizeOptionalText(insurancePolicyType),
+        premiumAmount: parseDecimalInput(insurancePremiumAmount),
+        paymentFrequency: normalizeOptionalText(insurancePaymentFrequency),
+        nextPaymentDue: normalizeDateInput(insuranceNextPaymentDue),
+        coverageStart: normalizeDateInput(insuranceCoverageStart),
+        coverageEnd: normalizeDateInput(insuranceCoverageEnd),
+        deductible: parseDecimalInput(insuranceDeductible),
+        lastPaymentStatus: normalizeOptionalText(insuranceLastPaymentStatus),
+        lastPaymentDate: normalizeDateInput(insuranceLastPaymentDate),
+        notes: normalizeOptionalText(insuranceNotes),
+      },
+    );
+
     const updatePayload = {
       ...updateColumnsBase,
       payload: nextPayload,
+      insurance_details: insuranceDetails,
     } satisfies Record<string, unknown>;
 
     const { error } = await supabase

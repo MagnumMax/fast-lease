@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { DatePickerInput } from "@/components/ui/date-picker";
 import { DateTimePickerInput } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -66,6 +67,18 @@ type FormState = {
   firstPaymentDate: string;
   activatedAt: string;
   completedAt: string;
+  insuranceProvider: string;
+  insurancePolicyNumber: string;
+  insurancePolicyType: string;
+  insurancePremiumAmount: string;
+  insurancePaymentFrequency: string;
+  insuranceNextPaymentDue: string;
+  insuranceCoverageStart: string;
+  insuranceCoverageEnd: string;
+  insuranceDeductible: string;
+  insuranceLastPaymentStatus: string;
+  insuranceLastPaymentDate: string;
+  insuranceNotes: string;
 };
 
 type FormSectionProps = {
@@ -216,6 +229,7 @@ export function DealEditDialog({
 
   const initialState = useMemo<FormState>(() => {
     const defaults = detail.editDefaults;
+    const insuranceDefaults = defaults.insurance ?? null;
     return {
       dealNumber: defaults.dealNumber ?? "",
       principalAmount: formatNumberInput(defaults.principalAmount, 2),
@@ -235,6 +249,18 @@ export function DealEditDialog({
       firstPaymentDate: formatDateInput(defaults.firstPaymentDate),
       activatedAt: formatDateTimeInput(defaults.activatedAt),
       completedAt: formatDateTimeInput(defaults.completedAt),
+      insuranceProvider: insuranceDefaults?.provider ?? "",
+      insurancePolicyNumber: insuranceDefaults?.policyNumber ?? "",
+      insurancePolicyType: insuranceDefaults?.policyType ?? "",
+      insurancePremiumAmount: formatNumberInput(insuranceDefaults?.premiumAmount, 2),
+      insurancePaymentFrequency: insuranceDefaults?.paymentFrequency ?? "",
+      insuranceNextPaymentDue: formatDateInput(insuranceDefaults?.nextPaymentDue),
+      insuranceCoverageStart: formatDateInput(insuranceDefaults?.coverageStart),
+      insuranceCoverageEnd: formatDateInput(insuranceDefaults?.coverageEnd),
+      insuranceDeductible: formatNumberInput(insuranceDefaults?.deductible, 2),
+      insuranceLastPaymentStatus: insuranceDefaults?.lastPaymentStatus ?? "",
+      insuranceLastPaymentDate: formatDateInput(insuranceDefaults?.lastPaymentDate),
+      insuranceNotes: insuranceDefaults?.notes ?? "",
     };
   }, [detail.editDefaults]);
 
@@ -549,6 +575,18 @@ export function DealEditDialog({
         firstPaymentDate: form.firstPaymentDate,
         activatedAt: form.activatedAt,
         completedAt: form.completedAt,
+        insuranceProvider: form.insuranceProvider,
+        insurancePolicyNumber: form.insurancePolicyNumber,
+        insurancePolicyType: form.insurancePolicyType,
+        insurancePremiumAmount: form.insurancePremiumAmount,
+        insurancePaymentFrequency: form.insurancePaymentFrequency,
+        insuranceNextPaymentDue: form.insuranceNextPaymentDue,
+        insuranceCoverageStart: form.insuranceCoverageStart,
+        insuranceCoverageEnd: form.insuranceCoverageEnd,
+        insuranceDeductible: form.insuranceDeductible,
+        insuranceLastPaymentStatus: form.insuranceLastPaymentStatus,
+        insuranceLastPaymentDate: form.insuranceLastPaymentDate,
+        insuranceNotes: form.insuranceNotes,
         sellerDocuments: sellerDocumentsPayload,
       });
 
@@ -959,6 +997,121 @@ export function DealEditDialog({
                   onChange={handleChange("processingFee")}
                   placeholder="Например, 1500"
                   className="rounded-lg"
+                />
+              </div>
+            </FormSection>
+
+            <FormSection title="Страховка" description="Данные полиса и платежей" columns={2}>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Провайдер</Label>
+                <Input
+                  value={form.insuranceProvider}
+                  onChange={handleChange("insuranceProvider")}
+                  placeholder="AXA Insurance"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Номер полиса</Label>
+                <Input
+                  value={form.insurancePolicyNumber}
+                  onChange={handleChange("insurancePolicyNumber")}
+                  placeholder="POL-000123"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип покрытия</Label>
+                <Input
+                  value={form.insurancePolicyType}
+                  onChange={handleChange("insurancePolicyType")}
+                  placeholder="Comprehensive"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Премия</Label>
+                <Input
+                  value={form.insurancePremiumAmount}
+                  onChange={handleChange("insurancePremiumAmount")}
+                  placeholder="Например, 3200"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Частота платежей</Label>
+                <Input
+                  value={form.insurancePaymentFrequency}
+                  onChange={handleChange("insurancePaymentFrequency")}
+                  placeholder="monthly"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Следующий платёж</Label>
+                <DatePickerInput
+                  id="insurance-next-payment"
+                  value={form.insuranceNextPaymentDue}
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, insuranceNextPaymentDue: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Начало покрытия</Label>
+                <DatePickerInput
+                  id="insurance-coverage-start"
+                  value={form.insuranceCoverageStart}
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, insuranceCoverageStart: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Окончание покрытия</Label>
+                <DatePickerInput
+                  id="insurance-coverage-end"
+                  value={form.insuranceCoverageEnd}
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, insuranceCoverageEnd: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Франшиза</Label>
+                <Input
+                  value={form.insuranceDeductible}
+                  onChange={handleChange("insuranceDeductible")}
+                  placeholder="Например, 500"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Статус последнего платежа</Label>
+                <Input
+                  value={form.insuranceLastPaymentStatus}
+                  onChange={handleChange("insuranceLastPaymentStatus")}
+                  placeholder="paid"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Дата последнего платежа</Label>
+                <DatePickerInput
+                  id="insurance-last-payment-date"
+                  value={form.insuranceLastPaymentDate}
+                  onChange={(nextValue) => setForm((prev) => ({ ...prev, insuranceLastPaymentDate: nextValue }))}
+                  buttonClassName="rounded-lg"
+                  placeholder="Выберите дату"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Примечание</Label>
+                <Textarea
+                  value={form.insuranceNotes}
+                  onChange={(event) => setForm((prev) => ({ ...prev, insuranceNotes: event.currentTarget.value }))}
+                  placeholder="Контакты брокера, условия отсрочки и т.д."
+                  className="min-h-[72px] rounded-lg"
                 />
               </div>
             </FormSection>

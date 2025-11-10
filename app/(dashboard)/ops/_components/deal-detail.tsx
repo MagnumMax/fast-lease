@@ -107,6 +107,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
     workflowTasks,
     guardStatuses,
     slug,
+    insurance,
   } = detail;
 
   const hasPendingTasks = workflowTasks.some((task) => !task.fulfilled);
@@ -189,6 +190,25 @@ export function DealDetailView({ detail }: DealDetailProps) {
   );
   const dueAmountValue = parseCurrencyValue(profile.dueAmount);
   const hasDebt = (dueAmountValue ?? 0) > 0 || overdueInvoices.length > 0;
+  const insuranceEntries = [
+    { label: "Провайдер", value: insurance?.provider ?? "—" },
+    { label: "Номер полиса", value: insurance?.policyNumber ?? "—" },
+    { label: "Тип покрытия", value: insurance?.policyType ?? "—" },
+    { label: "Премия", value: insurance?.premiumAmount ?? "—" },
+    {
+      label: "Частота платежей",
+      value: insurance?.paymentFrequencyLabel ?? insurance?.paymentFrequency ?? "—",
+    },
+    { label: "Следующий платёж", value: insurance?.nextPaymentDueLabel ?? "—" },
+    { label: "Период действия", value: insurance?.coveragePeriodLabel ?? "—" },
+    { label: "Франшиза", value: insurance?.deductible ?? "—" },
+    {
+      label: "Статус последнего платежа",
+      value: insurance?.lastPaymentStatusLabel ?? insurance?.lastPaymentStatus ?? "—",
+    },
+    { label: "Последний платёж", value: insurance?.lastPaymentDateLabel ?? "—" },
+  ];
+  const hasInsuranceData = insuranceEntries.some((entry) => entry.value && entry.value !== "—");
   const warnings = useMemo(() => {
     const list: Array<{ id: string; text: string; href?: string }> = [];
     if (hasDebt) {
@@ -510,6 +530,29 @@ export function DealDetailView({ detail }: DealDetailProps) {
               </CardContent>
             </Card>
           ) : null}
+
+          <Card className="bg-card/60 backdrop-blur">
+            <CardHeader>
+              <CardTitle>Страховка</CardTitle>
+              {insurance?.policyNumber ? (
+                <CardDescription>Полис {insurance.policyNumber}</CardDescription>
+              ) : null}
+            </CardHeader>
+            <CardContent>
+              {hasInsuranceData ? (
+                <dl className="grid gap-3 md:grid-cols-2">
+                  {insuranceEntries.map((entry) => (
+                    <div key={entry.label}>
+                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
+                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : (
+                <p className="text-sm text-muted-foreground">Данные по страховке ещё не заполнены.</p>
+              )}
+            </CardContent>
+          </Card>
 
           {contract.length ? (
             <Card className="bg-card/60 backdrop-blur">

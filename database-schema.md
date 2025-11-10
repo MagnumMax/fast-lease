@@ -257,6 +257,20 @@ created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
 ```
 
+Поле `insurance_details` хранит структуру страхового полиса и включает ключи:
+
+- `provider` — название страховой компании.
+- `policy_number` — номер полиса.
+- `policy_type` — тип покрытия (comprehensive, tpl и т.д.).
+- `premium_amount` — размер премии (numeric).
+- `payment_frequency` — периодичность платежей (`monthly`, `quarterly`, `annual`).
+- `next_payment_due` — дата следующего платежа в формате ISO.
+- `coverage_start` / `coverage_end` — границы действия полиса.
+- `deductible` — франшиза.
+- `last_payment_status` — статус последнего платежа.
+- `last_payment_date` — дата последнего платежа.
+- `notes` — комментарии, контакты брокера и пр.
+
 #### `deal_events`
 События по сделкам (аудит)
 ```sql
@@ -935,7 +949,16 @@ contract_terms: {
 }
 insurance_details: {
   "provider": "AXA",
-  "policy_number": "AXA-ROLLS-2025"
+  "policy_number": "AXA-ROLLS-2025",
+  "policy_type": "comprehensive",
+  "premium_amount": 28500,
+  "payment_frequency": "monthly",
+  "next_payment_due": "2025-11-15",
+  "coverage_start": "2025-09-15",
+  "coverage_end": "2026-09-14",
+  "deductible": 1000,
+  "last_payment_status": "paid",
+  "last_payment_date": "2025-10-20"
 }
 assigned_account_manager: [omar.ops]
 activated_at: null

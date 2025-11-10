@@ -24,6 +24,7 @@ export default async function OpsCarDetailsPage({ params }: OpsCarDetailsProps) 
       profile={detail.profile}
       documents={detail.documents}
       serviceLog={detail.serviceLog}
+      insurance={detail.insurance}
     />
   );
 }
