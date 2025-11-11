@@ -9,7 +9,7 @@
 #### 1. Роли пользователей
 ```typescript
 type AppRole =
-  | "CLIENT"        // Клиент (базовая роль)
+  | "CLIENT"        // Клиент
   | "INVESTOR"      // Инвестор
   | "OP_MANAGER"    // Операционный менеджер
   | "TECH_SPECIALIST" // Технический специалист
@@ -26,7 +26,24 @@ type AppRole =
 ADMIN > OP_MANAGER > FINANCE > SUPPORT > TECH_SPECIALIST > RISK_MANAGER > LEGAL > ACCOUNTING > INVESTOR > CLIENT
 ```
 
-#### 3. Домашние пути по ролям
+> **Роль по умолчанию:** новые пользователи получают `OP_MANAGER` (назначается через `ensureDefaultProfileAndRole()`).
+
+#### 3. Порталы и аудитории
+| Портал | Роли | URL входа | Домашний экран |
+| --- | --- | --- | --- |
+| `app` | ADMIN, OP_MANAGER, SUPPORT, FINANCE, TECH_SPECIALIST, RISK_MANAGER, LEGAL, ACCOUNTING | `/login` | `/app/dashboard` (редирект в `/ops/dashboard`) |
+| `client` | CLIENT | `/login` | `/client/dashboard` |
+| `investor` | INVESTOR | `/login` | `/investor/dashboard` |
+| `partner` | (будущие роли партнёров) | `/login` | `/partner/dashboard` (плейсхолдер) |
+
+Главная страница `/` и страница `/login` показывают один и тот же единый вход: пользователь вводит email/пароль, система определяет портал и сразу завершает вход без дополнительных страниц.
+
+Все порталы используют единый канал входа — email + пароль через Supabase Auth. После успешной аутентификации:
+- назначается дефолтная роль портала (CLIENT/INVESTOR/OP_MANAGER) если она отсутствует,
+- создаётся запись в `user_portals` со статусом `active`,
+- выполняется редирект на порталовый `/dashboard` или `next`-путь из query.
+
+#### 4. Домашние пути по ролям
 - `ADMIN` → `/admin/bpm`
 - `OP_MANAGER` → `/ops/dashboard`
 - `FINANCE` → `/ops/deals`
@@ -43,34 +60,32 @@ ADMIN > OP_MANAGER > FINANCE > SUPPORT > TECH_SPECIALIST > RISK_MANAGER > LEGAL 
 ### Различия между средами
 
 #### Development среда
-- **Селектор ролей видим** для быстрого тестирования
+- **Селектор ролей видим** для быстрого тестирования.
 - **Предустановленные email** для каждой роли:
-  - `client@fastlease.io`
-  - `investor@fastlease.io`
-  - `ops.manager@fastlease.io`
-  - `tech.specialist@fastlease.io`
-  - `admin@fastlease.io`
-- **Magic Link Bypass** - автоматическая аутентификация без реальных OTP
+  - `client@fastlease.ae`
+  - `investor@fastlease.ae`
+  - `opsmanager@fastlease.ae`
+  - `techspecialist@fastlease.ae`
+  - `admin@fastlease.ae`
+- **Пароли фиксированы** (`123456`) и могут вводиться вручную либо проксироваться через dev-инструменты.
 
 #### Production среда
-- **Селектор ролей скрыт**
-- **Реальные email/телефоны** пользователей
-- **Настоящие OTP коды** через email/SMS
+- **Селектор ролей скрыт** — пользователь вводит только email и пароль.
+- **Пароли управляются через Supabase Auth**: политика сложности/смены хранится на стороне Supabase.
+- **Сброс пароля** выполняется через `/login/forgot` → письмо Supabase → `/login/reset`.
 
-### Двухэтапный процесс
+### Процесс входа (`passwordSignInAction`)
+1. Пользователь попадает на `/login`, вводит email + пароль. `autoPortalSignInAction` вызывает `detectPortalAction` под капотом и определяет портал без участия пользователя.
+2. `passwordSignInAction` выполняет `supabase.auth.signInWithPassword`, назначает роли, обновляет `user_portals` и `profiles.last_login_at`.
+4. После успешного входа выполняется редирект на домашний маршрут портала или `next`.
+5. Все события фиксируются в `auth_login_events` (см. Observability).
 
-#### Этап 1: Запрос OTP (`requestOtpAction`)
-1. Пользователь выбирает роль (DEV) или вводит email/телефон (PROD)
-2. Система отправляет OTP код через Supabase Auth
-3. Поддержка email и SMS каналов
-4. В DEV среде возможен автоматический bypass
-
-#### Этап 2: Верификация OTP (`verifyOtpAction`)
-1. Пользователь вводит полученный код
-2. Supabase проверяет корректность кода
-3. Создается сессия пользователя
-4. Назначаются роли в базе данных
-5. Обновляется время последнего логина
+### Восстановление пароля
+1. Пользователь открывает `/login/forgot` и вводит email.
+2. `requestPasswordResetAction` вызывает `supabase.auth.resetPasswordForEmail` с `redirectTo = /auth/callback?next=/login/reset`.
+3. После перехода по ссылке Supabase устанавливает временную сессию и перенаправляет на `/login/reset`.
+4. `completePasswordResetAction` обновляет пароль (минимум 6 символов) и логирует событие.
+5. Пользователь возвращается на `/login` и входит с новым паролем.
 
 ## Защита роутов
 
@@ -119,7 +134,7 @@ interface ProfileRecord {
 4. **Автоматический logout** при истечении сессии
 
 ### Разделение ответственности:
-- **Supabase Auth** - управление сессиями и OTP
+- **Supabase Auth** - управление сессиями и email/password
 - **Proxy** - контроль доступа к роутам
 - **Компоненты** - UI и пользовательский опыт
 - **Server Actions** - бизнес-логика аутентификации
@@ -127,15 +142,14 @@ interface ProfileRecord {
 ## Разработка и тестирование
 
 ### Быстрое тестирование ролей:
-1. Выбрать роль из селектора в DEV среде
-2. Ввести соответствующий email
-3. Система автоматически создаст сессию
-4. Пользователь попадет в соответствующий дашборд
+1. Выбрать роль из селектора в DEV среде.
+2. Ввести соответствующий email и пароль `123456`.
+3. Убедиться, что редирект ведёт в нужный портал.
 
 ### Отладка:
-- Проверить консоль браузера на ошибки аутентификации
-- Изучить логи Supabase для проблем с OTP
-- Тестировать разные роли для проверки прав доступа
+- Проверить консоль браузера на ошибки аутентификации.
+- Изучить логи Supabase (`auth_login_events`, GoTrue logs) на предмет неудачных входов/блоков.
+- Тестировать разные роли для проверки прав доступа.
 
 ## Расширение системы
 

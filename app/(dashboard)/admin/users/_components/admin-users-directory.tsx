@@ -2,7 +2,15 @@
 
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Check, Plus, Search, Shield, UserCog } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  History,
+  Plus,
+  Search,
+  Shield,
+  UserCog,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +33,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -40,16 +49,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type {
   AdminAuditLogEntry,
   AdminUserRecord,
   AdminUserStatus,
 } from "@/lib/data/admin/users";
-import type { AppRole } from "@/lib/auth/types";
+import type { AppRole, PortalCode } from "@/lib/auth/types";
 import {
   APP_ROLE_CODES,
   APP_ROLE_LABELS,
 } from "@/lib/data/app-roles";
+import { PORTAL_CODES, PORTAL_DEFINITIONS, resolvePortalForRole } from "@/lib/auth/portals";
 
 type AdminUsersDirectoryProps = {
   initialUsers: AdminUserRecord[];
@@ -70,6 +85,7 @@ type ManageAccessState = {
   user: AdminUserRecord | null;
   status: AdminUserStatus;
   roles: Set<AppRole>;
+  portals: Map<PortalCode, boolean>;
   isSaving: boolean;
 };
 
@@ -164,6 +180,16 @@ const ROLES_MODE_SCOPE: AppRole[] = [
   "LEGAL",
   "ACCOUNTING",
 ];
+const PORTAL_LIST: PortalCode[] = PORTAL_CODES;
+
+function initializePortalState(user: AdminUserRecord | null): Map<PortalCode, boolean> {
+  const map = new Map<PortalCode, boolean>();
+  for (const portal of PORTAL_LIST) {
+    const summary = user?.portals?.find((entry) => entry.portal === portal);
+    map.set(portal, summary ? summary.status !== "inactive" : false);
+  }
+  return map;
+}
 
 export function AdminUsersDirectory({
   initialUsers,
@@ -195,6 +221,7 @@ export function AdminUsersDirectory({
     user: null,
     status: "active",
     roles: new Set(),
+    portals: new Map(),
     isSaving: false,
   });
   const [manageError, setManageError] = useState<string | null>(null);
@@ -272,6 +299,9 @@ export function AdminUsersDirectory({
         email: createForm.email,
         role: createForm.role,
         roles: [createForm.role],
+        roleAssignments: [{ role: createForm.role, portal: resolvePortalForRole(createForm.role) }],
+        portals: [],
+        loginEvents: [],
         status: createForm.sendInvite ? "pending" : "active",
         lastLogin: "",
         lastLoginAt: createForm.sendInvite ? null : new Date().toISOString(),
@@ -297,6 +327,7 @@ export function AdminUsersDirectory({
       user,
       status: user.status,
       roles: new Set(user.roles),
+      portals: initializePortalState(user),
       isSaving: false,
     });
     setManageError(null);
@@ -315,6 +346,17 @@ export function AdminUsersDirectory({
     setManageError(null);
   }
 
+  function updatePortalAccess(portal: PortalCode, enabled: boolean) {
+    setManageState((prev) => {
+      const nextPortals = new Map(prev.portals);
+      nextPortals.set(portal, enabled);
+      return {
+        ...prev,
+        portals: nextPortals,
+      };
+    });
+  }
+
   async function handleManageSave() {
     const targetUser = manageState.user;
     if (!targetUser) return;
@@ -330,6 +372,13 @@ export function AdminUsersDirectory({
     setManageError(null);
 
     try {
+      const portalUpdates = Array.from(manageState.portals.entries()).map(
+        ([portal, enabled]) => ({
+          portal,
+          status: enabled ? "active" : "inactive",
+        }),
+      );
+
       const response = await fetch("/api/admin/users/access", {
         method: "POST",
         headers: {
@@ -339,6 +388,7 @@ export function AdminUsersDirectory({
           userId: targetUser.id,
           status: nextStatus,
           roles: Array.from(nextRolesSet),
+          portals: portalUpdates,
         }),
       });
 
@@ -346,6 +396,7 @@ export function AdminUsersDirectory({
         ok?: boolean;
         roles?: AppRole[];
         status?: AdminUserStatus;
+        portals?: { portal: PortalCode; status: string; last_access_at?: string | null }[];
         error?: string;
       };
 
@@ -358,9 +409,28 @@ export function AdminUsersDirectory({
       setUsers((prev) =>
         prev.map((user) => {
           if (user.id !== targetUser.id) return user;
+          const updatedPortals =
+            payload.portals?.map((portal) => ({
+              portal: portal.portal,
+              status: portal.status,
+              lastAccessAt: portal.last_access_at ?? null,
+            })) ??
+            portalUpdates.map((portal) => ({
+              portal: portal.portal,
+              status: portal.status,
+              lastAccessAt:
+                user.portals?.find((summary) => summary.portal === portal.portal)
+                  ?.lastAccessAt ?? null,
+            }));
+
           return {
             ...user,
             roles: persistedRoles,
+             roleAssignments: persistedRoles.map((role) => ({
+               role,
+               portal: resolvePortalForRole(role),
+             })),
+             portals: updatedPortals,
             status: payload.status ?? nextStatus,
           };
         }),
@@ -380,6 +450,7 @@ export function AdminUsersDirectory({
         user: null,
         status: "active",
         roles: new Set(),
+        portals: new Map(),
         isSaving: false,
       });
       setManageError(null);
@@ -463,7 +534,7 @@ export function AdminUsersDirectory({
                         onChange={(event) =>
                           setCreateForm((prev) => ({ ...prev, email: event.target.value.trim() }))
                         }
-                        placeholder="user@fastlease.io"
+                        placeholder="user@fastlease.ae"
                         required
                         className="rounded-xl"
                       />
@@ -593,6 +664,7 @@ export function AdminUsersDirectory({
               <TableRow>
                 <TableHead>{isRolesMode ? "Member" : "Employee"}</TableHead>
                 <TableHead>Roles</TableHead>
+                <TableHead>Portals</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last login</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -619,6 +691,23 @@ export function AdminUsersDirectory({
                       </div>
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-wrap gap-2 py-1">
+                        {PORTAL_LIST.map((portal) => {
+                          const summary = user.portals?.find((entry) => entry.portal === portal);
+                          const enabled = summary ? summary.status !== "inactive" : false;
+                          return (
+                            <Badge
+                              key={`${user.id}-${portal}`}
+                              variant={enabled ? "secondary" : "outline"}
+                              className="rounded-xl px-3 py-1 text-xs"
+                            >
+                              {PORTAL_DEFINITIONS[portal].label}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div className="space-y-1">
                         <Badge
                           variant={statusMeta.badgeVariant}
@@ -635,6 +724,44 @@ export function AdminUsersDirectory({
                         <p className="text-xs text-muted-foreground">
                           Invited {formatDateTime(user.invitationSentAt)}
                         </p>
+                      ) : null}
+                      {user.loginEvents && user.loginEvents.length > 0 ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 h-7 rounded-lg px-2 py-1 text-xs"
+                            >
+                              <History className="mr-1 h-3.5 w-3.5" />
+                              View history
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 rounded-2xl border border-border bg-card/90 shadow-xl">
+                            <div className="space-y-2">
+                              {user.loginEvents.slice(0, 5).map((event, index) => (
+                                <div
+                                  key={`${user.id}-login-${index}`}
+                                  className="rounded-xl border border-border/60 px-3 py-2 text-sm"
+                                >
+                                  <p className="font-medium">
+                                    {PORTAL_DEFINITIONS[event.portal].label}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {event.status === "success" ? "Success" : "Failure"}
+                                    {" · "}
+                                    {formatDateTime(event.occurredAt)}
+                                  </p>
+                                  {event.errorCode ? (
+                                    <p className="text-xs text-red-500">
+                                      Error: {event.errorCode}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       ) : null}
                     </TableCell>
                     <TableCell className="text-right">
@@ -653,7 +780,7 @@ export function AdminUsersDirectory({
               })}
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={6}>
                     <div className="flex flex-col items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">
                       <Shield className="h-10 w-10 text-muted-foreground/40" />
                       <p>No users found for the current filters.</p>
@@ -711,6 +838,7 @@ export function AdminUsersDirectory({
               user: null,
               status: "active",
               roles: new Set(),
+              portals: new Map(),
               isSaving: false,
             };
           })
@@ -787,6 +915,37 @@ export function AdminUsersDirectory({
                   })}
                 </div>
               </div>
+              <div className="space-y-3">
+                <Label>Portal access</Label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {PORTAL_LIST.map((portal) => {
+                    const definition = PORTAL_DEFINITIONS[portal];
+                    const enabled = manageState.portals.get(portal) ?? false;
+                    return (
+                      <div
+                        key={`portal-${portal}`}
+                        className="flex items-center justify-between rounded-2xl border border-border bg-card/60 px-4 py-3"
+                      >
+                        <div className="pr-4">
+                          <p className="text-sm font-medium text-foreground">
+                            {definition.label}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {definition.description}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={enabled}
+                          onCheckedChange={(checked) =>
+                            updatePortalAccess(portal, Boolean(checked))
+                          }
+                          aria-label={`Toggle ${definition.label}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           ) : null}
           <DialogFooter className="pt-2">
@@ -800,6 +959,7 @@ export function AdminUsersDirectory({
                   user: null,
                   status: "active",
                   roles: new Set(),
+                  portals: new Map(),
                   isSaving: false,
                 })
               }

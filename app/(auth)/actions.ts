@@ -1,43 +1,42 @@
 "use server";
 
-import { type AuthActionState } from "./action-state";
 import {
-  normalizeRoleCode,
+  type AuthActionState,
+  type DetectPortalState,
+  INITIAL_DETECT_PORTAL_STATE,
+} from "./action-state";
+import { redirect } from "next/navigation";
+import {
   resolveHomePath,
   validateRolePath,
 } from "@/lib/auth/roles";
-import { getSessionUser } from "@/lib/auth/session";
-import type { AppRole } from "@/lib/auth/types";
+import { logAuthEvent } from "@/lib/auth/logging";
+import {
+  normalizePortalCode,
+  resolveDefaultRoleForPortal,
+  resolvePortalForRole,
+  resolvePortalHomePath,
+} from "@/lib/auth/portals";
 import {
   ensureDefaultProfileAndRole,
+  ensurePortalAccess,
   ensureRoleAssignment,
 } from "@/lib/auth/role-management";
+import { getSessionUser } from "@/lib/auth/session";
+import type { AppRole, PortalCode } from "@/lib/auth/types";
 import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
-import type { User } from "@supabase/supabase-js";
-
-type Identity =
-  | { type: "email"; value: string }
-  | { type: "phone"; value: string };
-
-const QUICK_LOGIN_PASSWORD =
-  process.env.AUTH_QUICK_LOGIN_PASSWORD ??
-  process.env.QUICK_LOGIN_PASSWORD ??
-  "fastlease";
+import { normalizeRoleCode } from "@/lib/auth/roles";
 
 function normalizeEmail(value: FormDataEntryValue | null): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
 }
 
 function normalizeString(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value.trim() : "";
-}
-
-function sanitizePhone(value: FormDataEntryValue | null): string {
-  if (typeof value !== "string") return "";
-  return value.replace(/[^\d+]/g, "");
 }
 
 function formatAuthErrorMessage(error: unknown): string {
@@ -60,185 +59,203 @@ function formatAuthErrorMessage(error: unknown): string {
   return "Не удалось выполнить запрос. Попробуйте позже.";
 }
 
-function resolveIdentity(
-  value: FormDataEntryValue | null,
-): Identity | null {
-  const normalized = normalizeString(value);
-  if (!normalized) return null;
-
-  if (normalized.includes("@")) {
-    const email = normalizeEmail(normalized);
-    if (!email) return null;
-    return { type: "email", value: email };
+function normalizeNextPath(value: FormDataEntryValue | null): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("/")) {
+    return null;
   }
 
-  const sanitized = sanitizePhone(normalized);
-  if (!sanitized) return null;
-  const phone = sanitized.startsWith("+") ? sanitized : `+${sanitized}`;
-  if (phone.length < 6) return null;
-  return { type: "phone", value: phone };
-}
-
-async function ensureUserWithQuickPassword(
-  service: Awaited<ReturnType<typeof createSupabaseServiceClient>>,
-  email: string,
-  password: string,
-): Promise<User> {
-  const normalizedEmail = email.toLowerCase();
-
-  // Ищем существующего пользователя через Admin API
-  let existingUser: User | undefined;
   try {
-    const { data: listData } = await service.auth.admin.listUsers({
-      page: 1,
-      perPage: 50,
-    });
-    existingUser = listData?.users?.find(
-      (u) => u.email?.toLowerCase() === normalizedEmail,
-    );
+    const url = new URL(trimmed, "https://example.com");
+    return url.pathname + url.search + url.hash;
   } catch {
-    // Если не удалось получить список, продолжаем с попыткой создания пользователя
-    existingUser = undefined;
+    return null;
   }
-
-  if (existingUser) {
-    // Обновляем существующего пользователя
-    const { data: updatedData, error: updateError } =
-      await service.auth.admin.updateUserById(existingUser.id, {
-        email_confirm: true,
-        password,
-      });
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    return updatedData?.user ?? existingUser;
-  }
-
-  // Создаем нового пользователя
-  const { data: createdData, error: createError } =
-    await service.auth.admin.createUser({
-      email: normalizedEmail,
-      email_confirm: true,
-      password,
-    });
-
-  if (createError) {
-    // Если пользователь уже существует, продолжим без ошибки
-    const message = typeof createError?.message === "string" ? createError.message.toLowerCase() : "";
-    if (createError.status === 409 || message.includes("already") || message.includes("exists")) {
-      // Возвращаем заглушку; фактически она не будет использоваться далее
-      return { id: "00000000-0000-0000-0000-000000000000" } as unknown as User;
-    }
-    throw createError;
-  }
-
-  if (!createdData?.user) {
-    throw new Error("createUser did not return user");
-  }
-
-  return createdData.user;
 }
 
-async function quickPasswordSignIn(
-  identity: Identity & { type: "email" },
-  preferredRole: AppRole | null,
-): Promise<AuthActionState> {
-  const password = QUICK_LOGIN_PASSWORD;
+const PORTAL_PRIORITY: PortalCode[] = ["client", "investor", "partner", "app"];
+const DEFAULT_SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.NEXT_PUBLIC_VERCEL_URL ??
+  "http://localhost:3000";
 
-  const service = await createSupabaseServiceClient();
-  const supabase = await createSupabaseServerClient();
+function selectPreferredPortal(portals: PortalCode[]): PortalCode {
+  if (!portals.length) {
+    return "client";
+  }
+
+  for (const candidate of PORTAL_PRIORITY) {
+    if (portals.includes(candidate)) {
+      return candidate;
+    }
+  }
+
+  return portals[0];
+}
+
+function heuristicPortalsForEmail(email: string): PortalCode[] {
+  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  if (domain.endsWith("fastlease.ae")) {
+    return ["app"];
+  }
+
+  if (domain.includes("investor")) {
+    return ["investor"];
+  }
+
+  return ["client"];
+}
+
+function inferPortalForEmail(email: string): PortalCode {
+  const candidates = heuristicPortalsForEmail(email);
+  return candidates[0] ?? "client";
+}
+
+async function collectCandidatePortals(identity: string): Promise<PortalCode[]> {
+  const candidatePortals = new Set<PortalCode>();
+
+  let serviceClient: Awaited<ReturnType<typeof createSupabaseServiceClient>> | null =
+    null;
 
   try {
-    await ensureUserWithQuickPassword(service, identity.value, password);
+    serviceClient = await createSupabaseServiceClient();
   } catch (error) {
-    return {
-      status: "error",
-      message: formatAuthErrorMessage(error),
-      errorCode: "quick_login_user_setup_failed",
-    };
+    console.warn("[auth] Service client unavailable for portal detection", error);
   }
 
-  const { data: signInData, error: signInError } =
-    await supabase.auth.signInWithPassword({
-      email: identity.value,
-      password,
-    });
+  if (serviceClient) {
+    try {
+      // Supabase Admin API supports filtering listUsers by email even though the
+      // TS definition only exposes pagination fields, so we assert here.
+      const listUsersParams = {
+        page: 1,
+        perPage: 1,
+        email: identity,
+      } as Parameters<typeof serviceClient.auth.admin.listUsers>[0];
 
-  if (signInError || !signInData.session || !signInData.user) {
-    return {
-      status: "error",
-      message: formatAuthErrorMessage(signInError ?? "Не удалось создать сессию."),
-      errorCode: "quick_login_sign_in_failed",
-    };
+      const { data, error } = await serviceClient.auth.admin.listUsers(
+        listUsersParams,
+      );
+
+      if (error) {
+        console.warn("[auth] listUsers failed during portal detection", error);
+      }
+
+      const match = data?.users?.[0];
+
+      if (match) {
+        const userId = match.id;
+
+        const { data: portalRows } = await serviceClient
+          .from("user_portals")
+          .select("portal, status")
+          .eq("user_id", userId);
+
+        for (const row of portalRows ?? []) {
+          const portal = normalizePortalCode((row as { portal: unknown }).portal);
+          if (portal && row?.status !== "inactive") {
+            candidatePortals.add(portal);
+          }
+        }
+
+        if (!candidatePortals.size) {
+          const { data: roleRows } = await serviceClient
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId);
+
+          for (const row of roleRows ?? []) {
+            const role = normalizeRoleCode((row as { role: unknown }).role);
+            if (role) {
+              candidatePortals.add(resolvePortalForRole(role));
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("[auth] collectCandidatePortals failed", error);
+    }
   }
 
-  const userId = signInData.user.id;
+  if (!candidatePortals.size) {
+    heuristicPortalsForEmail(identity).forEach((portal) =>
+      candidatePortals.add(portal),
+    );
+  }
 
-  await ensureDefaultProfileAndRole(supabase, userId);
-  await ensureRoleAssignment(userId, preferredRole);
+  return Array.from(candidatePortals);
+}
 
+async function detectPortalForIdentity(identity: string) {
+  const suggestions = await collectCandidatePortals(identity);
+  if (!suggestions.length) {
+    suggestions.push("client");
+  }
+
+  const portal = selectPreferredPortal(suggestions);
+  const autoRedirect = suggestions.length === 1 && Boolean(portal);
+
+  return {
+    portal,
+    suggestions,
+    autoRedirect,
+  };
+}
+
+function resolveSiteUrl(path: string): string {
+  try {
+    const url = new URL(path, DEFAULT_SITE_URL);
+    return url.toString();
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+}
+
+async function resolveRedirectPath(
+  portal: PortalCode,
+  preferredRole: AppRole | null,
+  nextPath: string | null,
+) {
+  if (nextPath) {
+    return nextPath;
+  }
+
+  if (preferredRole) {
+    return validateRolePath(preferredRole);
+  }
+
+  const sessionUser = await getSessionUser();
+  const roles = sessionUser?.roles ?? [];
+  if (roles.length > 0) {
+    return resolveHomePath(roles, resolvePortalHomePath(portal));
+  }
+
+  return resolvePortalHomePath(portal);
+}
+
+async function touchLastLogin(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  userId: string,
+) {
   await supabase
     .from("profiles")
     .update({ last_login_at: new Date().toISOString() })
     .eq("user_id", userId);
-
-  const { redirectPath } = await resolveRedirectPathWithPreferredRole(
-    preferredRole,
-  );
-
-  return {
-    status: "success",
-    redirectPath,
-  };
 }
 
-function normalizeRole(value: FormDataEntryValue | null): AppRole | null {
-  if (typeof value !== "string") return null;
-  return normalizeRoleCode(value);
-}
-
-async function resolveRedirectPathWithPreferredRole(
-  preferredRole: AppRole | null,
-) {
-  const sessionUser = await getSessionUser();
-  const roles = sessionUser?.roles ?? [];
-
-  // Если пользователь выбрал конкретную роль, всегда перенаправляем в соответствующий кабинет
-  if (preferredRole) {
-    return {
-      redirectPath: validateRolePath(preferredRole),
-      roles,
-    };
-  }
-
-  // Если у пользователя есть роли, используем основную роль
-  if (roles.length > 0) {
-    return {
-      redirectPath: resolveHomePath(roles, "/"),
-      roles,
-    };
-  }
-
-  // Если нет ролей и не выбрана конкретная роль, перенаправляем на главную
-  return {
-    redirectPath: "/",
-    roles,
-  };
-}
-
-
-export async function requestOtpAction(
+export async function passwordSignInAction(
   _prevState: AuthActionState | undefined,
   formData: FormData,
 ): Promise<AuthActionState> {
   void _prevState;
 
-  const identity = resolveIdentity(formData.get("identity"));
-  const preferredRole = normalizeRole(formData.get("targetRole"));
-  if (!identity || identity.type !== "email") {
-    console.log("[LOGIN ERROR] Неверный email адрес", { identity: formData.get("identity") });
+  const email = normalizeEmail(formData.get("identity"));
+  const password = normalizeString(formData.get("password"));
+  const portal = normalizePortalCode(formData.get("portal"));
+  const nextPath = normalizeNextPath(formData.get("next"));
+
+  if (!email) {
     return {
       status: "error",
       message: "Введите корректный email адрес для входа.",
@@ -246,98 +263,102 @@ export async function requestOtpAction(
     };
   }
 
-  console.log("[LOGIN] Запуск быстрого входа по паролю", { email: identity.value, role: preferredRole });
-  try {
-    const result = await quickPasswordSignIn(identity, preferredRole);
-    if (result.status === "success") {
-      console.log("[LOGIN SUCCESS] Успешный вход", { email: identity.value, role: preferredRole, redirectPath: result.redirectPath });
-    } else {
-      console.log("[LOGIN ERROR] Ошибка аутентификации", { email: identity.value, role: preferredRole, errorCode: result.errorCode, message: result.message });
-    }
-    return result;
-  } catch (error) {
-    console.error("[LOGIN ERROR] Неожиданная ошибка в requestOtpAction", error);
+  if (!password) {
     return {
       status: "error",
-      message: "Произошла неожиданная ошибка при входе.",
-      errorCode: "unexpected_error",
+      message: "Введите пароль.",
+      errorCode: "invalid_password",
     };
   }
-}
 
-export async function verifyOtpAction(
-  _prevState: AuthActionState | undefined,
-  formData: FormData,
-): Promise<AuthActionState> {
-  void _prevState;
-
-  const identity = resolveIdentity(formData.get("identity"));
-  const token = normalizeString(formData.get("token"));
-  const preferredRole = normalizeRole(formData.get("targetRole"));
-
-  if (!identity || !token) {
+  if (!portal) {
     return {
       status: "error",
-      message: "Введите код подтверждения и реквизиты.",
-      errorCode: "missing_otp",
+      message: "Не удалось определить аудиторию входа.",
+      errorCode: "invalid_portal",
     };
   }
 
   const supabase = await createSupabaseServerClient();
 
-  const verifyPayload =
-    identity.type === "email"
-      ? { email: identity.value, token, type: "email" as const }
-      : { phone: identity.value, token, type: "sms" as const };
-
-  const { error } = await supabase.auth.verifyOtp(verifyPayload);
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
+    await logAuthEvent({
+      portal,
+      identity: email,
+      status: "failure",
+      errorCode: "password_signin_failed",
+      metadata: { message: error.message },
+    });
+
     return {
       status: "error",
       message: formatAuthErrorMessage(error),
-      errorCode: "otp_verify_failed",
+      errorCode: "password_signin_failed",
     };
   }
 
-  // Используем getUser() вместо getSession() для безопасности
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const user = data.user;
+  if (!user) {
+    await logAuthEvent({
+      portal,
+      identity: email,
+      status: "failure",
+      errorCode: "missing_user",
+    });
 
-  if (userError || !userData.user) {
     return {
       status: "error",
-      message: "Supabase не вернул пользователя после проверки кода.",
+      message: "Supabase не вернул пользователя после входа.",
       errorCode: "missing_user",
     };
   }
 
-  await ensureDefaultProfileAndRole(supabase, userData.user.id);
-  await ensureRoleAssignment(userData.user.id, preferredRole);
+  const userId = user.id;
 
-  await supabase
-    .from("profiles")
-    .update({ last_login_at: new Date().toISOString() })
-    .eq("user_id", userData.user.id);
+  await ensureDefaultProfileAndRole(supabase, userId);
 
-  // Проверяем сессию ПЕРЕД вызовом resolveRedirectPathWithPreferredRole
-  const { data: sessionCheck } = await supabase.auth.getSession();
-  console.log("[DEBUG] sessionCheck before redirect:", {
-    hasSession: !!sessionCheck.session,
-    userId: sessionCheck.session?.user?.id
-  });
+  const portalDefaultRole = resolveDefaultRoleForPortal(portal);
+  if (portalDefaultRole) {
+    await ensureRoleAssignment(userId, portalDefaultRole);
+  } else {
+    await ensureRoleAssignment(userId, null);
+  }
 
-  if (!sessionCheck.session) {
-    console.error("[ERROR] Session lost after authentication!");
+  await ensurePortalAccess(userId, portal);
+  await touchLastLogin(supabase, userId);
+
+  const activeSession = data.session ?? (await supabase.auth.getSession()).data.session;
+  if (!activeSession) {
     return {
       status: "error",
-      message: "Сессия потеряна после аутентификации",
+      message: "Сессия потеряна после аутентификации.",
       errorCode: "session_lost",
     };
   }
 
-  const { redirectPath } = await resolveRedirectPathWithPreferredRole(
-    preferredRole,
+  const sessionUser = await getSessionUser();
+  const roles = sessionUser?.roles ?? [];
+  const redirectPath = await resolveRedirectPath(
+    portal,
+    null,
+    nextPath,
   );
+
+  await logAuthEvent({
+    portal,
+    identity: email,
+    status: "success",
+    userId,
+    roles,
+    metadata: {
+      redirectPath,
+    },
+  });
 
   return {
     status: "success",
@@ -355,4 +376,231 @@ export async function signOutAction() {
   if (error) {
     console.error("[auth] signOut failed", error);
   }
+
+  redirect("/login");
+}
+
+export async function detectPortalAction(
+  _prevState: DetectPortalState | undefined,
+  formData: FormData,
+): Promise<DetectPortalState> {
+  void _prevState;
+
+  const identity = normalizeEmail(formData.get("identity"));
+  if (!identity) {
+    return {
+      status: "error",
+      message: "Введите корректный email.",
+    };
+  }
+
+  const detection = await detectPortalForIdentity(identity);
+
+  return {
+    status: "success",
+    portal: detection.portal,
+    suggestions: detection.suggestions,
+    identity,
+    autoRedirect: detection.autoRedirect,
+  };
+}
+
+export async function autoPortalSignInAction(
+  _prevState: AuthActionState | undefined,
+  formData: FormData,
+): Promise<AuthActionState> {
+  void _prevState;
+
+  const email = normalizeEmail(formData.get("identity"));
+  const password = normalizeString(formData.get("password"));
+  const nextPath = normalizeNextPath(formData.get("next"));
+
+  if (!email) {
+    return {
+      status: "error",
+      message: "Введите корректный email адрес для входа.",
+      errorCode: "invalid_identity",
+    };
+  }
+
+  if (!password) {
+    return {
+      status: "error",
+      message: "Введите пароль.",
+      errorCode: "invalid_password",
+    };
+  }
+
+  const detection = await detectPortalForIdentity(email);
+  const portal = detection.portal;
+
+  const passwordForm = new FormData();
+  passwordForm.set("identity", email);
+  passwordForm.set("password", password);
+  passwordForm.set("portal", portal);
+  if (nextPath) {
+    passwordForm.set("next", nextPath);
+  }
+
+  const result = await passwordSignInAction(undefined, passwordForm);
+  const context = {
+    identity: email,
+    portal,
+  };
+
+  if (result.status === "success") {
+    const informativeMessage =
+      detection.suggestions.length > 1
+        ? "Email связан с несколькими кабинетами — мы автоматически выбрали подходящий кабинет."
+        : result.message;
+
+    return {
+      ...result,
+      message: informativeMessage,
+      context,
+    };
+  }
+
+  return {
+    ...result,
+    context: {
+      ...(result.context ?? {}),
+      ...context,
+    },
+  };
+}
+
+export async function requestPasswordResetAction(
+  _prevState: AuthActionState | undefined,
+  formData: FormData,
+): Promise<AuthActionState> {
+  void _prevState;
+
+  const email = normalizeEmail(formData.get("identity"));
+  if (!email) {
+    return {
+      status: "error",
+      message: "Введите email, чтобы восстановить доступ.",
+      errorCode: "invalid_identity",
+    };
+  }
+
+  const portal = inferPortalForEmail(email);
+  const supabase = await createSupabaseServerClient();
+  const redirectTo = resolveSiteUrl("/auth/callback?next=/login/reset");
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) {
+    await logAuthEvent({
+      portal,
+      identity: email,
+      status: "failure",
+      errorCode: "password_reset_request_failed",
+      metadata: { message: error.message },
+    });
+
+    return {
+      status: "error",
+      message: formatAuthErrorMessage(error),
+      errorCode: "password_reset_request_failed",
+    };
+  }
+
+  await logAuthEvent({
+    portal,
+    identity: email,
+    status: "success",
+    metadata: {
+      action: "password_reset_requested",
+    },
+  });
+
+  return {
+    status: "success",
+    message: "Мы отправили письмо с инструкциями по восстановлению пароля.",
+  };
+}
+
+export async function completePasswordResetAction(
+  _prevState: AuthActionState | undefined,
+  formData: FormData,
+): Promise<AuthActionState> {
+  void _prevState;
+
+  const password = normalizeString(formData.get("password"));
+  const confirm = normalizeString(formData.get("confirm"));
+  const nextPath = normalizeNextPath(formData.get("next")) ?? "/login";
+
+  if (!password || password.length < 6) {
+    return {
+      status: "error",
+      message: "Пароль должен содержать минимум 6 символов.",
+      errorCode: "invalid_password",
+    };
+  }
+
+  if (password !== confirm) {
+    return {
+      status: "error",
+      message: "Пароли не совпадают. Попробуйте ещё раз.",
+      errorCode: "password_mismatch",
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const userEmail = userData.user?.email ?? undefined;
+
+  if (!userData.user?.id) {
+    return {
+      status: "error",
+      message: "Сессия не найдена. Запросите ссылку на восстановление ещё раз.",
+      errorCode: "missing_user",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password,
+  });
+
+  const portal = userEmail ? inferPortalForEmail(userEmail) : "client";
+
+  if (error) {
+    await logAuthEvent({
+      portal,
+      identity: userEmail ?? "unknown",
+      status: "failure",
+      errorCode: "password_reset_failed",
+      userId: userData.user.id,
+      metadata: { message: error.message },
+    });
+
+    return {
+      status: "error",
+      message: formatAuthErrorMessage(error),
+      errorCode: "password_reset_failed",
+    };
+  }
+
+  await logAuthEvent({
+    portal,
+    identity: userEmail ?? "unknown",
+    status: "success",
+    userId: userData.user.id,
+    metadata: {
+      action: "password_reset_completed",
+    },
+  });
+
+  return {
+    status: "success",
+    message: "Пароль обновлён. Теперь войдите с новыми данными.",
+    redirectPath: nextPath,
+    context: {
+      identity: userEmail,
+    },
+  };
 }

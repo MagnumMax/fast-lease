@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { getSessionUser } from "@/lib/auth/session";
+import { requirePortalSession } from "@/lib/auth/portal-session";
 import { investorNav } from "@/lib/navigation";
 import { filterNavItemsForRoles } from "@/lib/navigation/access";
 
@@ -11,11 +10,7 @@ export default async function InvestorLayout({
 }: {
   children: ReactNode;
 }) {
-  const sessionUser = await getSessionUser();
-
-  if (!sessionUser) {
-    redirect("/login?next=/investor/dashboard");
-  }
+  const sessionUser = await requirePortalSession("investor", "/investor/dashboard");
 
   const profileFullName = sessionUser.profile?.full_name ?? null;
   const metadataFullName =

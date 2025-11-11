@@ -1,4 +1,7 @@
-import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceClient,
+} from "@/lib/supabase/server";
 
 import {
   ADMIN_AUDIT_LOG_FALLBACK,
@@ -6,6 +9,9 @@ import {
   type AdminAuditLogEntry,
   type AdminUserRecord,
   type AdminUserStatus,
+  type LoginEventSummary,
+  type PortalAccessSummary,
+  type RoleAssignmentRecord,
 } from "@/lib/data/admin/users";
 import {
   ADMIN_PROCESSES_FALLBACK,
@@ -19,7 +25,8 @@ import {
   type AdminIntegrationLogEntry,
   type AdminIntegrationRecord,
 } from "@/lib/data/admin/integrations";
-import type { AppRole } from "@/lib/auth/types";
+import type { AppRole, PortalCode } from "@/lib/auth/types";
+import { resolvePortalForRole } from "@/lib/auth/portals";
 
 type ProfileRow = {
   id: string;
@@ -34,8 +41,8 @@ type ProfileRow = {
 type UserRoleRow = {
   user_id: string;
   role: AppRole;
+  portal: PortalCode | null;
   assigned_at: string;
-  metadata: Record<string, unknown> | null;
 };
 
 type AuthUserRow = {
@@ -43,6 +50,30 @@ type AuthUserRow = {
   email: string | null;
   user_metadata: Record<string, unknown> | null;
   last_sign_in_at: string | null;
+  created_at: string;
+};
+
+type PortalRow = {
+  user_id: string;
+  portal: PortalCode;
+  status: string;
+  last_access_at: string | null;
+};
+
+type LoginEventRow = {
+  user_id: string | null;
+  portal: PortalCode | null;
+  status: "success" | "failure";
+  occurred_at: string;
+  error_code: string | null;
+};
+
+type PortalAuditRow = {
+  id: string;
+  actor_user_id: string | null;
+  target_user_id: string | null;
+  action: string;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -59,15 +90,22 @@ function createUserRecord(
   profile: ProfileRow,
   authUser: AuthUserRow | null,
   roles: UserRoleRow[],
+  portals: PortalAccessSummary[],
+  loginEvents: LoginEventSummary[],
 ): AdminUserRecord {
   const primaryEmail =
     authUser?.email ??
     (typeof profile.metadata?.email === "string" ? (profile.metadata.email as string) : "");
 
   const roleSet = new Set<AppRole>();
+  const roleAssignments: RoleAssignmentRecord[] = [];
   for (const roleEntry of roles) {
     if (roleEntry.role) {
       roleSet.add(roleEntry.role);
+      roleAssignments.push({
+        role: roleEntry.role,
+        portal: roleEntry.portal ?? resolvePortalForRole(roleEntry.role),
+      });
     }
   }
 
@@ -84,6 +122,9 @@ function createUserRecord(
     email: primaryEmail ?? "—",
     role: Array.from(roleSet)[0] ?? "CLIENT",
     roles: Array.from(roleSet),
+    roleAssignments,
+    portals,
+    loginEvents,
     status: normaliseStatus(profile.status),
     lastLogin: profile.last_login_at ?? authUser?.last_sign_in_at ?? "—",
     lastLoginAt: profile.last_login_at ?? authUser?.last_sign_in_at ?? null,
@@ -108,8 +149,8 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
         .order("full_name", { ascending: true })
         .returns<ProfileRow[]>(),
       supabase
-        .from("user_roles")
-        .select("user_id, role, assigned_at, metadata")
+        .from("view_portal_roles")
+        .select("user_id, role, portal, assigned_at")
         .order("assigned_at", { ascending: true })
         .returns<UserRoleRow[]>(),
     ]);
@@ -126,6 +167,44 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
 
     const profiles = profilesResult.data ?? [];
     const roles = rolesResult.data ?? [];
+    const profileIds = profiles.map((profile) => profile.user_id);
+
+    const [portalsResult, loginEventsResult, adminAuditResult] = await Promise.all([
+      profileIds.length
+        ? supabase
+            .from("user_portals")
+            .select("user_id, portal, status, last_access_at")
+            .in("user_id", profileIds)
+            .returns<PortalRow[]>()
+        : Promise.resolve({ data: [] as PortalRow[], error: null }),
+      profileIds.length
+        ? supabase
+            .from("auth_login_events")
+            .select("user_id, portal, status, occurred_at, error_code")
+            .in("user_id", profileIds)
+            .order("occurred_at", { ascending: false })
+            .limit(Math.max(profileIds.length * 5, 200))
+            .returns<LoginEventRow[]>()
+        : Promise.resolve({ data: [] as LoginEventRow[], error: null }),
+      supabase
+        .from("admin_portal_audit")
+        .select("id, actor_user_id, target_user_id, action, metadata, created_at")
+        .order("created_at", { ascending: false })
+        .limit(200)
+        .returns<PortalAuditRow[]>(),
+    ]);
+
+    if (portalsResult.error) {
+      console.warn("[admin] Failed to load portal assignments", portalsResult.error);
+    }
+
+    if (loginEventsResult.error) {
+      console.warn("[admin] Failed to load login events", loginEventsResult.error);
+    }
+
+    if (adminAuditResult.error) {
+      console.warn("[admin] Failed to load admin portal audit log", adminAuditResult.error);
+    }
 
     let authUsers: AuthUserRow[] = [];
 
@@ -181,13 +260,59 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
       return acc;
     }, {});
 
+    const portalMap = (portalsResult.data ?? []).reduce<
+      Record<string, PortalAccessSummary[]>
+    >((acc, row) => {
+      if (!acc[row.user_id]) {
+        acc[row.user_id] = [];
+      }
+      acc[row.user_id].push({
+        portal: row.portal,
+        status: row.status,
+        lastAccessAt: row.last_access_at,
+      });
+      return acc;
+    }, {});
+
+    const loginMap = new Map<string, LoginEventSummary[]>();
+    for (const event of loginEventsResult.data ?? []) {
+      if (!event.user_id || !event.portal) continue;
+      const existing = loginMap.get(event.user_id) ?? [];
+      if (existing.length >= 5) continue;
+      existing.push({
+        portal: event.portal,
+        status: event.status,
+        occurredAt: event.occurred_at,
+        errorCode: event.error_code,
+      });
+      loginMap.set(event.user_id, existing);
+    }
+
     const enrichedUsers = profiles.map((profile) => {
       const roleEntries = roleMap[profile.user_id] ?? [];
       const authUser = authUserMap[profile.user_id] ?? null;
-      return createUserRecord(profile, authUser, roleEntries);
+      const portalSummaries = portalMap[profile.user_id] ?? [];
+      const loginEvents = loginMap.get(profile.user_id) ?? [];
+      return createUserRecord(
+        profile,
+        authUser,
+        roleEntries,
+        portalSummaries,
+        loginEvents,
+      );
     });
 
-    const auditLog = ADMIN_AUDIT_LOG_FALLBACK;
+    const auditLog =
+      adminAuditResult.data?.map<AdminAuditLogEntry>((entry) => ({
+        id: entry.id,
+        userId: entry.target_user_id ?? "unknown",
+        actor: entry.actor_user_id ?? "system",
+        target: entry.target_user_id ?? "unknown",
+        action: entry.action,
+        timestamp: entry.created_at,
+        occurredAt: entry.created_at,
+        details: JSON.stringify(entry.metadata ?? {}),
+      })) ?? ADMIN_AUDIT_LOG_FALLBACK;
 
     if (!enrichedUsers.length) {
       return {

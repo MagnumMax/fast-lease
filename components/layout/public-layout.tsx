@@ -59,7 +59,7 @@ export function PublicLayout({
             </nav>
             <ThemeToggle />
             <Button asChild variant="brand">
-              <Link href="/login">Sign in</Link>
+              <Link href="/">Sign in</Link>
             </Button>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { MoonStar, Sun, SunMoon } from "lucide-react";
 import { useTheme } from "next-themes";
 import * as React from "react";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type ThemeOption = "light" | "dark" | "system";
 const themeOrder: ThemeOption[] = ["light", "dark", "system"];
@@ -22,9 +22,9 @@ export function ThemeToggle() {
     : "system";
 
   const titleMap: Record<ThemeOption, string> = {
-    light: "Светлая",
-    dark: "Тёмная",
-    system: "Системная",
+    light: "Light",
+    dark: "Dark",
+    system: "System",
   };
 
   const effectiveThemeLabel = mounted
@@ -32,42 +32,55 @@ export function ThemeToggle() {
     : titleMap.light;
 
   const handleToggle = () => {
-    if (!mounted) {
-      return;
-    }
     const currentIndex = themeOrder.indexOf(appliedTheme);
     const nextTheme = themeOrder[(currentIndex + 1) % themeOrder.length];
     setTheme(nextTheme);
   };
 
-  const nextTheme = themeOrder[(themeOrder.indexOf(appliedTheme) + 1) % themeOrder.length];
+  const isLightActive = appliedTheme === "light";
+  const isDarkActive = appliedTheme === "dark";
+  const isSystemActive = appliedTheme === "system";
 
-  const icon =
-    appliedTheme === "system" ? (
-      <SunMoon className="h-5 w-5" aria-hidden="true" />
-    ) : appliedTheme === "dark" ? (
-      <MoonStar className="h-5 w-5" aria-hidden="true" />
-    ) : (
-      <Sun className="h-5 w-5" aria-hidden="true" />
-    );
+  const getSegmentClass = (active: boolean) =>
+    active
+      ? "bg-[color:var(--primary-soft-bg)] text-[color:var(--primary)] border border-[color:var(--primary-soft-border)] shadow-sm"
+      : "bg-transparent text-[color:var(--text-soft)] hover:bg-[color:var(--surface-subtle)] border-transparent";
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="default"
-      disabled={!mounted}
-      aria-label={`Переключить тему. Текущая тема: ${titleMap[appliedTheme]}. Активная тема: ${effectiveThemeLabel}.`}
-      title={`${titleMap[appliedTheme]} • Следующая тема: ${titleMap[nextTheme]}`}
-      onClick={handleToggle}
-      className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-slate-600 hover:border-brand-500 hover:text-brand-600 dark:text-slate-200 dark:hover:text-white"
-      data-theme={appliedTheme}
+    <div
+      className="inline-flex items-center gap-1 rounded-full border border-border bg-card/80 px-1 py-1 backdrop-blur segmented"
+      aria-label={`Switch theme. Current: ${titleMap[appliedTheme]}. Active: ${effectiveThemeLabel}.`}
     >
-      {icon}
-      <span className="font-medium">{titleMap[appliedTheme]}</span>
-      <span className="sr-only">
-        {`Текущая тема: ${titleMap[appliedTheme]}. Активная тема: ${effectiveThemeLabel}. Нажмите, чтобы выбрать ${titleMap[nextTheme]}.`}
-      </span>
-    </Button>
+      <button
+        type="button"
+        onClick={() => setTheme("light")}
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition-colors",
+          getSegmentClass(isLightActive),
+        )}
+      >
+        <Sun className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setTheme("dark")}
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition-colors",
+          getSegmentClass(isDarkActive),
+        )}
+      >
+        <MoonStar className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => setTheme("system")}
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-full text-xs font-medium transition-colors",
+          getSegmentClass(isSystemActive),
+        )}
+      >
+        <SunMoon className="h-4 w-4" />
+      </button>
+    </div>
   );
 }

@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { redirect } from "next/navigation";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
-import { getSessionUser } from "@/lib/auth/session";
+import { requirePortalSession } from "@/lib/auth/portal-session";
 import { opsNav } from "@/lib/navigation";
 import { filterNavItemsForRoles } from "@/lib/navigation/access";
 
@@ -11,11 +10,7 @@ export default async function OpsLayout({
 }: {
   children: ReactNode;
 }) {
-  const sessionUser = await getSessionUser();
-
-  if (!sessionUser) {
-    redirect("/login?next=/ops/dashboard");
-  }
+  const sessionUser = await requirePortalSession("app", "/ops/dashboard");
 
   const profileFullName = sessionUser.profile?.full_name ?? null;
   const metadataFullName =

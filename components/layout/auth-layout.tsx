@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/system/theme-toggle";
 
 type AuthLayoutProps = {
@@ -69,7 +68,7 @@ export function AuthLayout({
       <main className="relative flex flex-col bg-background">
         <header className="flex items-center justify-between border-b border-border/80 px-6 py-6">
           <Link href="/" className="flex items-center gap-3 text-foreground">
-            <span className="dashboard-sidebar__brand-badge h-11 w-11 bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+            <span className="dashboard-sidebar__brand-badge h-11 w-11 bg-foreground text-background">
               FL
             </span>
             <div className="leading-tight">
@@ -79,19 +78,12 @@ export function AuthLayout({
               <p className="text-sm font-semibold">Portal</p>
             </div>
           </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button asChild variant="ghost" className="rounded-xl border border-border bg-card px-4">
-              <Link href="/apply/start" className="flex items-center gap-2 text-sm">
-                <span>Apply</span>
-              </Link>
-            </Button>
-          </div>
+          <ThemeToggle />
         </header>
 
         <div className="flex flex-1 items-center justify-center px-6 py-10 sm:px-10">
           <div className="w-full max-w-md">
-            <div className="space-y-4 rounded-3xl border border-border bg-card/60 p-8 shadow-outline backdrop-blur">
+            <div className="space-y-6 rounded-[32px] border border-border bg-card p-10 text-foreground shadow-2xl ring-1 ring-[color:var(--surface-subtle)]">
               {children}
             </div>
           </div>

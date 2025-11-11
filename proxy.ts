@@ -14,27 +14,38 @@ import {
   resolveSectionForPath,
   type AccessSection,
 } from "./lib/auth/role-access";
-import type { AppRole } from "./lib/auth/types";
+import type { AppRole, PortalCode } from "./lib/auth/types";
 const AUTH_ROUTES = ["/login", "/register", "/auth/callback"];
 
 /**
  * ЗАЩИЩЕННЫЕ ПРЕФИКСЫ ПУТЕЙ
  * Доступ к этим разделам контролируется на основе ролей пользователя
  */
-const PROTECTED_PREFIXES = [
-  "/client",
-  "/ops",
-  "/admin",
-  "/investor",
-  "/finance",
-  "/support",
-  "/tech",
-  "/risk",
-  "/legal",
-  "/accounting",
-  "/workspace",
-  "/settings",
+const PORTAL_RULES: Array<{ portal: PortalCode; prefixes: string[] }> = [
+  { portal: "client", prefixes: ["/client", "/apply"] },
+  { portal: "investor", prefixes: ["/investor"] },
+  { portal: "partner", prefixes: ["/partner"] },
+  {
+    portal: "app",
+    prefixes: [
+      "/app",
+      "/ops",
+      "/admin",
+      "/finance",
+      "/support",
+      "/tech",
+      "/risk",
+      "/legal",
+      "/accounting",
+      "/workspace",
+      "/settings",
+    ],
+  },
 ];
+
+const PROTECTED_PREFIXES = Array.from(
+  new Set(PORTAL_RULES.flatMap((rule) => rule.prefixes)),
+);
 
 type SectionOverrideResult = {
   roles: AppRole[];
@@ -114,12 +125,56 @@ async function loadUserRoles(
   return roles;
 }
 
+async function userHasPortalAccess(
+  supabase: SupabaseClient,
+  userId: string,
+  portal: PortalCode,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("user_portals")
+    .select("portal, status")
+    .eq("user_id", userId)
+    .eq("portal", portal)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[proxy] Failed to load portal access", error);
+    return false;
+  }
+
+  if (!data) {
+    return false;
+  }
+
+  return (data as { status?: string }).status !== "inactive";
+}
+
 function isAuthRoute(pathname: string) {
   return AUTH_ROUTES.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
 function needsProtection(pathname: string) {
   return PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function resolvePortalFromPath(pathname: string): PortalCode | null {
+  for (const rule of PORTAL_RULES) {
+    if (rule.prefixes.some((prefix) => pathname.startsWith(prefix))) {
+      return rule.portal;
+    }
+  }
+  return null;
+}
+
+function buildPortalLoginUrl(
+  req: NextRequest,
+  _portal: PortalCode | null,
+  nextPath: string,
+) {
+  const url = req.nextUrl.clone();
+  url.pathname = "/login";
+  url.searchParams.set("next", nextPath);
+  return url;
 }
 
 function createSupabaseProxyClient(
@@ -156,6 +211,8 @@ function createSupabaseProxyClient(
 export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
   const { pathname } = req.nextUrl;
+  const requiredPortal = resolvePortalFromPath(pathname);
+  const nextPathWithQuery = `${pathname}${req.nextUrl.search}`;
 
   console.log("[proxy] Processing request for:", pathname);
   console.log("[proxy] Is auth route:", isAuthRoute(pathname));
@@ -196,15 +253,34 @@ export async function proxy(req: NextRequest) {
 
     if (userError || !userData.user) {
       console.log("[proxy] No user found, redirecting to login");
-      const loginUrl = req.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      loginUrl.searchParams.set("next", pathname);
+      const loginUrl = buildPortalLoginUrl(req, requiredPortal, nextPathWithQuery);
       return NextResponse.redirect(loginUrl);
     }
 
     console.log("[proxy] Loading user roles for user:", userData.user.id);
     const roles = await loadUserRoles(supabase, userData.user.id, userData.user);
     console.log("[proxy] User roles:", roles);
+
+    if (requiredPortal) {
+      const hasPortal = await userHasPortalAccess(
+        supabase,
+        userData.user.id,
+        requiredPortal,
+      );
+
+      if (!hasPortal) {
+        console.warn("[proxy] User lacks required portal", {
+          userId: userData.user.id,
+          requiredPortal,
+        });
+        const portalLogin = buildPortalLoginUrl(
+          req,
+          requiredPortal,
+          nextPathWithQuery,
+        );
+        return NextResponse.redirect(portalLogin);
+      }
+    }
 
     const section = resolveSectionForPath(pathname);
     let customAllowed: AppRole[] | null = null;

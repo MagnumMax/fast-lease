@@ -12,6 +12,8 @@ export type AppRole =
   | "ACCOUNTING"
   | "CLIENT";
 
+export type PortalCode = "app" | "investor" | "client" | "partner";
+
 export type ProfileRecord = {
   id: string;
   user_id: string;
@@ -36,12 +38,23 @@ export type ProfileRecord = {
   updated_at: string;
 };
 
+export type PortalAccessRecord = {
+  id: string;
+  user_id: string;
+  portal: PortalCode;
+  status: string;
+  last_access_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SessionUser = {
   session: Session | null;
   user: User;
   profile: ProfileRecord | null;
   roles: AppRole[];
   primaryRole: AppRole | null;
+  portals: PortalCode[];
 };
 
 export type AuthState = {
@@ -49,4 +62,5 @@ export type AuthState = {
   user: User | null;
   roles: AppRole[];
   primaryRole: AppRole | null;
+  portals?: PortalCode[];
 };

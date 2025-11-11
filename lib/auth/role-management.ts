@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { AppRole } from "@/lib/auth/types";
+import type { AppRole, PortalCode } from "@/lib/auth/types";
 import { APP_ROLE_PRIORITY, normalizeRoleCode } from "@/lib/auth/roles";
+import {
+  resolvePortalForRole,
+  resolveDefaultRoleForPortal,
+} from "@/lib/auth/portals";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
 export async function syncUserRolesMetadata(
@@ -103,19 +107,24 @@ export async function ensureDefaultProfileAndRole(
     console.error("[auth] Failed to upsert profile", profileError);
   }
 
+  const defaultRole = resolveDefaultRoleForPortal("app") ?? "OP_MANAGER";
+
   const { error: roleError } = await serviceClient
     .from("user_roles")
     .upsert(
       {
         user_id: userId,
-        role: "CLIENT",
+        role: defaultRole,
+        portal: resolvePortalForRole(defaultRole),
       },
-      { onConflict: "user_id,role" },
+      { onConflict: "user_id,role,portal" },
     );
 
   if (roleError) {
     console.error("[auth] Failed to assign default role", roleError);
   }
+
+  await upsertPortalAccess(serviceClient, userId, resolvePortalForRole(defaultRole));
 
   await syncUserRolesMetadata(serviceClient, userId);
 }
@@ -137,13 +146,51 @@ export async function ensureRoleAssignment(
       {
         user_id: userId,
         role,
+        portal: resolvePortalForRole(role),
       },
-      { onConflict: "user_id,role" },
+      { onConflict: "user_id,role,portal" },
     );
 
   if (error) {
     console.error("[auth] Failed to assign role", { userId, role, error });
   }
 
+  await upsertPortalAccess(serviceClientForRoles, userId, resolvePortalForRole(role));
+
   await syncUserRolesMetadata(serviceClientForRoles, userId);
+}
+
+async function upsertPortalAccess(
+  serviceClient: SupabaseClient,
+  userId: string,
+  portal: PortalCode,
+  status: string = "active",
+) {
+  const { error } = await serviceClient
+    .from("user_portals")
+    .upsert(
+      {
+        user_id: userId,
+        portal,
+        status,
+      },
+      { onConflict: "user_id,portal" },
+    );
+
+  if (error) {
+    console.error("[auth] Failed to ensure portal access", {
+      userId,
+      portal,
+      error,
+    });
+  }
+}
+
+export async function ensurePortalAccess(
+  userId: string,
+  portal: PortalCode,
+  status: string = "active",
+) {
+  const serviceClient = await createSupabaseServiceClient();
+  await upsertPortalAccess(serviceClient, userId, portal, status);
 }

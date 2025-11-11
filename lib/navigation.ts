@@ -71,7 +71,7 @@ export const adminNav: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "LayoutDashboard" },
   ...createRoleWorkspaceNav("admin"),
   { label: "BPMN Processes", href: "/admin/bpm", icon: "Workflow" },
-  { label: "Users", href: "/admin/users", icon: "Users" },
+  { label: "Users & Portals", href: "/settings/users", icon: "Users" },
   { label: "Roles", href: "/admin/roles", icon: "Shield" },
   { label: "Integrations", href: "/admin/integrations", icon: "Plug" },
 ];

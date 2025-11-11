@@ -5,7 +5,12 @@ import {
   normalizeRoleCode,
   resolvePrimaryRole,
 } from "@/lib/auth/roles";
-import type { AppRole, ProfileRecord, SessionUser } from "@/lib/auth/types";
+import type {
+  AppRole,
+  PortalCode,
+  ProfileRecord,
+  SessionUser,
+} from "@/lib/auth/types";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -87,6 +92,31 @@ async function fetchRoles(
   return roles;
 }
 
+async function fetchPortals(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<PortalCode[]> {
+  const { data, error } = await supabase
+    .from("user_portals")
+    .select("portal")
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[auth] failed to load portals", error);
+    return [];
+  }
+
+  const portals: PortalCode[] = [];
+  for (const row of data ?? []) {
+    const portal = (row as { portal: PortalCode | null }).portal;
+    if (portal) {
+      portals.push(portal);
+    }
+  }
+
+  return portals;
+}
+
 async function fetchProfile(
   supabase: SupabaseClient,
   userId: string,
@@ -140,13 +170,15 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   console.log("[auth] metadata roles:", metadataRoles);
 
-  const [profile, rolesFromTable] = await Promise.all([
+  const [profile, rolesFromTable, portals] = await Promise.all([
     fetchProfile(supabase, user.id),
     fetchRoles(supabase, user.id),
+    fetchPortals(supabase, user.id),
   ]);
 
   console.log("[auth] profile loaded:", !!profile);
   console.log("[auth] roles from table:", rolesFromTable);
+  console.log("[auth] portals:", portals);
 
   const roles = (rolesFromTable.length ? rolesFromTable : metadataRoles).filter(
     (role, index, array) => array.indexOf(role) === index,
@@ -159,6 +191,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   return {
     session,
+    portals,
     user,
     profile,
     roles,

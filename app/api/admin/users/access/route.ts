@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 
 import type { AdminUserStatus } from "@/lib/data/admin/users";
 import { normalizeRoleCode } from "@/lib/auth/roles";
-import type { AppRole } from "@/lib/auth/types";
+import type { AppRole, PortalCode } from "@/lib/auth/types";
 import { getSessionUser } from "@/lib/auth/session";
 import { syncUserRolesMetadata } from "@/lib/auth/role-management";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { logPortalAdminAction } from "@/lib/auth/portal-admin";
+import { resolvePortalForRole } from "@/lib/auth/portals";
 
 const ALLOWED_STATUSES: AdminUserStatus[] = [
   "active",
@@ -19,6 +21,12 @@ type UpdateAccessPayload = {
   userId: string;
   status: AdminUserStatus;
   roles: string[];
+  portals?: PortalAssignmentPayload[];
+};
+
+type PortalAssignmentPayload = {
+  portal: string;
+  status?: string;
 };
 
 function sanitizeStatus(value: unknown): AdminUserStatus | null {
@@ -46,6 +54,32 @@ function sanitizeRoles(values: unknown): AppRole[] {
   return Array.from(normalized);
 }
 
+function sanitizePortals(values: unknown): { portal: PortalCode; status: string }[] {
+  if (!Array.isArray(values)) return [];
+  const sanitized: { portal: PortalCode; status: string }[] = [];
+
+  for (const entry of values) {
+    if (!entry || typeof entry !== "object") continue;
+    const portalValue = (entry as PortalAssignmentPayload).portal;
+    if (typeof portalValue !== "string") continue;
+    const normalizedPortal = portalValue.trim().toLowerCase() as PortalCode;
+    if (!["app", "client", "investor", "partner"].includes(normalizedPortal)) continue;
+
+    const statusValue = (entry as PortalAssignmentPayload).status;
+    const normalizedStatus =
+      typeof statusValue === "string" && statusValue.toLowerCase() === "inactive"
+        ? "inactive"
+        : "active";
+
+    sanitized.push({
+      portal: normalizedPortal,
+      status: normalizedStatus,
+    });
+  }
+
+  return sanitized;
+}
+
 export async function POST(request: Request) {
   try {
     const sessionUser = await getSessionUser();
@@ -58,6 +92,7 @@ export async function POST(request: Request) {
     const targetUserId = typeof payload.userId === "string" ? payload.userId : "";
     const status = sanitizeStatus(payload.status);
     const roles = sanitizeRoles(payload.roles);
+    const portalAssignments = sanitizePortals(payload.portals);
 
     if (!targetUserId) {
       return NextResponse.json({ error: "Не указан пользователь." }, { status: 400 });
@@ -123,9 +158,10 @@ export async function POST(request: Request) {
         roles.map((role) => ({
           user_id: targetUserId,
           role,
+          portal: resolvePortalForRole(role),
           assigned_by: sessionUser.user.id,
         })),
-        { onConflict: "user_id,role" },
+        { onConflict: "user_id,role,portal" },
       );
 
     if (insertError) {
@@ -136,9 +172,44 @@ export async function POST(request: Request) {
       );
     }
 
+    if (portalAssignments.length) {
+      for (const assignment of portalAssignments) {
+        const state = assignment.status === "inactive" ? "inactive" : "active";
+        const { error: portalUpsertError } = await serviceClient
+          .from("user_portals")
+          .upsert(
+            {
+              user_id: targetUserId,
+              portal: assignment.portal,
+              status: state,
+            },
+            { onConflict: "user_id,portal" },
+          );
+        if (portalUpsertError) {
+          console.error("[admin] Failed to update portal access", portalUpsertError);
+        }
+      }
+    }
+
     await syncUserRolesMetadata(serviceClient, targetUserId);
 
-    return NextResponse.json({ ok: true, status, roles });
+    const { data: updatedPortals } = await serviceClient
+      .from("user_portals")
+      .select("portal, status, last_access_at")
+      .eq("user_id", targetUserId);
+
+    await logPortalAdminAction({
+      actorUserId: sessionUser.user.id,
+      targetUserId,
+      action: "update_access",
+      metadata: {
+        status,
+        roles,
+        portals: updatedPortals ?? [],
+      },
+    });
+
+    return NextResponse.json({ ok: true, status, roles, portals: updatedPortals ?? [] });
   } catch (error) {
     console.error("[admin] Access update failed", error);
     return NextResponse.json(

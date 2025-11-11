@@ -1,7 +1,7 @@
 // Admin Users Data Module
 export type AdminUserStatus = "active" | "inactive" | "suspended" | "pending" | "archived";
 
-import type { AppRole } from "@/lib/auth/types";
+import type { AppRole, PortalCode } from "@/lib/auth/types";
 
 export type AdminUserRecord = {
   id: string;
@@ -10,6 +10,9 @@ export type AdminUserRecord = {
   email: string;
   role: string;
   roles: AppRole[];
+  roleAssignments?: RoleAssignmentRecord[];
+  portals?: PortalAccessSummary[];
+  loginEvents?: LoginEventSummary[];
   status: AdminUserStatus;
   lastLogin: string;
   lastLoginAt: string | null;
@@ -28,6 +31,24 @@ export type AdminAuditLogEntry = {
   details: string;
 };
 
+export type PortalAccessSummary = {
+  portal: PortalCode;
+  status: string;
+  lastAccessAt: string | null;
+};
+
+export type LoginEventSummary = {
+  portal: PortalCode;
+  status: "success" | "failure";
+  occurredAt: string;
+  errorCode?: string | null;
+};
+
+export type RoleAssignmentRecord = {
+  role: AppRole;
+  portal: PortalCode;
+};
+
 // Fallback data for development
 export const ADMIN_USERS_FALLBACK: AdminUserRecord[] = [
   {
@@ -37,6 +58,9 @@ export const ADMIN_USERS_FALLBACK: AdminUserRecord[] = [
     email: "admin@fastlease.ae",
     role: "ADMIN",
     roles: ["ADMIN"],
+    roleAssignments: [{ role: "ADMIN", portal: "app" }],
+    portals: [{ portal: "app", status: "active", lastAccessAt: new Date().toISOString() }],
+    loginEvents: [],
     status: "active",
     lastLogin: new Date().toISOString(),
     lastLoginAt: new Date().toISOString(),

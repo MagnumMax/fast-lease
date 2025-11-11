@@ -21,10 +21,10 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     description: "Полный доступ к настройкам, пользователям и интеграциям.",
     homePath: "/admin/dashboard",
     priority: 0,
-    defaultIdentity: "admin@fastlease.io",
+    defaultIdentity: "admin@fastlease.ae",
     loginPreset: {
       label: "Администратор",
-      identity: "admin@fastlease.io",
+      identity: "admin@fastlease.ae",
     },
   },
   {
@@ -34,10 +34,10 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
       "Управление и исполнение операционного процесса: сделки, задачи, статусы.",
     homePath: "/ops/dashboard",
     priority: 1,
-    defaultIdentity: "ops.manager@fastlease.io",
+    defaultIdentity: "opsmanager@fastlease.ae",
     loginPreset: {
       label: "Операционный менеджер",
-      identity: "ops.manager@fastlease.io",
+      identity: "opsmanager@fastlease.ae",
     },
   },
   {
@@ -46,10 +46,10 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     description: "Финансовый контроль, платежи и биллинг поставщиков.",
     homePath: "/finance/dashboard",
     priority: 2,
-    defaultIdentity: "finance@fastlease.io",
+    defaultIdentity: "finance@fastlease.ae",
     loginPreset: {
       label: "Финансы",
-      identity: "finance@fastlease.io",
+      identity: "finance@fastlease.ae",
     },
   },
   {
@@ -58,10 +58,10 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     description: "Поддержка клиентов и сопровождение сделок.",
     homePath: "/support/dashboard",
     priority: 3,
-    defaultIdentity: "support@fastlease.io",
+    defaultIdentity: "support@fastlease.ae",
     loginPreset: {
       label: "Поддержка",
-      identity: "support@fastlease.io",
+      identity: "support@fastlease.ae",
     },
   },
   {
@@ -70,10 +70,10 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     description: "Техническая проверка автомобиля и взаимодействие с сервисами.",
     homePath: "/tech/dashboard",
     priority: 4,
-    defaultIdentity: "tech.specialist@fastlease.io",
+    defaultIdentity: "techspecialist@fastlease.ae",
     loginPreset: {
       label: "Технический специалист",
-      identity: "tech.specialist@fastlease.io",
+      identity: "techspecialist@fastlease.ae",
     },
   },
   {
@@ -82,10 +82,10 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     description: "Доступ к портфелю, KPI и отчётам по инвестициям.",
     homePath: "/investor/dashboard",
     priority: 5,
-    defaultIdentity: "investor@fastlease.io",
+    defaultIdentity: "investor@fastlease.ae",
     loginPreset: {
       label: "Инвестор",
-      identity: "investor@fastlease.io",
+      identity: "investor@fastlease.ae",
     },
   },
   {
@@ -94,11 +94,11 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     description: "Клиентский кабинет, платежи и документы по лизингу.",
     homePath: "/client/dashboard",
     priority: 6,
-    defaultIdentity: "client@fastlease.io",
+    defaultIdentity: "client@fastlease.ae",
     defaultPhone: "+971500000000",
     loginPreset: {
       label: "Клиент",
-      identity: "client@fastlease.io",
+      identity: "client@fastlease.ae",
     },
   },
   {

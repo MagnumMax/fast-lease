@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Headset, LifeBuoy, MapPin, PhoneCall, Timer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -207,7 +208,7 @@ export default function SupportPage() {
             режиме реального времени.
           </span>
           <Button asChild size="sm" variant="brand" className="rounded-xl">
-            <a href="/login">Войти в личный кабинет</a>
+            <Link href="/login">Войти в личный кабинет</Link>
           </Button>
         </div>
       </section>

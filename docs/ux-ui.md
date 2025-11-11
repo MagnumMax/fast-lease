@@ -36,7 +36,7 @@ You must strictly adhere to the following requirements:
    - **SPA Navigation:** Implement transitions between sections via `#` in URL and dynamic display/hiding of page sections.
    - **Interactivity:** All controls (buttons, menus, filters, card dragging) must be working.
    - **CRUD Simulation:** For entities in directories and tables, there must be a view/edit page that allows "changing" data in JS objects (without saving).
-   - **Role selection:** Выполняется на странице входа (AuthCard), поэтому плавающий переключатель ролей в интерфейсе не требуется.
+   - **Role selection:** Выполняется автоматически на форме единого входа (`PortalDetector` внутри `/login`), поэтому плавающий переключатель ролей в интерфейсе не требуется.
 
 **5. Adaptability and Cross-Browser Compatibility:**
    - The interface must be fully responsive.

@@ -1,4 +1,4 @@
-import { AuthCard } from "@/app/(auth)/login/auth-card";
+import { UnifiedLoginSection } from "@/components/auth/login-section";
 import { getDeploymentInfo } from "@/lib/deployment-info";
 import type { DeploymentInfo } from "@/lib/deployment-info";
 
@@ -10,7 +10,7 @@ export default function LandingPage() {
 
   return (
     <div className="space-y-6">
-      <AuthCard />
+      <UnifiedLoginSection />
       <DeploymentMeta info={deployment} />
     </div>
   );

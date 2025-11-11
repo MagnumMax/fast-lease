@@ -117,12 +117,43 @@ updated_at: timestamptz (auto)
 id: uuid (PK)
 user_id: uuid → auth.users(id)
 role: user_role ('CLIENT', 'OPERATOR', 'OP_MANAGER', 'ADMIN', 'INVESTOR', 'FINANCE', 'SUPPORT')
+portal: portal_code ('app', 'investor', 'client', 'partner')
 assigned_at: timestamptz (auto)
 assigned_by: uuid → auth.users(id)
 metadata: jsonb ({}'::jsonb)
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
-UNIQUE(user_id, role)
+UNIQUE(user_id, role, portal)
+```
+
+#### `user_portals`
+Справочник аудиторий, к которым пользователь имеет доступ
+```sql
+id: uuid (PK)
+user_id: uuid → auth.users(id) (CASCADE)
+portal: portal_code ('app', 'investor', 'client', 'partner')
+status: text (default 'active')
+metadata: jsonb ({}'::jsonb)
+last_access_at: timestamptz
+created_at: timestamptz (auto)
+updated_at: timestamptz (auto)
+UNIQUE(user_id, portal)
+```
+
+#### `auth_login_events`
+Аудит всех операций входа
+```sql
+id: uuid (PK)
+occurred_at: timestamptz (default now())
+user_id: uuid → auth.users(id) (SET NULL)
+portal: portal_code
+identity: text (email)
+status: text ('success' | 'failure')
+error_code: text (nullable)
+ip: inet (nullable)
+user_agent: text (nullable)
+role_snapshot: jsonb (default []::jsonb)
+metadata: jsonb ({}'::jsonb)
 ```
 
 ### 2. Каталог транспортных средств (Vehicles)
@@ -597,6 +628,17 @@ actor_user_id: uuid → auth.users(id)
 action: text (обязательно)
 from_status: text
 to_status: text
+metadata: jsonb
+created_at: timestamptz (auto)
+```
+
+#### `admin_portal_audit`
+Административные действия с порталами/ролями
+```sql
+id: uuid (PK)
+actor_user_id: uuid → auth.users(id) (SET NULL)
+target_user_id: uuid → auth.users(id) (CASCADE)
+action: text
 metadata: jsonb
 created_at: timestamptz (auto)
 ```
