@@ -22,6 +22,8 @@ import {
   type FileLike,
 } from "@/lib/documents/upload";
 import { DEAL_COMPANY_CODES, DEFAULT_DEAL_COMPANY_CODE } from "@/lib/data/deal-companies";
+import { getMutationSessionUser } from "@/lib/auth/guards";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 
 const inputSchema = z.object({
   dealId: z.string().uuid(),
@@ -103,6 +105,11 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
   if (!parsed.success) {
     console.warn("[operations] invalid deal document upload payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные документа." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { dealId, slug } = parsed.data;
@@ -227,6 +234,11 @@ export async function uploadSellerDocuments(formData: FormData): Promise<UploadS
     return { success: false, error: "Некорректные данные документа продавца." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { dealId, slug } = parsed.data;
 
   const documentsMap = new Map<
@@ -347,6 +359,11 @@ export async function deleteDealDocument(
   if (!parsed.success) {
     console.warn("[operations] invalid deal document delete payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные для удаления документа." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { dealId, documentId, slug } = parsed.data;
@@ -665,6 +682,11 @@ export async function completeDealGuardAction(
     return { error: "Введите корректные данные", success: false };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { error: READ_ONLY_ACCESS_MESSAGE, success: false };
+  }
+
   const { dealId, statusKey, guardKey, note, slug } = parsed.data;
 
   const guardMeta = resolveGuardMeta(statusKey, guardKey);
@@ -806,6 +828,11 @@ export async function updateOperationsDeal(
     return { success: false, error: "Проверьте введённые данные и попробуйте снова." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const {
     dealId,
     slug,
@@ -939,6 +966,11 @@ export async function verifyDealDeletion(
     return { canDelete: false, reason: "Некорректные данные для проверки удаления." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { canDelete: false, reason: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { dealId } = parsed.data;
 
   try {
@@ -1022,6 +1054,11 @@ export async function deleteOperationsDeal(
   if (!parsed.success) {
     console.warn("[operations] invalid deal delete payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные для удаления сделки." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { dealId, slug } = parsed.data;

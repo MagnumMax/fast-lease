@@ -55,6 +55,8 @@ import {
   uploadVehicleImages,
   updateOperationsCar,
 } from "@/app/(dashboard)/ops/cars/actions";
+import { useAccessControl } from "@/components/providers/access-control-provider";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 
 const EMPTY_SELECT_VALUE = "__empty";
 
@@ -165,6 +167,8 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
   const [documentActionError, setDocumentActionError] = useState<string | null>(null);
   const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
   const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
+  const { canMutate } = useAccessControl();
+  const readOnlyTooltip = canMutate ? undefined : READ_ONLY_ACCESS_MESSAGE;
   const imageUploadFormRef = useRef<HTMLFormElement | null>(null);
   const imageUploadFormId = useId();
 
@@ -860,7 +864,13 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
         }}
       >
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="rounded-xl">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl"
+            disabled={!canMutate}
+            title={readOnlyTooltip}
+          >
             Редактировать
           </Button>
         </DialogTrigger>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth/session";
+import { canMutateSessionUser } from "@/lib/auth/guards";
 import { logPortalAdminAction } from "@/lib/auth/portal-admin";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 
@@ -262,6 +263,10 @@ export async function POST(request: Request) {
     const sessionUser = await getSessionUser();
     if (!sessionUser || !sessionUser.roles.includes("ADMIN")) {
       return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
+    }
+
+    if (!canMutateSessionUser(sessionUser)) {
+      return NextResponse.json({ error: "Ваш доступ только для чтения." }, { status: 403 });
     }
 
     let payload: DeleteUserPayload | null = null;

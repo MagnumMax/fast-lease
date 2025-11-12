@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
+import { canMutateSessionUser } from "@/lib/auth/guards";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 
 type RouteContext = {
   params: Promise<{
@@ -43,6 +45,10 @@ export async function DELETE(_: Request, context: RouteContext) {
   const sessionUser = await getSessionUser();
   if (!sessionUser) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  if (!canMutateSessionUser(sessionUser)) {
+    return NextResponse.json({ error: READ_ONLY_ACCESS_MESSAGE }, { status: 403 });
   }
 
   // Ensure deal exists

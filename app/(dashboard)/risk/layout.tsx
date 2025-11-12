@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { AccessControlProvider } from "@/components/providers/access-control-provider";
 import { requirePortalSession } from "@/lib/auth/portal-session";
 import { resolveProfileHrefForRole, riskNav } from "@/lib/navigation";
 import { filterNavItemsForRoles } from "@/lib/navigation/access";
+import { canMutateSessionUser } from "@/lib/auth/guards";
 
 export default async function RiskLayout({
   children,
@@ -22,18 +24,25 @@ export default async function RiskLayout({
   const email: string | null = sessionUser.user.email ?? null;
   const navItems = await filterNavItemsForRoles(riskNav, sessionUser.roles);
 
+  const actorCanMutate = canMutateSessionUser(sessionUser);
+
   return (
-    <DashboardLayout
-      navItems={navItems}
-      brand={{ title: "Risk", subtitle: "Fast Lease" }}
-      user={{
-        fullName,
-        email,
-        primaryRole: sessionUser.primaryRole,
-      }}
-      profileHref={resolveProfileHrefForRole(sessionUser.primaryRole)}
+    <AccessControlProvider
+      canMutate={actorCanMutate}
+      readOnlyRoles={sessionUser.readOnlyRoles}
     >
-      {children}
-    </DashboardLayout>
+      <DashboardLayout
+        navItems={navItems}
+        brand={{ title: "Risk", subtitle: "Fast Lease" }}
+        user={{
+          fullName,
+          email,
+          primaryRole: sessionUser.primaryRole,
+        }}
+        profileHref={resolveProfileHrefForRole(sessionUser.primaryRole)}
+      >
+        {children}
+      </DashboardLayout>
+    </AccessControlProvider>
   );
 }

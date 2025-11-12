@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getMutationSessionUser } from "@/lib/auth/guards";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 
 const PROFILE_PATHS = [
   "/client/profile",
@@ -54,6 +56,14 @@ export async function updateProfileAction(
     };
   }
 
+  const mutationUser = await getMutationSessionUser();
+  if (!mutationUser) {
+    return {
+      status: "error",
+      message: READ_ONLY_ACCESS_MESSAGE,
+    };
+  }
+
   const { error } = await supabase
     .from("profiles")
     .update({
@@ -98,6 +108,14 @@ export async function updateSecurityAction(
     return {
       status: "error",
       message: "Сессия не найдена. Выполните вход повторно.",
+    };
+  }
+
+  const mutationUser = await getMutationSessionUser();
+  if (!mutationUser) {
+    return {
+      status: "error",
+      message: READ_ONLY_ACCESS_MESSAGE,
     };
   }
 

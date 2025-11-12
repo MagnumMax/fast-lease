@@ -1,6 +1,7 @@
 import { AdminUsersDirectory } from "@/app/(dashboard)/admin/users/_components/admin-users-directory";
 import { requirePortalSession } from "@/lib/auth/portal-session";
 import { getAdminUserDirectory } from "@/lib/supabase/queries/admin";
+import { canMutateSessionUser } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function SettingsUsersPage() {
         initialAuditLog={directory.auditLog}
         actorName={actorName}
         actorId={sessionUser.user.id}
+        actorCanMutate={canMutateSessionUser(sessionUser)}
       />
     </div>
   );

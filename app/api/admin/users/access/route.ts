@@ -8,6 +8,7 @@ import { syncUserRolesMetadata } from "@/lib/auth/role-management";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { logPortalAdminAction } from "@/lib/auth/portal-admin";
 import { resolvePortalForRole } from "@/lib/auth/portals";
+import { canMutateSessionUser } from "@/lib/auth/guards";
 
 const ALLOWED_STATUSES: AdminUserStatus[] = [
   "active",
@@ -20,8 +21,13 @@ const ALLOWED_STATUSES: AdminUserStatus[] = [
 type UpdateAccessPayload = {
   userId: string;
   status: AdminUserStatus;
-  roles: string[];
+  roles: unknown;
   portals?: PortalAssignmentPayload[];
+};
+
+type SanitizedRoleAssignment = {
+  role: AppRole;
+  readOnly: boolean;
 };
 
 type PortalAssignmentPayload = {
@@ -40,18 +46,37 @@ function sanitizeStatus(value: unknown): AdminUserStatus | null {
   return match ?? null;
 }
 
-function sanitizeRoles(values: unknown): AppRole[] {
+function sanitizeRoles(values: unknown): SanitizedRoleAssignment[] {
   if (!Array.isArray(values)) return [];
-  const normalized = new Set<AppRole>();
+  const normalized: SanitizedRoleAssignment[] = [];
 
   for (const entry of values) {
-    const role = normalizeRoleCode(entry);
-    if (role) {
-      normalized.add(role);
+    if (typeof entry === "string") {
+      const role = normalizeRoleCode(entry);
+      if (role) {
+        normalized.push({ role, readOnly: false });
+      }
+      continue;
+    }
+
+    if (entry && typeof entry === "object") {
+      const record = entry as { role?: unknown; code?: unknown; readOnly?: unknown };
+      const roleCandidate = record.role ?? record.code;
+      const role = normalizeRoleCode(roleCandidate);
+      if (role) {
+        normalized.push({ role, readOnly: record.readOnly === true });
+      }
     }
   }
 
-  return Array.from(normalized);
+  const seen = new Set<AppRole>();
+  return normalized.filter((assignment) => {
+    if (seen.has(assignment.role)) {
+      return false;
+    }
+    seen.add(assignment.role);
+    return true;
+  });
 }
 
 function sanitizePortals(values: unknown): { portal: PortalCode; status: string }[] {
@@ -86,6 +111,10 @@ export async function POST(request: Request) {
 
     if (!sessionUser || !sessionUser.roles.includes("ADMIN")) {
       return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
+    }
+
+    if (!canMutateSessionUser(sessionUser)) {
+      return NextResponse.json({ error: "Ваш доступ только для чтения." }, { status: 403 });
     }
 
     const payload = (await request.json()) as Partial<UpdateAccessPayload>;
@@ -155,11 +184,14 @@ export async function POST(request: Request) {
     const { error: insertError } = await serviceClient
       .from("user_roles")
       .upsert(
-        roles.map((role) => ({
+        roles.map((assignment) => ({
           user_id: targetUserId,
-          role,
-          portal: resolvePortalForRole(role),
+          role: assignment.role,
+          portal: resolvePortalForRole(assignment.role),
           assigned_by: sessionUser.user.id,
+          metadata: {
+            read_only: assignment.readOnly,
+          },
         })),
         { onConflict: "user_id,role,portal" },
       );
@@ -204,12 +236,23 @@ export async function POST(request: Request) {
       action: "update_access",
       metadata: {
         status,
-        roles,
+        roles: roles.map((assignment) => ({
+          role: assignment.role,
+          readOnly: assignment.readOnly,
+        })),
         portals: updatedPortals ?? [],
       },
     });
 
-    return NextResponse.json({ ok: true, status, roles, portals: updatedPortals ?? [] });
+    return NextResponse.json({
+      ok: true,
+      status,
+      roles: roles.map((assignment) => ({
+        role: assignment.role,
+        readOnly: assignment.readOnly,
+      })),
+      portals: updatedPortals ?? [],
+    });
   } catch (error) {
     console.error("[admin] Access update failed", error);
     return NextResponse.json(

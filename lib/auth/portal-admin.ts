@@ -13,6 +13,7 @@ export type PortalRoleAssignment = {
   portal_status: string | null;
   last_access_at: string | null;
   assigned_at: string | null;
+  isReadOnly?: boolean;
 };
 
 export const listPortalRoleAssignments = cache(
@@ -20,7 +21,7 @@ export const listPortalRoleAssignments = cache(
     const supabase = await createSupabaseServerClient();
 
     let query = supabase.from("view_portal_roles").select(
-      "user_id, role, portal, portal_status, last_access_at, assigned_at",
+      "user_id, role, portal, portal_status, last_access_at, assigned_at, role_metadata",
     );
 
     if (userId) {
@@ -34,7 +35,18 @@ export const listPortalRoleAssignments = cache(
       return [];
     }
 
-    return (data ?? []) as PortalRoleAssignment[];
+    return (data ?? []).map((entry) => {
+      const metadata = (entry as { role_metadata?: Record<string, unknown> | null }).role_metadata;
+      return {
+        user_id: entry.user_id,
+        role: entry.role,
+        portal: entry.portal,
+        portal_status: entry.portal_status,
+        last_access_at: entry.last_access_at,
+        assigned_at: entry.assigned_at,
+        isReadOnly: Boolean(metadata && metadata.read_only === true),
+      } satisfies PortalRoleAssignment;
+    });
   },
 );
 

@@ -53,6 +53,7 @@ export type SessionUser = {
   user: User;
   profile: ProfileRecord | null;
   roles: AppRole[];
+  readOnlyRoles: AppRole[];
   primaryRole: AppRole | null;
   portals: PortalCode[];
 };
@@ -61,6 +62,7 @@ export type AuthState = {
   session: Session | null;
   user: User | null;
   roles: AppRole[];
+  readOnlyRoles?: AppRole[];
   primaryRole: AppRole | null;
   portals?: PortalCode[];
 };

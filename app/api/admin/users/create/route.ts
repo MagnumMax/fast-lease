@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 
 import { getSessionUser } from "@/lib/auth/session";
+import { canMutateSessionUser } from "@/lib/auth/guards";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { logPortalAdminAction } from "@/lib/auth/portal-admin";
 import { APP_ROLE_CODES } from "@/lib/data/app-roles";
@@ -35,6 +36,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Недостаточно прав." }, { status: 403 });
     }
 
+    if (!canMutateSessionUser(sessionUser)) {
+      return NextResponse.json({ error: "Ваш доступ только для чтения." }, { status: 403 });
+    }
+
     const rawPayload = await request.json();
     const parsed = AdminCreateUserSchema.safeParse(rawPayload);
     if (!parsed.success) {
@@ -53,7 +58,8 @@ export async function POST(request: Request) {
 
     const payload: AdminCreateUserInput = parsed.data;
     const normalizedEmail = normalizeEmail(payload.email);
-    const normalizedRole = payload.role.trim().toUpperCase();
+    const normalizedRole = payload.role.code.trim().toUpperCase();
+    const roleIsReadOnly = Boolean(payload.role.readOnly);
 
     if (!isValidRole(normalizedRole)) {
       return NextResponse.json({ error: "Недопустимая роль пользователя." }, { status: 400 });
@@ -177,7 +183,9 @@ export async function POST(request: Request) {
       console.error("[admin-users] Failed to upsert profile", profileError);
     }
 
-    await ensureRoleAssignment(newUserId, normalizedRole);
+    await ensureRoleAssignment(newUserId, normalizedRole, {
+      readOnly: roleIsReadOnly,
+    });
 
     const portal: PortalCode = resolvePortalForRole(normalizedRole);
 
@@ -189,6 +197,7 @@ export async function POST(request: Request) {
         role: normalizedRole,
         portal,
         status,
+        readOnly: roleIsReadOnly,
         sendInvite: payload.sendInvite,
       },
     });
@@ -198,6 +207,10 @@ export async function POST(request: Request) {
       userId: newUserId,
       status,
       portal,
+      role: {
+        code: normalizedRole,
+        readOnly: roleIsReadOnly,
+      },
       inviteLink,
       temporaryPassword,
     });

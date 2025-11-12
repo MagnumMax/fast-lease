@@ -44,6 +44,7 @@ type UserRoleRow = {
   role: AppRole;
   portal: PortalCode | null;
   assigned_at: string;
+  role_metadata?: Record<string, unknown> | null;
 };
 
 type AuthUserRow = SupabaseAdminUser;
@@ -101,6 +102,10 @@ function createUserRecord(
       roleAssignments.push({
         role: roleEntry.role,
         portal: roleEntry.portal ?? resolvePortalForRole(roleEntry.role),
+        isReadOnly:
+          typeof roleEntry.role_metadata === "object"
+            ? roleEntry.role_metadata?.read_only === true
+            : false,
       });
     }
   }
@@ -146,7 +151,7 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
         .returns<ProfileRow[]>(),
       supabase
         .from("view_portal_roles")
-        .select("user_id, role, portal, assigned_at")
+        .select("user_id, role, portal, assigned_at, role_metadata")
         .order("assigned_at", { ascending: true })
         .returns<UserRoleRow[]>(),
     ]);

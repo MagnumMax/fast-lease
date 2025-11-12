@@ -27,6 +27,8 @@ import {
   type FileLike,
   getFileName,
 } from "@/lib/documents/upload";
+import { getMutationSessionUser } from "@/lib/auth/guards";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 
 const inputSchema = z.object({
   name: z.string().min(1),
@@ -260,6 +262,11 @@ export async function createOperationsClient(
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success) {
     return { error: "Введите корректные данные клиента." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { error: READ_ONLY_ACCESS_MESSAGE };
   }
 
 const { name, email, phone } = parsed.data;
@@ -562,6 +569,11 @@ export async function updateOperationsClient(
     return { success: false, error: "Проверьте корректность введённых данных." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const {
     userId,
     fullName,
@@ -746,6 +758,11 @@ export async function uploadClientDocuments(
     return { success: false, error: "Некорректные данные документа." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { clientId, slug } = parsed.data;
 
   const documentsMap = new Map<
@@ -874,6 +891,11 @@ export async function deleteClientDocument(
     return { success: false, error: "Некорректные данные для удаления документа." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { clientId, documentId, slug } = parsed.data;
 
   try {
@@ -946,6 +968,11 @@ export async function verifyClientDeletion(
     return { canDelete: false, reason: "Некорректные данные для проверки удаления." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { canDelete: false, reason: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { userId } = parsed.data;
 
   try {
@@ -995,6 +1022,11 @@ export async function deleteOperationsClient(
   if (!parsed.success) {
     console.warn("[operations] invalid client delete payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные для удаления клиента." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { userId } = parsed.data;

@@ -14,6 +14,8 @@ import {
   type OpsCarRecord,
 } from "@/lib/supabase/queries/operations";
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
+import { getMutationSessionUser } from "@/lib/auth/guards";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { normalizeLicensePlate } from "@/lib/utils/license-plate";
@@ -217,6 +219,11 @@ export async function createOperationsCar(
     return { error: "Введите корректные данные автомобиля." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { vin, make, model, year, bodyType, mileage, fuelType, transmission } = parsed.data;
   const normalizedVin = vin.trim().toUpperCase();
   const normalizedMake = make.trim().replace(/\s+/g, " ");
@@ -325,6 +332,11 @@ export async function updateOperationsCar(
     return { success: false, error: "Проверьте введённые данные и попробуйте снова." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const {
     vehicleId,
     slug,
@@ -420,6 +432,11 @@ export async function uploadVehicleDocuments(
   if (!parsed.success) {
     console.warn("[operations] invalid vehicle document upload payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные документа." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { vehicleId, slug } = parsed.data;
@@ -555,6 +572,11 @@ export async function uploadVehicleImages(formData: FormData): Promise<UploadVeh
   if (!parsed.success) {
     console.warn("[operations] invalid vehicle image upload payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные загрузки изображений." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { vehicleId, slug } = parsed.data;
@@ -736,6 +758,11 @@ export async function updateVehicleImageMeta(
     return { success: false, error: "Некорректные данные для обновления изображения." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { vehicleId, imageId, slug, label, setPrimary } = parsed.data;
   const nextLabel = (() => {
     if (label === undefined) {
@@ -811,6 +838,11 @@ export async function deleteVehicleImage(
     return { success: false, error: "Некорректные данные для удаления изображения." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { vehicleId, imageId, slug } = parsed.data;
 
   try {
@@ -881,6 +913,11 @@ export async function updateVehicleDocument(
     return { success: false, error: "Некорректные данные для обновления документа." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { vehicleId, documentId, slug, title, type } = parsed.data;
 
   const normalizedType = type ? normalizeVehicleDocumentType(type) : undefined;
@@ -941,6 +978,11 @@ export async function deleteVehicleDocument(
   if (!parsed.success) {
     console.warn("[operations] invalid vehicle document delete payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные для удаления документа." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { vehicleId, documentId, slug } = parsed.data;
@@ -1013,6 +1055,11 @@ export async function verifyVehicleDeletion(
     return { canDelete: false, reason: "Некорректные данные для проверки удаления." };
   }
 
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { canDelete: false, reason: READ_ONLY_ACCESS_MESSAGE };
+  }
+
   const { vehicleId } = parsed.data;
 
   try {
@@ -1047,6 +1094,11 @@ export async function deleteOperationsCar(
   if (!parsed.success) {
     console.warn("[operations] invalid vehicle delete payload", parsed.error.flatten());
     return { success: false, error: "Некорректные данные для удаления автомобиля." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { vehicleId, slug } = parsed.data;

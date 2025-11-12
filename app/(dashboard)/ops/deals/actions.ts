@@ -8,6 +8,8 @@ import type { DealRow } from "@/lib/workflow/http/create-deal";
 import type { CreateDealWithEntitiesRequest } from "@/lib/workflow";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { DEAL_COMPANY_CODES, DEFAULT_DEAL_COMPANY_CODE } from "@/lib/data/deal-companies";
+import { getMutationSessionUser } from "@/lib/auth/guards";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 
 const inputSchema = z.object({
   source: z.string().min(1),
@@ -47,6 +49,11 @@ export async function createOperationsDeal(
   if (!parsed.success) {
     console.error(`[DEBUG] input validation failed:`, parsed.error);
     return { error: "Введите корректные данные сделки." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { error: READ_ONLY_ACCESS_MESSAGE };
   }
 
   console.log(`[DEBUG] parsed input:`, parsed.data);

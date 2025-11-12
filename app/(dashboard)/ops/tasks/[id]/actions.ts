@@ -9,7 +9,8 @@ import { z } from "zod";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { handleTaskCompletion } from "@/lib/workflow/task-completion";
-import { getSessionUser } from "@/lib/auth/session";
+import { getMutationSessionUser } from "@/lib/auth/guards";
+import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 import { isFileLike, type FileLike, getFileName, sanitizeFileName } from "@/lib/documents/upload";
 import {
   CLIENT_DOCUMENT_TYPES,
@@ -384,10 +385,10 @@ export async function completeTaskFormAction(
   const noteValue = noteChanged ? (noteTrimmed.length > 0 ? noteTrimmed : null) : initialNote ?? null;
 
   const supabase = await createSupabaseServiceClient();
-  const sessionUser = await getSessionUser();
+  const sessionUser = await getMutationSessionUser();
 
   if (!sessionUser) {
-    return { status: "error", message: "Необходимо авторизоваться" };
+    return { status: "error", message: READ_ONLY_ACCESS_MESSAGE };
   }
 
   const { data: existing, error: loadError } = await supabase

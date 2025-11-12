@@ -79,12 +79,14 @@ type AdminUsersDirectoryProps = {
   actorName: string;
   actorId?: string;
   mode?: "users" | "roles";
+  actorCanMutate?: boolean;
 };
 
 type CreateUserForm = {
   fullName: string;
   email: string;
   role: AppRole;
+  readOnly: boolean;
   sendInvite: boolean;
 };
 
@@ -100,10 +102,17 @@ type ManageAccessState = {
   isOpen: boolean;
   user: AdminUserRecord | null;
   status: AdminUserStatus;
-  roles: Set<AppRole>;
+  roles: RoleSelectionState;
   portals: Map<PortalCode, boolean>;
   isSaving: boolean;
 };
+
+type RoleToggle = {
+  selected: boolean;
+  readOnly: boolean;
+};
+
+type RoleSelectionState = Map<AppRole, RoleToggle>;
 
 type DeleteBlocker = {
   type: string;
@@ -261,14 +270,29 @@ function initializePortalState(user: AdminUserRecord | null): Map<PortalCode, bo
   return map;
 }
 
+function initializeRoleSelections(user: AdminUserRecord | null): RoleSelectionState {
+  const map = new Map<AppRole, RoleToggle>();
+  for (const role of AVAILABLE_ROLES) {
+    const assignment = user?.roleAssignments?.find((entry) => entry.role === role);
+    map.set(role, {
+      selected: Boolean(user?.roles.includes(role)),
+      readOnly: assignment?.isReadOnly ?? false,
+    });
+  }
+  return map;
+}
+
 export function AdminUsersDirectory({
   initialUsers,
   initialAuditLog,
   actorName,
   actorId,
   mode = "users",
+  actorCanMutate = true,
 }: AdminUsersDirectoryProps) {
   const isRolesMode = mode === "roles";
+  const actorIsReadOnly = !actorCanMutate;
+  const readOnlyTooltip = actorIsReadOnly ? "Your current access is read-only." : undefined;
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<AdminUserRecord[]>(() => sortUsers(initialUsers));
@@ -281,6 +305,7 @@ export function AdminUsersDirectory({
     fullName: "",
     email: "",
     role: "OP_MANAGER",
+    readOnly: false,
     sendInvite: true,
   });
   const [createError, setCreateError] = useState<string | null>(null);
@@ -291,8 +316,8 @@ export function AdminUsersDirectory({
     isOpen: false,
     user: null,
     status: "active",
-    roles: new Set(),
-    portals: new Map(),
+    roles: initializeRoleSelections(null),
+    portals: initializePortalState(null),
     isSaving: false,
   });
   const [manageError, setManageError] = useState<string | null>(null);
@@ -309,7 +334,10 @@ export function AdminUsersDirectory({
     () => ({
       fullName: createForm.fullName.trim(),
       email: createForm.email.trim(),
-      role: createForm.role,
+      role: {
+        code: createForm.role,
+        readOnly: createForm.readOnly,
+      },
       sendInvite: createForm.sendInvite,
     }),
     [createForm],
@@ -422,6 +450,7 @@ export function AdminUsersDirectory({
       fullName: "",
       email: "",
       role: "OP_MANAGER",
+      readOnly: false,
       sendInvite: true,
     });
     setCreateError(null);
@@ -478,16 +507,20 @@ export function AdminUsersDirectory({
 
       if (!response.ok || !payload?.ok) {
         if (payload?.fieldErrors) {
+          const roleError =
+            payload.fieldErrors.role?.[0] ??
+            payload.fieldErrors["role.code"]?.[0];
           setCreateFieldErrors({
             fullName: payload.fieldErrors.fullName?.[0],
             email: payload.fieldErrors.email?.[0],
-            role: payload.fieldErrors.role?.[0],
+            role: roleError,
           });
         }
         const firstFieldError =
           payload?.fieldErrors?.fullName?.[0] ??
           payload?.fieldErrors?.email?.[0] ??
-          payload?.fieldErrors?.role?.[0];
+          payload?.fieldErrors?.role?.[0] ??
+          payload?.fieldErrors?.["role.code"]?.[0];
         throw new Error(
           payload?.error ??
             firstFieldError ??
@@ -514,11 +547,14 @@ export function AdminUsersDirectory({
   }
 
   function handleManageOpen(user: AdminUserRecord) {
+    if (!actorCanMutate) {
+      return;
+    }
     setManageState({
       isOpen: true,
       user,
       status: user.status,
-      roles: new Set(user.roles),
+      roles: initializeRoleSelections(user),
       portals: initializePortalState(user),
       isSaving: false,
     });
@@ -558,15 +594,28 @@ export function AdminUsersDirectory({
 
   function toggleRole(role: AppRole) {
     setManageState((prev) => {
-      const nextRoles = new Set(prev.roles);
-      if (nextRoles.has(role)) {
-        nextRoles.delete(role);
-      } else {
-        nextRoles.add(role);
-      }
+      const nextRoles = new Map(prev.roles);
+      const current = nextRoles.get(role) ?? { selected: false, readOnly: false };
+      const nextSelected = !current.selected;
+      nextRoles.set(role, {
+        selected: nextSelected,
+        readOnly: nextSelected ? current.readOnly : false,
+      });
       return { ...prev, roles: nextRoles };
     });
     setManageError(null);
+  }
+
+  function toggleRoleReadOnly(role: AppRole, readOnly: boolean) {
+    setManageState((prev) => {
+      const nextRoles = new Map(prev.roles);
+      const current = nextRoles.get(role) ?? { selected: false, readOnly: false };
+      nextRoles.set(role, {
+        selected: current.selected,
+        readOnly: current.selected ? readOnly : false,
+      });
+      return { ...prev, roles: nextRoles };
+    });
   }
 
   function updatePortalAccess(portal: PortalCode, enabled: boolean) {
@@ -583,10 +632,16 @@ export function AdminUsersDirectory({
   async function handleManageSave() {
     const targetUser = manageState.user;
     if (!targetUser) return;
+    if (!actorCanMutate) {
+      setManageError("Your account is limited to read-only access.");
+      return;
+    }
     const nextStatus = manageState.status;
-    const nextRolesSet = new Set(manageState.roles);
+    const selectedRoles = Array.from(manageState.roles.entries())
+      .filter(([, state]) => state.selected)
+      .map(([role, state]) => ({ role, readOnly: state.readOnly }));
 
-    if (!nextRolesSet.size) {
+    if (!selectedRoles.length) {
       setManageError("Назначьте минимум одну роль.");
       return;
     }
@@ -610,14 +665,14 @@ export function AdminUsersDirectory({
         body: JSON.stringify({
           userId: targetUser.id,
           status: nextStatus,
-          roles: Array.from(nextRolesSet),
+          roles: selectedRoles,
           portals: portalUpdates,
         }),
       });
 
       const payload = (await response.json()) as {
         ok?: boolean;
-        roles?: AppRole[];
+        roles?: Array<AppRole | { role: AppRole; readOnly?: boolean }>;
         status?: AdminUserStatus;
         portals?: { portal: PortalCode; status: string; last_access_at?: string | null }[];
         error?: string;
@@ -627,7 +682,17 @@ export function AdminUsersDirectory({
         throw new Error(payload?.error ?? "Не удалось сохранить изменения");
       }
 
-      const persistedRoles = Array.from(payload.roles ?? nextRolesSet);
+      const normalizedAssignments = (payload.roles && payload.roles.length
+        ? payload.roles
+        : selectedRoles
+      ).map((entry) => {
+        if (typeof entry === "string") {
+          return { role: entry as AppRole, readOnly: false };
+        }
+        return { role: entry.role, readOnly: Boolean(entry.readOnly) };
+      });
+
+      const persistedRoles = normalizedAssignments.map((assignment) => assignment.role);
 
       setUsers((prev) =>
         prev.map((user) => {
@@ -649,11 +714,12 @@ export function AdminUsersDirectory({
           return {
             ...user,
             roles: persistedRoles,
-             roleAssignments: persistedRoles.map((role) => ({
-               role,
-               portal: resolvePortalForRole(role),
-             })),
-             portals: updatedPortals,
+            roleAssignments: normalizedAssignments.map((assignment) => ({
+              role: assignment.role,
+              portal: resolvePortalForRole(assignment.role),
+              isReadOnly: assignment.readOnly,
+            })),
+            portals: updatedPortals,
             status: payload.status ?? nextStatus,
           };
         }),
@@ -672,8 +738,8 @@ export function AdminUsersDirectory({
         isOpen: false,
         user: null,
         status: "active",
-        roles: new Set(),
-        portals: new Map(),
+        roles: initializeRoleSelections(null),
+        portals: initializePortalState(null),
         isSaving: false,
       });
       setManageError(null);
@@ -689,6 +755,13 @@ export function AdminUsersDirectory({
   async function handleDeleteCheck() {
     const targetUser = manageState.user;
     if (!targetUser || deleteState.isChecking || deleteState.isDeleting) {
+      return;
+    }
+    if (!actorCanMutate) {
+      setDeleteState((prev) => ({
+        ...prev,
+        error: "Your account is limited to read-only access.",
+      }));
       return;
     }
 
@@ -743,6 +816,13 @@ export function AdminUsersDirectory({
     if (!targetUser || deleteState.isDeleting) {
       return;
     }
+    if (!actorCanMutate) {
+      setDeleteState((prev) => ({
+        ...prev,
+        error: "Your account is limited to read-only access.",
+      }));
+      return;
+    }
 
     setDeleteState((prev) => ({ ...prev, isDeleting: true, error: null }));
 
@@ -788,8 +868,8 @@ export function AdminUsersDirectory({
         isOpen: false,
         user: null,
         status: "active",
-        roles: new Set(),
-        portals: new Map(),
+        roles: initializeRoleSelections(null),
+        portals: initializePortalState(null),
         isSaving: false,
       });
     } catch (error) {
@@ -974,7 +1054,11 @@ export function AdminUsersDirectory({
                 }}
               >
                 <DialogTrigger asChild>
-                  <Button className="rounded-xl">
+                  <Button
+                    className="rounded-xl"
+                    disabled={actorIsReadOnly}
+                    title={actorIsReadOnly ? readOnlyTooltip : undefined}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add user
                   </Button>
@@ -1057,6 +1141,24 @@ export function AdminUsersDirectory({
                           </p>
                         ) : null}
                       </div>
+                      <div className="flex items-center justify-between rounded-xl border border-border bg-card/60 px-4 py-3">
+                        <div className="pr-4">
+                          <p className="text-sm font-medium text-foreground">Read-only role</p>
+                          <p className="text-xs text-muted-foreground">
+                            Users can browse data but cannot create or edit records.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={createForm.readOnly}
+                          onCheckedChange={(checked) =>
+                            setCreateForm((prev) => ({
+                              ...prev,
+                              readOnly: Boolean(checked),
+                            }))
+                          }
+                          aria-label="Toggle read-only role"
+                        />
+                      </div>
                       <label className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
                         <Checkbox
                           checked={createForm.sendInvite}
@@ -1121,6 +1223,13 @@ export function AdminUsersDirectory({
             ) : null}
           </div>
         </CardHeader>
+        {actorIsReadOnly ? (
+          <CardContent className="pt-0">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-900 dark:border-amber-400/40 dark:bg-amber-500/10 dark:text-amber-100">
+              Your current role is read-only. Invites, edits, and deletions are disabled until an administrator grants broader access.
+            </div>
+          </CardContent>
+        ) : null}
         {createSuccess ? (
           <div className="px-4 pt-2 sm:px-8">
             <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-100 sm:flex-row sm:items-start sm:justify-between">
@@ -1209,6 +1318,11 @@ export function AdminUsersDirectory({
             <TableBody>
               {paginatedUsers.map((user) => {
                 const statusMeta = STATUS_META[user.status];
+                const readOnlyRoleSet = new Set(
+                  (user.roleAssignments ?? [])
+                    .filter((assignment) => assignment.isReadOnly)
+                    .map((assignment) => assignment.role),
+                );
                 return (
                   <TableRow key={user.id} className="align-top">
                     <TableCell>
@@ -1227,11 +1341,22 @@ export function AdminUsersDirectory({
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-2 py-1">
-                        {user.roles.map((role: AppRole) => (
-                          <Badge key={`${user.id}-${role}`} variant="secondary">
-                            {ROLE_LABELS[role] ?? role}
-                          </Badge>
-                        ))}
+                        {user.roles.map((role: AppRole) => {
+                          const isReadOnly = readOnlyRoleSet.has(role);
+                          return (
+                            <div key={`${user.id}-${role}`} className="flex items-center gap-2">
+                              <Badge variant="secondary">{ROLE_LABELS[role] ?? role}</Badge>
+                              {isReadOnly ? (
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-xl border-dashed px-2 py-0.5 text-[11px] uppercase tracking-wide"
+                                >
+                                  Read-only
+                                </Badge>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -1303,6 +1428,8 @@ export function AdminUsersDirectory({
                         size="sm"
                         className="rounded-xl"
                         onClick={() => handleManageOpen(user)}
+                        disabled={actorIsReadOnly}
+                        title={actorIsReadOnly ? readOnlyTooltip : undefined}
                       >
                         <UserCog className="mr-2 h-4 w-4" />
                         Manage
@@ -1426,8 +1553,8 @@ export function AdminUsersDirectory({
               isOpen: false,
               user: null,
               status: "active",
-              roles: new Set(),
-              portals: new Map(),
+              roles: initializeRoleSelections(null),
+              portals: initializePortalState(null),
               isSaving: false,
             };
           })
@@ -1458,13 +1585,22 @@ export function AdminUsersDirectory({
                   <Select
                     value={manageState.status}
                     onValueChange={(value) =>
-                      setManageState((prev) => ({
-                        ...prev,
-                        status: value as AdminUserStatus,
-                      }))
+                      setManageState((prev) => {
+                        if (!actorCanMutate) {
+                          return prev;
+                        }
+                        return {
+                          ...prev,
+                          status: value as AdminUserStatus,
+                        };
+                      })
                     }
                   >
-                    <SelectTrigger id="manage-status" className="h-10">
+                    <SelectTrigger
+                      id="manage-status"
+                      className="h-10"
+                      disabled={actorIsReadOnly}
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1480,27 +1616,46 @@ export function AdminUsersDirectory({
                   <Label>Roles</Label>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {AVAILABLE_ROLES.map((role) => {
-                      const checked = manageState.roles.has(role);
+                      const selection = manageState.roles.get(role);
+                      const checked = selection?.selected ?? false;
+                      const readOnly = selection?.readOnly ?? false;
                       return (
-                        <button
+                        <div
                           key={`role-${role}`}
-                          type="button"
-                          onClick={() => toggleRole(role)}
-                          className="flex items-center justify-between rounded-2xl border border-border bg-card/60 px-4 py-3 text-left text-sm transition hover:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                          className={`rounded-2xl border px-4 py-3 text-sm transition ${
+                            checked
+                              ? "border-brand-500 bg-brand-50 dark:border-brand-400/60 dark:bg-brand-500/10"
+                              : "border-border bg-card/60 hover:border-brand-400/80"
+                          }`}
                         >
-                          <div>
-                            <p className="font-medium text-foreground">{ROLE_LABELS[role]}</p>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                              {role.replace(/_/g, " ")}
-                            </p>
-                          </div>
-                          <span
-                            className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background"
-                            aria-hidden="true"
+                          <button
+                            type="button"
+                            onClick={() => toggleRole(role)}
+                            className="flex w-full items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                           >
-                            {checked ? <Check className="h-4 w-4 text-brand-500" /> : null}
-                          </span>
-                        </button>
+                            <div>
+                              <p className="font-medium text-foreground">{ROLE_LABELS[role]}</p>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                                {role.replace(/_/g, " ")}
+                              </p>
+                            </div>
+                            <span
+                              className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background"
+                              aria-hidden="true"
+                            >
+                              {checked ? <Check className="h-4 w-4 text-brand-500" /> : null}
+                            </span>
+                          </button>
+                          <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-border/60 bg-background/60 px-3 py-2 text-xs">
+                            <span className="text-muted-foreground">Read-only</span>
+                            <Switch
+                              checked={readOnly}
+                              disabled={!checked || !actorCanMutate}
+                              onCheckedChange={(state) => toggleRoleReadOnly(role, Boolean(state))}
+                              aria-label={`Toggle read-only for ${ROLE_LABELS[role]}`}
+                            />
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -1526,9 +1681,13 @@ export function AdminUsersDirectory({
                           </div>
                           <Switch
                             checked={enabled}
-                            onCheckedChange={(checked) =>
-                              updatePortalAccess(portal, Boolean(checked))
-                            }
+                            onCheckedChange={(checked) => {
+                              if (!actorCanMutate) {
+                                return;
+                              }
+                              updatePortalAccess(portal, Boolean(checked));
+                            }}
+                            disabled={actorIsReadOnly}
                             aria-label={`Toggle ${definition.label}`}
                           />
                         </div>
@@ -1559,8 +1718,10 @@ export function AdminUsersDirectory({
                         !manageState.user ||
                         deleteState.isChecking ||
                         deleteState.isDeleting ||
-                        isSelfTarget
+                        isSelfTarget ||
+                        actorIsReadOnly
                       }
+                      title={actorIsReadOnly ? readOnlyTooltip : undefined}
                     >
                       {deleteState.isChecking ? "Проверяем..." : "Удалить пользователя"}
                     </Button>
@@ -1603,8 +1764,8 @@ export function AdminUsersDirectory({
                     isOpen: false,
                     user: null,
                     status: "active",
-                    roles: new Set(),
-                    portals: new Map(),
+                    roles: initializeRoleSelections(null),
+                    portals: initializePortalState(null),
                     isSaving: false,
                   })
                 }
@@ -1615,7 +1776,8 @@ export function AdminUsersDirectory({
                 type="button"
                 className="rounded-xl"
                 onClick={handleManageSave}
-                disabled={manageState.isSaving}
+                disabled={manageState.isSaving || !actorCanMutate}
+                title={!actorCanMutate ? readOnlyTooltip : undefined}
               >
                 {manageState.isSaving ? (
                   <span className="flex items-center gap-2">
@@ -1691,7 +1853,8 @@ export function AdminUsersDirectory({
               variant="destructive"
               className="rounded-xl"
               onClick={handleDeleteConfirm}
-              disabled={deleteState.isDeleting}
+              disabled={deleteState.isDeleting || actorIsReadOnly}
+              title={actorIsReadOnly ? readOnlyTooltip : undefined}
             >
               {deleteState.isDeleting ? (
                 "Удаляем..."

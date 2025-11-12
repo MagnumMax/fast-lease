@@ -129,9 +129,14 @@ export async function ensureDefaultProfileAndRole(
   await syncUserRolesMetadata(serviceClient, userId);
 }
 
+type RoleAssignmentOptions = {
+  readOnly?: boolean;
+};
+
 export async function ensureRoleAssignment(
   userId: string,
   role: AppRole | null,
+  options?: RoleAssignmentOptions,
 ) {
   const serviceClientForRoles = await createSupabaseServiceClient();
 
@@ -147,6 +152,9 @@ export async function ensureRoleAssignment(
         user_id: userId,
         role,
         portal: resolvePortalForRole(role),
+        metadata: {
+          read_only: Boolean(options?.readOnly),
+        },
       },
       { onConflict: "user_id,role,portal" },
     );

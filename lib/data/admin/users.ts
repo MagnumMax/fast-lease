@@ -47,6 +47,7 @@ export type LoginEventSummary = {
 export type RoleAssignmentRecord = {
   role: AppRole;
   portal: PortalCode;
+  isReadOnly?: boolean;
 };
 
 // Fallback data for development
@@ -58,7 +59,7 @@ export const ADMIN_USERS_FALLBACK: AdminUserRecord[] = [
     email: "admin@fastlease.ae",
     role: "ADMIN",
     roles: ["ADMIN"],
-    roleAssignments: [{ role: "ADMIN", portal: "app" }],
+    roleAssignments: [{ role: "ADMIN", portal: "app", isReadOnly: false }],
     portals: [{ portal: "app", status: "active", lastAccessAt: new Date().toISOString() }],
     loginEvents: [],
     status: "active",

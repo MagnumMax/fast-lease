@@ -25,6 +25,7 @@ import {
 import { ThemeToggle } from "@/components/system/theme-toggle";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
 import { useActivePathname } from "@/components/navigation/use-active-pathname";
+import { ReadOnlyBanner } from "@/components/providers/access-control-provider";
 
 type DashboardLayoutProps = {
   navItems: NavItem[];
@@ -246,7 +247,10 @@ export function DashboardLayout({
         </header>
 
         <main className="dashboard-content">
-          <div className="dashboard-content__inner">{children}</div>
+          <div className="dashboard-content__inner">
+            <ReadOnlyBanner />
+            {children}
+          </div>
         </main>
       </div>
     </div>
