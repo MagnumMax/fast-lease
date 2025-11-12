@@ -80,6 +80,13 @@ ADMIN > OP_MANAGER > FINANCE > SUPPORT > TECH_SPECIALIST > RISK_MANAGER > LEGAL 
 4. После успешного входа выполняется редирект на домашний маршрут портала или `next`.
 5. Все события фиксируются в `auth_login_events` (см. Observability).
 
+### Создание внутренних пользователей (`/settings/users`)
+- Экран админки вызывает `POST /api/admin/users/create` (доступен только роли `ADMIN`).
+- Маршрут пользуется Supabase Admin API `auth.admin.createUser`, затем upsert'ит профиль (`profiles.user_id`, `full_name`, `status`) и назначает выбранную роль через `ensureRoleAssignment` (что создаёт записи в `user_roles` и `user_portals`).
+- Если включено «Send invitation email», генерируется Supabase invite-link (`auth.admin.generateLink(type='invite')`). Пока почта не подключена, ссылку можно взять из ответа API/логов; статус в `profiles` остаётся `pending`.
+- Если приглашение выключено, email подтверждается сразу (`email_confirm = true`), а API возвращает временный пароль, который администратор должен передать пользователю.
+- Любое создание фиксируется в `admin_portal_audit` с action `create_user`, что обеспечивает полный соответствующий аудит.
+
 ### Восстановление пароля
 1. Пользователь открывает `/login/forgot` и вводит email.
 2. `requestPasswordResetAction` вызывает `supabase.auth.resetPasswordForEmail` с `redirectTo = /auth/callback?next=/login/reset`.

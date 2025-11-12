@@ -73,7 +73,13 @@ create index idx_user_roles_portal on public.user_roles(portal);
 
 ### RLS
 
-Политики обновляем так, чтобы `portal` сравнивался с требуемым порталом (через claim `request.jwt.claims ->> 'portal'` или join с `user_portals`).
+Политики обновляем так, чтобы `portal` сравнивался с требуемым порталом (через claim `request.jwt.claims ->> 'portal'` или join с `user_portals`). На таблице действуют три основных правила:
+
+- `service manage user portals` — полный доступ для `service_role` (serverless функциями мы управляем записями).
+- `users read their portals` — пользователи видят только свои записи (`auth.uid() = user_id`).
+- `User portals admin read` — `ADMIN`/`OP_MANAGER` получают SELECT-доступ к каталогу порталов (для админской таблицы пользователей).
+
+Такой набор следует рекомендациям Supabase по принципу «минимально достаточных» RLS-политик: сервисные клиенты управляют данными, пользователи читают себя, а операторы получают только чтение через проверку ролей.
 
 ## 4. Таблица `auth_login_events`
 

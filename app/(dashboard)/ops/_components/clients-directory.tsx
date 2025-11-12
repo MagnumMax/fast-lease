@@ -182,65 +182,66 @@ function handleCreateClient() {
           Новый клиент
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg rounded-3xl">
-        <DialogHeader>
-          <DialogTitle>Создать клиента</DialogTitle>
-          <DialogDescription>Заполните контактную информацию клиента.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="client-name" className="text-sm font-medium text-foreground/80">
-              Полное имя
-            </label>
-            <Input
-              id="client-name"
-              value={formState.name}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, name: event.target.value }))
-              }
-              placeholder="Иван Иванов"
-              className="rounded-xl"
-            />
+      <DialogContent className="max-w-lg rounded-3xl p-0">
+        <div className="flex max-h-[90vh] flex-col">
+          <DialogHeader className="px-6 pt-6">
+            <DialogTitle>Создать клиента</DialogTitle>
+            <DialogDescription>Заполните контактную информацию клиента.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="space-y-2">
+              <label htmlFor="client-name" className="text-sm font-medium text-foreground/80">
+                Полное имя
+              </label>
+              <Input
+                id="client-name"
+                value={formState.name}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, name: event.target.value }))
+                }
+                placeholder="Иван Иванов"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="client-email" className="text-sm font-medium text-foreground/80">
+                Email
+              </label>
+              <Input
+                id="client-email"
+                value={formState.email}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, email: event.target.value }))
+                }
+                placeholder="client@fastlease.dev"
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="client-phone" className="text-sm font-medium text-foreground/80">
+                Телефон
+              </label>
+              <Input
+                id="client-phone"
+                value={formState.phone}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, phone: event.target.value }))
+                }
+                placeholder="+971 50 000 0000"
+                className="rounded-xl"
+              />
+            </div>
+            {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
           </div>
-          <div className="space-y-2">
-            <label htmlFor="client-email" className="text-sm font-medium text-foreground/80">
-              Email
-            </label>
-            <Input
-              id="client-email"
-              value={formState.email}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, email: event.target.value }))
-              }
-              placeholder="client@fastlease.dev"
-              className="rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="client-phone" className="text-sm font-medium text-foreground/80">
-              Телефон
-            </label>
-            <Input
-              id="client-phone"
-              value={formState.phone}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, phone: event.target.value }))
-              }
-              placeholder="+971 50 000 0000"
-              className="rounded-xl"
-            />
-          </div>
-          {/* Поле статуса убрано - статус автоматически устанавливается как "Active" */}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="rounded-xl">
+              Отмена
+            </Button>
+            <Button onClick={handleCreateClient} className="rounded-xl" disabled={isSaving}>
+              {isSaving ? "Сохранение..." : "Сохранить"}
+            </Button>
+          </DialogFooter>
         </div>
-        {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setIsModalOpen(false)} className="rounded-xl">
-            Отмена
-          </Button>
-          <Button onClick={handleCreateClient} className="rounded-xl" disabled={isSaving}>
-            {isSaving ? "Сохранение..." : "Сохранить"}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

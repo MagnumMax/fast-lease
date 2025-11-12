@@ -29,6 +29,7 @@ import {
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
 import { normalizeRoleCode } from "@/lib/auth/roles";
+import { findSupabaseAuthUserByEmail } from "@/lib/supabase/admin-auth";
 
 function normalizeEmail(value: FormDataEntryValue | null): string {
   if (typeof value !== "string") return "";
@@ -126,26 +127,15 @@ async function collectCandidatePortals(identity: string): Promise<PortalCode[]> 
 
   if (serviceClient) {
     try {
-      // Supabase Admin API supports filtering listUsers by email even though the
-      // TS definition only exposes pagination fields, so we assert here.
-      const listUsersParams = {
-        page: 1,
-        perPage: 1,
-        email: identity,
-      } as Parameters<typeof serviceClient.auth.admin.listUsers>[0];
-
-      const { data, error } = await serviceClient.auth.admin.listUsers(
-        listUsersParams,
-      );
-
-      if (error) {
+      let authUser = null;
+      try {
+        authUser = await findSupabaseAuthUserByEmail(identity);
+      } catch (error) {
         console.warn("[auth] listUsers failed during portal detection", error);
       }
 
-      const match = data?.users?.[0];
-
-      if (match) {
-        const userId = match.id;
+      if (authUser) {
+        const userId = authUser.id;
 
         const { data: portalRows } = await serviceClient
           .from("user_portals")

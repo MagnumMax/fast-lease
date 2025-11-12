@@ -228,64 +228,66 @@ export function AdminBpmOverview({
                 New process
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg rounded-3xl">
-              <DialogHeader className="space-y-2">
-                <DialogTitle>Create orchestration</DialogTitle>
-                <DialogDescription>
-                  Define a BPMN entry before publishing it to operations.
-                </DialogDescription>
-              </DialogHeader>
-              <form className="space-y-4" onSubmit={handleCreateProcess}>
-                <div className="space-y-2">
-                  <Label htmlFor="process-code">Process ID</Label>
-                  <Input
-                    id="process-code"
-                    value={form.code}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, code: event.target.value }))
-                    }
-                    placeholder="BPM-04"
-                    className="rounded-xl"
-                  />
+            <DialogContent className="max-w-lg rounded-3xl p-0">
+              <form className="flex max-h-[90vh] flex-col" onSubmit={handleCreateProcess}>
+                <DialogHeader className="space-y-2 px-6 pt-6">
+                  <DialogTitle>Create orchestration</DialogTitle>
+                  <DialogDescription>
+                    Define a BPMN entry before publishing it to operations.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="process-code">Process ID</Label>
+                    <Input
+                      id="process-code"
+                      value={form.code}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, code: event.target.value }))
+                      }
+                      placeholder="BPM-04"
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="process-name">Name</Label>
+                    <Input
+                      id="process-name"
+                      value={form.name}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, name: event.target.value }))
+                      }
+                      placeholder="Vehicle Handover"
+                      required
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="process-owner">Owner</Label>
+                    <Input
+                      id="process-owner"
+                      value={form.owner}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, owner: event.target.value }))
+                      }
+                      placeholder="Operations"
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="process-tags">Tags</Label>
+                    <Input
+                      id="process-tags"
+                      value={form.tags}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, tags: event.target.value }))
+                      }
+                      placeholder="handover, compliance"
+                      className="rounded-xl"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="process-name">Name</Label>
-                  <Input
-                    id="process-name"
-                    value={form.name}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, name: event.target.value }))
-                    }
-                    placeholder="Vehicle Handover"
-                    required
-                    className="rounded-xl"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="process-owner">Owner</Label>
-                  <Input
-                    id="process-owner"
-                    value={form.owner}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, owner: event.target.value }))
-                    }
-                    placeholder="Operations"
-                    className="rounded-xl"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="process-tags">Tags</Label>
-                  <Input
-                    id="process-tags"
-                    value={form.tags}
-                    onChange={(event) =>
-                      setForm((prev) => ({ ...prev, tags: event.target.value }))
-                    }
-                    placeholder="handover, compliance"
-                    className="rounded-xl"
-                  />
-                </div>
-                <DialogFooter className="pt-2">
+                <DialogFooter>
                   <Button
                     type="button"
                     variant="outline"

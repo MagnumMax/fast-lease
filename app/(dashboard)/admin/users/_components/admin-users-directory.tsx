@@ -1,15 +1,21 @@
 "use client";
 
-import type { FormEvent } from "react";
+import type { Dispatch, FormEvent, SetStateAction } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  AlertTriangle,
   Check,
+  ChevronLeft,
+  ChevronRight,
   History,
   Plus,
   Search,
   Shield,
+  Trash2,
   UserCog,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +60,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { AdminCreateUserSchema } from "@/lib/validation/admin-users";
 import type {
   AdminAuditLogEntry,
   AdminUserRecord,
@@ -70,6 +77,7 @@ type AdminUsersDirectoryProps = {
   initialUsers: AdminUserRecord[];
   initialAuditLog: AdminAuditLogEntry[];
   actorName: string;
+  actorId?: string;
   mode?: "users" | "roles";
 };
 
@@ -80,6 +88,14 @@ type CreateUserForm = {
   sendInvite: boolean;
 };
 
+type CreateUserSuccess = {
+  email: string;
+  inviteLink?: string | null;
+  temporaryPassword?: string | null;
+};
+
+type CreateFieldErrors = Partial<Record<keyof CreateUserForm, string>>;
+
 type ManageAccessState = {
   isOpen: boolean;
   user: AdminUserRecord | null;
@@ -89,38 +105,82 @@ type ManageAccessState = {
   isSaving: boolean;
 };
 
+type DeleteBlocker = {
+  type: string;
+  label: string;
+  count: number;
+};
+
+type DeleteState = {
+  isChecking: boolean;
+  isDialogOpen: boolean;
+  isDeleting: boolean;
+  blockers: DeleteBlocker[];
+  error: string | null;
+};
+
+type DeleteApiResponse = {
+  ok?: boolean;
+  canDelete?: boolean;
+  blockers?: DeleteBlocker[];
+  error?: string;
+  errors?: string[];
+  message?: string;
+};
+
+const DEFAULT_DELETE_STATE: DeleteState = {
+  isChecking: false,
+  isDialogOpen: false,
+  isDeleting: false,
+  blockers: [],
+  error: null,
+};
+
+function resolveDeleteErrorMessage(payload: DeleteApiResponse | null | undefined, fallback?: string) {
+  if (!payload) return fallback ?? null;
+  if (payload.errors && payload.errors.length) {
+    return payload.errors.join("\n");
+  }
+  if (payload.message && payload.message.trim().length) {
+    return payload.message;
+  }
+  if (payload.error && payload.error.trim().length) {
+    return payload.error;
+  }
+  return fallback ?? null;
+}
+
 const ROLE_LABELS: Record<AppRole, string> = APP_ROLE_LABELS;
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50];
+const DEFAULT_PAGE_SIZE = 10;
 
 const STATUS_META: Record<
   AdminUserStatus,
-  { label: string; description: string; badgeVariant: "success" | "warning" | "danger" | "outline" }
+  { label: string; badgeVariant: "success" | "warning" | "danger" | "outline" }
 > = {
   active: {
     label: "Active",
-    description: "User has full access.",
     badgeVariant: "success",
   },
   inactive: {
     label: "Inactive",
-    description: "User is inactive.",
     badgeVariant: "outline",
   },
   pending: {
     label: "Invitation sent",
-    description: "Awaiting invitation acceptance.",
     badgeVariant: "warning",
   },
   suspended: {
     label: "Suspended",
-    description: "Access temporarily revoked.",
     badgeVariant: "danger",
   },
   archived: {
     label: "Deactivated",
-    description: "Account archived, no access.",
     badgeVariant: "outline",
   },
 };
+
+const STATUS_FILTER_VALUES = Object.keys(STATUS_META) as AdminUserStatus[];
 
 function formatDateTime(value: string | null) {
   if (!value) return "—";
@@ -182,6 +242,16 @@ const ROLES_MODE_SCOPE: AppRole[] = [
 ];
 const PORTAL_LIST: PortalCode[] = PORTAL_CODES;
 
+function sortUsers(users: AdminUserRecord[]): AdminUserRecord[] {
+  return [...users].sort((a, b) => a.fullName.localeCompare(b.fullName));
+}
+
+function sortAuditLog(entries: AdminAuditLogEntry[]): AdminAuditLogEntry[] {
+  return [...entries].sort(
+    (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
+  );
+}
+
 function initializePortalState(user: AdminUserRecord | null): Map<PortalCode, boolean> {
   const map = new Map<PortalCode, boolean>();
   for (const portal of PORTAL_LIST) {
@@ -195,17 +265,15 @@ export function AdminUsersDirectory({
   initialUsers,
   initialAuditLog,
   actorName,
+  actorId,
   mode = "users",
 }: AdminUsersDirectoryProps) {
   const isRolesMode = mode === "roles";
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [users, setUsers] = useState<AdminUserRecord[]>(() =>
-    [...initialUsers].sort((a, b) => a.fullName.localeCompare(b.fullName)),
-  );
+  const [users, setUsers] = useState<AdminUserRecord[]>(() => sortUsers(initialUsers));
   const [auditLog, setAuditLog] = useState<AdminAuditLogEntry[]>(() =>
-    [...initialAuditLog].sort(
-      (a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
-    ),
+    sortAuditLog(initialAuditLog),
   );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -215,6 +283,9 @@ export function AdminUsersDirectory({
     role: "OP_MANAGER",
     sendInvite: true,
   });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createFieldErrors, setCreateFieldErrors] = useState<CreateFieldErrors>({});
+  const [createSuccess, setCreateSuccess] = useState<CreateUserSuccess | null>(null);
 
   const [manageState, setManageState] = useState<ManageAccessState>({
     isOpen: false,
@@ -225,9 +296,37 @@ export function AdminUsersDirectory({
     isSaving: false,
   });
   const [manageError, setManageError] = useState<string | null>(null);
+  const [deleteState, setDeleteState] = useState<DeleteState>(DEFAULT_DELETE_STATE);
   const [roleFilter, setRoleFilter] = useState<AppRole | null>(() =>
     isRolesMode ? ROLES_MODE_SCOPE[0] ?? null : null,
   );
+  const [roleFilters, setRoleFilters] = useState<Set<AppRole>>(new Set());
+  const [portalFilters, setPortalFilters] = useState<Set<PortalCode>>(new Set());
+  const [statusFilters, setStatusFilters] = useState<Set<AdminUserStatus>>(new Set());
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+  const [currentPage, setCurrentPage] = useState(1);
+  const normalizedCreateForm = useMemo(
+    () => ({
+      fullName: createForm.fullName.trim(),
+      email: createForm.email.trim(),
+      role: createForm.role,
+      sendInvite: createForm.sendInvite,
+    }),
+    [createForm],
+  );
+
+  const isCreateFormValid = useMemo(() => {
+    const result = AdminCreateUserSchema.safeParse(normalizedCreateForm);
+    return result.success;
+  }, [normalizedCreateForm]);
+
+  useEffect(() => {
+    setUsers(sortUsers(initialUsers));
+  }, [initialUsers]);
+
+  useEffect(() => {
+    setAuditLog(sortAuditLog(initialAuditLog));
+  }, [initialAuditLog]);
 
   useEffect(() => {
     if (isRolesMode) {
@@ -236,6 +335,10 @@ export function AdminUsersDirectory({
       setRoleFilter(null);
     }
   }, [isRolesMode, roleFilter]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, roleFilter, isRolesMode, pageSize, roleFilters, portalFilters, statusFilters]);
 
   const roleStats = useMemo(() => {
     if (!isRolesMode) return null;
@@ -265,6 +368,22 @@ export function AdminUsersDirectory({
       dataset = dataset.filter((user) => user.roles.includes(roleFilter));
     }
 
+    if (roleFilters.size) {
+      dataset = dataset.filter((user) => user.roles.some((role) => roleFilters.has(role)));
+    }
+
+    if (portalFilters.size) {
+      dataset = dataset.filter((user) =>
+        (user.portals ?? []).some(
+          (portal) => portalFilters.has(portal.portal) && portal.status !== "inactive",
+        ),
+      );
+    }
+
+    if (statusFilters.size) {
+      dataset = dataset.filter((user) => statusFilters.has(user.status));
+    }
+
     if (!query) return dataset;
 
     return dataset.filter((user) => {
@@ -274,7 +393,29 @@ export function AdminUsersDirectory({
         user.roles.some((role: AppRole) => ROLE_LABELS[role]?.toLowerCase().includes(query))
       );
     });
-  }, [isRolesMode, roleFilter, searchQuery, users]);
+  }, [isRolesMode, roleFilter, searchQuery, users, roleFilters, portalFilters, statusFilters]);
+
+  const totalUsers = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(Math.max(totalUsers, 1) / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedUsers = filteredUsers.slice(
+    (safePage - 1) * pageSize,
+    (safePage - 1) * pageSize + pageSize,
+  );
+  const pageStart = totalUsers === 0 ? 0 : (safePage - 1) * pageSize + 1;
+  const pageEnd = totalUsers === 0 ? 0 : Math.min(safePage * pageSize, totalUsers);
+  const showPaginationFooter = totalUsers > 0;
+
+  useEffect(() => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(Math.max(filteredUsers.length, 1) / pageSize),
+    );
+    setCurrentPage((prev) => Math.min(prev, totalPages));
+  }, [filteredUsers.length, pageSize]);
+
+  const isSelfTarget = Boolean(actorId && manageState.user && manageState.user.id === actorId);
+  const activeDeleteBlockers = deleteState.blockers.filter((blocker) => blocker.count > 0);
 
   function resetCreateForm() {
     setCreateForm({
@@ -283,42 +424,93 @@ export function AdminUsersDirectory({
       role: "OP_MANAGER",
       sendInvite: true,
     });
+    setCreateError(null);
+    setCreateFieldErrors({});
   }
 
-  function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!createForm.fullName || !createForm.email) return;
+    const validation = AdminCreateUserSchema.safeParse(normalizedCreateForm);
+
+    if (!validation.success) {
+      const fieldErrors = validation.error.flatten().fieldErrors;
+      setCreateFieldErrors({
+        fullName: fieldErrors.fullName?.[0],
+        email: fieldErrors.email?.[0],
+        role: fieldErrors.role?.[0],
+      });
+      setCreateError(
+        fieldErrors.fullName?.[0] ??
+          fieldErrors.email?.[0] ??
+          fieldErrors.role?.[0] ??
+          "Исправьте данные формы и попробуйте ещё раз.",
+      );
+      return;
+    }
+
+    const requestPayload = validation.data;
 
     setIsCreating(true);
+    setCreateError(null);
+    setCreateFieldErrors({});
 
-    setTimeout(() => {
-      const newUser: AdminUserRecord = {
-        id: generateClientId("profile"),
-        name: "",
-        fullName: createForm.fullName,
-        email: createForm.email,
-        role: createForm.role,
-        roles: [createForm.role],
-        roleAssignments: [{ role: createForm.role, portal: resolvePortalForRole(createForm.role) }],
-        portals: [],
-        loginEvents: [],
-        status: createForm.sendInvite ? "pending" : "active",
-        lastLogin: "",
-        lastLoginAt: createForm.sendInvite ? null : new Date().toISOString(),
-        invitationSentAt: createForm.sendInvite ? new Date().toISOString() : null,
-        createdAt: new Date().toISOString(),
-      };
+    try {
+      const response = await fetch("/api/admin/users/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestPayload),
+      });
 
-      setUsers((prev) => [newUser, ...prev]);
-      setAuditLog((prev) => [
-        makeAuditEntry(actorName, "Created user", createForm.email),
-        ...prev,
-      ]);
+      let payload: {
+        ok?: boolean;
+        error?: string;
+        inviteLink?: string | null;
+        temporaryPassword?: string | null;
+        fieldErrors?: Record<string, string[]>;
+      } | null = null;
+      try {
+        payload = (await response.json()) as { ok?: boolean; error?: string } | null;
+      } catch {
+        /* no-op */
+      }
 
-      setIsCreating(false);
+      if (!response.ok || !payload?.ok) {
+        if (payload?.fieldErrors) {
+          setCreateFieldErrors({
+            fullName: payload.fieldErrors.fullName?.[0],
+            email: payload.fieldErrors.email?.[0],
+            role: payload.fieldErrors.role?.[0],
+          });
+        }
+        const firstFieldError =
+          payload?.fieldErrors?.fullName?.[0] ??
+          payload?.fieldErrors?.email?.[0] ??
+          payload?.fieldErrors?.role?.[0];
+        throw new Error(
+          payload?.error ??
+            firstFieldError ??
+            "Не удалось создать пользователя. Проверьте введённые данные.",
+        );
+      }
+
+      router.refresh();
+      setCreateSuccess({
+        email: requestPayload.email,
+        inviteLink: payload?.inviteLink ?? null,
+        temporaryPassword: payload?.temporaryPassword ?? null,
+      });
       setIsCreateDialogOpen(false);
       resetCreateForm();
-    }, 600);
+    } catch (error) {
+      console.error("[admin-users] create flow failed", error);
+      setCreateError(
+        error instanceof Error ? error.message : "Не удалось создать пользователя.",
+      );
+    } finally {
+      setIsCreating(false);
+    }
   }
 
   function handleManageOpen(user: AdminUserRecord) {
@@ -331,6 +523,37 @@ export function AdminUsersDirectory({
       isSaving: false,
     });
     setManageError(null);
+    resetDeleteState();
+  }
+
+  function toggleSimpleFilter<T>(
+    value: T,
+    setter: Dispatch<SetStateAction<Set<T>>>,
+    enabled?: boolean,
+  ) {
+    setter((prev) => {
+      const next = new Set(prev);
+      const shouldEnable = typeof enabled === "boolean" ? enabled : !next.has(value);
+      if (shouldEnable) {
+        next.add(value);
+      } else {
+        next.delete(value);
+      }
+      return next;
+    });
+  }
+
+  const hasAdvancedFilters =
+    roleFilters.size > 0 || portalFilters.size > 0 || statusFilters.size > 0;
+
+  function clearAdvancedFilters() {
+    setRoleFilters(new Set());
+    setPortalFilters(new Set());
+    setStatusFilters(new Set());
+  }
+
+  function resetDeleteState() {
+    setDeleteState(DEFAULT_DELETE_STATE);
   }
 
   function toggleRole(role: AppRole) {
@@ -463,6 +686,123 @@ export function AdminUsersDirectory({
     }
   }
 
+  async function handleDeleteCheck() {
+    const targetUser = manageState.user;
+    if (!targetUser || deleteState.isChecking || deleteState.isDeleting) {
+      return;
+    }
+
+    setDeleteState((prev) => ({ ...prev, isChecking: true, error: null }));
+
+    try {
+      const response = await fetch("/api/admin/users/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: targetUser.id, intent: "check" }),
+      });
+
+      let payload: DeleteApiResponse | null = null;
+      try {
+        payload = (await response.json()) as DeleteApiResponse;
+      } catch {
+        payload = null;
+      }
+
+      const blockers = payload?.blockers ?? [];
+      const canDelete = Boolean(payload?.canDelete) && response.ok;
+      const blockerError = !canDelete && blockers.some((blocker) => blocker.count > 0)
+        ? "Очистите связанные объекты перед удалением."
+        : resolveDeleteErrorMessage(payload);
+
+      if (!response.ok && response.status !== 409) {
+        throw new Error(blockerError ?? "Не удалось проверить возможность удаления.");
+      }
+
+      setDeleteState((prev) => ({
+        ...prev,
+        blockers,
+        isDialogOpen: canDelete,
+        error: blockerError,
+      }));
+    } catch (error) {
+      setDeleteState((prev) => ({
+        ...prev,
+        error: error instanceof Error ? error.message : "Не удалось проверить зависимости.",
+      }));
+    } finally {
+      setDeleteState((prev) => ({ ...prev, isChecking: false }));
+    }
+  }
+
+  function closeDeleteDialog() {
+    setDeleteState((prev) => ({ ...prev, isDialogOpen: false, isDeleting: false }));
+  }
+
+  async function handleDeleteConfirm() {
+    const targetUser = manageState.user;
+    if (!targetUser || deleteState.isDeleting) {
+      return;
+    }
+
+    setDeleteState((prev) => ({ ...prev, isDeleting: true, error: null }));
+
+    try {
+      const response = await fetch("/api/admin/users/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: targetUser.id, intent: "delete" }),
+      });
+
+      let payload: DeleteApiResponse | null = null;
+      try {
+        payload = (await response.json()) as DeleteApiResponse;
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok || !payload?.ok) {
+        const blockers = payload?.blockers ?? [];
+        const message = resolveDeleteErrorMessage(payload, "Не удалось удалить пользователя.");
+        setDeleteState((prev) => ({
+          ...prev,
+          blockers: blockers.length ? blockers : prev.blockers,
+          error: message,
+          isDialogOpen: false,
+        }));
+        return;
+      }
+
+      setUsers((prev) => prev.filter((user) => user.id !== targetUser.id));
+      setAuditLog((prev) => [
+        makeAuditEntry(
+          actorName,
+          "Удалена учётная запись",
+          targetUser.email ?? targetUser.fullName ?? targetUser.id,
+        ),
+        ...prev,
+      ]);
+      router.refresh();
+      resetDeleteState();
+      setManageError(null);
+      setManageState({
+        isOpen: false,
+        user: null,
+        status: "active",
+        roles: new Set(),
+        portals: new Map(),
+        isSaving: false,
+      });
+    } catch (error) {
+      setDeleteState((prev) => ({
+        ...prev,
+        error: error instanceof Error ? error.message : "Не удалось удалить пользователя.",
+        isDialogOpen: false,
+      }));
+    } finally {
+      setDeleteState((prev) => ({ ...prev, isDeleting: false }));
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card className="border border-border/80 bg-card/80 backdrop-blur">
@@ -484,97 +824,258 @@ export function AdminUsersDirectory({
               Изменения применяются мгновенно и записываются в Supabase.
             </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={
-                  isRolesMode ? "Search members within selected role" : "Search name, email, or role"
-                }
-                className="h-10 w-72 rounded-xl pl-9 pr-4"
-              />
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={
+                    isRolesMode
+                      ? "Search members within selected role"
+                      : "Search name, email, or role"
+                  }
+                  className="h-10 w-full rounded-xl pl-9 pr-4"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="rounded-xl">
+                      Roles {roleFilters.size ? `(${roleFilters.size})` : ""}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 rounded-2xl border border-border/80 bg-card/95 p-4 shadow-xl">
+                    <p className="mb-2 text-sm font-semibold">Filter by role</p>
+                    <div className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                      {AVAILABLE_ROLES.map((role) => (
+                        <label
+                          key={`filter-role-${role}`}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <Checkbox
+                            checked={roleFilters.has(role)}
+                            onCheckedChange={(checked) =>
+                              toggleSimpleFilter(role, setRoleFilters, checked === true)
+                            }
+                          />
+                          <span>{ROLE_LABELS[role]}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-3 h-8 rounded-xl text-xs"
+                      onClick={() => setRoleFilters(new Set())}
+                      disabled={roleFilters.size === 0}
+                    >
+                      Clear
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="rounded-xl">
+                      Portals {portalFilters.size ? `(${portalFilters.size})` : ""}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 rounded-2xl border border-border/80 bg-card/95 p-4 shadow-xl">
+                    <p className="mb-2 text-sm font-semibold">Filter by portal</p>
+                    <div className="space-y-2">
+                      {PORTAL_LIST.map((portal) => (
+                        <label
+                          key={`filter-portal-${portal}`}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <Checkbox
+                            checked={portalFilters.has(portal)}
+                            onCheckedChange={(checked) =>
+                              toggleSimpleFilter(portal, setPortalFilters, checked === true)
+                            }
+                          />
+                          <span>{PORTAL_DEFINITIONS[portal].label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-3 h-8 rounded-xl text-xs"
+                      onClick={() => setPortalFilters(new Set())}
+                      disabled={portalFilters.size === 0}
+                    >
+                      Clear
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="rounded-xl">
+                      Status {statusFilters.size ? `(${statusFilters.size})` : ""}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-60 rounded-2xl border border-border/80 bg-card/95 p-4 shadow-xl">
+                    <p className="mb-2 text-sm font-semibold">Filter by status</p>
+                    <div className="space-y-2">
+                      {STATUS_FILTER_VALUES.map((status) => (
+                        <label
+                          key={`filter-status-${status}`}
+                          className="flex items-center gap-2 text-sm"
+                        >
+                          <Checkbox
+                            checked={statusFilters.has(status)}
+                            onCheckedChange={(checked) =>
+                              toggleSimpleFilter(status, setStatusFilters, checked === true)
+                            }
+                          />
+                          <span>{STATUS_META[status].label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mt-3 h-8 rounded-xl text-xs"
+                      onClick={() => setStatusFilters(new Set())}
+                      disabled={statusFilters.size === 0}
+                    >
+                      Clear
+                    </Button>
+                  </PopoverContent>
+                </Popover>
+                {hasAdvancedFilters ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={clearAdvancedFilters}
+                  >
+                    <X className="mr-1 h-4 w-4" />
+                    Reset filters
+                  </Button>
+                ) : null}
+              </div>
             </div>
             {!isRolesMode ? (
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <Dialog
+                open={isCreateDialogOpen}
+                onOpenChange={(open) => {
+                  setIsCreateDialogOpen(open);
+                  if (!open) {
+                    setIsCreating(false);
+                    resetCreateForm();
+                  }
+                }}
+              >
                 <DialogTrigger asChild>
                   <Button className="rounded-xl">
                     <Plus className="mr-2 h-4 w-4" />
                     Add user
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-lg rounded-3xl">
-                  <DialogHeader className="space-y-2">
-                    <DialogTitle>Create user</DialogTitle>
-                    <DialogDescription>
-                      Issue an invitation and assign initial access roles.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form className="space-y-4" onSubmit={handleCreateSubmit}>
-                    <div className="space-y-2">
-                      <Label htmlFor="create-full-name">Full name</Label>
-                      <Input
-                        id="create-full-name"
-                        value={createForm.fullName}
-                        onChange={(event) =>
-                          setCreateForm((prev) => ({ ...prev, fullName: event.target.value }))
-                        }
-                        placeholder="Lina Admin"
-                        required
-                        className="rounded-xl"
-                      />
+                <DialogContent className="max-w-lg rounded-3xl p-0">
+                  <form className="flex max-h-[90vh] flex-col" onSubmit={handleCreateSubmit}>
+                    <DialogHeader className="space-y-2 px-6 pt-6">
+                      <DialogTitle>Create user</DialogTitle>
+                      <DialogDescription>
+                        Issue an invitation and assign initial access roles.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="create-full-name">Full name</Label>
+                        <Input
+                          id="create-full-name"
+                          value={createForm.fullName}
+                          onChange={(event) =>
+                            setCreateForm((prev) => ({ ...prev, fullName: event.target.value }))
+                          }
+                          placeholder="Lina Admin"
+                          className="rounded-xl"
+                          aria-invalid={Boolean(createFieldErrors.fullName)}
+                        />
+                        {createFieldErrors.fullName ? (
+                          <p className="text-xs text-destructive" role="alert">
+                            {createFieldErrors.fullName}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="create-email">Email</Label>
+                        <Input
+                          id="create-email"
+                          type="email"
+                          value={createForm.email}
+                          onChange={(event) =>
+                            setCreateForm((prev) => ({ ...prev, email: event.target.value.trim() }))
+                          }
+                          placeholder="user@fastlease.ae"
+                          className="rounded-xl"
+                          aria-invalid={Boolean(createFieldErrors.email)}
+                        />
+                        {createFieldErrors.email ? (
+                          <p className="text-xs text-destructive" role="alert">
+                            {createFieldErrors.email}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="create-role">Role</Label>
+                        <Select
+                          value={createForm.role}
+                          onValueChange={(value) =>
+                            setCreateForm((prev) => ({
+                              ...prev,
+                              role: value as AppRole,
+                            }))
+                          }
+                        >
+                          <SelectTrigger
+                            id="create-role"
+                            className="h-10"
+                            aria-invalid={Boolean(createFieldErrors.role)}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABLE_ROLES.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {ROLE_LABELS[role]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {createFieldErrors.role ? (
+                          <p className="text-xs text-destructive" role="alert">
+                            {createFieldErrors.role}
+                          </p>
+                        ) : null}
+                      </div>
+                      <label className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
+                        <Checkbox
+                          checked={createForm.sendInvite}
+                          onCheckedChange={(checked) =>
+                            setCreateForm((prev) => ({
+                              ...prev,
+                              sendInvite: Boolean(checked),
+                            }))
+                          }
+                        />
+                        Send invitation email
+                      </label>
+                      {createError ? (
+                        <p className="text-sm text-destructive" role="alert">
+                          {createError}
+                        </p>
+                      ) : null}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="create-email">Email</Label>
-                      <Input
-                        id="create-email"
-                        type="email"
-                        value={createForm.email}
-                        onChange={(event) =>
-                          setCreateForm((prev) => ({ ...prev, email: event.target.value.trim() }))
-                        }
-                        placeholder="user@fastlease.ae"
-                        required
-                        className="rounded-xl"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="create-role">Role</Label>
-                      <Select
-                        value={createForm.role}
-                        onValueChange={(value) =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            role: value as AppRole,
-                          }))
-                        }
-                      >
-                        <SelectTrigger id="create-role" className="h-10">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {AVAILABLE_ROLES.map((role) => (
-                            <SelectItem key={role} value={role}>
-                              {ROLE_LABELS[role]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <label className="flex items-center gap-3 rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
-                      <Checkbox
-                        checked={createForm.sendInvite}
-                        onCheckedChange={(checked) =>
-                          setCreateForm((prev) => ({
-                            ...prev,
-                            sendInvite: Boolean(checked),
-                          }))
-                        }
-                      />
-                      Send invitation email
-                    </label>
-                    <DialogFooter className="pt-2">
+                    <DialogFooter>
                       <Button
                         type="button"
                         variant="outline"
@@ -587,7 +1088,11 @@ export function AdminUsersDirectory({
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" className="rounded-xl" disabled={isCreating}>
+                      <Button
+                        type="submit"
+                        className="rounded-xl"
+                        disabled={isCreating || !isCreateFormValid}
+                      >
                         {isCreating ? (
                           <span className="flex items-center gap-2">
                             <svg
@@ -616,6 +1121,38 @@ export function AdminUsersDirectory({
             ) : null}
           </div>
         </CardHeader>
+        {createSuccess ? (
+          <div className="px-4 pt-2 sm:px-8">
+            <div className="flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-100 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="font-medium">
+                  User {createSuccess.email} created. Share the details below with them.
+                </p>
+                {createSuccess.inviteLink ? (
+                  <p className="mt-2 break-words text-xs text-emerald-900/80 dark:text-emerald-100/80">
+                    Invite link:{" "}
+                    <span className="font-mono">{createSuccess.inviteLink}</span>
+                  </p>
+                ) : null}
+                {createSuccess.temporaryPassword ? (
+                  <p className="mt-1 text-xs text-emerald-900/80 dark:text-emerald-100/80">
+                    Temporary password:{" "}
+                    <span className="font-mono">{createSuccess.temporaryPassword}</span>
+                  </p>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="self-end rounded-xl text-emerald-900 hover:bg-emerald-100 dark:text-emerald-100 dark:hover:bg-emerald-500/20"
+                onClick={() => setCreateSuccess(null)}
+              >
+                Hide
+              </Button>
+            </div>
+          </div>
+        ) : null}
         {isRolesMode && roleStats ? (
           <CardContent className="pb-0">
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -665,13 +1202,12 @@ export function AdminUsersDirectory({
                 <TableHead>{isRolesMode ? "Member" : "Employee"}</TableHead>
                 <TableHead>Roles</TableHead>
                 <TableHead>Portals</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Last login</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => {
+              {paginatedUsers.map((user) => {
                 const statusMeta = STATUS_META[user.status];
                 return (
                   <TableRow key={user.id} className="align-top">
@@ -679,6 +1215,14 @@ export function AdminUsersDirectory({
                       <div className="space-y-1">
                         <p className="font-medium leading-tight">{user.fullName}</p>
                         <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="flex flex-wrap items-center gap-2 pt-2">
+                          <Badge
+                            variant={statusMeta.badgeVariant}
+                            className="rounded-xl px-3 py-1"
+                          >
+                            {statusMeta.label}
+                          </Badge>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -705,17 +1249,6 @@ export function AdminUsersDirectory({
                             </Badge>
                           );
                         })}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Badge
-                          variant={statusMeta.badgeVariant}
-                          className="rounded-xl px-3 py-1"
-                        >
-                          {statusMeta.label}
-                        </Badge>
-                        <p className="text-xs text-muted-foreground">{statusMeta.description}</p>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -791,6 +1324,61 @@ export function AdminUsersDirectory({
             </TableBody>
           </Table>
         </CardContent>
+        {showPaginationFooter ? (
+          <CardContent className="border-t border-border/60 pt-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {pageStart.toLocaleString("en-US")}–{pageEnd.toLocaleString("en-US")} of {" "}
+                {totalUsers.toLocaleString("en-US")} {isRolesMode ? "members" : "users"}
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Rows per page</span>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => setPageSize(Number(value))}
+                  >
+                    <SelectTrigger className="h-9 w-[84px] rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="end" className="rounded-2xl">
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={`page-size-${size}`} value={String(size)}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={safePage === 1}
+                  >
+                    <ChevronLeft className="mr-1 h-4 w-4" />
+                    Prev
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {safePage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={safePage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="ml-1 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        ) : null}
       </Card>
 
       <Card className="border border-border/80 bg-card/80 backdrop-blur">
@@ -833,6 +1421,7 @@ export function AdminUsersDirectory({
             }
 
             setManageError(null);
+             resetDeleteState();
             return {
               isOpen: false,
               user: null,
@@ -844,152 +1433,272 @@ export function AdminUsersDirectory({
           })
         }
       >
-        <DialogContent className="max-w-xl rounded-3xl">
-          <DialogHeader className="space-y-2">
-            <DialogTitle>Manage access</DialogTitle>
+        <DialogContent className="max-w-2xl rounded-3xl p-0 md:max-h-[90vh]">
+          <div className="flex max-h-[90vh] flex-col">
+            <DialogHeader className="space-y-2 px-6 pt-6">
+              <DialogTitle>Manage access</DialogTitle>
+              <DialogDescription>
+                Configure RBAC policies and role assignments for the selected account.
+              </DialogDescription>
+            </DialogHeader>
+            {manageState.user ? (
+              <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                {manageError ? (
+                  <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>{manageError}</span>
+                  </div>
+                ) : null}
+                <div className="rounded-2xl border border-border bg-background/60 p-4">
+                  <p className="text-sm font-medium text-foreground">{manageState.user.fullName}</p>
+                  <p className="text-sm text-muted-foreground">{manageState.user.email}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manage-status">Status</Label>
+                  <Select
+                    value={manageState.status}
+                    onValueChange={(value) =>
+                      setManageState((prev) => ({
+                        ...prev,
+                        status: value as AdminUserStatus,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id="manage-status" className="h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="pending">Invitation sent</SelectItem>
+                      <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="archived">Deactivated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <Label>Roles</Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {AVAILABLE_ROLES.map((role) => {
+                      const checked = manageState.roles.has(role);
+                      return (
+                        <button
+                          key={`role-${role}`}
+                          type="button"
+                          onClick={() => toggleRole(role)}
+                          className="flex items-center justify-between rounded-2xl border border-border bg-card/60 px-4 py-3 text-left text-sm transition hover:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                        >
+                          <div>
+                            <p className="font-medium text-foreground">{ROLE_LABELS[role]}</p>
+                            <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                              {role.replace(/_/g, " ")}
+                            </p>
+                          </div>
+                          <span
+                            className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background"
+                            aria-hidden="true"
+                          >
+                            {checked ? <Check className="h-4 w-4 text-brand-500" /> : null}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Label>Portal access</Label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {PORTAL_LIST.map((portal) => {
+                      const definition = PORTAL_DEFINITIONS[portal];
+                      const enabled = manageState.portals.get(portal) ?? false;
+                      return (
+                        <div
+                          key={`portal-${portal}`}
+                          className="flex items-center justify-between rounded-2xl border border-border bg-card/60 px-4 py-3"
+                        >
+                          <div className="pr-4">
+                            <p className="text-sm font-medium text-foreground">
+                              {definition.label}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {definition.description}
+                            </p>
+                          </div>
+                          <Switch
+                            checked={enabled}
+                            onCheckedChange={(checked) =>
+                              updatePortalAccess(portal, Boolean(checked))
+                            }
+                            aria-label={`Toggle ${definition.label}`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="flex items-center gap-2 text-sm font-semibold text-destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        Опасная зона
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {isSelfTarget
+                          ? "Нельзя удалить собственную учётную запись."
+                          : "Удаление необратимо и потребует повторного подтверждения."}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={handleDeleteCheck}
+                      disabled={
+                        !manageState.user ||
+                        deleteState.isChecking ||
+                        deleteState.isDeleting ||
+                        isSelfTarget
+                      }
+                    >
+                      {deleteState.isChecking ? "Проверяем..." : "Удалить пользователя"}
+                    </Button>
+                  </div>
+                  {activeDeleteBlockers.length ? (
+                    <div className="rounded-xl bg-background/80 p-3 text-xs text-destructive">
+                      <p className="font-medium">Очистите связанные объекты:</p>
+                      <ul className="mt-2 space-y-1">
+                        {activeDeleteBlockers.map((blocker) => (
+                          <li
+                            key={blocker.type}
+                            className="flex items-center justify-between gap-3"
+                          >
+                            <span>{blocker.label}</span>
+                            <span className="font-semibold">{blocker.count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {deleteState.error ? (
+                    <p className="text-xs text-destructive">{deleteState.error}</p>
+                  ) : null}
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 px-6 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Select a user from the table to manage their permissions.
+                </p>
+              </div>
+            )}
+            <DialogFooter className="gap-3 border-t border-border px-6 py-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-xl"
+                onClick={() =>
+                  setManageState({
+                    isOpen: false,
+                    user: null,
+                    status: "active",
+                    roles: new Set(),
+                    portals: new Map(),
+                    isSaving: false,
+                  })
+                }
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="rounded-xl"
+                onClick={handleManageSave}
+                disabled={manageState.isSaving}
+              >
+                {manageState.isSaving ? (
+                  <span className="flex items-center gap-2">
+                    <svg
+                      className="h-4 w-4 animate-spin"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    >
+                      <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+                      <path d="M22 12a10 10 0 0 1-10 10" />
+                    </svg>
+                    Updating…
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Save changes
+                  </span>
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={deleteState.isDialogOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeDeleteDialog();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Удалить пользователя</DialogTitle>
             <DialogDescription>
-              Configure RBAC policies and role assignments for the selected account.
+              Эта операция удалит учётную запись из Supabase Auth и всех связанных справочников.
+              Восстановление будет невозможно.
             </DialogDescription>
           </DialogHeader>
           {manageState.user ? (
             <div className="space-y-4">
-              {manageError ? (
-                <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{manageError}</span>
-                </div>
+              <div className="rounded-2xl border border-border/70 bg-background/70 p-4">
+                <p className="text-sm font-semibold text-foreground">
+                  {manageState.user.fullName}
+                </p>
+                <p className="text-xs text-muted-foreground">{manageState.user.email}</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Назначенные роли, порталы и профиль будут очищены автоматически после подтверждения.
+              </p>
+              {deleteState.error ? (
+                <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {deleteState.error}
+                </p>
               ) : null}
-              <div className="rounded-2xl border border-border bg-background/60 p-4">
-                <p className="text-sm font-medium text-foreground">{manageState.user.fullName}</p>
-                <p className="text-sm text-muted-foreground">{manageState.user.email}</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="manage-status">Status</Label>
-                <Select
-                  value={manageState.status}
-                  onValueChange={(value) =>
-                    setManageState((prev) => ({
-                      ...prev,
-                      status: value as AdminUserStatus,
-                    }))
-                  }
-                >
-                  <SelectTrigger id="manage-status" className="h-10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Invitation sent</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                    <SelectItem value="archived">Deactivated</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-3">
-                <Label>Roles</Label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {AVAILABLE_ROLES.map((role) => {
-                    const checked = manageState.roles.has(role);
-                    return (
-                      <button
-                        key={`role-${role}`}
-                        type="button"
-                        onClick={() => toggleRole(role)}
-                        className="flex items-center justify-between rounded-2xl border border-border bg-card/60 px-4 py-3 text-left text-sm transition hover:border-brand-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
-                      >
-                        <div>
-                          <p className="font-medium text-foreground">{ROLE_LABELS[role]}</p>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                            {role.replace(/_/g, " ")}
-                          </p>
-                        </div>
-                        <span
-                          className="flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background"
-                          aria-hidden="true"
-                        >
-                          {checked ? <Check className="h-4 w-4 text-brand-500" /> : null}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="space-y-3">
-                <Label>Portal access</Label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {PORTAL_LIST.map((portal) => {
-                    const definition = PORTAL_DEFINITIONS[portal];
-                    const enabled = manageState.portals.get(portal) ?? false;
-                    return (
-                      <div
-                        key={`portal-${portal}`}
-                        className="flex items-center justify-between rounded-2xl border border-border bg-card/60 px-4 py-3"
-                      >
-                        <div className="pr-4">
-                          <p className="text-sm font-medium text-foreground">
-                            {definition.label}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {definition.description}
-                          </p>
-                        </div>
-                        <Switch
-                          checked={enabled}
-                          onCheckedChange={(checked) =>
-                            updatePortalAccess(portal, Boolean(checked))
-                          }
-                          aria-label={`Toggle ${definition.label}`}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           ) : null}
-          <DialogFooter className="pt-2">
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               className="rounded-xl"
-              onClick={() =>
-                setManageState({
-                  isOpen: false,
-                  user: null,
-                  status: "active",
-                  roles: new Set(),
-                  portals: new Map(),
-                  isSaving: false,
-                })
-              }
+              onClick={closeDeleteDialog}
+              disabled={deleteState.isDeleting}
             >
-              Cancel
+              Отмена
             </Button>
             <Button
               type="button"
+              variant="destructive"
               className="rounded-xl"
-              onClick={handleManageSave}
-              disabled={manageState.isSaving}
+              onClick={handleDeleteConfirm}
+              disabled={deleteState.isDeleting}
             >
-              {manageState.isSaving ? (
-                <span className="flex items-center gap-2">
-                  <svg
-                    className="h-4 w-4 animate-spin"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                  >
-                    <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
-                    <path d="M22 12a10 10 0 0 1-10 10" />
-                  </svg>
-                  Updating…
-                </span>
+              {deleteState.isDeleting ? (
+                "Удаляем..."
               ) : (
                 <span className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Save changes
+                  <Trash2 className="h-4 w-4" />
+                  Удалить
                 </span>
               )}
             </Button>

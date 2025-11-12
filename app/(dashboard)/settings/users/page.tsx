@@ -30,6 +30,7 @@ export default async function SettingsUsersPage() {
         initialUsers={directory.users}
         initialAuditLog={directory.auditLog}
         actorName={actorName}
+        actorId={sessionUser.user.id}
       />
     </div>
   );

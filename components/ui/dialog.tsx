@@ -37,12 +37,12 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-overlay w-full max-w-xl -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-2xl outline-none data-[state=open]:animate-dialog-content-show",
+        "fixed left-1/2 top-1/2 z-overlay w-[min(calc(100vw-1.5rem),42rem)] max-h-[92vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-2xl outline-none overscroll-contain data-[state=open]:animate-dialog-content-show sm:w-[min(calc(100vw-3rem),48rem)] sm:max-h-[88vh] md:max-h-[85vh]",
         className,
       )}
       {...props}
     >
-      {children}
+      <div className="max-h-full overflow-y-auto pr-0.5">{children}</div>
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full bg-surface-subtle p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
         <span className="sr-only">Close</span>
         ×
@@ -93,7 +93,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse gap-3 pt-6 sm:flex-row sm:justify-end",
+      "sticky bottom-0 mt-6 flex flex-col-reverse gap-3 border-t border-border bg-card/95 px-6 py-4 backdrop-blur-sm sm:flex-row sm:justify-end",
       className,
     )}
     {...props}

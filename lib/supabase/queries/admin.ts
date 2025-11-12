@@ -1,7 +1,8 @@
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  createSupabaseServerClient,
-  createSupabaseServiceClient,
-} from "@/lib/supabase/server";
+  listSupabaseAuthUsers,
+  type SupabaseAdminUser,
+} from "@/lib/supabase/admin-auth";
 
 import {
   ADMIN_AUDIT_LOG_FALLBACK,
@@ -45,13 +46,7 @@ type UserRoleRow = {
   assigned_at: string;
 };
 
-type AuthUserRow = {
-  id: string;
-  email: string | null;
-  user_metadata: Record<string, unknown> | null;
-  last_sign_in_at: string | null;
-  created_at: string;
-};
+type AuthUserRow = SupabaseAdminUser;
 
 type PortalRow = {
   user_id: string;
@@ -93,6 +88,7 @@ function createUserRecord(
   portals: PortalAccessSummary[],
   loginEvents: LoginEventSummary[],
 ): AdminUserRecord {
+  const userId = profile.user_id ?? profile.id;
   const primaryEmail =
     authUser?.email ??
     (typeof profile.metadata?.email === "string" ? (profile.metadata.email as string) : "");
@@ -116,7 +112,7 @@ function createUserRecord(
   }
 
   return {
-    id: profile.id,
+    id: userId,
     name: profile.full_name ?? primaryEmail ?? "—",
     fullName: profile.full_name ?? primaryEmail ?? "—",
     email: primaryEmail ?? "—",
@@ -214,36 +210,17 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
       process.env.SUPABASE_SERVICE_ROLE_KEY.length > 0;
 
     if (!hasServiceRoleKey) {
-      console.warn("[admin] Skipping auth directory enrichment – SUPABASE_SERVICE_ROLE_KEY is not configured.");
+      console.warn(
+        "[admin] Skipping auth directory enrichment – SUPABASE_SERVICE_ROLE_KEY is not configured.",
+      );
     } else {
       try {
-        const serviceClient = await createSupabaseServiceClient();
-        const { data, error } = await serviceClient.auth.admin.listUsers({ perPage: 200 });
-        if (error) {
-          console.warn("[admin] Failed to list auth users, continuing without email enrichment", error);
-        } else {
-          authUsers =
-            data?.users?.map((user) => {
-              const email =
-                typeof user.email === "string" && user.email.length > 0 ? user.email : null;
-              const lastSignIn =
-                typeof user.last_sign_in_at === "string" ? user.last_sign_in_at : null;
-              const metadata =
-                user.user_metadata && typeof user.user_metadata === "object"
-                  ? (user.user_metadata as Record<string, unknown>)
-                  : null;
-
-              return {
-                id: user.id,
-                email,
-                user_metadata: metadata,
-                last_sign_in_at: lastSignIn,
-                created_at: user.created_at,
-              };
-            }) ?? [];
-        }
+        authUsers = await listSupabaseAuthUsers({ perPage: 30, maxPages: 80 });
       } catch (serviceError) {
-        console.warn("[admin] Service client unavailable, skipping email enrichment", serviceError);
+        console.warn(
+          "[admin] Service client unavailable, skipping email enrichment",
+          serviceError,
+        );
       }
     }
 
@@ -333,6 +310,7 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
     };
   }
 }
+
 
 export type AdminProcessCatalog = {
   processes: AdminProcessRecord[];

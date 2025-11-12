@@ -1,15 +1,15 @@
 
-> fast-lease@0.1.0 build /Users/maksymholovakhin/fast-lease
-> next build --turbopack
+> fast-lease@0.1.0 vercel-build
+> next build
 
    ▲ Next.js 16.0.1 (Turbopack)
    - Environments: .env.local
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 22.6s
+ ✓ Compiled successfully in 29.3s
    Running TypeScript ...
    Collecting page data ...
-   Generating static pages (0/92) ...
+   Generating static pages (0/100) ...
 [DEBUG] WorkspaceDealsPage: Starting to load data...
 [SERVER-OPS] getOperationsDeals called
 [SERVER-OPS] getOperationsClients called
@@ -24,33 +24,9 @@
 [SERVER-OPS] getOperationsClients called
 [SERVER-OPS] getOperationsCars called
 [SERVER-OPS] getOperationsClients called
-[DEBUG] WorkspaceDealsPage: Starting to load data...
-[SERVER-OPS] getOperationsDeals called
 [SERVER-OPS] getOperationsClients called
-[SERVER-OPS] getOperationsCars called
 [SERVER-OPS] getOperationsClients called
-[SERVER-OPS] getOperationsCars called
-   Generating static pages (23/92) 
-[SERVER-OPS] getOperationsCars called
-[SERVER-OPS] getOperationsClients called
-[DEBUG] WorkspaceDealsPage: Starting to load data...
-[SERVER-OPS] getOperationsDeals called
-[SERVER-OPS] getOperationsClients called
-[SERVER-OPS] getOperationsCars called
-[SERVER-OPS] getOperationsClients called
-[SERVER-OPS] getOperationsCars called
-   Generating static pages (46/92) 
-[DEBUG] WorkspaceDealsPage: Starting to load data...
-[SERVER-OPS] getOperationsDeals called
-[SERVER-OPS] getOperationsClients called
-[SERVER-OPS] getOperationsCars called
-[SERVER-OPS] getOperationsClients called
-[DEBUG] WorkspaceDealsPage: Starting to load data...
-[SERVER-OPS] getOperationsDeals called
-[SERVER-OPS] getOperationsClients called
-[SERVER-OPS] getOperationsCars called
-[SERVER-OPS] getOperationsCars called
-[SERVER-OPS] getOperationsClients called
+   Generating static pages (25/100) 
 [DEBUG] WorkspaceDealsPage: Starting to load data...
 [SERVER-OPS] getOperationsDeals called
 [SERVER-OPS] getOperationsClients called
@@ -61,13 +37,37 @@
 [SERVER-OPS] getOperationsClients called
 [SERVER-OPS] getOperationsCars called
 [SERVER-OPS] getOperationsClients called
-   Generating static pages (69/92) 
+[SERVER-OPS] getOperationsCars called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+   Generating static pages (50/100) 
+[SERVER-OPS] getOperationsCars called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
 [SERVER-OPS] getOperationsClients called
 [DEBUG] WorkspaceDealsPage: Starting to load data...
 [SERVER-OPS] getOperationsDeals called
 [SERVER-OPS] getOperationsClients called
 [SERVER-OPS] getOperationsCars called
- ✓ Generating static pages (92/92) in 2.0s
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+   Generating static pages (75/100) 
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+[SERVER-OPS] getOperationsClients called
+[DEBUG] WorkspaceDealsPage: Starting to load data...
+[SERVER-OPS] getOperationsDeals called
+[SERVER-OPS] getOperationsClients called
+[SERVER-OPS] getOperationsCars called
+ ✓ Generating static pages (100/100) in 2.8s
    Finalizing page optimization ...
 
 Route (app)                       Revalidate  Expire
@@ -91,6 +91,8 @@ Route (app)                       Revalidate  Expire
 ├ ƒ /admin/users
 ├ ƒ /api/admin/roles/permissions
 ├ ƒ /api/admin/users/access
+├ ƒ /api/admin/users/create
+├ ƒ /api/admin/users/delete
 ├ ƒ /api/deals
 ├ ƒ /api/deals/[id]
 ├ ƒ /api/deals/[id]/cancel
@@ -104,6 +106,8 @@ Route (app)                       Revalidate  Expire
 ├ ƒ /api/webhooks/bank
 ├ ƒ /api/webhooks/esign
 ├ ƒ /api/workflow/queues/run
+├ ƒ /app/dashboard
+├ ƒ /app/settings/users
 ├ ƒ /apply/documents
 ├ ○ /apply/start
 ├ ƒ /apply/status
@@ -139,7 +143,9 @@ Route (app)                       Revalidate  Expire
 ├ ƒ /legal/deals
 ├ ƒ /legal/requests
 ├ ƒ /legal/tasks
-├ ○ /login
+├ ○ /login                                1m      1y
+├ ○ /login/forgot
+├ ƒ /login/reset
 ├ ○ /offer
 ├ ƒ /ops/cars
 ├ ƒ /ops/cars/[id]
@@ -150,6 +156,7 @@ Route (app)                       Revalidate  Expire
 ├ ƒ /ops/deals/[id]
 ├ ƒ /ops/tasks
 ├ ƒ /ops/tasks/[id]
+├ ƒ /partner/dashboard
 ├ ○ /register
 ├ ƒ /risk/cars
 ├ ƒ /risk/clients
@@ -158,6 +165,7 @@ Route (app)                       Revalidate  Expire
 ├ ƒ /risk/pipeline
 ├ ƒ /risk/reports
 ├ ƒ /risk/tasks
+├ ƒ /settings/users
 ├ ○ /support
 ├ ƒ /support/cars
 ├ ƒ /support/clients

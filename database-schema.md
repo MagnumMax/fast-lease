@@ -140,6 +140,8 @@ updated_at: timestamptz (auto)
 UNIQUE(user_id, portal)
 ```
 
+RLS: `service_role` управляет записями; пользователи читают только себя; `ADMIN`/`OP_MANAGER` получают read-only доступ для админки.
+
 #### `auth_login_events`
 Аудит всех операций входа
 ```sql
@@ -154,6 +156,43 @@ ip: inet (nullable)
 user_agent: text (nullable)
 role_snapshot: jsonb (default []::jsonb)
 metadata: jsonb ({}'::jsonb)
+```
+
+#### RPC `get_auth_user_by_email`
+Сервисная функция под `security definer`, дающая возможность безопасно получать запись из `auth.users` по email без обращения к нестабильной пагинации GoTrue. Выполняется в `auth`-схеме и доступна только ролям `service_role` и `supabase_auth_admin`.
+
+```sql
+create or replace function public.get_auth_user_by_email(search_email text)
+returns table (
+  id uuid,
+  email text,
+  phone text,
+  app_metadata jsonb,
+  user_metadata jsonb,
+  last_sign_in_at timestamptz,
+  created_at timestamptz
+)
+language sql
+security definer
+set search_path = auth
+as $$
+  select
+    u.id,
+    u.email,
+    u.phone,
+    u.raw_app_meta_data as app_metadata,
+    u.raw_user_meta_data as user_metadata,
+    u.last_sign_in_at,
+    u.created_at
+  from auth.users u
+  where lower(u.email) = lower(search_email)
+  order by u.created_at asc
+  limit 1;
+$$;
+
+revoke all on function public.get_auth_user_by_email(text) from public, anon, authenticated;
+grant execute on function public.get_auth_user_by_email(text) to service_role;
+grant execute on function public.get_auth_user_by_email(text) to supabase_auth_admin;
 ```
 
 ### 2. Каталог транспортных средств (Vehicles)

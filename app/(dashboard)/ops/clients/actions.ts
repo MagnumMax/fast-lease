@@ -14,6 +14,10 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/server";
+import {
+  findSupabaseAuthUserByEmail,
+  listSupabaseAuthUsers,
+} from "@/lib/supabase/admin-auth";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import {
@@ -183,44 +187,64 @@ function formatClientRecord(
   };
 }
 
+const AUTH_USER_LOOKUP_PAGE_SIZE = 30;
+const AUTH_USER_LOOKUP_MAX_PAGES = 80;
+
 async function resolveUserId(
   email: string | null,
   phone: string | null,
-  serviceClient: Awaited<ReturnType<typeof createSupabaseServiceClient>>,
 ) {
-  let page: number | null = 1;
+  try {
+    if (email) {
+      const match = await findSupabaseAuthUserByEmail(email);
+      if (match?.id) {
+        return match.id;
+      }
+    }
 
-  while (page !== null) {
-    const currentPage = page;
-    const { data, error } = await serviceClient.auth.admin.listUsers({
-      page: currentPage,
-      perPage: 200,
-    });
-
-    if (error) {
-      console.error("[operations] failed to lookup auth user", { email, phone, error });
+    if (!phone) {
       return null;
     }
 
-    const users = data?.users ?? [];
-    const match = users.find((user) => {
-      const matchesEmail =
-        email && user.email?.toLowerCase() === email;
-      if (matchesEmail) return true;
-
-      if (!phone) return false;
-      const userPhoneDigits = (user.phone ?? "").replace(/\D/g, "");
-      const inputPhoneDigits = phone.replace(/\D/g, "");
-      if (!inputPhoneDigits) return false;
-      return userPhoneDigits === inputPhoneDigits;
-    });
-
-    if (match) {
-      return match.id ?? null;
+    const normalizedPhone = phone.replace(/\D/g, "");
+    if (!normalizedPhone) {
+      return null;
     }
 
-    page = data?.nextPage ?? null;
-    if (!page) break;
+    for (let page = 1; page <= AUTH_USER_LOOKUP_MAX_PAGES; page += 1) {
+      const users = await listSupabaseAuthUsers({
+        page,
+        perPage: AUTH_USER_LOOKUP_PAGE_SIZE,
+        maxPages: 1,
+      });
+
+      if (!users.length) {
+        break;
+      }
+
+      const match = users.find((user) => {
+        const directPhone = (user.phone ?? "").replace(/\D/g, "");
+        if (directPhone && directPhone === normalizedPhone) {
+          return true;
+        }
+
+        const metadataPhone =
+          typeof user.user_metadata?.phone === "string"
+            ? user.user_metadata.phone.replace(/\D/g, "")
+            : "";
+        return metadataPhone && metadataPhone === normalizedPhone;
+      });
+
+      if (match?.id) {
+        return match.id;
+      }
+
+      if (users.length < AUTH_USER_LOOKUP_PAGE_SIZE) {
+        break;
+      }
+    }
+  } catch (error) {
+    console.error("[operations] failed to lookup auth user", { email, phone, error });
   }
 
   return null;
@@ -255,7 +279,7 @@ const { name, email, phone } = parsed.data;
       };
     }
 
-    let userId = await resolveUserId(normalizedEmail, sanitizedPhone, serviceClient);
+    let userId = await resolveUserId(normalizedEmail, sanitizedPhone);
 
     if (!userId) {
       const createPayload: {
