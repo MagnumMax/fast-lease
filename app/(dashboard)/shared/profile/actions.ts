@@ -4,7 +4,25 @@ import { revalidatePath } from "next/cache";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+const PROFILE_PATHS = [
+  "/client/profile",
+  "/ops/profile",
+  "/admin/profile",
+  "/finance/profile",
+  "/support/profile",
+  "/tech/profile",
+  "/risk/profile",
+  "/legal/profile",
+  "/accounting/profile",
+  "/investor/profile",
+  "/partner/profile",
+];
 
+function revalidateAllProfilePages() {
+  for (const path of PROFILE_PATHS) {
+    revalidatePath(path);
+  }
+}
 
 export async function updateProfileAction(
   _prev: { status: "idle" | "success" | "error"; message?: string; fieldErrors?: Record<string, string> },
@@ -54,7 +72,7 @@ export async function updateProfileAction(
     };
   }
 
-  revalidatePath("/client/profile");
+  revalidateAllProfilePages();
 
   return {
     status: "success",
@@ -68,7 +86,6 @@ export async function updateSecurityAction(
 ): Promise<{ status: "idle" | "success" | "error"; message?: string; fieldErrors?: Record<string, string> }> {
   const currentPassword = typeof formData.get("currentPassword") === "string" ? (formData.get("currentPassword") as string).trim() : "";
   const newPassword = typeof formData.get("newPassword") === "string" ? (formData.get("newPassword") as string).trim() : "";
-  const notifications = typeof formData.get("notifications") === "string" ? (formData.get("notifications") as string).trim() : "proactive";
 
   const supabase = await createSupabaseServerClient();
 
@@ -134,79 +151,10 @@ export async function updateSecurityAction(
     }
   }
 
-  const { data: profileData, error: metadataLoadError } = await supabase
-    .from("profiles")
-    .select("metadata")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
-
-  if (metadataLoadError) {
-    return {
-      status: "error",
-      message: metadataLoadError.message ?? "Не удалось загрузить профиль",
-    };
-  }
-
-  const metadata = (profileData?.metadata as Record<string, unknown>) ?? {};
-  metadata.notifications_preference = notifications;
-
-  const { error: metadataUpdateError } = await supabase
-    .from("profiles")
-    .update({ metadata })
-    .eq("user_id", session.user.id)
-    .select("id")
-    .single();
-
-  if (metadataUpdateError) {
-    return {
-      status: "error",
-      message: metadataUpdateError.message ?? "Ошибка обновления настроек",
-    };
-  }
-
-  revalidatePath("/client/profile");
+  revalidateAllProfilePages();
 
   return {
     status: "success",
-    message: newPassword
-      ? "Пароль и уведомления обновлены"
-      : "Настройки уведомлений обновлены",
+    message: newPassword ? "Пароль обновлен" : "Профиль безопасности без изменений",
   };
-}
-
-export async function toggleAutopayAction(enabled: boolean) {
-  const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    throw new Error("Сессия не найдена");
-  }
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("metadata")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
-  }
-
-  const metadata = (data?.metadata as Record<string, unknown>) ?? {};
-  metadata.autopay_enabled = enabled;
-
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({ metadata })
-    .eq("user_id", session.user.id);
-
-  if (updateError) {
-    throw updateError;
-  }
-
-  revalidatePath("/client/profile");
-  return enabled;
 }

@@ -1,4 +1,5 @@
 import type { WorkspaceRole } from "@/lib/workspace/routes";
+import type { AppRole } from "@/lib/auth/types";
 
 export type NavItem = {
   label: string;
@@ -57,7 +58,6 @@ export const clientNav: NavItem[] = [
   { label: "My Vehicle", href: "/client/vehicle", icon: "Car" },
   { label: "Payments", href: "/client/invoices", icon: "CreditCard" },
   { label: "Documents", href: "/client/documents", icon: "FileText" },
-  { label: "Profile", href: "/client/profile", icon: "UserCircle" },
   { label: "Referrals", href: "/client/referrals", icon: "Users" },
   { label: "Support", href: "/client/support", icon: "LifeBuoy" },
 ];
@@ -124,6 +124,26 @@ export const investorNav: NavItem[] = [
   { label: "Portfolio", href: "/investor/portfolio", icon: "Briefcase" },
   { label: "Reports", href: "/investor/reports", icon: "PieChart" },
 ];
+
+const ROLE_PROFILE_PATH: Record<AppRole, string> = {
+  ADMIN: "/admin/profile",
+  OP_MANAGER: "/ops/profile",
+  SUPPORT: "/support/profile",
+  FINANCE: "/finance/profile",
+  TECH_SPECIALIST: "/tech/profile",
+  RISK_MANAGER: "/risk/profile",
+  INVESTOR: "/investor/profile",
+  LEGAL: "/legal/profile",
+  ACCOUNTING: "/accounting/profile",
+  CLIENT: "/client/profile",
+};
+
+export function resolveProfileHrefForRole(role: AppRole | null): string {
+  if (!role) {
+    return "/ops/profile";
+  }
+  return ROLE_PROFILE_PATH[role] ?? "/ops/profile";
+}
 
 export const mainShortcuts: NavItem[] = [
   { label: "Apply", href: "/apply/start", icon: "Sparkles" },

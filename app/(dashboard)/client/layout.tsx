@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { requirePortalSession } from "@/lib/auth/portal-session";
-import { clientNav } from "@/lib/navigation";
+import { clientNav, resolveProfileHrefForRole } from "@/lib/navigation";
 import { filterNavItemsForRoles } from "@/lib/navigation/access";
 
 export default async function ClientLayout({
@@ -32,6 +32,7 @@ export default async function ClientLayout({
         email,
         primaryRole: sessionUser.primaryRole,
       }}
+      profileHref={resolveProfileHrefForRole(sessionUser.primaryRole)}
     >
       {children}
     </DashboardLayout>

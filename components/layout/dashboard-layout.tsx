@@ -38,6 +38,7 @@ type DashboardLayoutProps = {
     email: string | null;
     primaryRole: AppRole | null;
   };
+  profileHref?: string;
 };
 
 const DEFAULT_BRAND = {
@@ -61,6 +62,7 @@ export function DashboardLayout({
   children,
   brand = DEFAULT_BRAND,
   user,
+  profileHref,
 }: DashboardLayoutProps) {
   const { pathname, isActive } = useActivePathname();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -216,6 +218,14 @@ export function DashboardLayout({
                   </span>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {profileHref ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <Link href={profileHref}>Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                ) : null}
                 <DropdownMenuItem asChild className="justify-between">
                   <div className="flex w-full items-center justify-between">
                     <span>Theme</span>

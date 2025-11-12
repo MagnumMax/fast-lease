@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 import { requirePortalSession } from "@/lib/auth/portal-session";
-import { workspaceNav } from "@/lib/navigation";
+import { resolveProfileHrefForRole, workspaceNav } from "@/lib/navigation";
 import { filterNavItemsForRoles } from "@/lib/navigation/access";
 
 export default async function WorkspaceLayout({
@@ -31,6 +31,7 @@ export default async function WorkspaceLayout({
         email,
         primaryRole: sessionUser.primaryRole,
       }}
+      profileHref={resolveProfileHrefForRole(sessionUser.primaryRole)}
     >
       {children}
     </DashboardLayout>
