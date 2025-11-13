@@ -9,10 +9,12 @@ export default function LandingPage() {
   const deployment = getDeploymentInfo();
 
   return (
-    <div className="space-y-6">
+    <>
       <UnifiedLoginSection />
-      <DeploymentMeta info={deployment} />
-    </div>
+      <div className="mt-4">
+        <DeploymentMeta info={deployment} />
+      </div>
+    </>
   );
 }
 
@@ -35,19 +37,14 @@ function DeploymentMeta({ info }: { info: DeploymentInfo }) {
   ].filter(Boolean);
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3 text-center text-xs text-muted-foreground">
-      <p className="font-medium uppercase tracking-[0.24em] text-muted">
-        Последний деплой
-      </p>
-      <div className="mt-2 space-y-1 text-[13px] leading-tight text-foreground/80">
+    <div className="rounded-xl border border-border/60 bg-background/80 px-3 py-2 text-center text-[8px] text-foreground/80">
+      <p className="font-semibold uppercase tracking-[0.3em] text-muted">Последний деплой</p>
+      <div className="mt-1 flex flex-col gap-1 text-[9px]">
         {headlinePieces.length > 0 && (
-          <p className="font-semibold">{headlinePieces.join(" · ")}</p>
+          <p className="font-semibold text-foreground">{headlinePieces.join(" · ")}</p>
         )}
         {info.deployedAtLabel && (
-          <p>
-            Обновлено: {info.deployedAtLabel}
-            {info.source === "fallback" ? " (по времени сборки)" : ""}
-          </p>
+          <p className="text-[11px] text-foreground/60">Обновлено: {info.deployedAtLabel}</p>
         )}
       </div>
     </div>

@@ -55,8 +55,7 @@ export function PortalDetector() {
   };
 
   return (
-    <div className="space-y-6 rounded-[32px] border border-border bg-card p-8 text-foreground shadow-xl ring-1 ring-[color:var(--surface-subtle)]">
-
+    <>
       <form action={formAction} className="space-y-4" onSubmit={handleSubmit} noValidate>
         <div className="space-y-2">
           <Label
@@ -132,8 +131,7 @@ export function PortalDetector() {
       </form>
 
       <MessageBanner state={state} />
-
-    </div>
+    </>
   );
 }
 
@@ -147,7 +145,7 @@ function MessageBanner({ state }: { state: AuthActionState }) {
   const Icon = state.status === "success" ? Check : AlertCircle;
 
   return (
-    <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${tone}`}>
+    <div className={`mt-4 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${tone}`}>
       <Icon className="h-4 w-4" />
       <span>{state.message}</span>
     </div>
