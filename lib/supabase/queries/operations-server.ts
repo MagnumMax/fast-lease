@@ -11,7 +11,6 @@ import {
   toDealCompanyCode,
   type DealCompanyCode,
 } from "@/lib/data/deal-companies";
-import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 import { buildSlugWithId, extractIdFromSlug, slugify } from "@/lib/utils/slugs";
 import {
   OPS_DEAL_STATUS_META,
@@ -2456,11 +2455,11 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
   return data.map((vehicle) => {
     const id = (vehicle.id as string) ?? `${vehicle.vin ?? "vehicle"}`;
     const vin = ((vehicle.vin as string) ?? "—").toUpperCase();
-    const licensePlateInfo = normalizeLicensePlate(
-      (vehicle.license_plate as string | null | undefined) ?? null,
-    );
-    const licensePlateNormalized = licensePlateInfo.normalized;
-    const licensePlateDisplay = licensePlateInfo.display ?? licensePlateNormalized ?? null;
+    const licensePlateRaw = typeof vehicle.license_plate === "string" ? vehicle.license_plate : null;
+    const licensePlateDisplay = (() => {
+      const trimmed = licensePlateRaw?.trim();
+      return trimmed && trimmed.length > 0 ? trimmed : null;
+    })();
     const make = String(vehicle.make ?? "").trim() || "Vehicle";
     const model = String(vehicle.model ?? "").trim();
     const name = `${make} ${model}`.trim();
@@ -2503,9 +2502,8 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
     return {
       id,
       vin,
-      licensePlate: licensePlateNormalized,
+      licensePlate: licensePlateDisplay,
       licensePlateDisplay,
-      licensePlateEmirate: licensePlateInfo.emirate ?? null,
       name,
       make,
       model: model || make,
@@ -4107,9 +4105,10 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
 
   const licensePlateColumn = getString((vehicleDetail as { license_plate?: unknown })?.license_plate);
   const licensePlateSource = licensePlateColumn ?? licensePlateFromFeatures;
-  const licensePlateInfo = normalizeLicensePlate(licensePlateSource);
-  const licensePlateNormalized = licensePlateInfo.normalized;
-  const licensePlateDisplay = licensePlateInfo.display ?? licensePlateNormalized ?? null;
+  const licensePlateDisplay = (() => {
+    const value = typeof licensePlateSource === "string" ? licensePlateSource.trim() : null;
+    return value && value.length > 0 ? value : null;
+  })();
 
   const featureList = rawFeatureList.filter((entry) => !/^license\s*plate\b/i.test(entry));
 
@@ -4491,9 +4490,8 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
   const vehicleRecord: OpsVehicleData = {
     id: vehicleDetail.id,
     vin: vehicleDetail.vin ?? null,
-    licensePlate: licensePlateNormalized,
+    licensePlate: licensePlateDisplay,
     licensePlateDisplay,
-    licensePlateEmirate: licensePlateInfo.emirate ?? null,
     make: vehicleDetail.make ?? null,
     model: vehicleDetail.model ?? null,
     variant: vehicleDetail.variant ?? null,

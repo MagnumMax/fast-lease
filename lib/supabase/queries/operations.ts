@@ -1,4 +1,3 @@
-import type { EmiratesCode } from "@/lib/utils/license-plate";
 import type { DealCompanyCode } from "@/lib/data/deal-companies";
 
 // Типы и константы для операций
@@ -385,7 +384,6 @@ export type OpsCarRecord = {
   vin: string;
   licensePlate: string | null;
   licensePlateDisplay?: string | null;
-  licensePlateEmirate?: EmiratesCode | null;
   name: string;
   make: string;
   model: string;
@@ -403,7 +401,7 @@ export type OpsCarRecord = {
   activeDealStatusTone: OpsTone | null;
   activeDealHref: string | null;
   detailHref: string;
-  type?: string;
+  type: string | null;
 };
 
 export type OpsVehicleActiveDeal = {
@@ -1046,7 +1044,6 @@ export type OpsVehicleData = {
   vin: string | null;
   licensePlate: string | null;
   licensePlateDisplay?: string | null;
-  licensePlateEmirate?: EmiratesCode | null;
   make: string | null;
   model: string | null;
   variant: string | null;

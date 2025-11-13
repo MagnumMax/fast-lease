@@ -33,7 +33,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { OPS_VEHICLE_STATUS_META, type OpsCarRecord, type OpsTone } from "@/lib/supabase/queries/operations";
-import { formatLicensePlateDisplay } from "@/lib/utils/license-plate";
 import { createOperationsCar } from "@/app/(dashboard)/ops/cars/actions";
 import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 
@@ -66,11 +65,8 @@ type CarFormState = {
   make: string;
   model: string;
   vin: string;
-  bodyType: string;
   year: string;
   mileage: string;
-  fuelType: string;
-  transmission: string;
 };
 
 function createDefaultCarFormState(): CarFormState {
@@ -78,11 +74,8 @@ function createDefaultCarFormState(): CarFormState {
     make: "",
     model: "",
     vin: "",
-    bodyType: "",
     year: "",
     mileage: "",
-    fuelType: "",
-    transmission: "",
   };
 }
 
@@ -115,7 +108,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   }, [cars]);
 
   const resolveLicensePlateLabel = (car: OpsCarRecord): string | null =>
-    car.licensePlateDisplay ?? formatLicensePlateDisplay(car.licensePlate) ?? null;
+    car.licensePlateDisplay ?? car.licensePlate ?? null;
 
   const bodyTypeOptions = useMemo(() => {
     const set = new Set<string>();
@@ -160,19 +153,16 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   }, [searchQuery, normalizedBodyTypeFilter, normalizedStatusFilter, cars]);
 
   const canCreateCar =
-    formState.make.trim().length > 0 &&
-    formState.model.trim().length > 0 &&
-    formState.vin.trim().length > 0 &&
-    formState.bodyType.trim().length > 0;
+    formState.make.trim().length > 0 && formState.model.trim().length > 0;
 
   function handleCreateCar() {
     if (!canCreateCar) {
-      setErrorMessage("Заполните обязательные поля: марка, модель, VIN и тип кузова.");
+      setErrorMessage("Заполните обязательные поля: марка и модель.");
       return;
     }
 
     const vinValue = formState.vin.trim().toUpperCase();
-    if (vinValue.length < 5) {
+    if (vinValue.length > 0 && vinValue.length < 5) {
       setErrorMessage("VIN должен содержать минимум 5 символов.");
       return;
     }
@@ -181,14 +171,11 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
 
     startTransition(async () => {
       const payload = {
-        vin: vinValue,
+        vin: vinValue.length > 0 ? vinValue : undefined,
         make: formState.make.trim(),
         model: formState.model.trim(),
-        bodyType: formState.bodyType.trim(),
         year: formState.year.trim(),
         mileage: formState.mileage.trim(),
-        fuelType: formState.fuelType.trim(),
-        transmission: formState.transmission.trim(),
       };
 
       const result = await createOperationsCar({
@@ -265,7 +252,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground/80" htmlFor="car-vin">
-                VIN<span className="text-destructive">*</span>
+                VIN
               </label>
               <Input
                 id="car-vin"
@@ -278,20 +265,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 }
                 placeholder="WDC12345678900001"
                 className="rounded-xl uppercase"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80" htmlFor="car-body-type">
-                Тип кузова<span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="car-body-type"
-                value={formState.bodyType}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, bodyType: event.target.value }))
-                }
-                placeholder="SUV"
-                className="rounded-xl"
               />
             </div>
             <div className="space-y-2">
@@ -321,34 +294,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
                 }
                 placeholder="1200"
                 inputMode="numeric"
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80" htmlFor="car-fuel-type">
-                Тип топлива
-              </label>
-              <Input
-                id="car-fuel-type"
-                value={formState.fuelType}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, fuelType: event.target.value }))
-                }
-                placeholder="Petrol"
-                className="rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80" htmlFor="car-transmission">
-                Трансмиссия
-              </label>
-              <Input
-                id="car-transmission"
-                value={formState.transmission}
-                onChange={(event) =>
-                  setFormState((prev) => ({ ...prev, transmission: event.target.value }))
-                }
-                placeholder="Automatic"
                 className="rounded-xl"
               />
             </div>
@@ -445,54 +390,57 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
             </TableHeader>
             <TableBody>
               {currentCars.length ? (
-                currentCars.map((car) => (
-                  <TableRow key={car.id}>
-                    <TableCell className="space-y-1">
-                      {car.detailHref ? (
-                        <Link
-                          href={car.detailHref}
-                          className="text-sm font-semibold text-foreground hover:text-primary"
-                        >
-                          {car.name}
-                        </Link>
-                      ) : (
-                        <div className="text-sm font-semibold text-foreground">{car.name}</div>
-                      )}
-                      <div className="text-xs text-muted-foreground">
-                        VIN: {car.vin}
-                        {car.variant ? ` • ${car.variant}` : ""}
-                        {car.year ? ` • ${car.year}` : ""}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {resolveLicensePlateLabel(car) ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.statusTone)}`}>
-                        {car.statusLabel}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{car.bodyType ?? "—"}</TableCell>
-                    <TableCell className="text-sm">
-                      {car.activeDealNumber ? (
-                        <div className="flex flex-col gap-1">
-                          {car.activeDealHref ? (
-                            <Link
-                              href={car.activeDealHref}
-                              className="text-sm font-medium text-primary hover:text-primary/80"
-                            >
-                              {car.activeDealNumber}
-                            </Link>
-                          ) : (
-                            <span className="text-sm font-medium text-foreground">{car.activeDealNumber}</span>
-                          )}
+                currentCars.map((car) => {
+                  const carTitle = car.year ? `${car.name}, ${car.year}` : car.name;
+
+                  return (
+                    <TableRow key={car.id}>
+                      <TableCell className="space-y-1">
+                        {car.detailHref ? (
+                          <Link
+                            href={car.detailHref}
+                            className="text-sm font-semibold text-foreground hover:text-primary"
+                          >
+                            {carTitle}
+                          </Link>
+                        ) : (
+                          <div className="text-sm font-semibold text-foreground">{carTitle}</div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          VIN: {car.vin}
+                          {car.variant ? ` • ${car.variant}` : ""}
                         </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Нет активной сделки</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {resolveLicensePlateLabel(car) ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveStatusToneClass(car.statusTone)}`}>
+                          {car.statusLabel}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{car.bodyType ?? "—"}</TableCell>
+                      <TableCell className="text-sm">
+                        {car.activeDealNumber ? (
+                          <div className="flex flex-col gap-1">
+                            {car.activeDealHref ? (
+                              <Link
+                                href={car.activeDealHref}
+                                className="text-sm font-medium text-primary hover:text-primary/80"
+                              >
+                                {car.activeDealNumber}
+                              </Link>
+                            ) : (
+                              <span className="text-sm font-medium text-foreground">{car.activeDealNumber}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Нет активной сделки</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               ) : (
                 <TableRow>
                     <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">

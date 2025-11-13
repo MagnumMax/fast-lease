@@ -75,10 +75,10 @@ ADMIN > OP_MANAGER > FINANCE > SUPPORT > TECH_SPECIALIST > RISK_MANAGER > LEGAL 
 - **Сброс пароля** выполняется через `/login/forgot` → письмо Supabase → `/login/reset`.
 
 ### Процесс входа (`passwordSignInAction`)
-1. Пользователь попадает на `/login`, вводит email + пароль. `autoPortalSignInAction` вызывает `detectPortalAction` под капотом и определяет портал без участия пользователя.
+1. Пользователь попадает на `/login`, вводит email + пароль. `autoPortalSignInAction` сразу делегирует в `passwordSignInAction`, где портал определяется автоматически по ролям в Supabase (через `resolvePortalFromAuthUser`) с резервной эвристикой по домену email.
 2. `passwordSignInAction` выполняет `supabase.auth.signInWithPassword`, назначает роли, обновляет `user_portals` и `profiles.last_login_at`.
-4. После успешного входа выполняется редирект на домашний маршрут портала или `next`.
-5. Все события фиксируются в `auth_login_events` (см. Observability).
+3. После успешного входа выполняется редирект на домашний маршрут портала или `next`.
+4. Все события фиксируются в `auth_login_events` (см. Observability).
 
 ### Создание внутренних пользователей (`/settings/users`)
 - Экран админки вызывает `POST /api/admin/users/create` (доступен только роли `ADMIN`).

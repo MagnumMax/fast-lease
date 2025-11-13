@@ -18,17 +18,3 @@ export type AuthActionState = {
 export const INITIAL_AUTH_STATE: AuthActionState = {
   status: "idle",
 };
-
-export type DetectPortalState = {
-  status: "idle" | "success" | "error";
-  message?: string;
-  portal?: PortalCode;
-  suggestions?: PortalCode[];
-  identity?: string;
-  autoRedirect?: boolean;
-  errorCode?: string;
-};
-
-export const INITIAL_DETECT_PORTAL_STATE: DetectPortalState = {
-  status: "idle",
-};

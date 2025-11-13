@@ -1,35 +1,23 @@
 "use server";
 
-import {
-  type AuthActionState,
-  type DetectPortalState,
-  INITIAL_DETECT_PORTAL_STATE,
-} from "./action-state";
+import { type AuthActionState } from "./action-state";
 import { redirect } from "next/navigation";
-import {
-  resolveHomePath,
-  validateRolePath,
-} from "@/lib/auth/roles";
 import { logAuthEvent } from "@/lib/auth/logging";
 import {
   normalizePortalCode,
   resolveDefaultRoleForPortal,
-  resolvePortalForRole,
-  resolvePortalHomePath,
 } from "@/lib/auth/portals";
 import {
   ensureDefaultProfileAndRole,
   ensurePortalAccess,
   ensureRoleAssignment,
 } from "@/lib/auth/role-management";
-import { getSessionUser } from "@/lib/auth/session";
-import type { AppRole, PortalCode } from "@/lib/auth/types";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  createSupabaseServerClient,
-  createSupabaseServiceClient,
-} from "@/lib/supabase/server";
-import { normalizeRoleCode } from "@/lib/auth/roles";
-import { findSupabaseAuthUserByEmail } from "@/lib/supabase/admin-auth";
+  inferPortalForEmail,
+  resolvePortalFromAuthUser,
+  resolveRedirectPathForPortal,
+} from "@/lib/auth/portal-resolution";
 
 function normalizeEmail(value: FormDataEntryValue | null): string {
   if (typeof value !== "string") return "";
@@ -75,123 +63,10 @@ function normalizeNextPath(value: FormDataEntryValue | null): string | null {
   }
 }
 
-const PORTAL_PRIORITY: PortalCode[] = ["client", "investor", "partner", "app"];
 const DEFAULT_SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
   process.env.NEXT_PUBLIC_VERCEL_URL ??
   "http://localhost:3000";
-
-function selectPreferredPortal(portals: PortalCode[]): PortalCode {
-  if (!portals.length) {
-    return "client";
-  }
-
-  for (const candidate of PORTAL_PRIORITY) {
-    if (portals.includes(candidate)) {
-      return candidate;
-    }
-  }
-
-  return portals[0];
-}
-
-function heuristicPortalsForEmail(email: string): PortalCode[] {
-  const domain = email.split("@")[1]?.toLowerCase() ?? "";
-  if (domain.endsWith("fastlease.ae")) {
-    return ["app"];
-  }
-
-  if (domain.includes("investor")) {
-    return ["investor"];
-  }
-
-  return ["client"];
-}
-
-function inferPortalForEmail(email: string): PortalCode {
-  const candidates = heuristicPortalsForEmail(email);
-  return candidates[0] ?? "client";
-}
-
-async function collectCandidatePortals(identity: string): Promise<PortalCode[]> {
-  const candidatePortals = new Set<PortalCode>();
-
-  let serviceClient: Awaited<ReturnType<typeof createSupabaseServiceClient>> | null =
-    null;
-
-  try {
-    serviceClient = await createSupabaseServiceClient();
-  } catch (error) {
-    console.warn("[auth] Service client unavailable for portal detection", error);
-  }
-
-  if (serviceClient) {
-    try {
-      let authUser = null;
-      try {
-        authUser = await findSupabaseAuthUserByEmail(identity);
-      } catch (error) {
-        console.warn("[auth] listUsers failed during portal detection", error);
-      }
-
-      if (authUser) {
-        const userId = authUser.id;
-
-        const { data: portalRows } = await serviceClient
-          .from("user_portals")
-          .select("portal, status")
-          .eq("user_id", userId);
-
-        for (const row of portalRows ?? []) {
-          const portal = normalizePortalCode((row as { portal: unknown }).portal);
-          if (portal && row?.status !== "inactive") {
-            candidatePortals.add(portal);
-          }
-        }
-
-        if (!candidatePortals.size) {
-          const { data: roleRows } = await serviceClient
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", userId);
-
-          for (const row of roleRows ?? []) {
-            const role = normalizeRoleCode((row as { role: unknown }).role);
-            if (role) {
-              candidatePortals.add(resolvePortalForRole(role));
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.warn("[auth] collectCandidatePortals failed", error);
-    }
-  }
-
-  if (!candidatePortals.size) {
-    heuristicPortalsForEmail(identity).forEach((portal) =>
-      candidatePortals.add(portal),
-    );
-  }
-
-  return Array.from(candidatePortals);
-}
-
-async function detectPortalForIdentity(identity: string) {
-  const suggestions = await collectCandidatePortals(identity);
-  if (!suggestions.length) {
-    suggestions.push("client");
-  }
-
-  const portal = selectPreferredPortal(suggestions);
-  const autoRedirect = suggestions.length === 1 && Boolean(portal);
-
-  return {
-    portal,
-    suggestions,
-    autoRedirect,
-  };
-}
 
 function resolveSiteUrl(path: string): string {
   try {
@@ -200,28 +75,6 @@ function resolveSiteUrl(path: string): string {
   } catch {
     return DEFAULT_SITE_URL;
   }
-}
-
-async function resolveRedirectPath(
-  portal: PortalCode,
-  preferredRole: AppRole | null,
-  nextPath: string | null,
-) {
-  if (nextPath) {
-    return nextPath;
-  }
-
-  if (preferredRole) {
-    return validateRolePath(preferredRole);
-  }
-
-  const sessionUser = await getSessionUser();
-  const roles = sessionUser?.roles ?? [];
-  if (roles.length > 0) {
-    return resolveHomePath(roles, resolvePortalHomePath(portal));
-  }
-
-  return resolvePortalHomePath(portal);
 }
 
 async function touchLastLogin(
@@ -242,8 +95,9 @@ export async function passwordSignInAction(
 
   const email = normalizeEmail(formData.get("identity"));
   const password = normalizeString(formData.get("password"));
-  const portal = normalizePortalCode(formData.get("portal"));
   const nextPath = normalizeNextPath(formData.get("next"));
+  const portalOverride = normalizePortalCode(formData.get("portal"));
+  const fallbackPortal = portalOverride ?? inferPortalForEmail(email);
 
   if (!email) {
     return {
@@ -261,14 +115,6 @@ export async function passwordSignInAction(
     };
   }
 
-  if (!portal) {
-    return {
-      status: "error",
-      message: "Не удалось определить аудиторию входа.",
-      errorCode: "invalid_portal",
-    };
-  }
-
   const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -278,7 +124,7 @@ export async function passwordSignInAction(
 
   if (error) {
     await logAuthEvent({
-      portal,
+      portal: fallbackPortal,
       identity: email,
       status: "failure",
       errorCode: "password_signin_failed",
@@ -289,13 +135,17 @@ export async function passwordSignInAction(
       status: "error",
       message: formatAuthErrorMessage(error),
       errorCode: "password_signin_failed",
+      context: {
+        identity: email,
+        portal: fallbackPortal,
+      },
     };
   }
 
   const user = data.user;
   if (!user) {
     await logAuthEvent({
-      portal,
+      portal: fallbackPortal,
       identity: email,
       status: "failure",
       errorCode: "missing_user",
@@ -305,10 +155,16 @@ export async function passwordSignInAction(
       status: "error",
       message: "Supabase не вернул пользователя после входа.",
       errorCode: "missing_user",
+      context: {
+        identity: email,
+        portal: fallbackPortal,
+      },
     };
   }
 
   const userId = user.id;
+  const portalResolution = resolvePortalFromAuthUser(user, email);
+  const portal = portalOverride ?? portalResolution.portal;
 
   await ensureDefaultProfileAndRole(supabase, userId);
 
@@ -328,23 +184,25 @@ export async function passwordSignInAction(
       status: "error",
       message: "Сессия потеряна после аутентификации.",
       errorCode: "session_lost",
+      context: {
+        identity: email,
+        portal,
+      },
     };
   }
 
-  const sessionUser = await getSessionUser();
-  const roles = sessionUser?.roles ?? [];
-  const redirectPath = await resolveRedirectPath(
-    portal,
-    null,
+  const redirectPath = resolveRedirectPathForPortal(portal, {
     nextPath,
-  );
+    preferredRole: portalResolution.preferredRole,
+    roles: portalResolution.roles,
+  });
 
   await logAuthEvent({
     portal,
     identity: email,
     status: "success",
     userId,
-    roles,
+    roles: portalResolution.roles,
     metadata: {
       redirectPath,
     },
@@ -353,6 +211,10 @@ export async function passwordSignInAction(
   return {
     status: "success",
     redirectPath,
+    context: {
+      identity: email,
+      portal,
+    },
   };
 }
 
@@ -370,94 +232,11 @@ export async function signOutAction() {
   redirect("/login");
 }
 
-export async function detectPortalAction(
-  _prevState: DetectPortalState | undefined,
-  formData: FormData,
-): Promise<DetectPortalState> {
-  void _prevState;
-
-  const identity = normalizeEmail(formData.get("identity"));
-  if (!identity) {
-    return {
-      status: "error",
-      message: "Введите корректный email.",
-    };
-  }
-
-  const detection = await detectPortalForIdentity(identity);
-
-  return {
-    status: "success",
-    portal: detection.portal,
-    suggestions: detection.suggestions,
-    identity,
-    autoRedirect: detection.autoRedirect,
-  };
-}
-
 export async function autoPortalSignInAction(
   _prevState: AuthActionState | undefined,
   formData: FormData,
 ): Promise<AuthActionState> {
-  void _prevState;
-
-  const email = normalizeEmail(formData.get("identity"));
-  const password = normalizeString(formData.get("password"));
-  const nextPath = normalizeNextPath(formData.get("next"));
-
-  if (!email) {
-    return {
-      status: "error",
-      message: "Введите корректный email адрес для входа.",
-      errorCode: "invalid_identity",
-    };
-  }
-
-  if (!password) {
-    return {
-      status: "error",
-      message: "Введите пароль.",
-      errorCode: "invalid_password",
-    };
-  }
-
-  const detection = await detectPortalForIdentity(email);
-  const portal = detection.portal;
-
-  const passwordForm = new FormData();
-  passwordForm.set("identity", email);
-  passwordForm.set("password", password);
-  passwordForm.set("portal", portal);
-  if (nextPath) {
-    passwordForm.set("next", nextPath);
-  }
-
-  const result = await passwordSignInAction(undefined, passwordForm);
-  const context = {
-    identity: email,
-    portal,
-  };
-
-  if (result.status === "success") {
-    const informativeMessage =
-      detection.suggestions.length > 1
-        ? "Email связан с несколькими кабинетами — мы автоматически выбрали подходящий кабинет."
-        : result.message;
-
-    return {
-      ...result,
-      message: informativeMessage,
-      context,
-    };
-  }
-
-  return {
-    ...result,
-    context: {
-      ...(result.context ?? {}),
-      ...context,
-    },
-  };
+  return passwordSignInAction(_prevState, formData);
 }
 
 export async function requestPasswordResetAction(

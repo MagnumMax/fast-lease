@@ -18,7 +18,6 @@ import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
-import { normalizeLicensePlate } from "@/lib/utils/license-plate";
 import {
   uploadDocumentsBatch,
   type DocumentUploadCandidate,
@@ -29,11 +28,11 @@ import {
 } from "@/lib/documents/upload";
 
 const createVehicleSchema = z.object({
-  vin: z.string().min(3),
+  vin: z.string().min(3).optional(),
   make: z.string().min(1),
   model: z.string().min(1),
   year: z.string().optional(),
-  bodyType: z.string().min(1),
+  bodyType: z.string().optional(),
   fuelType: z.string().optional(),
   transmission: z.string().optional(),
   mileage: z.string().optional(),
@@ -225,10 +224,13 @@ export async function createOperationsCar(
   }
 
   const { vin, make, model, year, bodyType, mileage, fuelType, transmission } = parsed.data;
-  const normalizedVin = vin.trim().toUpperCase();
+  const normalizedVin = typeof vin === "string" ? vin.trim().toUpperCase() : "";
+  const vinValue = normalizedVin.length > 0 ? normalizedVin : null;
   const normalizedMake = make.trim().replace(/\s+/g, " ");
   const normalizedModel = model.trim().replace(/\s+/g, " ");
-  const normalizedBodyType = bodyType.trim().replace(/\s+/g, " ");
+  const normalizedBodyType = bodyType
+    ? bodyType.trim().replace(/\s+/g, " ")
+    : null;
   const normalizedFuel = fuelType ? fuelType.trim().replace(/\s+/g, " ") : null;
   const normalizedTransmission = transmission ? transmission.trim().replace(/\s+/g, " ") : null;
   const displayName = `${normalizedMake} ${normalizedModel}`.trim();
@@ -239,7 +241,7 @@ export async function createOperationsCar(
     const { data, error } = await supabase
       .from("vehicles")
       .insert({
-        vin: normalizedVin,
+        vin: vinValue,
         make: normalizedMake,
         model: normalizedModel,
         year: parseYear(year),
@@ -279,22 +281,21 @@ export async function createOperationsCar(
               : "0 km";
           })();
 
-    const licensePlateInfo = normalizeLicensePlate(
-      (data.license_plate as string | null | undefined) ?? null,
-    );
+    const licensePlateValue =
+      typeof data.license_plate === "string" ? data.license_plate : null;
+    const normalizedLicensePlate = normalizeString(licensePlateValue ?? undefined);
 
     const formatted: OpsCarRecord = {
       id: vehicleId,
-      vin: data.vin ?? normalizedVin,
-      licensePlate: licensePlateInfo.normalized,
-      licensePlateDisplay: licensePlateInfo.display ?? licensePlateInfo.normalized ?? null,
-      licensePlateEmirate: licensePlateInfo.emirate ?? null,
+      vin: (data.vin as string | null) ?? normalizedVin,
+      licensePlate: normalizedLicensePlate,
+      licensePlateDisplay: normalizedLicensePlate,
       name: `${data.make ?? normalizedMake} ${data.model ?? normalizedModel}`.trim(),
       make: data.make ?? normalizedMake,
       model: data.model ?? normalizedModel,
       variant: data.variant ?? null,
       year: data.year != null ? Number(data.year) : parseYear(year),
-      bodyType: (data.body_type as string) ?? normalizedBodyType,
+      bodyType: (data.body_type as string | null) ?? normalizedBodyType,
       status: statusKey,
       statusLabel: statusMeta.label,
       statusTone: statusMeta.tone,
@@ -306,7 +307,7 @@ export async function createOperationsCar(
       activeDealStatusTone: null,
       activeDealHref: null,
       detailHref: `/ops/cars/${detailSlug}`,
-      type: (data.body_type as string) ?? normalizedBodyType,
+      type: (data.body_type as string | null) ?? normalizedBodyType ?? null,
     };
 
     return { data: formatted };
@@ -370,12 +371,11 @@ export async function updateOperationsCar(
         .filter((line) => line.length > 0)
     : [];
 
-  const licensePlateInfo = normalizeLicensePlate(licensePlate);
-  const normalizedLicensePlate = licensePlateInfo.normalized;
+  const normalizedLicensePlate = normalizeString(licensePlate);
 
   const vehicleUpdatePayload = {
     vin: normalizedVin,
-    license_plate: normalizeString(normalizedLicensePlate ?? undefined),
+    license_plate: normalizedLicensePlate,
     make: normalizedMake,
     model: normalizedModel,
     variant: normalizeString(variant),

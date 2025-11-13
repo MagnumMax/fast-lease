@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowUpDown,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   History,
   Plus,
   Search,
@@ -251,8 +254,55 @@ const ROLES_MODE_SCOPE: AppRole[] = [
 ];
 const PORTAL_LIST: PortalCode[] = PORTAL_CODES;
 
-function sortUsers(users: AdminUserRecord[]): AdminUserRecord[] {
-  return [...users].sort((a, b) => a.fullName.localeCompare(b.fullName));
+type UserSortColumn = "employee" | "lastLogin";
+type UserSortDirection = "asc" | "desc";
+type UserSortState = {
+  column: UserSortColumn;
+  direction: UserSortDirection;
+};
+
+const DEFAULT_SORT_STATE: UserSortState = {
+  column: "employee",
+  direction: "asc",
+};
+
+function sortUsers(
+  users: AdminUserRecord[],
+  sortState: UserSortState = DEFAULT_SORT_STATE,
+): AdminUserRecord[] {
+  return [...users].sort((a, b) => {
+    if (sortState.column === "lastLogin") {
+      return compareByLastLogin(a, b, sortState.direction);
+    }
+    return compareByEmployee(a, b, sortState.direction);
+  });
+}
+
+function compareByEmployee(
+  a: AdminUserRecord,
+  b: AdminUserRecord,
+  direction: UserSortDirection,
+) {
+  const result = a.fullName.localeCompare(b.fullName);
+  return direction === "asc" ? result : -result;
+}
+
+function compareByLastLogin(
+  a: AdminUserRecord,
+  b: AdminUserRecord,
+  direction: UserSortDirection,
+) {
+  const aHasLogin = Boolean(a.lastLoginAt);
+  const bHasLogin = Boolean(b.lastLoginAt);
+
+  if (!aHasLogin && !bHasLogin) return 0;
+  if (!aHasLogin) return 1;
+  if (!bHasLogin) return -1;
+
+  const aTime = new Date(a.lastLoginAt as string).getTime();
+  const bTime = new Date(b.lastLoginAt as string).getTime();
+
+  return direction === "asc" ? aTime - bTime : bTime - aTime;
 }
 
 function sortAuditLog(entries: AdminAuditLogEntry[]): AdminAuditLogEntry[] {
@@ -311,6 +361,7 @@ export function AdminUsersDirectory({
   const [createError, setCreateError] = useState<string | null>(null);
   const [createFieldErrors, setCreateFieldErrors] = useState<CreateFieldErrors>({});
   const [createSuccess, setCreateSuccess] = useState<CreateUserSuccess | null>(null);
+  const [sortState, setSortState] = useState<UserSortState>(DEFAULT_SORT_STATE);
 
   const [manageState, setManageState] = useState<ManageAccessState>({
     isOpen: false,
@@ -412,16 +463,27 @@ export function AdminUsersDirectory({
       dataset = dataset.filter((user) => statusFilters.has(user.status));
     }
 
-    if (!query) return dataset;
+    if (query) {
+      dataset = dataset.filter((user) => {
+        return (
+          user.fullName.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query) ||
+          user.roles.some((role: AppRole) => ROLE_LABELS[role]?.toLowerCase().includes(query))
+        );
+      });
+    }
 
-    return dataset.filter((user) => {
-      return (
-        user.fullName.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.roles.some((role: AppRole) => ROLE_LABELS[role]?.toLowerCase().includes(query))
-      );
-    });
-  }, [isRolesMode, roleFilter, searchQuery, users, roleFilters, portalFilters, statusFilters]);
+    return sortUsers(dataset, sortState);
+  }, [
+    isRolesMode,
+    roleFilter,
+    searchQuery,
+    users,
+    roleFilters,
+    portalFilters,
+    statusFilters,
+    sortState,
+  ]);
 
   const totalUsers = filteredUsers.length;
   const totalPages = Math.max(1, Math.ceil(Math.max(totalUsers, 1) / pageSize));
@@ -444,6 +506,34 @@ export function AdminUsersDirectory({
 
   const isSelfTarget = Boolean(actorId && manageState.user && manageState.user.id === actorId);
   const activeDeleteBlockers = deleteState.blockers.filter((blocker) => blocker.count > 0);
+
+  function handleSort(column: UserSortColumn) {
+    setSortState((prev) => {
+      if (prev.column === column) {
+        return {
+          column,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+
+      return {
+        column,
+        direction: column === "lastLogin" ? "desc" : "asc",
+      };
+    });
+  }
+
+  function renderSortIcon(column: UserSortColumn) {
+    if (sortState.column !== column) {
+      return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />;
+    }
+
+    if (sortState.direction === "asc") {
+      return <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />;
+    }
+
+    return <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />;
+  }
 
   function resetCreateForm() {
     setCreateForm({
@@ -1308,10 +1398,38 @@ export function AdminUsersDirectory({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{isRolesMode ? "Member" : "Employee"}</TableHead>
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={() => handleSort("employee")}
+                    className="inline-flex items-center gap-1 rounded-lg text-left font-medium text-foreground transition hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    {isRolesMode ? "Member" : "Employee"}
+                    {renderSortIcon("employee")}
+                    <span className="sr-only">
+                      {sortState.column === "employee"
+                        ? `Sorted ${sortState.direction === "asc" ? "ascending" : "descending"}`
+                        : "Not sorted"}
+                    </span>
+                  </button>
+                </TableHead>
                 <TableHead>Roles</TableHead>
                 <TableHead>Portals</TableHead>
-                <TableHead>Last login</TableHead>
+                <TableHead>
+                  <button
+                    type="button"
+                    onClick={() => handleSort("lastLogin")}
+                    className="inline-flex items-center gap-1 rounded-lg text-left font-medium text-foreground transition hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  >
+                    Last login
+                    {renderSortIcon("lastLogin")}
+                    <span className="sr-only">
+                      {sortState.column === "lastLogin"
+                        ? `Sorted ${sortState.direction === "asc" ? "ascending" : "descending"}`
+                        : "Not sorted"}
+                    </span>
+                  </button>
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

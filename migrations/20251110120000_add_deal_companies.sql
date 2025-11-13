@@ -11,7 +11,7 @@ create table if not exists public.deal_companies (
 insert into public.deal_companies (code, name, prefix)
 values
   ('SND', 'Sunday', 'SND'),
-  ('FLS', 'FastLease', 'FLS'),
+  ('FLS', 'FastLease', 'FST'),
   ('ENT', 'Entire', 'ENT')
 on conflict (code) do update
 set name = excluded.name,

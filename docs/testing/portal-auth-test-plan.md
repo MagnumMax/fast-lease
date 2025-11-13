@@ -5,8 +5,8 @@
 
 ## 1. Scope
 - Portal routing/middleware (`middleware.ts`)
-- Server actions (`passwordSignInAction`, `detectPortalAction`)
-- Portal registry/role management (`lib/auth/portals.ts`, `lib/auth/portal-session.ts`, `lib/auth/role-management.ts`)
+- Server actions (`passwordSignInAction`, `autoPortalSignInAction`)
+- Портальные эвристики/управление ролями (`lib/auth/portal-resolution.ts`, `lib/auth/portals.ts`, `lib/auth/portal-session.ts`, `lib/auth/role-management.ts`)
 - UI flows (единая форма `/login`, auto-portal detection, post-login routing)
 
 ## 2. Test Pyramid

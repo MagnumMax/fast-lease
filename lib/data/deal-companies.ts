@@ -9,7 +9,7 @@ export type DealCompany = {
 };
 
 export const DEAL_COMPANIES: DealCompany[] = [
-  { code: "FLS", name: "FastLease", prefix: "FLS" },
+  { code: "FLS", name: "FastLease", prefix: "FST" },
   { code: "SND", name: "Sunday", prefix: "SND" },
   { code: "ENT", name: "Entire", prefix: "ENT" },
 ];

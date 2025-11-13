@@ -15,7 +15,6 @@ import {
   ArrowUpDown,
   AlertTriangle,
   Check,
-  ChevronsUpDown,
   Clock,
   LayoutGrid,
   Loader2,
@@ -39,21 +38,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Table,
@@ -113,64 +103,24 @@ type ComboboxFieldProps = {
 };
 
 function ComboboxField({ label, placeholder, value, onChange, options, disabled }: ComboboxFieldProps) {
-  const [open, setOpen] = useState(false);
-  const selected = options.find((option) => option.value === value);
   const isDisabled = disabled || options.length === 0;
 
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium text-foreground/80">{label}</label>
-      <Popover open={open} onOpenChange={(nextOpen) => !isDisabled && setOpen(nextOpen)}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            disabled={isDisabled}
-            className="flex w-full items-center justify-between rounded-xl border border-border bg-background px-3 py-2 font-mono text-sm"
-          >
-            <span className="truncate text-left">
-              {selected ? selected.label : placeholder}
-            </span>
-            <ChevronsUpDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[320px] p-0" align="start">
-          <Command>
-            <CommandInput placeholder="Поиск..." />
-            <CommandEmpty>Ничего не найдено</CommandEmpty>
-            <CommandList>
-              <CommandGroup>
-                {options.map((option) => {
-                  const isSelected = selected?.value === option.value;
-                  return (
-                    <CommandItem
-                      key={option.value}
-                      value={option.value}
-                      className="flex flex-col items-start gap-0.5 text-left"
-                      onSelect={() => {
-                        onChange(option.value);
-                        setOpen(false);
-                      }}
-                    >
-                      <div className="flex w-full items-center gap-2">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-sm font-medium text-foreground">{option.label}</span>
-                          {option.description ? (
-                            <span className="text-xs text-muted-foreground">{option.description}</span>
-                          ) : null}
-                        </div>
-                        {isSelected ? <Check className="ml-auto h-4 w-4 text-brand-500" aria-hidden="true" /> : null}
-                      </div>
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+      <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+        <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-left text-sm font-medium">
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        {/* Scrollable directories for клиентов и автомобилей (PRD §6.4) */}
+        <SelectContent className="max-h-80 overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value} className="py-2 text-left">
+              <span className="text-sm font-medium text-foreground">{option.label}</span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

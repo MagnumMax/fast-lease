@@ -333,7 +333,7 @@ updated_at: timestamptz (auto)
 ```sql
 code: text (PK)
 name: text (название компании)
-prefix: text (префикс в номере сделки, например FLS)
+prefix: text (префикс в номере сделки, например FST)
 is_active: boolean (default true)
 created_at: timestamptz (auto)
 ```

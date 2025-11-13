@@ -29,8 +29,7 @@ export function PortalDetector() {
 
   useEffect(() => {
     if (state.status === "success" && state.redirectPath) {
-      router.push(state.redirectPath);
-      router.refresh();
+      router.replace(state.redirectPath);
     }
   }, [state, router]);
 
