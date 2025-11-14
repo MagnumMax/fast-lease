@@ -48,6 +48,7 @@ begin
       email,
       encrypted_password,
       email_confirmed_at,
+      confirmation_token,
       phone,
       raw_user_meta_data,
       aud,
@@ -60,6 +61,7 @@ begin
       v_generated_email,
       crypt(gen_random_uuid()::text, gen_salt('bf')),
       v_now,
+      null,
       null,
       jsonb_build_object(
         'full_name', v_contact.full_name,

@@ -13,6 +13,7 @@ export type SupabaseAdminUser = {
   user_metadata: Record<string, unknown> | null;
   last_sign_in_at: string | null;
   created_at: string;
+  confirmation_token: string | null;
 };
 
 export type ListSupabaseAuthUsersOptions = {
@@ -137,28 +138,34 @@ async function fetchSupabaseAuthUsersPageInternal(
   options: InternalPageOptions,
 ): Promise<AdminUsersPageResult> {
   const { supabaseUrl, serviceRoleKey } = resolveSupabaseAdminCredentials();
-  const url = new URL(ADMIN_USERS_PATH, ensureTrailingSlash(supabaseUrl));
-  url.searchParams.set("page", String(options.page));
-  url.searchParams.set("per_page", String(options.perPage));
+  const endpoint = new URL(
+    ADMIN_USERS_PATH,
+    ensureTrailingSlash(supabaseUrl),
+  );
 
-  const response = await fetch(url.toString(), {
+  endpoint.searchParams.set("page", String(options.page));
+  endpoint.searchParams.set("per_page", String(options.perPage));
+
+  const response = await fetch(endpoint.toString(), {
     method: "GET",
     headers: {
-      apikey: serviceRoleKey,
       Authorization: `Bearer ${serviceRoleKey}`,
+      apikey: serviceRoleKey,
+      "Content-Type": "application/json",
     },
   });
 
   if (!response.ok) {
-    const errorText = await safeReadBody(response);
+    const body = await safeReadBody(response);
     throw new Error(
-      `Supabase admin users request failed (${response.status}): ${errorText}`,
+      `[admin-auth] Failed to fetch Supabase admin users (status ${response.status}): ${body}`,
     );
   }
 
   const payload = (await response.json()) as { users?: unknown };
-  const users = Array.isArray(payload?.users) ? payload.users : [];
+  const users = Array.isArray(payload.users) ? payload.users : [];
   const mapped = users.map(mapAdminUser);
+
   const hasNextPage = determineHasNextPage({
     headers: response.headers,
     currentPage: options.page,
@@ -307,6 +314,10 @@ function mapAdminUser(input: unknown): SupabaseAdminUser {
       typeof record.created_at === "string"
         ? record.created_at
         : new Date().toISOString(),
+    confirmation_token:
+      typeof record.confirmation_token === "string"
+        ? record.confirmation_token
+        : null,
   } satisfies SupabaseAdminUser;
 }
 

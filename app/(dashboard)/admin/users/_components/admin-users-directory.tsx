@@ -1436,6 +1436,12 @@ export function AdminUsersDirectory({
             <TableBody>
               {paginatedUsers.map((user) => {
                 const statusMeta = STATUS_META[user.status];
+                const primaryEmail =
+                  typeof user.email === "string" &&
+                  user.email.trim().length > 0 &&
+                  user.email !== "—"
+                    ? user.email.trim()
+                    : null;
                 const readOnlyRoleSet = new Set(
                   (user.roleAssignments ?? [])
                     .filter((assignment) => assignment.isReadOnly)
@@ -1446,7 +1452,18 @@ export function AdminUsersDirectory({
                     <TableCell>
                       <div className="space-y-1">
                         <p className="font-medium leading-tight">{user.fullName}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <div className="text-sm text-muted-foreground">
+                          {primaryEmail ? (
+                            <a
+                              href={`mailto:${primaryEmail}`}
+                              className="hover:text-brand-600 hover:underline"
+                            >
+                              {primaryEmail}
+                            </a>
+                          ) : (
+                            <span>—</span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-2 pt-2">
                           <Badge
                             variant={statusMeta.badgeVariant}
@@ -1697,6 +1714,16 @@ export function AdminUsersDirectory({
                 <div className="rounded-2xl border border-border bg-background/60 p-4">
                   <p className="text-sm font-medium text-foreground">{manageState.user.fullName}</p>
                   <p className="text-sm text-muted-foreground">{manageState.user.email}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="manage-email">Email</Label>
+                  <Input
+                    id="manage-email"
+                    value={manageState.user.email ?? ""}
+                    readOnly
+                    disabled
+                    className="h-10 bg-muted/40"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="manage-status">Status</Label>

@@ -8,7 +8,8 @@ returns table (
   app_metadata jsonb,
   user_metadata jsonb,
   last_sign_in_at timestamptz,
-  created_at timestamptz
+  created_at timestamptz,
+  confirmation_token text
 )
 language sql
 security definer
@@ -21,7 +22,8 @@ as $$
     u.raw_app_meta_data as app_metadata,
     u.raw_user_meta_data as user_metadata,
     u.last_sign_in_at,
-    u.created_at
+    u.created_at,
+    u.confirmation_token
   from auth.users u
   where lower(u.email) = lower(search_email)
   order by u.created_at asc

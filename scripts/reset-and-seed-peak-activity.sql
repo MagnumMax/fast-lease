@@ -192,13 +192,14 @@ declare
   admin_user_id uuid;
 begin
   -- Admin
-  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values (
     gen_random_uuid(),
     '00000000-0000-0000-0000-000000000000',
     'amina.admin@fastlease.dev',
     crypt('Passw0rd!', gen_salt('bf', 10)),
     now(),
+    null,
     '+971' || base_phone::text,
     jsonb_build_object('full_name','Amina Al Mansoori'),
     'authenticated',
@@ -230,13 +231,14 @@ begin
 
   -- Operations
   for idx in 1..array_length(ops_first,1) loop
-    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     values (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       lower(ops_first[idx] || '.' || ops_last[idx]) || '@ops.fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now(),
+      null,
       '+971' || (base_phone + idx)::text,
       jsonb_build_object('full_name', ops_first[idx] || ' ' || ops_last[idx]),
       'authenticated',
@@ -267,13 +269,14 @@ begin
 
   -- Finance
   for idx in 1..array_length(fin_first,1) loop
-    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     values (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       lower(fin_first[idx] || '.' || fin_last[idx]) || '@finance.fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now(),
+      null,
       '+971' || (base_phone + 20 + idx)::text,
       jsonb_build_object('full_name', fin_first[idx] || ' ' || fin_last[idx]),
       'authenticated',
@@ -303,13 +306,14 @@ begin
 
   -- Support
   for idx in 1..array_length(sup_first,1) loop
-    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     values (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       lower(sup_first[idx] || '.' || sup_last[idx]) || '@support.fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now(),
+      null,
       '+971' || (base_phone + 40 + idx)::text,
       jsonb_build_object('full_name', sup_first[idx] || ' ' || sup_last[idx]),
       'authenticated',
@@ -339,13 +343,14 @@ begin
 
   -- Investors
   for idx in 1..array_length(inv_first,1) loop
-    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     values (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       lower(inv_first[idx] || '.' || inv_last[idx]) || '@invest.fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now(),
+      null,
       '+971' || (base_phone + 60 + idx)::text,
       jsonb_build_object('full_name', inv_first[idx] || ' ' || inv_last[idx]),
       'authenticated',
@@ -414,13 +419,14 @@ begin
   select ur.user_id into admin_user_id from public.user_roles ur where ur.role = 'ADMIN' limit 1;
 
   for idx in 1..array_length(client_first,1) loop
-    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     values (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       lower(client_first[idx] || '.' || client_last[idx]) || '@clients.fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - interval '6 hours',
+      null,
       format('+9715%07s', 200000 + idx),
       jsonb_build_object('full_name', client_first[idx] || ' ' || client_last[idx], 'segment', case when idx % 4 = 0 then 'corporate' else 'retail' end),
       'authenticated',

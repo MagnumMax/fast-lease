@@ -195,6 +195,11 @@ grant execute on function public.get_auth_user_by_email(text) to service_role;
 grant execute on function public.get_auth_user_by_email(text) to supabase_auth_admin;
 ```
 
+#### Примечание по `auth.users`
+
+- Колонка `confirmation_token` должна всегда содержать строку (исторически Supabase использует `''::varchar` как дефолт). NULL-значения приводят к падению GoTrue на `/token`.
+- Миграция `20251114093000_restore_confirmation_token_defaults` оставляет данные в согласованном состоянии (все NULL → ''). При получении доступа к роли `supabase_auth_admin` нужно вернуть технический дефолт и `NOT NULL`.
+
 ### 2. Каталог транспортных средств (Vehicles)
 
 #### `vehicles`

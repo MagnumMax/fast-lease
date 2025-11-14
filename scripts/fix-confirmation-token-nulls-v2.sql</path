@@ -1,0 +1,148 @@
+-- Исправленный скрипт для корректного исправления поля confirmation_token
+-- Версия 2.0 - с улучшенной диагностикой и обработкой edge cases
+
+BEGIN;
+
+-- Создаем таблицу для логирования изменений
+CREATE TEMP TABLE IF NOT EXISTS confirmation_token_changes_log (
+  user_id uuid,
+  old_token text,
+  new_token text,
+  email_confirmed_at timestamptz,
+  email text,
+  action_taken text,
+  timestamp timestamptz default now()
+);
+
+-- Функция для детального логирования изменений
+CREATE OR REPLACE FUNCTION log_confirmation_token_changes()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO confirmation_token_changes_log (
+    user_id, old_token, new_token, 
+    email_confirmed_at, email, action_taken
+  )
+  VALUES (
+    COALESCE(NEW.id, OLD.id),
+    OLD.confirmation_token,
+    NEW.confirmation_token,
+    COALESCE(NEW.email_confirmed_at, OLD.email_confirmed_at),
+    COALESCE(NEW.email, OLD.email),
+    CASE 
+      WHEN OLD.confirmation_token IS DISTINCT FROM NEW.confirmation_token THEN 'UPDATED'
+      ELSE 'NO_CHANGE'
+    END
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Создаем временный триггер для логирования
+CREATE TRIGGER temp_log_confirmation_changes
+  BEFORE UPDATE ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION log_confirmation_token_changes();
+
+-- Логируем исходное состояние
+DO $$
+DECLARE
+  user_record RECORD;
+  total_users integer;
+  problematic_users integer;
+BEGIN
+  SELECT count(*) INTO total_users FROM auth.users;
+  
+  SELECT count(*) INTO problematic_users 
+  FROM auth.users 
+  WHERE email_confirmed_at IS NOT NULL 
+    AND confirmation_token IS NOT NULL 
+    AND confirmation_token != '';
+  
+  RAISE NOTICE '=== ДИАГНОСТИКА ПЕРЕД ИСПРАВЛЕНИЕМ ===';
+  RAISE NOTICE 'Общее количество пользователей: %', total_users;
+  RAISE NOTICE 'Проблемные пользователи (подтвержденные с непустым токеном): %', problematic_users;
+  
+  -- Логируем всех пользователей для диагностики
+  FOR user_record IN 
+    SELECT id, email, email_confirmed_at, confirmation_token
+    FROM auth.users 
+    WHERE email_confirmed_at IS NOT NULL
+    ORDER BY created_at
+  LOOP
+    RAISE NOTICE 'User %: email=%, confirmed=%, token=%.', 
+      user_record.id, 
+      user_record.email, 
+      user_record.email_confirmed_at, 
+      COALESCE(user_record.confirmation_token, 'NULL');
+  END LOOP;
+END $$;
+
+-- Создаем более строгие условия для обновления
+UPDATE auth.users 
+SET confirmation_token = NULL 
+WHERE email_confirmed_at IS NOT NULL 
+  AND (confirmation_token IS NULL OR confirmation_token = '');
+
+-- Логируем результат
+DO $$
+DECLARE
+  updated_count integer;
+  final_check integer;
+BEGIN
+  -- Подсчитываем обновленные записи
+  SELECT count(*) INTO updated_count 
+  FROM confirmation_token_changes_log 
+  WHERE action_taken = 'UPDATED';
+  
+  SELECT count(*) INTO final_check
+  FROM auth.users 
+  WHERE email_confirmed_at IS NOT NULL 
+    AND confirmation_token IS NOT NULL 
+    AND confirmation_token != '';
+  
+  RAISE NOTICE '=== РЕЗУЛЬТАТЫ ИСПРАВЛЕНИЯ ===';
+  RAISE NOTICE 'Обновлено записей: %', updated_count;
+  RAISE NOTICE 'Осталось проблемных записей: %', final_check;
+  
+  IF final_check > 0 THEN
+    RAISE NOTICE '⚠️  ПРЕДУПРЕЖДЕНИЕ: Обнаружены проблемные записи после обновления!';
+  ELSE
+    RAISE NOTICE '✅ УСПЕХ: Все проблемные записи исправлены';
+  END IF;
+END $$;
+
+-- Финальная диагностика
+DO $$
+DECLARE
+  total_users integer;
+  confirmed_users integer;
+  confirmed_null_token integer;
+  confirmed_empty_token integer;
+  unconfirmed_empty_token integer;
+  unconfirmed_null_token integer;
+BEGIN
+  SELECT count(*) INTO total_users FROM auth.users;
+  SELECT count(*) INTO confirmed_users FROM auth.users WHERE email_confirmed_at IS NOT NULL;
+  SELECT count(*) INTO confirmed_null_token FROM auth.users WHERE email_confirmed_at IS NOT NULL AND confirmation_token IS NULL;
+  SELECT count(*) INTO confirmed_empty_token FROM auth.users WHERE email_confirmed_at IS NOT NULL AND confirmation_token = '';
+  SELECT count(*) INTO unconfirmed_empty_token FROM auth.users WHERE email_confirmed_at IS NULL AND confirmation_token = '';
+  SELECT count(*) INTO unconfirmed_null_token FROM auth.users WHERE email_confirmed_at IS NULL AND confirmation_token IS NULL;
+  
+  RAISE NOTICE '=== ФИНАЛЬНАЯ СТАТИСТИКА ===';
+  RAISE NOTICE 'Всего пользователей: %', total_users;
+  RAISE NOTICE 'Подтвержденные пользователи: %', confirmed_users;
+  RAISE NOTICE '  - с NULL confirmation_token: %', confirmed_null_token;
+  RAISE NOTICE '  - с пустым confirmation_token: %', confirmed_empty_token;
+  RAISE NOTICE 'Неподтвержденные пользователи: %', (total_users - confirmed_users);
+  RAISE NOTICE '  - с пустым confirmation_token: %', unconfirmed_empty_token;
+  RAISE NOTICE '  - с NULL confirmation_token: %', unconfirmed_null_token;
+END $$;
+
+-- Проверяем лог изменений
+SELECT 
+  action_taken,
+  COUNT(*) as count,
+  string_agg(email, ', ' ORDER BY email) as emails
+FROM confirmation_token_changes_log 
+GROUP BY action_taken;
+
+COMMIT;

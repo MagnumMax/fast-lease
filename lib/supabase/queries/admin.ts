@@ -82,6 +82,12 @@ function normaliseStatus(status: string | null | undefined): AdminUserStatus {
     : "pending";
 }
 
+function normaliseTextValue(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
 function createUserRecord(
   profile: ProfileRow,
   authUser: AuthUserRow | null,
@@ -90,9 +96,14 @@ function createUserRecord(
   loginEvents: LoginEventSummary[],
 ): AdminUserRecord {
   const userId = profile.user_id ?? profile.id;
-  const primaryEmail =
-    authUser?.email ??
-    (typeof profile.metadata?.email === "string" ? (profile.metadata.email as string) : "");
+  const metadataEmailValue =
+    profile.metadata && typeof profile.metadata["email"] === "string"
+      ? (profile.metadata["email"] as string)
+      : null;
+  const resolvedEmail =
+    normaliseTextValue(authUser?.email) ?? normaliseTextValue(metadataEmailValue);
+  const displayEmail = resolvedEmail ?? "—";
+  const displayFullName = normaliseTextValue(profile.full_name) ?? resolvedEmail ?? "—";
 
   const roleSet = new Set<AppRole>();
   const roleAssignments: RoleAssignmentRecord[] = [];
@@ -118,9 +129,9 @@ function createUserRecord(
 
   return {
     id: userId,
-    name: profile.full_name ?? primaryEmail ?? "—",
-    fullName: profile.full_name ?? primaryEmail ?? "—",
-    email: primaryEmail ?? "—",
+    name: displayFullName,
+    fullName: displayFullName,
+    email: displayEmail,
     role: Array.from(roleSet)[0] ?? "CLIENT",
     roles: Array.from(roleSet),
     roleAssignments,

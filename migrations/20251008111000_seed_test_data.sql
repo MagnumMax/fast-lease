@@ -70,34 +70,34 @@ declare
   support_ticket_id uuid;
   referral_id uuid;
 begin
-  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values
-    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'amira.client@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000001', jsonb_build_object('full_name', 'Amira Client'), 'authenticated', 'authenticated', now(), now())
+    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'amira.client@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), null, '+971500000001', jsonb_build_object('full_name', 'Amira Client'), 'authenticated', 'authenticated', now(), now())
   returning id into client_id;
 
-  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values
-    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'omar.ops@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000002', jsonb_build_object('full_name', 'Omar Ops'), 'authenticated', 'authenticated', now(), now())
+    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'omar.ops@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), null, '+971500000002', jsonb_build_object('full_name', 'Omar Ops'), 'authenticated', 'authenticated', now(), now())
   returning id into ops_id;
 
-  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values
-    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'tariq.tech@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000006', jsonb_build_object('full_name', 'Tariq Tech'), 'authenticated', 'authenticated', now(), now())
+    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'tariq.tech@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), null, '+971500000006', jsonb_build_object('full_name', 'Tariq Tech'), 'authenticated', 'authenticated', now(), now())
   returning id into tech_id;
 
-  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values
-    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'lina.admin@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000003', jsonb_build_object('full_name', 'Lina Admin'), 'authenticated', 'authenticated', now(), now())
+    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'lina.admin@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), null, '+971500000003', jsonb_build_object('full_name', 'Lina Admin'), 'authenticated', 'authenticated', now(), now())
   returning id into admin_id;
 
-  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values
-    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'sara.support@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000004', jsonb_build_object('full_name', 'Sara Support'), 'authenticated', 'authenticated', now(), now())
+    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'sara.support@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), null, '+971500000004', jsonb_build_object('full_name', 'Sara Support'), 'authenticated', 'authenticated', now(), now())
   returning id into support_id;
 
-  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+  insert into auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
   values
-    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'ilias.investor@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), '+971500000005', jsonb_build_object('full_name', 'Ilias Investor'), 'authenticated', 'authenticated', now(), now())
+    (gen_random_uuid(), '00000000-0000-0000-0000-000000000000', 'ilias.investor@fastlease.dev', crypt('Passw0rd!', gen_salt('bf', 10)), now(), null, '+971500000005', jsonb_build_object('full_name', 'Ilias Investor'), 'authenticated', 'authenticated', now(), now())
   returning id into investor_user_id;
 
   insert into public.profiles (user_id, status, full_name, phone, emirates_id, nationality, residency_status)

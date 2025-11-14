@@ -13,13 +13,14 @@ DECLARE
 BEGIN
   -- Создаем пользователей auth.users и профили для клиентов (50 человек)
   FOR i IN 1..50 LOOP
-    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'client' || i || '@fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - (random() * interval '365 days'),
+      null,
       '+97150' || LPAD((1000000 + (random() * 999999)::int)::text, 7, '0'),
       jsonb_build_object('full_name', 'Клиент ' || i),
       'authenticated',
@@ -72,13 +73,14 @@ BEGIN
 
   -- Создаем операционных менеджеров (5 человек)
   FOR i IN 1..5 LOOP
-    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'operator' || i || '@fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - (random() * interval '365 days'),
+      null,
       '+97150' || LPAD((2000000 + (random() * 999999)::int)::text, 7, '0'),
       jsonb_build_object('full_name', 'Оператор ' || i),
       'authenticated',
@@ -117,13 +119,14 @@ BEGIN
 
   -- Создаем технических специалистов (3 человека)
   FOR i IN 1..3 LOOP
-    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'tech' || i || '@fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - (random() * interval '365 days'),
+      null,
       '+97150' || LPAD((2500000 + (random() * 999999)::int)::text, 7, '0'),
       jsonb_build_object('full_name', 'Тех специалист ' || i),
       'authenticated',
@@ -162,13 +165,14 @@ BEGIN
 
   -- Создаем администраторов (3 человека)
   FOR i IN 1..3 LOOP
-    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'admin' || i || '@fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - (random() * interval '365 days'),
+      null,
       '+97150' || LPAD((3000000 + (random() * 999999)::int)::text, 7, '0'),
       jsonb_build_object('full_name', 'Администратор ' || i),
       'authenticated',
@@ -206,13 +210,14 @@ BEGIN
 
   -- Создаем сотрудников поддержки (4 человека)
   FOR i IN 1..4 LOOP
-    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'support' || i || '@fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - (random() * interval '365 days'),
+      null,
       '+97150' || LPAD((4000000 + (random() * 999999)::int)::text, 7, '0'),
       jsonb_build_object('full_name', 'Поддержка ' || i),
       'authenticated',
@@ -250,13 +255,14 @@ BEGIN
 
   -- Создаем инвесторов (10 человек)
   FOR i IN 1..10 LOOP
-    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'investor' || i || '@fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - (random() * interval '365 days'),
+      null,
       '+97150' || LPAD((5000000 + (random() * 999999)::int)::text, 7, '0'),
       jsonb_build_object('full_name', 'Инвестор ' || i),
       'authenticated',
@@ -312,13 +318,14 @@ BEGIN
 
   -- Создаем финансовых сотрудников (3 человека)
   FOR i IN 1..3 LOOP
-    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, phone, raw_user_meta_data, aud, role, created_at, updated_at)
+    INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
       gen_random_uuid(),
       '00000000-0000-0000-0000-000000000000',
       'finance' || i || '@fastlease.dev',
       crypt('Passw0rd!', gen_salt('bf', 10)),
       now() - (random() * interval '365 days'),
+      null,
       '+97150' || LPAD((6000000 + (random() * 999999)::int)::text, 7, '0'),
       jsonb_build_object('full_name', 'Финансист ' || i),
       'authenticated',
