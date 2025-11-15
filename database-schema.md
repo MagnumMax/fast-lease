@@ -327,7 +327,6 @@ first_payment_date: date
 contract_terms: jsonb ({}'::jsonb)
 insurance_details: jsonb ({}'::jsonb)
 assigned_account_manager: uuid → auth.users(id)
-activated_at: timestamptz
 completed_at: timestamptz
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
@@ -1060,7 +1059,6 @@ insurance_details: {
   "last_payment_date": "2025-10-20"
 }
 assigned_account_manager: [omar.ops]
-activated_at: null
 created_at: "2025-09-30 10:00:00"
 ```
 

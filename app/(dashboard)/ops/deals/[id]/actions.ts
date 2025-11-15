@@ -462,7 +462,6 @@ const updateDealSchema = z.object({
   contractStartDate: z.string().optional(),
   contractEndDate: z.string().optional(),
   firstPaymentDate: z.string().optional(),
-  activatedAt: z.string().optional(),
   completedAt: z.string().optional(),
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
@@ -849,7 +848,6 @@ export async function updateOperationsDeal(
     contractStartDate,
     contractEndDate,
     firstPaymentDate,
-    activatedAt,
     completedAt,
     insuranceProvider,
     insurancePolicyNumber,
@@ -885,7 +883,6 @@ export async function updateOperationsDeal(
     contract_start_date: normalizeDateInput(contractStartDate),
     contract_end_date: normalizeDateInput(contractEndDate),
     first_payment_date: normalizeDateInput(firstPaymentDate),
-    activated_at: normalizeDateTimeLocal(activatedAt),
     completed_at: normalizeDateTimeLocal(completedAt),
   };
 

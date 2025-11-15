@@ -71,7 +71,6 @@ type FormState = {
   contractStartDate: string;
   contractEndDate: string;
   firstPaymentDate: string;
-  activatedAt: string;
   completedAt: string;
   insuranceProvider: string;
   insurancePolicyNumber: string;
@@ -266,7 +265,6 @@ export function DealEditDialog({
       contractStartDate: formatDateInput(defaults.contractStartDate),
       contractEndDate: formatDateInput(defaults.contractEndDate),
       firstPaymentDate: formatDateInput(defaults.firstPaymentDate),
-      activatedAt: formatDateTimeInput(defaults.activatedAt),
       completedAt: formatDateTimeInput(defaults.completedAt),
       insuranceProvider: insuranceDefaults?.provider ?? "",
       insurancePolicyNumber: insuranceDefaults?.policyNumber ?? "",
@@ -603,7 +601,6 @@ export function DealEditDialog({
         contractStartDate: form.contractStartDate,
         contractEndDate: form.contractEndDate,
         firstPaymentDate: form.firstPaymentDate,
-        activatedAt: form.activatedAt,
         completedAt: form.completedAt,
         insuranceProvider: form.insuranceProvider,
         insurancePolicyNumber: form.insurancePolicyNumber,
@@ -1201,16 +1198,6 @@ export function DealEditDialog({
                   onChange={(nextValue) => setForm((prev) => ({ ...prev, firstPaymentDate: nextValue }))}
                   buttonClassName="rounded-lg"
                   placeholder="Выберите дату"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Активация</Label>
-                <DateTimePickerInput
-                  id="deal-activated-at"
-                  value={form.activatedAt}
-                  onChange={(nextValue) => setForm((prev) => ({ ...prev, activatedAt: nextValue }))}
-                  buttonClassName="rounded-lg"
-                  placeholder="Выберите дату и время"
                 />
               </div>
               <div className="space-y-1">

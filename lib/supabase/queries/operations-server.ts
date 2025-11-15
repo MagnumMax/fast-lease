@@ -435,7 +435,7 @@ export type SupabaseDealRow = {
   client_id: string;
   application_id: string;
   vehicle_id: string;
-  activated_at?: string | null;
+  contract_start_date?: string | null;
   assigned_account_manager?: string | null;
   principal_amount?: number | null;
   total_amount?: number | null;
@@ -2577,7 +2577,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     status,
     created_at,
     updated_at,
-    activated_at,
     completed_at,
     monthly_payment,
     monthly_lease_rate,
@@ -2613,7 +2612,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     status: string;
     created_at: string | null;
     updated_at: string | null;
-    activated_at: string | null;
     completed_at: string | null;
     monthly_payment: number | null;
     monthly_lease_rate: number | null;
@@ -3636,10 +3634,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       value: formatDate(dealRow.first_payment_date),
     },
     {
-      label: "Activated at",
-      value: formatDateTime(dealRow.activated_at),
-    },
-    {
       label: "Completed at",
       value: formatDateTime(dealRow.completed_at),
     },
@@ -3832,7 +3826,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     contractStartDate: getString(dealRow.contract_start_date),
     contractEndDate: getString(dealRow.contract_end_date),
     firstPaymentDate: getString(dealRow.first_payment_date),
-    activatedAt: getString(dealRow.activated_at),
     completedAt: getString(dealRow.completed_at),
     insurance: insuranceEditDefaults,
   };

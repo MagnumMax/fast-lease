@@ -22,6 +22,7 @@ import {
   type OpsTeamLoadItem,
   type OpsBottleneckItem,
   type OpsAutomationMetric,
+  type OpsDealStatusKey,
 } from "./operations";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 
@@ -70,6 +71,15 @@ const OPS_DASHBOARD_ALLOWED_ROLES: AppRole[] = [
   "ADMIN",
 ];
 
+const HOUR_IN_MS = 60 * 60 * 1000;
+const DAY_IN_MS = 24 * HOUR_IN_MS;
+const MAX_WATCHLIST_ITEMS = 4;
+const currencyFormatter = new Intl.NumberFormat("en-CA", {
+  style: "currency",
+  currency: "AED",
+  maximumFractionDigits: 0,
+});
+
 function hasOpsDashboardAccess(roles: AppRole[] | undefined | null): boolean {
   if (!roles?.length) {
     return false;
@@ -87,6 +97,100 @@ function createEmptyDashboardData(): DashboardDataSource {
     scheduleQueue: [],
     managerProfiles: new Map(),
   };
+}
+
+type NormalizedDealRow = SupabaseDealRow & {
+  statusKey: OpsDealStatusKey;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  contractStartDate: Date | null;
+};
+
+function normalizeDeals(deals: SupabaseDealRow[]): NormalizedDealRow[] {
+  return deals.map((deal) => {
+    const statusKey = mapStatusToWorkflow(deal.status);
+    const createdAt = parseDate(deal.created_at);
+    const updatedAt = parseDate(deal.updated_at) ?? createdAt;
+    const contractStartDate = parseDate((deal as { contract_start_date?: string | null }).contract_start_date);
+
+    return {
+      ...deal,
+      statusKey,
+      createdAt,
+      updatedAt,
+      contractStartDate,
+    };
+  });
+}
+
+function parseSlaHours(label?: string | null): number | null {
+  if (!label) {
+    return null;
+  }
+  const match = label.match(/(\d+)\s*h/i);
+  if (match) {
+    return Number(match[1]);
+  }
+  const dayMatch = label.match(/(\d+)\s*d/i);
+  if (dayMatch) {
+    return Number(dayMatch[1]) * 24;
+  }
+  return null;
+}
+
+function formatDurationLabel(ms: number): string {
+  const hours = ms / HOUR_IN_MS;
+  if (hours < 24) {
+    return `${Math.max(1, Math.round(hours))}h`;
+  }
+  const days = hours / 24;
+  return `${days.toFixed(days >= 2 ? 0 : 1)}d`;
+}
+
+function resolveSeverityFromHours(overdueHours: number): OpsWatchItem["severity"] {
+  if (overdueHours >= 72) {
+    return "critical";
+  }
+  if (overdueHours >= 24) {
+    return "high";
+  }
+  if (overdueHours >= 8) {
+    return "medium";
+  }
+  return "low";
+}
+
+function resolveToneFromSeverity(severity: OpsWatchItem["severity"]): OpsWatchItem["tone"] {
+  switch (severity) {
+    case "critical":
+      return "rose";
+    case "high":
+      return "amber";
+    case "medium":
+      return "indigo";
+    default:
+      return "emerald";
+  }
+}
+
+function formatCurrencyAED(value: number): string {
+  return currencyFormatter.format(value);
+}
+
+function calculateChangeSnapshot(current: number, previous: number) {
+  const diff = current - previous;
+  const trend: OpsKpiMetric["trend"] = diff === 0 ? "neutral" : diff > 0 ? "up" : "down";
+  const pct = previous === 0 ? (current === 0 ? 0 : 100) : (diff / previous) * 100;
+  const roundedPct = Math.abs(pct) >= 100 ? Math.round(pct) : Number(pct.toFixed(1));
+  const change = `${diff > 0 ? "+" : diff < 0 ? "" : ""}${roundedPct}%`;
+  return { change, trend, diff };
+}
+
+function formatDealLabel(deal: SupabaseDealRow): string {
+  const explicitNumber = typeof deal.deal_number === "string" && deal.deal_number.trim().length
+    ? deal.deal_number
+    : null;
+  return explicitNumber ?? formatFallbackDealNumber(deal.id);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -149,58 +253,97 @@ function buildOperationsDashboardSnapshotFromData(
   console.log("[DEBUG] Building dashboard snapshot from data");
 
   const { deals, invoices, payments, managerProfiles } = dashboardData;
+  const normalizedDeals = normalizeDeals(deals);
 
-  // Подсчёт KPI метрик
-  const totalDeals = deals.length;
-  const activeDeals = deals.filter(deal =>
-    deal.status !== 'CANCELLED' && deal.status !== 'COMPLETED'
+  const nowMs = now.getTime();
+  const last30Start = new Date(nowMs - 30 * DAY_IN_MS);
+  const prev30Start = new Date(last30Start.getTime() - 30 * DAY_IN_MS);
+
+  const dealsCreatedLast30 = normalizedDeals.filter((deal) => deal.createdAt && deal.createdAt >= last30Start);
+  const totalDeals = normalizedDeals.length;
+  const previousTotalDeals = Math.max(0, totalDeals - dealsCreatedLast30.length);
+  const totalDealsChange = calculateChangeSnapshot(totalDeals, previousTotalDeals);
+
+  const activeDeals = normalizedDeals.filter((deal) => deal.statusKey !== "CANCELLED").length;
+  const startedLast30 = normalizedDeals.filter(
+    (deal) => deal.contractStartDate && deal.contractStartDate >= last30Start,
   ).length;
+  const previousActiveDeals = Math.max(0, activeDeals - startedLast30);
+  const activeDealsChange = calculateChangeSnapshot(activeDeals, previousActiveDeals);
 
-  const monthlyVolume = payments
-    .filter(payment => {
-      if (!payment.created_at) return false;
-      const paymentDate = new Date(payment.created_at);
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      return paymentDate >= monthAgo && !isNaN(paymentDate.getTime());
-    })
-    .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+  const dealsStartedLast30 = normalizedDeals.filter(
+    (deal) => deal.contractStartDate && deal.contractStartDate >= last30Start,
+  );
+  const dealsStartedPrev30 = normalizedDeals.filter(
+    (deal) =>
+      deal.contractStartDate && deal.contractStartDate >= prev30Start && deal.contractStartDate < last30Start,
+  );
+  const monthlyVolume = dealsStartedLast30.reduce(
+    (sum, deal) => sum + (Number(deal.total_amount) || 0),
+    0,
+  );
+  const previousMonthlyVolume = dealsStartedPrev30.reduce(
+    (sum, deal) => sum + (Number(deal.total_amount) || 0),
+    0,
+  );
+  const volumeChange = calculateChangeSnapshot(monthlyVolume, previousMonthlyVolume);
 
-  const pendingInvoices = invoices.filter(invoice =>
-    invoice.status === 'pending' || invoice.status === 'overdue'
-  ).length;
+  const normalizedInvoiceStatus = (invoice: SupabaseInvoiceRow) =>
+    (invoice.status ?? "").toLowerCase();
+  const pendingInvoicesCurrent = invoices.filter((invoice) => {
+    const created = parseDate(invoice.created_at);
+    const status = normalizedInvoiceStatus(invoice);
+    return status === "pending" || status === "overdue" ? (!created || created >= last30Start) : false;
+  });
+  const pendingInvoicesPrev = invoices.filter((invoice) => {
+    const created = parseDate(invoice.created_at);
+    const status = normalizedInvoiceStatus(invoice);
+    return (
+      (status === "pending" || status === "overdue") &&
+      created &&
+      created >= prev30Start &&
+      created < last30Start
+    );
+  });
+  const pendingInvoices = pendingInvoicesCurrent.length;
+  const pendingInvoicesChange = calculateChangeSnapshot(pendingInvoices, pendingInvoicesPrev.length);
 
   const kpis: OpsKpiMetric[] = [
     {
       id: "total-deals",
       label: "Всего сделок",
       value: totalDeals.toString(),
-      change: "+12%",
-      trend: "up",
+      change: totalDealsChange.change,
+      trend: totalDealsChange.trend,
       tone: "info",
+      helpText: `${totalDealsChange.diff > 0 ? "+" : totalDealsChange.diff < 0 ? "" : ""}${dealsCreatedLast30.length} new last 30d`,
     },
     {
       id: "active-deals",
       label: "Активные сделки",
       value: activeDeals.toString(),
-      change: "+8%",
-      trend: "up",
+      change: activeDealsChange.change,
+      trend: activeDealsChange.trend,
       tone: "success",
+      helpText: `${activeDealsChange.diff > 0 ? "+" : activeDealsChange.diff < 0 ? "" : ""}${startedLast30} contracts started last 30d`,
     },
     {
       id: "monthly-volume",
       label: "Месячный объём",
-      value: `AED ${monthlyVolume.toLocaleString("en-US")}`,
-      change: "+15%",
-      trend: "up",
+      value: formatCurrencyAED(monthlyVolume),
+      change: volumeChange.change,
+      trend: volumeChange.trend,
       tone: "success",
+      helpText: `${volumeChange.diff >= 0 ? "+" : "-"}${formatCurrencyAED(Math.abs(volumeChange.diff))} vs previous 30d`,
     },
     {
       id: "pending-invoices",
       label: "Ждут оплаты",
       value: pendingInvoices.toString(),
-      change: "-5%",
-      trend: "down",
-      tone: "warning",
+      change: pendingInvoicesChange.change,
+      trend: pendingInvoicesChange.trend,
+      tone: pendingInvoicesChange.trend === "down" ? "success" : "warning",
+      helpText: `${pendingInvoicesPrev.length} previous 30d`,
     },
   ];
 
@@ -208,14 +351,14 @@ function buildOperationsDashboardSnapshotFromData(
   const pipelineStatus = OPS_WORKFLOW_STATUS_MAP;
   const pipeline: OpsPipelineDataset = Object.entries(pipelineStatus).map(([key, status]) => ({
     label: status.title,
-    value: deals.filter(deal => deal.status === key).length,
+    value: normalizedDeals.filter((deal) => deal.statusKey === key).length,
   }));
 
   // Данные для диаграммы спроса/мощности (за последние 6 месяцев)
   const demandCapacity: OpsDemandCapacitySeries = {
     labels: [],
     submitted: [],
-    activated: [],
+    started: [],
   };
 
   for (let i = 5; i >= 0; i--) {
@@ -227,41 +370,123 @@ function buildOperationsDashboardSnapshotFromData(
     const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
     const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
 
-    const submitted = deals.filter(deal => {
-      const createdAt = new Date(deal.created_at || "");
-      return createdAt >= monthStart && createdAt <= monthEnd;
+    const submitted = normalizedDeals.filter((deal) => {
+      return deal.createdAt && deal.createdAt >= monthStart && deal.createdAt <= monthEnd;
     }).length;
 
-    const activated = deals.filter(deal => {
-      const updatedAt = new Date(deal.updated_at || "");
-      return updatedAt >= monthStart && updatedAt <= monthEnd && deal.status === 'ACTIVE';
+    const started = normalizedDeals.filter((deal) => {
+      return (
+        deal.contractStartDate &&
+        deal.contractStartDate >= monthStart &&
+        deal.contractStartDate <= monthEnd
+      );
     }).length;
 
     demandCapacity.submitted.push(submitted);
-    demandCapacity.activated.push(activated);
+    demandCapacity.started.push(started);
   }
 
   // Загрузка команды
-  const teamLoad: OpsTeamLoadItem[] = Array.from(managerProfiles.values()).map(profile => ({
-    id: profile.id,
-    specialist: profile.full_name || "Неизвестный менеджер",
-    activeCount: Math.floor(Math.random() * 10) + 1, // Заглушка
-    overdueCount: Math.floor(Math.random() * 3), // Заглушка
-  }));
+  const overdueEntries = normalizedDeals
+    .map((deal) => {
+      const statusMeta = OPS_WORKFLOW_STATUS_MAP[deal.statusKey];
+      const slaHours = parseSlaHours(statusMeta?.slaLabel);
+      if (!slaHours) {
+        return null;
+      }
+      const checkpoint = deal.updatedAt ?? deal.createdAt;
+      if (!checkpoint) {
+        return null;
+      }
+      const dueAt = new Date(checkpoint.getTime() + slaHours * HOUR_IN_MS);
+      const overdueMs = nowMs - dueAt.getTime();
+      if (overdueMs <= 0) {
+        return null;
+      }
+      const overdueHours = overdueMs / HOUR_IN_MS;
+      const severity = resolveSeverityFromHours(overdueHours);
+      return {
+        deal,
+        dueAt,
+        overdueMs,
+        overdueHours,
+        severity,
+        statusMeta,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .sort((a, b) => b.overdueMs - a.overdueMs);
+
+  const slaWatchlist: OpsWatchItem[] = overdueEntries.slice(0, MAX_WATCHLIST_ITEMS).map((entry) => {
+    const { deal, dueAt, overdueMs, overdueHours, severity, statusMeta } = entry;
+    const assigneeProfile = deal.assigned_account_manager
+      ? managerProfiles.get(deal.assigned_account_manager)
+      : null;
+    const assignee = assigneeProfile?.full_name ?? "Unassigned";
+    const title = `${formatDealLabel(deal)} · ${statusMeta.title}`;
+    const description = `Over SLA by ${formatDurationLabel(overdueMs)} · ${WORKFLOW_ROLE_LABELS[statusMeta.ownerRole]}`;
+
+    return {
+      id: deal.id,
+      title,
+      description,
+      severity,
+      assignee,
+      dueDate: dueAt.toISOString(),
+      tone: resolveToneFromSeverity(severity),
+    };
+  });
+
+  const overdueByDealId = new Set(overdueEntries.map((entry) => entry.deal.id));
+
+  const openStatuses = new Set<OpsDealStatusKey>(
+    Object.values(OPS_WORKFLOW_STATUS_MAP)
+      .map((status) => status.key)
+      .filter((key) => key !== "CANCELLED"),
+  );
+
+  const teamAggregates = new Map<string, OpsTeamLoadItem>();
+  const ensureMember = (managerId: string | null) => {
+    const key = managerId ?? "unassigned";
+    if (!teamAggregates.has(key)) {
+      const profile = managerId ? managerProfiles.get(managerId) : null;
+      teamAggregates.set(key, {
+        id: managerId ?? "unassigned",
+        specialist: profile?.full_name ?? "Unassigned",
+        activeCount: 0,
+        overdueCount: 0,
+      });
+    }
+    return teamAggregates.get(key)!;
+  };
+
+  normalizedDeals.forEach((deal) => {
+    const member = ensureMember(deal.assigned_account_manager ?? null);
+    if (openStatuses.has(deal.statusKey)) {
+      member.activeCount += 1;
+    }
+    if (overdueByDealId.has(deal.id)) {
+      member.overdueCount += 1;
+    }
+  });
+
+  const teamLoad: OpsTeamLoadItem[] = Array.from(teamAggregates.values())
+    .filter((member) => member.activeCount > 0 || member.overdueCount > 0)
+    .sort((a, b) => b.activeCount - a.activeCount);
 
   // Узкие места (упрощённо)
   const bottlenecks: OpsBottleneckItem[] = [
     {
       id: "risk-review",
       stage: "Проверка риска",
-      count: deals.filter(deal => deal.status === 'RISK_REVIEW').length,
+      count: normalizedDeals.filter((deal) => deal.statusKey === "RISK_REVIEW").length,
       avgTime: "32h",
       impact: "high",
     },
     {
       id: "docs-collect",
       stage: "Сбор документов",
-      count: deals.filter(deal => deal.status === 'DOCS_COLLECT').length,
+      count: normalizedDeals.filter((deal) => deal.statusKey === "DOCS_COLLECT").length,
       avgTime: "28h",
       impact: "medium",
     },
@@ -285,9 +510,47 @@ function buildOperationsDashboardSnapshotFromData(
     },
   ];
 
-  // Списки для наблюдения (пока пустые)
-  const exceptionWatchlist: OpsWatchItem[] = [];
-  const slaWatchlist: OpsWatchItem[] = [];
+  const overdueInvoicesDetailed = invoices
+    .map((invoice) => {
+      const status = (invoice.status ?? "").toLowerCase();
+      if (status !== "overdue" && status !== "pending") {
+        return null;
+      }
+      const dueDate = parseDate(invoice.due_date);
+      if (!dueDate) {
+        return null;
+      }
+      const overdueMs = nowMs - dueDate.getTime();
+      if (overdueMs <= 0) {
+        return null;
+      }
+      const overdueHours = overdueMs / HOUR_IN_MS;
+      const severity = resolveSeverityFromHours(overdueHours);
+      return {
+        invoice,
+        overdueMs,
+        overdueHours,
+        severity,
+        dueDate,
+      };
+    })
+    .filter((value): value is NonNullable<typeof value> => Boolean(value))
+    .sort((a, b) => b.overdueMs - a.overdueMs);
+
+  const exceptionWatchlist: OpsWatchItem[] = overdueInvoicesDetailed.slice(0, MAX_WATCHLIST_ITEMS).map((entry) => {
+    const { invoice, overdueMs, severity, dueDate } = entry;
+    const title = `Invoice ${invoice.invoice_number ?? invoice.id}`;
+    const description = `Overdue by ${formatDurationLabel(overdueMs)} · Amount ${formatCurrencyAED(Number(invoice.total_amount) || 0)}`;
+    return {
+      id: invoice.id,
+      title,
+      description,
+      severity,
+      assignee: "Finance",
+      dueDate: dueDate.toISOString(),
+      tone: resolveToneFromSeverity(severity),
+    };
+  });
 
   return {
     kpis,
@@ -337,7 +600,7 @@ export async function getOperationsDashboardSnapshotClient(): Promise<OpsDashboa
           status,
           created_at,
           updated_at,
-          activated_at,
+          contract_start_date,
           assigned_account_manager,
           principal_amount,
           total_amount,

@@ -59,8 +59,8 @@ function buildPipelineChartConfig(pipeline: OpsPipelineDataset) {
 function buildDemandCapacityChartConfig(series: OpsDemandCapacitySeries) {
   const submittedLine = readCssVariable("--chart-demand-submitted-line", "rgba(71, 85, 105, 1)");
   const submittedFill = readCssVariable("--chart-demand-submitted-fill", "rgba(71, 85, 105, 0.2)");
-  const activatedLine = readCssVariable("--chart-demand-activated-line", "rgba(37, 99, 235, 1)");
-  const activatedFill = readCssVariable("--chart-demand-activated-fill", "rgba(37, 99, 235, 0.2)");
+  const startedLine = readCssVariable("--chart-demand-activated-line", "rgba(37, 99, 235, 1)");
+  const startedFill = readCssVariable("--chart-demand-activated-fill", "rgba(37, 99, 235, 0.2)");
   return {
     labels: series.labels,
     datasets: [
@@ -73,10 +73,10 @@ function buildDemandCapacityChartConfig(series: OpsDemandCapacitySeries) {
         tension: 0.4,
       },
       {
-        label: "Applications Activated",
-        data: series.activated,
-        borderColor: activatedLine,
-        backgroundColor: activatedFill,
+        label: "Contracts Started",
+        data: series.started,
+        borderColor: startedLine,
+        backgroundColor: startedFill,
         fill: true,
         tension: 0.4,
       },
@@ -205,7 +205,7 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
               <CardDescription>Seven-day view</CardDescription>
-              <CardTitle>Submitted vs Activated</CardTitle>
+              <CardTitle>Submitted vs Started</CardTitle>
             </div>
             <Badge variant="outline" className="rounded-lg">
               Last 7 days

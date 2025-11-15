@@ -138,7 +138,7 @@ type Feedback = { type: "error"; message: string };
 type SortField = "dealId" | "vehicle" | "client" | "status" | "nextAction" | "contractStartDate";
 type SortDirection = "asc" | "desc";
 type SortState = { field: SortField; direction: SortDirection };
-const DEFAULT_SORT: SortState = { field: "contractStartDate", direction: "desc" };
+const DEFAULT_SORT: SortState = { field: "status", direction: "asc" };
 
 const STATUS_ORDER = OPS_DEAL_STATUS_ORDER;
 const STATUS_LABELS = OPS_DEAL_STATUS_LABELS;

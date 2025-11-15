@@ -329,7 +329,7 @@ export type SupabaseDealRow = {
   client_id: string;
   application_id: string;
   vehicle_id: string;
-  activated_at?: string | null;
+  contract_start_date?: string | null;
   assigned_account_manager?: string | null;
   principal_amount?: number | null;
   total_amount?: number | null;
@@ -611,7 +611,6 @@ export type OpsDealEditDefaults = {
   contractStartDate: string | null;
   contractEndDate: string | null;
   firstPaymentDate: string | null;
-  activatedAt: string | null;
   completedAt: string | null;
   insurance: OpsInsuranceEditDefaults | null;
 };
@@ -1171,7 +1170,7 @@ export type OpsPipelineDataset = Array<{
 export type OpsDemandCapacitySeries = {
   labels: string[];
   submitted: number[];
-  activated: number[];
+  started: number[];
 };
 
 export type OpsDashboardSnapshot = {
