@@ -14,6 +14,15 @@ import {
   type ClientDocumentSummary,
 } from "@/lib/workflow/documents-checklist";
 
+type GuardDocumentLink = {
+  id: string;
+  title: string | null;
+  documentType: string | null;
+  storagePath: string | null;
+  status: string | null;
+  url: string | null;
+};
+
 type TaskPageParams = {
   params: Promise<{ id: string }>;
 };
@@ -43,6 +52,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
   } | null = null;
   let dealSummary: { id: string; dealNumber: string | null; clientId: string | null; vehicleId: string | null } | null = null;
   let clientChecklist: ClientDocumentChecklist | null = null;
+  let guardDocuments: GuardDocumentLink[] = [];
 
   if (task.dealId) {
     const supabase = await createSupabaseServerClient();
@@ -71,7 +81,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       if (effectiveClientId) {
         const { data: clientDocsData, error: clientDocsError } = await supabase
           .from("client_documents")
-          .select("id, document_type, title, status, storage_path")
+          .select("id, document_type, title, status, storage_path, metadata")
           .eq("client_id", effectiveClientId);
 
         if (clientDocsError) {
@@ -139,6 +149,52 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           }
         }
 
+        if (guardKey && clientDocuments.length > 0) {
+          const seenPaths = new Set<string>();
+          const guardDealId = task.dealId;
+          const relevantDocs = clientDocuments.filter((doc) => {
+            const metadata =
+              doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+                ? (doc.metadata as Record<string, unknown>)
+                : null;
+            const metadataGuardKey =
+              metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
+            const metadataDealId = metadata && typeof metadata.guard_deal_id === "string"
+              ? (metadata.guard_deal_id as string)
+              : null;
+
+            if (metadataGuardKey !== guardKey) return false;
+            if (guardDealId && metadataDealId && metadataDealId !== guardDealId) return false;
+            return doc.storage_path ? !seenPaths.has(doc.storage_path) : true;
+          });
+
+          const guardDocsWithUrls: GuardDocumentLink[] = [];
+          for (const doc of relevantDocs) {
+            const storagePath = doc.storage_path ?? null;
+            const signedUrl = storagePath
+              ? await createSignedStorageUrl({ bucket: CLIENT_STORAGE_BUCKET, path: storagePath })
+              : null;
+            const titleFallback = guardMeta?.label ?? "Документ";
+            const link: GuardDocumentLink = {
+              id: doc.id,
+              title: doc.title ?? titleFallback,
+              documentType: doc.document_type ?? null,
+              storagePath,
+              status: doc.status ?? null,
+              url: signedUrl,
+            };
+
+            if (storagePath) {
+              seenPaths.add(storagePath);
+            }
+            guardDocsWithUrls.push(link);
+          }
+
+          if (guardDocsWithUrls.length > 0) {
+            guardDocuments = guardDocsWithUrls;
+          }
+        }
+
         let attachmentUrl: string | null = null;
         if (attachmentPath != null) {
           const bucketsToTry = [CLIENT_STORAGE_BUCKET, DEAL_STORAGE_BUCKET];
@@ -195,6 +251,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       checklist={clientChecklist}
       deal={dealSummary}
       stageTitle={stageMeta?.title ?? null}
+      guardDocuments={guardDocuments}
       completeAction={completeTaskFormAction}
     />
   );

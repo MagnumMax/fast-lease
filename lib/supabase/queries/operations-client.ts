@@ -190,7 +190,14 @@ function formatDealLabel(deal: SupabaseDealRow): string {
   const explicitNumber = typeof deal.deal_number === "string" && deal.deal_number.trim().length
     ? deal.deal_number
     : null;
-  return explicitNumber ?? formatFallbackDealNumber(deal.id);
+  const companyCode = toDealCompanyCode((deal as { company_code?: string | null }).company_code ?? null);
+  const fallback = formatFallbackDealNumber({
+    id: deal.id,
+    createdAt: deal.created_at ?? null,
+    vin: (deal as { vin?: string | null }).vin ?? null,
+    prefix: getDealCompanyPrefix(companyCode),
+  });
+  return explicitNumber ?? fallback;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

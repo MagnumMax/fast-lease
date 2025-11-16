@@ -16,6 +16,7 @@ export type ClientDocumentSummary = {
   status: string | null;
   title: string | null;
   storage_path?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type ClientDocumentChecklistItem = {

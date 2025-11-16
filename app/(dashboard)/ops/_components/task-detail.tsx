@@ -36,6 +36,7 @@ type TaskDetailViewProps = {
   checklist: ClientDocumentChecklist | null;
   deal: { id: string; dealNumber: string | null; clientId: string | null; vehicleId: string | null } | null;
   stageTitle: string | null;
+  guardDocuments: GuardDocumentLink[];
   completeAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
 };
 
@@ -55,6 +56,14 @@ type TaskPayload = {
   schema?: SchemaPayload;
   fields?: Record<string, unknown>;
   defaults?: Record<string, unknown>;
+};
+
+type GuardDocumentLink = {
+  id: string;
+  title: string | null;
+  documentType: string | null;
+  storagePath?: string | null;
+  url: string | null;
 };
 
 type DocumentDraft = {
@@ -149,6 +158,7 @@ export function TaskDetailView({
   checklist,
   deal,
   stageTitle,
+  guardDocuments,
   completeAction,
 }: TaskDetailViewProps) {
   const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
@@ -169,6 +179,9 @@ export function TaskDetailView({
   const mustProvideDocument = requiresDocument && !hasExistingAttachment;
   const hasForm = task.status !== "DONE";
   const isCompletedWorkflow = !hasForm && task.isWorkflow;
+  const guardDocumentLinks = Array.isArray(guardDocuments) ? guardDocuments : [];
+  const hasGuardDocuments = guardDocumentLinks.length > 0;
+  const hasGuardAttachmentLink = Boolean(guardState?.attachmentUrl);
   const dealSlug = deal ? buildSlugWithId(deal.dealNumber ?? null, deal.id) || deal.id : null;
   const clientSlug = deal?.clientId
     ? buildSlugWithId(task.dealClientName ?? null, deal.clientId) || deal.clientId
@@ -220,6 +233,26 @@ export function TaskDetailView({
       return next.length > 0 ? next : [createDocumentDraft()];
     });
     delete fileInputRefs.current[id];
+  }
+
+  function resolveDocumentLabel(doc: GuardDocumentLink): string {
+    const rawTitle = doc.title?.trim();
+    const fileName = getFileNameFromPath(doc.storagePath);
+    const hasCustomTitle = rawTitle && rawTitle.toLowerCase() !== "другой документ";
+
+    return (
+      (hasCustomTitle ? rawTitle : null) ??
+      fileName ??
+      getClientDocumentLabel(doc.documentType ?? undefined) ??
+      doc.documentType ??
+      "Документ"
+    );
+  }
+
+  function getFileNameFromPath(path?: string | null): string | null {
+    if (!path) return null;
+    const normalized = path.split("/").filter(Boolean).pop();
+    return normalized ?? null;
   }
 
   return (
@@ -300,9 +333,9 @@ export function TaskDetailView({
               <span>Завершена: {completedInfo}</span>
             </div>
           ) : null}
-          {guardState?.attachmentUrl ? (
+          {hasGuardAttachmentLink && !hasGuardDocuments ? (
             <Link
-              href={guardState.attachmentUrl}
+              href={guardState?.attachmentUrl ?? "#"}
               target="_blank"
               className="inline-flex items-center gap-2 text-xs font-semibold text-brand-600 underline underline-offset-2"
             >
@@ -598,6 +631,48 @@ export function TaskDetailView({
             </form>
           ) : (
             <>
+              {hasGuardDocuments ? (
+                <div className="rounded-lg border border-border/60 bg-muted/15 p-4 shadow-sm">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    <Paperclip className="h-3 w-3" />
+                    <span>Загруженные документы</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {guardDocumentLinks.map((doc) => {
+                      const label = resolveDocumentLabel(doc);
+                      if (!doc.url) {
+                        return (
+                          <div
+                            key={doc.id}
+                            className="flex items-center justify-between rounded-md border border-border/50 bg-background px-3 py-2 text-xs text-foreground"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Paperclip className="h-3 w-3 text-muted-foreground" />
+                              {label}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground/80">Нет ссылки</span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <Link
+                          key={doc.id}
+                          href={doc.url}
+                          target="_blank"
+                          className="flex items-center justify-between rounded-md border border-border/60 bg-background px-3 py-2 text-xs font-medium text-foreground transition hover:border-brand-200 hover:bg-muted/40"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Paperclip className="h-3 w-3 text-brand-600" />
+                            {label}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">Открыть</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
               {isCompletedWorkflow ? (
                 <div className="space-y-4">
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
@@ -630,7 +705,7 @@ export function TaskDetailView({
                       <p className="whitespace-pre-wrap text-sm text-foreground/80">{guardState.note}</p>
                     </div>
                   ) : null}
-                  {guardState?.attachmentUrl ? (
+                  {!hasGuardDocuments && guardState?.attachmentUrl ? (
                     <Link
                       href={guardState.attachmentUrl}
                       target="_blank"
