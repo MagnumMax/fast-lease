@@ -1,0 +1,60 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - generic [ref=e9]: Fast Lease Ecosystem
+          - heading "Welcome to Fast Lease" [level=1] [ref=e10]
+          - paragraph [ref=e11]: Manage contracts, payments and support in a unified personal account.
+        - generic [ref=e12]:
+          - paragraph [ref=e13]: Interesting Facts
+          - paragraph [ref=e14]: Fast Lease helps get approval faster and control all leasing stages in one place.
+          - generic [ref=e15]:
+            - generic [ref=e16]: 90% of applications approved within 24 hours of submission
+            - generic [ref=e18]: Transparent payment schedule and reminders in personal account
+            - generic [ref=e20]: Personal manager helps at every step of the deal
+    - main [ref=e22]:
+      - generic [ref=e23]:
+        - link "FL Fast Lease Portal" [ref=e24] [cursor=pointer]:
+          - /url: /
+          - generic [ref=e25]: FL
+          - generic [ref=e26]:
+            - paragraph [ref=e27]: Fast Lease
+            - paragraph [ref=e28]: Portal
+        - 'generic "Switch theme. Current: System. Active: Light." [ref=e29]':
+          - button [ref=e30]:
+            - img [ref=e31]
+          - button [ref=e37]:
+            - img [ref=e38]
+          - button [ref=e40]:
+            - img [ref=e41]
+      - generic [ref=e48]:
+        - heading "Sign in" [level=1] [ref=e50]
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - text: Email
+            - generic [ref=e53]:
+              - img
+              - textbox "Email" [ref=e54]:
+                - /placeholder: you@example.com
+                - text: client@fastlease.ae
+          - generic [ref=e55]:
+            - text: Password
+            - generic [ref=e56]:
+              - img
+              - textbox "Password" [ref=e57]:
+                - /placeholder: ••••••••
+                - text: "123456"
+              - button "Show password" [ref=e58]:
+                - img [ref=e59]
+          - button "Sign in" [ref=e62]
+        - generic [ref=e63]:
+          - img [ref=e64]
+          - generic [ref=e66]: Database error querying schema
+  - button "Open Next.js Dev Tools" [ref=e72] [cursor=pointer]:
+    - img [ref=e73]
+  - alert [ref=e76]
+```

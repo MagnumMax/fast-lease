@@ -10,6 +10,12 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["tests/setup.ts"],
+    include: ["tests/**/*.test.ts", "lib/**/__tests__/**/*.test.ts", "app/**/__tests__/**/*.test.ts"],
+    exclude: [
+      "e2e/**",
+      "playwright.config.ts",
+      "**/node_modules/**",
+    ],
     alias: {
       "@": path.resolve(projectRoot, "."),
     },

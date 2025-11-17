@@ -218,6 +218,17 @@ export async function proxy(req: NextRequest) {
   console.log("[proxy] Is auth route:", isAuthRoute(pathname));
   console.log("[proxy] Needs protection:", needsProtection(pathname));
 
+  // E2E bypass: allow integration tests to hit any route без сессии
+  if (process.env.E2E_BYPASS_AUTH === "true") {
+    return res;
+  }
+
+  // Публичная страница поддержки должна быть доступна без сессии,
+  // но остальные /support/* разделы остаются защищёнными.
+  if (pathname === "/support") {
+    return res;
+  }
+
   if (pathname.startsWith("/beta/assets/")) {
     console.log("[proxy] Serving beta asset:", pathname);
   }

@@ -99,6 +99,18 @@ export async function passwordSignInAction(
   const portalOverride = normalizePortalCode(formData.get("portal"));
   const fallbackPortal = portalOverride ?? inferPortalForEmail(email);
 
+  // E2E bypass: не трогаем Supabase, сразу редиректим в нужный портал
+  if (process.env.E2E_BYPASS_AUTH === "true") {
+    const portal = portalOverride ?? inferPortalForEmail(email);
+    const redirectPath = resolveRedirectPathForPortal(portal, { nextPath });
+
+    return {
+      status: "success",
+      redirectPath,
+      context: { identity: email, portal },
+    } satisfies AuthActionState;
+  }
+
   if (!email) {
     return {
       status: "error",
