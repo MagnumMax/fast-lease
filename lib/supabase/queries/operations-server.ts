@@ -1692,8 +1692,28 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       ? (profile.metadata as Record<string, unknown>)
       : {};
     const statusInfo = normalizeClientStatus(profile.status);
-    const emailFromMetadata = getString(metadata?.["ops_email"]);
-    const phoneFromMetadata = getString(metadata?.["ops_phone"]);
+    const rawClient = isRecord(metadata?.["raw_client"])
+      ? (metadata["raw_client"] as Record<string, unknown>)
+      : null;
+    const emailFromMetadata =
+      [
+        getString(metadata?.["ops_email"]),
+        getString(metadata?.["work_email"]),
+        getString(metadata?.["email"]),
+        getString(metadata?.["contact_email"]),
+        getString(metadata?.["primary_email"]),
+        getString(rawClient?.["email"]),
+      ].find(Boolean) ?? null;
+
+    const phoneFromMetadata =
+      [
+        getString(metadata?.["ops_phone"]),
+        getString(metadata?.["work_phone"]),
+        getString(metadata?.["phone"]),
+        getString(metadata?.["contact_phone"]),
+        getString(metadata?.["primary_phone"]),
+        getString(rawClient?.["phone"]),
+      ].find(Boolean) ?? null;
     const rawSegment =
       getString(metadata?.["segment"]) ??
       getString(metadata?.["client_segment"]) ??
@@ -1737,7 +1757,6 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     const userId = (profile.user_id as string) ?? "";
     const clientName = (profile.full_name as string) ?? "";
     const detailSlug = buildSlugWithId(clientName, userId) || userId;
-
     return {
       userId,
       id: `CL-${(101 + index).toString().padStart(4, "0")}`,

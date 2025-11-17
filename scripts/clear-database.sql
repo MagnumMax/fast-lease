@@ -53,7 +53,6 @@ TRUNCATE TABLE public.workflow_deal_audit_log RESTART IDENTITY CASCADE;
 TRUNCATE TABLE public.workflow_action_queue RESTART IDENTITY CASCADE;
 TRUNCATE TABLE public.workflow_notification_queue RESTART IDENTITY CASCADE;
 TRUNCATE TABLE public.workflow_assets RESTART IDENTITY CASCADE;
-TRUNCATE TABLE public.workflow_contacts RESTART IDENTITY CASCADE;
 
 -- 9. Удаляем пользовательские данные
 TRUNCATE TABLE public.user_roles RESTART IDENTITY CASCADE;

@@ -1,22 +1,8 @@
 -- Создание тестовых данных для Fast Lease
 
--- 1. Создание клиентов (workflow_contacts)
-INSERT INTO workflow_contacts (full_name, email, phone, emirates_id) VALUES
-    ('Алексей Иванов', 'alexei.ivanov@email.com', '+971501234567', '784-1980-1234567-1'),
-    ('Мария Петрова', 'maria.petrova@email.com', '+971501234568', '784-1980-1234567-2'),
-    ('Дмитрий Смирнов', 'dmitry.smirnov@email.com', '+971501234569', '784-1980-1234567-3'),
-    ('Елена Козлова', 'elena.kozlova@email.com', '+971501234570', '784-1980-1234567-4'),
-    ('Сергей Новиков', 'sergey.novikov@email.com', '+971501234571', '784-1980-1234567-5'),
-    ('Ольга Морозова', 'olga.morozova@email.com', '+971501234572', '784-1980-1234567-6'),
-    ('Андрей Волков', 'andrey.volkov@email.com', '+971501234573', '784-1980-1234567-7'),
-    ('Наталья Соколова', 'natalia.sokolova@email.com', '+971501234574', '784-1980-1234567-8'),
-    ('Михаил Козлов', 'mikhail.kozlov@email.com', '+971501234575', '784-1980-1234567-9'),
-    ('Анна Лебедева', 'anna.lebedeva@email.com', '+971501234576', '784-1980-1234567-10'),
-    ('Владимир Морозов', 'vladimir.morozov@email.com', '+971501234577', '784-1980-1234567-11'),
-    ('Татьяна Андреева', 'tatiana.andreeva@email.com', '+971501234578', '784-1980-1234567-12'),
-    ('Игорь Никитин', 'igor.nikitin@email.com', '+971501234579', '784-1980-1234567-13'),
-    ('Юлия Захарова', 'yulia.zakharova@email.com', '+971501234580', '784-1980-1234567-14'),
-    ('Роман Кузнецов', 'roman.kuznetsov@email.com', '+971501234581', '784-1980-1234567-15');
+-- 1. Клиенты
+-- Предполагается, что клиенты уже существуют в auth.users/profiles.
+-- При необходимости создайте их отдельным сидом, чтобы deals опирались на реальных клиентов.
 
 -- 2. Создание автомобилей (workflow_assets)
 INSERT INTO workflow_assets (type, vin, make, model, trim, year, supplier, price, meta) VALUES
@@ -39,14 +25,14 @@ INSERT INTO workflow_assets (type, vin, make, model, trim, year, supplier, price
 -- 3. Создание сделок (deals)
 WITH source_data AS (
   SELECT
-    public.ensure_client_for_contact(c.id) AS client_id,
+    c.user_id AS client_id,
     a.id AS asset_id,
     a.vin,
     ROW_NUMBER() OVER () AS global_seq,
-    ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY c.id) AS vin_seq
-  FROM workflow_contacts c
+    ROW_NUMBER() OVER (PARTITION BY a.id ORDER BY c.user_id) AS vin_seq
+  FROM profiles c
   CROSS JOIN workflow_assets a
-  WHERE c.id IN (SELECT id FROM workflow_contacts LIMIT 10)
+  WHERE c.user_id IN (SELECT user_id FROM profiles LIMIT 10)
     AND a.id IN (SELECT id FROM workflow_assets LIMIT 10)
 ), numbered AS (
   SELECT

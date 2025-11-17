@@ -291,7 +291,7 @@ async function resolveDealCompanyMeta(
   }
 }
 
-type WorkflowContactSnapshot = {
+type CustomerSnapshot = {
   id: string;
   full_name: string | null;
   email: string | null;
@@ -311,32 +311,10 @@ type WorkflowAssetSnapshot = {
   meta: Record<string, unknown> | null;
 };
 
-async function loadWorkflowContact(
-  supabase: SupabaseServerClient,
-  id: string,
-): Promise<WorkflowContactSnapshot | null> {
-  const { data, error } = await supabase
-    .from("workflow_contacts")
-    .select("id, full_name, email, phone")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[workflow] failed to load workflow contact", error);
-    return null;
-  }
-
-  if (!data) {
-    return null;
-  }
-
-  return data as WorkflowContactSnapshot;
-}
-
 async function loadClientCustomerSnapshot(
   supabase: SupabaseServerClient,
   clientId: string,
-): Promise<WorkflowContactSnapshot | null> {
+): Promise<CustomerSnapshot | null> {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("user_id, full_name, phone, metadata")
@@ -382,6 +360,65 @@ async function loadClientCustomerSnapshot(
   };
 }
 
+async function resolveExistingClientId(
+  supabase: SupabaseServerClient,
+  customer: CreateDealWithEntitiesRequest["customer"],
+): Promise<string | null> {
+  const email = customer.email?.trim().toLowerCase() ?? null;
+  const phone = customer.phone?.trim() ?? null;
+
+  if (email) {
+    try {
+      let page = 1;
+      const perPage = 200;
+
+      while (true) {
+        const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+        if (error) {
+          console.error("[workflow] failed to lookup client by email", { email, error });
+          break;
+        }
+
+        const matched = data?.users?.find(
+          (user) => (user.email ?? "").toLowerCase() === email,
+        );
+        if (matched) {
+          return matched.id;
+        }
+
+        if (!data?.nextPage) {
+          break;
+        }
+
+        page = data.nextPage;
+      }
+    } catch (lookupError) {
+      console.error("[workflow] unexpected error during email lookup", lookupError);
+    }
+  }
+
+  if (phone) {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, phone, metadata")
+        .or(`phone.eq.${phone},metadata->>source_phone.eq.${phone}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[workflow] failed to lookup client by phone", { phone, error });
+      } else if (data) {
+        return (data as { user_id: string }).user_id;
+      }
+    } catch (lookupError) {
+      console.error("[workflow] unexpected error during phone lookup", lookupError);
+    }
+  }
+
+  return null;
+}
+
 async function loadWorkflowAsset(
   supabase: SupabaseServerClient,
   id: string,
@@ -405,7 +442,7 @@ async function loadWorkflowAsset(
 }
 
 function buildPayloadEnrichment(input: {
-  customer?: WorkflowContactSnapshot | null;
+  customer?: CustomerSnapshot | null;
   vehicle?: {
     id: string | null;
     asset: WorkflowAssetSnapshot | null;
@@ -486,13 +523,11 @@ export async function createDealWithWorkflow(
         : DEFAULT_DEAL_COMPANY_CODE;
     const companyMeta = await resolveDealCompanyMeta(supabase, baseCompanyCode);
 
-    let contactId: string | null = null;
     let assetId: string | null = null;
     let vehicleId: string | null = null;
-    let createdContact = false;
     let createdAsset = false;
 
-    let customerSnapshot: WorkflowContactSnapshot | null = null;
+    let customerSnapshot: CustomerSnapshot | null = null;
     let assetSnapshot: WorkflowAssetSnapshot | null = null;
     let resolvedClientId: string | null = null;
 
@@ -522,34 +557,23 @@ export async function createDealWithWorkflow(
     } else {
       const { customer, asset } = payload as CreateDealWithEntitiesRequest;
 
-      const customerInsert = await supabase
-        .from("workflow_contacts")
-        .insert({
-          full_name: customer.full_name,
-          email: customer.email ?? null,
-          phone: customer.phone ?? null,
-        })
-        .select("id, full_name, email, phone")
-        .single();
+      resolvedClientId = await resolveExistingClientId(supabase, customer);
 
-      if (customerInsert.error || !customerInsert.data) {
-        if (isMissingTableError(customerInsert.error)) {
-          console.warn(
-            "[workflow] skipping contact creation – table missing",
-            customerInsert.error,
-          );
-        } else {
-          console.error("[workflow] failed to create contact", customerInsert.error);
-          return {
-            success: false,
-            statusCode: 500,
-            message: "Failed to create contact",
-          };
-        }
-      } else {
-        contactId = customerInsert.data.id;
-        createdContact = true;
-        customerSnapshot = customerInsert.data as WorkflowContactSnapshot;
+      if (!resolvedClientId) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Клиент не найден. Сначала создайте клиента, затем повторите попытку.",
+        };
+      }
+
+      customerSnapshot = await loadClientCustomerSnapshot(supabase, resolvedClientId);
+      if (!customerSnapshot) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Профиль клиента не найден",
+        };
       }
 
       const assetInsert = await supabase
@@ -568,36 +592,21 @@ export async function createDealWithWorkflow(
         .select("id, type, make, model, trim, year, vin, supplier, price, meta")
         .single();
 
-      if (assetInsert.error || !assetInsert.data) {
-        if (isMissingTableError(assetInsert.error)) {
-          console.warn(
-            "[workflow] skipping asset creation – table missing",
-            assetInsert.error,
-          );
-        } else {
-          if (createdContact && contactId) {
-            const cleanupContact = await supabase
-              .from("workflow_contacts")
-              .delete()
-              .eq("id", contactId);
-            if (cleanupContact.error) {
-              console.error(
-                "[workflow] failed to cleanup contact after asset error",
-                cleanupContact.error,
-              );
-            }
-            contactId = null;
-            createdContact = false;
+        if (assetInsert.error || !assetInsert.data) {
+          if (isMissingTableError(assetInsert.error)) {
+            console.warn(
+              "[workflow] skipping asset creation – table missing",
+              assetInsert.error,
+            );
+          } else {
+            console.error("[workflow] failed to create asset", assetInsert.error);
+            return {
+              success: false,
+              statusCode: 500,
+              message: "Failed to create asset",
+            };
           }
-
-          console.error("[workflow] failed to create asset", assetInsert.error);
-          return {
-            success: false,
-            statusCode: 500,
-            message: "Failed to create asset",
-          };
-        }
-      } else {
+        } else {
         assetId = assetInsert.data.id;
         createdAsset = true;
         assetSnapshot = assetInsert.data as WorkflowAssetSnapshot;
@@ -640,9 +649,6 @@ export async function createDealWithWorkflow(
 
         if (vehicleInsert.error) {
           console.error("[workflow] failed to create vehicle record", vehicleInsert.error);
-          if (createdContact && contactId) {
-            await supabase.from("workflow_contacts").delete().eq("id", contactId);
-          }
           if (createdAsset && assetId) {
             await supabase.from("workflow_assets").delete().eq("id", assetId);
           }
@@ -655,23 +661,6 @@ export async function createDealWithWorkflow(
 
         vehicleId = vehicleInsert.data?.id ?? null;
       }
-    }
-
-    if (!resolvedClientId && contactId) {
-      const { data: ensuredClientId, error: ensureClientError } = await supabase.rpc("ensure_client_for_contact", {
-        contact_id: contactId,
-      });
-
-      if (ensureClientError) {
-        console.error("[workflow] failed to ensure client for contact", ensureClientError);
-        return {
-          success: false,
-          statusCode: 500,
-          message: "Не удалось подготовить клиента для сделки",
-        };
-      }
-
-      resolvedClientId = ensuredClientId ?? null;
     }
 
     if (!resolvedClientId) {
@@ -733,18 +722,6 @@ export async function createDealWithWorkflow(
 
     if (error || !data) {
       console.error(`[DEBUG] failed to create deal in database:`, error);
-      if (createdContact && contactId) {
-        const cleanupContact = await supabase
-          .from("workflow_contacts")
-          .delete()
-          .eq("id", contactId);
-        if (cleanupContact.error) {
-          console.error(
-            "[workflow] failed to cleanup contact after deal error",
-            cleanupContact.error,
-          );
-        }
-      }
       if (createdAsset && assetId) {
         const cleanupAsset = await supabase
           .from("workflow_assets")

@@ -34,7 +34,6 @@ declare
     'public.vehicle_images',
     'public.vehicle_specifications',
     'public.workflow_assets',
-    'public.workflow_contacts',
     'public.deals',
     'public.applications',
     'public.application_documents',
@@ -401,7 +400,6 @@ declare
   client_last text[]  := array['Hamad','Faruqi','Khalifa','Rahman','Saadi','Aziz','Khatib','Saleh','Kader','Mustafa','Iskandar','Badawi','Hakim','Assaf','Barakat','Jaber','Taher','Darwish','Salem','Qadir','Nasser','Shahid','Fayyad','Haddad','Omari','Tariq','Issa','Fakih','Halabi','Qawasmi'];
   idx int;
   user_id uuid;
-  contact_id uuid;
   vehicle_count int;
   ops_ids uuid[];
   assigned_ops uuid;
@@ -462,15 +460,6 @@ begin
       admin_user_id,
       jsonb_build_object('segment', case when idx % 4 = 0 then 'corporate' else 'retail' end, 'acquisition_channel', (array['Website','Broker','Referral','Partner Portal','Corporate RFP'])[ (idx % 5) + 1 ])
     );
-
-    insert into public.workflow_contacts (full_name, email, phone, emirates_id)
-    values (
-      client_first[idx] || ' ' || client_last[idx],
-      lower(client_first[idx] || '.' || client_last[idx]) || '@clients.fastlease.dev',
-      format('+9715%07s', 200000 + idx),
-      format('784-19%02s-%07s-%s', 70 + (idx % 20), 200000 + idx, (idx % 7) + 1)
-    )
-    returning id into contact_id;
 
     for app_loop in 1..(2 + (idx % 2)) loop
       app_status := status_options[(idx + app_loop) % array_length(status_options,1) + 1];
@@ -558,7 +547,6 @@ declare
   sources text[] := array['Website','Broker','Referral','Partner Portal','Corporate RFP'];
   wf_version_active uuid;
   wf_version_previous uuid;
-  contact_id uuid;
   asset_id uuid;
   vehicle_vin text;
   assigned_ops uuid;
@@ -605,12 +593,6 @@ begin
     from public.applications a
     where a.status <> 'draft'
   ) loop
-    select wc.id into contact_id
-    from public.workflow_contacts wc
-    join auth.users au on au.email = wc.email
-    where au.id = app_record.user_id
-    limit 1;
-
     select wa.id, v.vin into asset_id, vehicle_vin
     from public.workflow_assets wa
     join public.vehicles v on v.vin = wa.vin

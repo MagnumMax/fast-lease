@@ -54,7 +54,7 @@ TRUNCATE TABLE user_roles CASCADE;
 TRUNCATE TABLE profiles CASCADE;
 
 -- Workflow данные
-TRUNCATE TABLE workflow_contacts CASCADE;
+-- workflow_contacts удалена; пропускаем
 TRUNCATE TABLE workflow_assets CASCADE;
 TRUNCATE TABLE workflow_versions CASCADE;
 
