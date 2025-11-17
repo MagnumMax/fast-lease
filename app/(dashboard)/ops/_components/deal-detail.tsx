@@ -20,7 +20,10 @@ import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
+import { WORKFLOW_ROLE_LABELS } from "@/lib/supabase/queries/operations";
 import { DealStageTasks } from "@/app/(dashboard)/ops/_components/deal-stage-tasks";
 import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dialog";
 import { DocumentList } from "./document-list";
@@ -92,6 +95,108 @@ function resolveTimelineTone(text: string): TimelineTone {
   return "default";
 }
 
+const TASK_STATUS_META: Record<
+  string,
+  {
+    label: string;
+    variant: "success" | "warning" | "secondary" | "danger" | "outline";
+  }
+> = {
+  DONE: { label: "Завершена", variant: "success" },
+  IN_PROGRESS: { label: "В работе", variant: "secondary" },
+  BLOCKED: { label: "Заблокирована", variant: "danger" },
+  CANCELLED: { label: "Отменена", variant: "outline" },
+  OPEN: { label: "Открыта", variant: "warning" },
+};
+
+function formatDateTime(value: string | null): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : date.toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+}
+
+function resolveAssignee(task: WorkspaceTask): string {
+  if (task.assigneeUserId) return `User: ${task.assigneeUserId}`;
+  if (task.assigneeRole && WORKFLOW_ROLE_LABELS[task.assigneeRole]) {
+    return WORKFLOW_ROLE_LABELS[task.assigneeRole];
+  }
+  return "—";
+}
+
+function DealTasksList({ tasks }: { tasks: WorkspaceTask[] }) {
+  if (!tasks.length) {
+    return <p className="text-sm text-muted-foreground">Для сделки пока нет задач.</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Задача</TableHead>
+            <TableHead>Этап</TableHead>
+            <TableHead>Статус</TableHead>
+            <TableHead>Назначено</TableHead>
+            <TableHead>SLA / дедлайн</TableHead>
+            <TableHead className="text-right">Действия</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tasks.map((task) => {
+            const statusMeta = TASK_STATUS_META[task.status] ?? TASK_STATUS_META.OPEN;
+            return (
+              <TableRow key={task.id} className="align-top">
+                <TableCell className="max-w-[240px]">
+                  <div className="space-y-1">
+                    <Link
+                      href={`/ops/tasks/${task.id}`}
+                      className="font-semibold text-foreground transition hover:text-brand-600"
+                    >
+                      {task.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      Создана: {formatDateTime(task.createdAt)}
+                    </p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm text-foreground">
+                    {task.workflowStageTitle ?? "—"}
+                  </div>
+                  {task.workflowStageKey ? (
+                    <div className="text-xs text-muted-foreground">{task.workflowStageKey}</div>
+                  ) : null}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={statusMeta.variant} className="rounded-lg">
+                    {statusMeta.label}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm text-foreground">{resolveAssignee(task)}</TableCell>
+                <TableCell className="text-sm text-foreground">
+                  {formatDateTime(task.slaDueAt)}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button asChild variant="outline" size="sm" className="rounded-lg">
+                    <Link href={`/ops/tasks/${task.id}`}>Открыть</Link>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 export function DealDetailView({ detail }: DealDetailProps) {
   const {
     profile,
@@ -108,6 +213,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
     timeline,
     workflowTasks,
     guardStatuses,
+    tasks,
     slug,
     insurance,
   } = detail;
@@ -244,6 +350,13 @@ export function DealDetailView({ detail }: DealDetailProps) {
     }
     return list;
   }, [hasDebt, profile.dueAmount, overdueInvoices, workflowTasks]);
+  const dealTasksOrdered = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      const aTime = new Date(a.createdAt).getTime();
+      const bTime = new Date(b.createdAt).getTime();
+      return Number.isNaN(bTime) || Number.isNaN(aTime) ? 0 : bTime - aTime;
+    });
+  }, [tasks]);
   const companyDocuments = useMemo(
     () => clientDocuments.filter((doc) => doc.context === "company"),
     [clientDocuments],
@@ -681,7 +794,24 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 />
               </div>
             </CardContent>
-        </Card>
+          </Card>
+
+          <Card className="bg-card/60 backdrop-blur">
+            <CardHeader className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle>Все задачи сделки</CardTitle>
+                <Badge variant="outline" className="rounded-lg">
+                  {dealTasksOrdered.length}
+                </Badge>
+              </div>
+              <CardDescription>
+                Полный список задач, привязанных к сделке, включая завершённые.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DealTasksList tasks={dealTasksOrdered} />
+            </CardContent>
+          </Card>
 
           <Card className="bg-card/60 backdrop-blur" id="timeline">
             <CardHeader>

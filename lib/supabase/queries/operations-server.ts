@@ -2532,6 +2532,7 @@ type DealDetailResult = {
   statusKey: OpsDealStatusKey;
   guardStatuses: OpsDealGuardStatus[];
   workflowTasks: OpsDealWorkflowTask[];
+  tasks: WorkspaceTask[];
   profile: OpsDealProfile;
   company: OpsDealCompany;
   client: OpsDealClientProfile;
@@ -3844,6 +3845,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     statusKey,
     guardStatuses,
     workflowTasks,
+    tasks: allDealTasks,
     profile,
     company: dealCompany,
     client: clientProfile,

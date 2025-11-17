@@ -1,4 +1,5 @@
 import type { DealCompanyCode } from "@/lib/data/deal-companies";
+import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 
 // Типы и константы для операций
 // Серверные функции перемещены в operations-server.ts
@@ -1190,6 +1191,7 @@ export type OpsDealDetail = {
   statusKey: OpsDealStatusKey;
   guardStatuses: OpsDealGuardStatus[];
   workflowTasks: OpsDealWorkflowTask[];
+  tasks: WorkspaceTask[];
   profile: OpsDealProfile;
   company: OpsDealCompany | null;
   client: OpsDealClientProfile;
