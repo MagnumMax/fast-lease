@@ -315,6 +315,8 @@ function resolveNestedName(input: unknown): string | null {
 }
 
 function resolveAssigneeName(task: WorkspaceTask): string | null {
+  if (task.assigneeFullName) return task.assigneeFullName;
+
   const fieldName = getRecordString(task.fields, "assignee_name");
   if (fieldName) return fieldName;
 
@@ -379,6 +381,43 @@ function formatDate(value: string | null | undefined, withTime = true) {
   } catch {
     return value;
   }
+}
+
+const SLA_PRIORITY: Record<NonNullable<WorkspaceTask["slaStatus"]> | "NONE", number> = {
+  BREACHED: 0,
+  WARNING: 1,
+  ON_TRACK: 2,
+  NONE: 3,
+};
+
+function getComparableDate(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function compareTasksBySla(a: WorkspaceTask, b: WorkspaceTask): number {
+  const priorityA = SLA_PRIORITY[a.slaStatus ?? "NONE"];
+  const priorityB = SLA_PRIORITY[b.slaStatus ?? "NONE"];
+  if (priorityA !== priorityB) {
+    return priorityA - priorityB;
+  }
+
+  const slaDateA = getComparableDate(a.slaDueAt);
+  const slaDateB = getComparableDate(b.slaDueAt);
+  if (slaDateA !== null && slaDateB !== null && slaDateA !== slaDateB) {
+    return slaDateA - slaDateB;
+  }
+  if (slaDateA !== null && slaDateB === null) {
+    return -1;
+  }
+  if (slaDateB !== null && slaDateA === null) {
+    return 1;
+  }
+
+  const createdA = getComparableDate(a.createdAt) ?? 0;
+  const createdB = getComparableDate(b.createdAt) ?? 0;
+  return createdB - createdA;
 }
 
 async function fetchTasks(params: FetchParams = {}): Promise<WorkspaceTask[]> {
@@ -530,7 +569,7 @@ export function OpsTasksBoard({
         .toLowerCase();
 
       return haystack.includes(query);
-    });
+    }).slice().sort(compareTasksBySla);
   }, [tasks, searchQuery, statusFilter, typeFilter, workflowOnly, dealFilter]);
 
   function buildFetchParams(): FetchParams {

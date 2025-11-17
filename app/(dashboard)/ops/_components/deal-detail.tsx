@@ -30,6 +30,11 @@ import { DocumentList } from "./document-list";
 import { VehicleGallery } from "./vehicle-gallery";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { getDealStatusBadgeMeta } from "@/app/(dashboard)/ops/_components/deal-status-badge-meta";
+import {
+  CommercialOfferDownloadButton,
+  CommercialOfferDownloadButtonApple,
+  type CommercialOfferData,
+} from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
 
 type DealDetailProps = {
   detail: OpsDealDetail;
@@ -130,7 +135,12 @@ function resolveAssignee(task: WorkspaceTask): string {
   return "—";
 }
 
-function DealTasksList({ tasks }: { tasks: WorkspaceTask[] }) {
+type DealTasksListProps = {
+  tasks: WorkspaceTask[];
+  buildOfferData?: (task: WorkspaceTask) => { data: CommercialOfferData | null } | null;
+};
+
+function DealTasksList({ tasks, buildOfferData }: DealTasksListProps) {
   if (!tasks.length) {
     return <p className="text-sm text-muted-foreground">Для сделки пока нет задач.</p>;
   }
@@ -151,6 +161,10 @@ function DealTasksList({ tasks }: { tasks: WorkspaceTask[] }) {
         <TableBody>
           {tasks.map((task) => {
             const statusMeta = TASK_STATUS_META[task.status] ?? TASK_STATUS_META.OPEN;
+            const offer =
+              buildOfferData && task.type === "PREPARE_QUOTE" && task.status === "DONE"
+                ? buildOfferData(task)
+                : null;
             return (
               <TableRow key={task.id} className="align-top">
                 <TableCell className="max-w-[240px]">
@@ -184,9 +198,17 @@ function DealTasksList({ tasks }: { tasks: WorkspaceTask[] }) {
                   {formatDateTime(task.slaDueAt)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button asChild variant="outline" size="sm" className="rounded-lg">
-                    <Link href={`/ops/tasks/${task.id}`}>Открыть</Link>
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    {offer?.data ? (
+                      <>
+                        <CommercialOfferDownloadButton data={offer.data} label="КП (Geist, PDF)" />
+                        <CommercialOfferDownloadButtonApple data={offer.data} label="КП (Apple, PDF)" />
+                      </>
+                    ) : null}
+                    <Button asChild variant="outline" size="sm" className="rounded-lg">
+                      <Link href={`/ops/tasks/${task.id}`}>Открыть</Link>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             );
@@ -357,6 +379,60 @@ export function DealDetailView({ detail }: DealDetailProps) {
       return Number.isNaN(bTime) || Number.isNaN(aTime) ? 0 : bTime - aTime;
     });
   }, [tasks]);
+  const buildOfferData = useMemo(
+    () =>
+      (task: WorkspaceTask) => {
+        if (task.type !== "PREPARE_QUOTE") return null;
+
+        const getField = (fieldId: string) => {
+          const value = task.fields?.[fieldId];
+          if (typeof value === "string") return value.trim();
+          if (typeof value === "number") return value.toString();
+          return "";
+        };
+
+        const priceVat = getField("price_vat");
+        const termMonths = getField("term_months");
+        const downPayment = getField("down_payment_amount");
+        const interestRateAnnual = getField("interest_rate_annual");
+        const insuranceRateAnnual = getField("insurance_rate_annual");
+        const filled = [priceVat, termMonths, downPayment, interestRateAnnual, insuranceRateAnnual].filter(
+          (value) => value && value.length > 0,
+        );
+
+        const data: CommercialOfferData = {
+          dealNumber: task.dealNumber ?? profile.dealId ?? detail.slug,
+          clientName: client.name ?? null,
+          vehicleName: profile.vehicleName ?? null,
+          vehicleVin: null,
+          priceVat: priceVat || null,
+          termMonths: termMonths || null,
+          downPayment: downPayment || null,
+          interestRateAnnual: interestRateAnnual || null,
+          insuranceRateAnnual: insuranceRateAnnual || null,
+          comment:
+            typeof task.payload?.["guard_note"] === "string"
+              ? (task.payload["guard_note"] as string)
+              : null,
+          loginUrl:
+            typeof window !== "undefined"
+              ? new URL("/login", window.location.origin).toString()
+              : null,
+          preparedBy:
+            task.assigneeFullName ??
+            (task.assigneeRole ? WORKFLOW_ROLE_LABELS[task.assigneeRole] ?? task.assigneeRole : null),
+          preparedByPhone: task.assigneePhone ?? null,
+          preparedByEmail: task.assigneeEmail ?? null,
+          preparedAt: task.completedAt ?? task.updatedAt ?? new Date().toISOString(),
+          companyName: company?.name ?? "Fast Lease",
+        };
+
+        return {
+          data: filled.length === 0 ? null : data,
+        };
+      },
+    [client.name, company, detail.slug, profile.dealId, profile.vehicleName],
+  );
   const companyDocuments = useMemo(
     () => clientDocuments.filter((doc) => doc.context === "company"),
     [clientDocuments],
@@ -804,14 +880,14 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   {dealTasksOrdered.length}
                 </Badge>
               </div>
-              <CardDescription>
-                Полный список задач, привязанных к сделке, включая завершённые.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DealTasksList tasks={dealTasksOrdered} />
-            </CardContent>
-          </Card>
+            <CardDescription>
+              Полный список задач, привязанных к сделке, включая завершённые.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DealTasksList tasks={dealTasksOrdered} buildOfferData={buildOfferData} />
+          </CardContent>
+        </Card>
 
           <Card className="bg-card/60 backdrop-blur" id="timeline">
             <CardHeader>

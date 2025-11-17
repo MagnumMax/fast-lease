@@ -1,25 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useRef, useState, type ChangeEvent, type JSX } from "react";
+import { useActionState, useMemo, useState, type JSX } from "react";
 
-import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Paperclip, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Paperclip } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  CLIENT_DOCUMENT_TYPES,
+  WORKFLOW_ROLE_LABELS,
   getClientDocumentLabel,
-  normalizeClientDocumentType,
 } from "@/lib/supabase/queries/operations";
-import { sortDocumentOptions } from "@/lib/documents/options";
+import {
+  CommercialOfferDownloadButton,
+  CommercialOfferDownloadButtonApple,
+} from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
 import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
 
 import type { FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
@@ -56,6 +57,9 @@ type TaskPayload = {
   schema?: SchemaPayload;
   fields?: Record<string, unknown>;
   defaults?: Record<string, unknown>;
+  guard_note?: string | null;
+  guard_attachment_path?: string | null;
+  guard_document_type?: string | null;
 };
 
 type GuardDocumentLink = {
@@ -66,28 +70,7 @@ type GuardDocumentLink = {
   url: string | null;
 };
 
-type DocumentDraft = {
-  id: string;
-  type: string;
-  fileName: string | null;
-  hasFile: boolean;
-};
-
 const INITIAL_STATE: FormStatus = { status: "idle" };
-const EMPTY_DOCUMENT_TYPE_VALUE = "__empty__";
-const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
-
-function createDocumentDraft(): DocumentDraft {
-  const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `draft-${Math.random().toString(36).slice(2)}`;
-  return {
-    id,
-    type: "",
-    fileName: null,
-    hasFile: false,
-  };
-}
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -162,21 +145,25 @@ export function TaskDetailView({
   completeAction,
 }: TaskDetailViewProps) {
   const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
-  const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([createDocumentDraft()]);
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
   const editableFields = schemaFields.filter((field) => isEditableField(field));
-  const sortedDocumentTypeOptions = useMemo(() => sortDocumentOptions(CLIENT_DOCUMENT_TYPES), []);
+  const requiredFieldIds = schemaFields.filter((field) => field.required).map((field) => field.id);
+  const [draftRequiredValues, setDraftRequiredValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    for (const id of requiredFieldIds) {
+      const value = resolveFieldValue(id, payload).trim();
+      if (value.length > 0) initial[id] = value;
+    }
+    return initial;
+  });
 
   const statusMeta = getTaskStatusMeta(task.status);
   const slaInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const requiresDocument = guardMeta?.requiresDocument ?? false;
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
-  const hasAnyNewFiles = documentDrafts.some((draft) => draft.hasFile);
-  const mustProvideDocument = requiresDocument && !hasExistingAttachment;
   const hasForm = task.status !== "DONE";
   const isCompletedWorkflow = !hasForm && task.isWorkflow;
   const guardDocumentLinks = Array.isArray(guardDocuments) ? guardDocuments : [];
@@ -192,48 +179,73 @@ export function TaskDetailView({
   const guardDocumentTypeLabel = guardState?.documentType
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
-  const showDocumentWarning = mustProvideDocument && !hasAnyNewFiles;
+  const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
 
-  function registerFileInput(id: string, node: HTMLInputElement | null) {
-    fileInputRefs.current[id] = node;
-  }
+  const requiredFieldIdsKey = requiredFieldIds.join("|");
+  const normalizedRequiredFieldIds = useMemo(
+    () => (requiredFieldIdsKey ? requiredFieldIdsKey.split("|").filter(Boolean) : []),
+    [requiredFieldIdsKey],
+  );
 
-  function handleDraftTypeChange(id: string, value: string) {
-    setDocumentDrafts((prev) =>
-      prev.map((draft) => (draft.id === id ? { ...draft, type: value === EMPTY_DOCUMENT_TYPE_VALUE ? "" : value } : draft)),
-    );
-  }
-
-  function handleDraftFileChange(id: string, event: ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0] ?? null;
-    setDocumentDrafts((prev) =>
-      prev.map((draft) =>
-        draft.id === id ? { ...draft, fileName: file ? file.name : null, hasFile: Boolean(file) } : draft,
-      ),
-    );
-  }
-
-  function clearDraftFile(id: string) {
-    const input = fileInputRefs.current[id];
-    if (input) {
-      input.value = "";
-    }
-    setDocumentDrafts((prev) =>
-      prev.map((draft) => (draft.id === id ? { ...draft, fileName: null, hasFile: false } : draft)),
-    );
-  }
-
-  function addDocumentDraft() {
-    setDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
-  }
-
-  function removeDocumentDraft(id: string) {
-    setDocumentDrafts((prev) => {
-      const next = prev.filter((draft) => draft.id !== id);
-      return next.length > 0 ? next : [createDocumentDraft()];
+  const requiredFieldsFilled = useMemo(() => {
+    if (!isPrepareQuoteTask) return false;
+    if (normalizedRequiredFieldIds.length === 0) return false;
+    return normalizedRequiredFieldIds.every((id) => {
+      const fromDraft = draftRequiredValues[id];
+      if (fromDraft) return true;
+      return resolveFieldValue(id, payload).trim().length > 0;
     });
-    delete fileInputRefs.current[id];
-  }
+  }, [draftRequiredValues, isPrepareQuoteTask, normalizedRequiredFieldIds, payload]);
+
+  const commercialOffer = useMemo(() => {
+    if (!isPrepareQuoteTask) {
+      return { data: null };
+    }
+
+    const getField = (fieldId: string) => {
+      const raw = draftRequiredValues[fieldId] ?? resolveFieldValue(fieldId, payload);
+      const normalized = raw.trim();
+      return normalized.length > 0 ? normalized : null;
+    };
+
+    const priceVat = getField("price_vat");
+    const termMonths = getField("term_months");
+    const downPayment = getField("down_payment_amount");
+    const interestRateAnnual = getField("interest_rate_annual");
+    const insuranceRateAnnual = getField("insurance_rate_annual");
+    const filled = [priceVat, termMonths, downPayment, interestRateAnnual, insuranceRateAnnual].filter(Boolean);
+
+    const data = {
+      dealNumber: deal?.dealNumber ?? task.dealNumber ?? null,
+      clientName: task.dealClientName ?? null,
+      vehicleName: task.dealVehicleName ?? null,
+      vehicleVin: null,
+      priceVat,
+      termMonths,
+      downPayment,
+      interestRateAnnual,
+      insuranceRateAnnual,
+      comment:
+        guardState?.note && guardState.note.trim().length > 0
+          ? guardState.note
+          : typeof payload?.["guard_note"] === "string"
+            ? (payload["guard_note"] as string)
+            : null,
+      loginUrl:
+        typeof window !== "undefined"
+          ? new URL("/login", window.location.origin).toString()
+          : null,
+      preparedBy:
+        task.assigneeFullName ??
+        (task.assigneeRole ? WORKFLOW_ROLE_LABELS[task.assigneeRole] ?? task.assigneeRole : null),
+      preparedByPhone: task.assigneePhone ?? null,
+      preparedByEmail: task.assigneeEmail ?? null,
+      preparedAt: task.completedAt ?? task.updatedAt ?? new Date().toISOString(),
+      companyName: "Fast Lease",
+    };
+
+    return { data: requiredFieldsFilled ? data : null };
+  }, [deal?.dealNumber, draftRequiredValues, guardState, isPrepareQuoteTask, payload, requiredFieldsFilled, task]);
 
   function resolveDocumentLabel(doc: GuardDocumentLink): string {
     const rawTitle = doc.title?.trim();
@@ -421,6 +433,8 @@ export function TaskDetailView({
                       const hint = field.hint ?? "";
                       const type = field.type?.toLowerCase();
 
+                      const isRequired = field.required ?? false;
+
                       if (type === "textarea") {
                         return (
                           <div key={fieldId} className="space-y-2">
@@ -429,9 +443,21 @@ export function TaskDetailView({
                               id={`field-${fieldId}`}
                               name={`field:${fieldId}`}
                               defaultValue={value}
-                              required={field.required ?? false}
+                              required={isRequired}
                               placeholder={hint}
                               className="min-h-[120px] rounded-lg"
+                              onChange={(event) => {
+                                if (isRequired) {
+                                  const next = event.target.value.trim();
+                                  setDraftRequiredValues((prev) =>
+                                    next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
+                                      const clone = { ...prev };
+                                      delete clone[fieldId];
+                                      return clone;
+                                    })(),
+                                  );
+                                }
+                              }}
                             />
                             {hint ? (
                               <p className="text-xs text-muted-foreground">
@@ -479,9 +505,21 @@ export function TaskDetailView({
                             id={`field-${fieldId}`}
                             name={`field:${fieldId}`}
                             defaultValue={value}
-                            required={field.required ?? false}
+                            required={isRequired}
                             placeholder={hint}
                             className="rounded-lg"
+                            onChange={(event) => {
+                              if (isRequired) {
+                                const next = event.target.value.trim();
+                                setDraftRequiredValues((prev) =>
+                                  next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
+                                    const clone = { ...prev };
+                                    delete clone[fieldId];
+                                    return clone;
+                                  })(),
+                                );
+                              }
+                            }}
                           />
                           {hint ? (
                             <p className="text-xs text-muted-foreground">{hint}</p>
@@ -504,108 +542,18 @@ export function TaskDetailView({
                 />
               </div>
 
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Загрузка документов
-                  </span>
-                  {showDocumentWarning ? (
-                    <Badge variant="danger" className="rounded-lg text-[11px]">
-                      Требуется документ
-                    </Badge>
-                  ) : null}
+              {isPrepareQuoteTask ? (
+                <div className="pt-2 flex flex-col gap-2">
+                  <CommercialOfferDownloadButton
+                    data={commercialOffer.data}
+                    label="Скачать КП (Geist, PDF)"
+                  />
+                  <CommercialOfferDownloadButtonApple
+                    data={commercialOffer.data}
+                    label="Скачать КП (Apple, PDF)"
+                  />
                 </div>
-
-                <div className="space-y-3">
-                  {documentDrafts.map((draft) => {
-                    const namePrefix = `documents[${draft.id}]`;
-                    return (
-                      <div
-                        key={draft.id}
-                        className="space-y-3 rounded-xl border border-dashed border-border/60 bg-muted/20 p-4"
-                      >
-                        <div className="grid gap-3 md:grid-cols-[minmax(0,260px)_1fr_auto]">
-                          <div className="space-y-1">
-                            <Label>Тип документа</Label>
-                            <Select
-                              value={draft.type || EMPTY_DOCUMENT_TYPE_VALUE}
-                              onValueChange={(value) => handleDraftTypeChange(draft.id, value)}
-                            >
-                              <SelectTrigger className="h-10 rounded-lg border border-border bg-background/80 text-sm">
-                                <SelectValue placeholder="Выберите тип" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value={EMPTY_DOCUMENT_TYPE_VALUE}>Выберите тип</SelectItem>
-                                {sortedDocumentTypeOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <input type="hidden" name={`${namePrefix}[type]`} value={draft.type} />
-                          </div>
-                          <div className="space-y-1">
-                            <Label>Файл</Label>
-                            <Input
-                              ref={(node) => registerFileInput(draft.id, node)}
-                              name={`${namePrefix}[file]`}
-                              type="file"
-                              accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                              className="cursor-pointer rounded-lg"
-                              onChange={(event) => handleDraftFileChange(draft.id, event)}
-                            />
-                            {draft.fileName ? (
-                              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                <span className="truncate">{draft.fileName}</span>
-                                <button
-                                  type="button"
-                                  className="font-medium text-brand-600"
-                                  onClick={() => clearDraftFile(draft.id)}
-                                >
-                                  Очистить
-                                </button>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-muted-foreground">
-                                Допустимые форматы: PDF, JPG, PNG (до 10 МБ).
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-end justify-end">
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="rounded-lg text-muted-foreground hover:text-destructive"
-                              onClick={() => removeDocumentDraft(draft.id)}
-                              disabled={documentDrafts.length === 1 && !draft.hasFile && !draft.type}
-                            >
-                              <Trash2 className="mr-1 h-4 w-4" /> Удалить
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2 rounded-lg"
-                    onClick={addDocumentDraft}
-                  >
-                    <Plus className="h-4 w-4" /> Добавить документ
-                  </Button>
-                  <p className="text-xs text-muted-foreground">Форматы: PDF, JPG, PNG (до 10 МБ).</p>
-                </div>
-                {showDocumentWarning ? (
-                  <p className="text-xs text-destructive">Загрузите хотя бы один документ.</p>
-                ) : null}
-              </div>
+              ) : null}
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 <Button
@@ -623,7 +571,7 @@ export function TaskDetailView({
                   className="rounded-lg"
                   name="intent"
                   value="complete"
-                  disabled={pending || showDocumentWarning}
+                  disabled={pending}
                 >
                   {pending ? "Сохраняем..." : "Завершить задачу"}
                 </Button>

@@ -93,6 +93,11 @@ const DEFAULT_GUARD_PAYLOAD: Record<string, unknown> = {
     supplierPaid: false,
   },
   delivery: { confirmed: false },
+  price_vat: null,
+  term_months: null,
+  down_payment_amount: null,
+  interest_rate_annual: null,
+  insurance_rate_annual: null,
 };
 
 function deepMergePayload(

@@ -68,7 +68,6 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "quotationPrepared",
         label: "Коммерческое предложение сформировано",
-        requiresDocument: true,
       },
     ],
   },
@@ -911,6 +910,8 @@ export const DEAL_DOCUMENT_TYPES = [
   { value: "commercial_license", label: "Коммерческая лицензия", category: "required" as const },
   { value: "corporate_documents", label: "Корпоративные документы", category: "other" as const },
   { value: "contract", label: "Контракт", category: "required" as const },
+  { value: "signed_quote", label: "Подписанное КП", category: "signature" as const },
+  { value: "signed_commercial_offer", label: "Подписанное коммерческое предложение", category: "signature" as const },
   { value: "estimation", label: "Смета/оценка", category: "other" as const },
   { value: "investment_agreement", label: "Инвестиционный договор", category: "required" as const },
   { value: "invoice", label: "Инвойс", category: "other" as const },

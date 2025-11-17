@@ -9,6 +9,60 @@ type WorkflowPayloadWithGuards = Record<string, unknown> & {
   guard_tasks: Record<string, unknown>;
 };
 
+const QUOTE_FIELD_KEYS = [
+  "price_vat",
+  "term_months",
+  "down_payment_amount",
+  "interest_rate_annual",
+  "insurance_rate_annual",
+] as const;
+
+type QuoteFieldKey = (typeof QUOTE_FIELD_KEYS)[number];
+
+function parseNumericField(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().replace(/\s+/g, "").replace(",", ".");
+  if (normalized.length === 0) {
+    return null;
+  }
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function extractQuoteFieldsFromTaskPayload(
+  taskPayload: Record<string, unknown> | null | undefined,
+): Record<QuoteFieldKey, number> | null {
+  if (!taskPayload || typeof taskPayload !== "object" || Array.isArray(taskPayload)) {
+    return null;
+  }
+
+  const fieldsBranch = taskPayload.fields;
+  const fields =
+    fieldsBranch && typeof fieldsBranch === "object" && !Array.isArray(fieldsBranch)
+      ? (fieldsBranch as Record<string, unknown>)
+      : null;
+
+  if (!fields) {
+    return null;
+  }
+
+  const next: Partial<Record<QuoteFieldKey, number>> = {};
+  for (const key of QUOTE_FIELD_KEYS) {
+    const parsed = parseNumericField(fields[key]);
+    if (parsed != null) {
+      next[key] = parsed;
+    }
+  }
+
+  return Object.keys(next).length > 0 ? (next as Record<QuoteFieldKey, number>) : null;
+}
+
 function clonePayload(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -166,6 +220,15 @@ export async function handleTaskCompletion(
 
     // Строим guard context
     const dealPayload = ensureWorkflowPayloadBranches(context.dealPayload);
+
+    // Если это задача подготовки КП — выносим ключевые параметры сделки в payload
+    if (context.taskType === "PREPARE_QUOTE") {
+      const quoteFields = extractQuoteFieldsFromTaskPayload(context.taskPayload);
+      if (quoteFields) {
+        Object.assign(dealPayload, quoteFields);
+      }
+    }
+
     const taskStorageKey = deriveTaskStorageKey(guardKey);
     // Обновляем guard флаги в payload
     setNestedGuardFlag(dealPayload, guardKey);

@@ -106,13 +106,33 @@ statuses:
               - id: deal_id
                 type: badge
                 label: "ID сделки"
-              - id: pricing_notes
-                type: textarea
-                label: "Расчётные допущения"
+              - id: price_vat
+                type: text
+                label: "Цена автомобиля с VAT, AED"
+                required: true
+                hint: "Введите итоговую стоимость авто с учетом VAT"
+              - id: term_months
+                type: text
+                label: "Срок, месяцев"
+                required: true
+                hint: "Количество месяцев лизинга"
+              - id: down_payment_amount
+                type: text
+                label: "Аванс, AED"
+                required: true
+                hint: "Размер первоначального взноса"
+              - id: interest_rate_annual
+                type: text
+                label: "Ставка по финансированию, % годовых"
+                required: true
+                hint: "Годовая процентная ставка по займу"
+              - id: insurance_rate_annual
+                type: text
+                label: "Ставка по страховке, % годовых"
+                required: true
+                hint: "Годовая страховая ставка"
           bindings:
             deal_id: "{{deal.id}}"
-          defaults:
-            pricing_notes: "Соберите входные параметры (стоимость авто, срок, аванс) и зафиксируйте расчёты маржи."
     exit_requirements:
       - key: quotationPrepared
         rule: "== true"
@@ -412,7 +432,7 @@ statuses:
     entry_actions:
       - type: SCHEDULE
         job:
-          type: INVOICE_SCHEDULE
+          type: "INVOICE_SCHEDULE"
           cron: "0 8 1 * *"   # инвойс ежемесячно 1-го числа 08:00
       - type: NOTIFY
         to_roles: [OP_MANAGER, ACCOUNTING]

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
-import { TASK_SELECT, mapTaskRow } from "@/lib/supabase/queries/tasks";
+import { TASK_SELECT, hydrateTaskAssigneeNames, mapTaskRow } from "@/lib/supabase/queries/tasks";
 import { getSessionUser } from "@/lib/auth/session";
 
 const listTasksQuerySchema = z.object({
@@ -103,7 +103,8 @@ export async function GET(request: Request) {
     );
   }
 
-  const items = (data ?? []).map(mapTaskRow);
+  const mapped = (data ?? []).map(mapTaskRow);
+  const items = await hydrateTaskAssigneeNames(mapped, supabase);
   return NextResponse.json({ items });
 }
 
@@ -153,5 +154,8 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(mapTaskRow(data), { status: 201 });
+  const mapped = mapTaskRow(data);
+  const [hydrated] = await hydrateTaskAssigneeNames([mapped], supabase);
+
+  return NextResponse.json(hydrated ?? mapped, { status: 201 });
 }

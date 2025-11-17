@@ -1,4 +1,6 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getSessionUser } from "@/lib/auth/session";
 
 export type WorkspaceTask = {
@@ -8,6 +10,9 @@ export type WorkspaceTask = {
   status: string;
   assigneeRole: string | null;
   assigneeUserId: string | null;
+  assigneeFullName: string | null;
+  assigneePhone: string | null;
+  assigneeEmail: string | null;
   slaDueAt: string | null;
   completedAt: string | null;
   slaStatus: "ON_TRACK" | "WARNING" | "BREACHED" | null;
@@ -132,8 +137,11 @@ export function mapTaskRow(row: TaskRow): WorkspaceTask {
     title: row.title,
     type: row.type,
     status: row.status,
-    assigneeRole: row.assignee_role,
-    assigneeUserId: row.assignee_user_id,
+  assigneeRole: row.assignee_role,
+  assigneeUserId: row.assignee_user_id,
+  assigneeFullName: null,
+  assigneePhone: null,
+  assigneeEmail: null,
     slaDueAt: row.sla_due_at,
     completedAt: row.completed_at,
     slaStatus: row.sla_status,
@@ -149,6 +157,196 @@ export function mapTaskRow(row: TaskRow): WorkspaceTask {
     fields,
     payload,
   };
+}
+
+function resolveProfileFullName(row: {
+  user_id: string;
+  full_name: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+}): string | null {
+  const fullName = typeof row.full_name === "string" ? row.full_name.trim() : "";
+  if (fullName.length > 0) return fullName;
+
+  const first = typeof row.first_name === "string" ? row.first_name.trim() : "";
+  const last = typeof row.last_name === "string" ? row.last_name.trim() : "";
+  const combined = [first, last].filter(Boolean).join(" ").trim();
+  return combined.length > 0 ? combined : null;
+}
+
+export async function hydrateTaskAssigneeNames(
+  tasks: WorkspaceTask[],
+  supabaseClient?: SupabaseClient,
+): Promise<WorkspaceTask[]> {
+  const uniqueIds = Array.from(
+    new Set(
+      tasks
+        .map((task) => task.assigneeUserId)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  if (uniqueIds.length === 0) {
+    return tasks;
+  }
+
+  const nameMap = new Map<string, string>();
+  const phoneMap = new Map<string, string>();
+  const emailMap = new Map<string, string>();
+
+  // 1) Основной источник — auth.users
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+    const { data: authRows, error: authError } = await serviceClient
+      .from("auth.users")
+      .select("id, email, phone, raw_user_meta_data, user_metadata")
+      .in("id", uniqueIds);
+
+    if (!authError && Array.isArray(authRows)) {
+      authRows.forEach(
+        (row: {
+          id?: string;
+          email?: string | null;
+          phone?: string | null;
+          raw_user_meta_data?: Record<string, unknown> | null;
+          user_metadata?: Record<string, unknown> | null;
+        }) => {
+          if (!row.id) return;
+          const meta =
+            (row.raw_user_meta_data && typeof row.raw_user_meta_data === "object"
+              ? row.raw_user_meta_data
+              : null) ||
+            (row.user_metadata && typeof row.user_metadata === "object" ? row.user_metadata : null);
+
+          const metaEmailCandidates = ["email", "contact_email", "work_email", "primary_email", "notification_email"];
+          const metaPhoneCandidates = ["phone", "contact_phone", "work_phone"];
+
+          const metaNameCandidates = ["full_name", "name", "title"];
+          const metaFirst = typeof meta?.["first_name"] === "string" ? meta["first_name"]?.toString().trim() : "";
+          const metaLast = typeof meta?.["last_name"] === "string" ? meta["last_name"]?.toString().trim() : "";
+
+          let metaName: string | null = null;
+          for (const key of metaNameCandidates) {
+            const val = meta?.[key];
+            if (typeof val === "string" && val.trim().length > 0) {
+              metaName = val.trim();
+              break;
+            }
+          }
+          if (!metaName) {
+            const combined = [metaFirst, metaLast].filter(Boolean).join(" ").trim();
+            metaName = combined.length > 0 ? combined : null;
+          }
+
+          const email =
+            typeof row.email === "string" && row.email.trim().length > 0
+              ? row.email.trim()
+              : metaEmailCandidates
+                  .map((key) => (typeof meta?.[key] === "string" ? (meta[key] as string).trim() : ""))
+                  .find((val) => val.length > 0) || null;
+
+          const phone =
+            typeof row.phone === "string" && row.phone.trim().length > 0
+              ? row.phone.trim()
+              : metaPhoneCandidates
+                  .map((key) => (typeof meta?.[key] === "string" ? (meta[key] as string).trim() : ""))
+                  .find((val) => val.length > 0) || null;
+
+          if (metaName) nameMap.set(row.id, metaName);
+          if (phone) phoneMap.set(row.id, phone);
+          if (email) emailMap.set(row.id, email);
+        },
+      );
+    } else if (authError) {
+      console.info("[workspace-tasks] auth.users lookup failed:", authError.message ?? authError);
+    }
+  } catch (err) {
+    console.info("[workspace-tasks] auth.users service lookup unavailable:", err);
+  }
+
+  // 2) Фолбэк — profiles (если чего-то не хватает)
+  const supabase = supabaseClient ?? (await createSupabaseServerClient());
+  const needProfile = uniqueIds.filter(
+    (id) => !nameMap.has(id) || !phoneMap.has(id) || !emailMap.has(id),
+  );
+
+  if (needProfile.length > 0) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, first_name, last_name, phone, metadata")
+      .in("user_id", needProfile);
+
+    if (error) {
+      console.error("[workspace-tasks] failed to load assignee profiles", error);
+    } else {
+      (data ?? []).forEach((row) => {
+        const userId = (row as { user_id?: string }).user_id;
+        if (!userId) return;
+
+        const name = resolveProfileFullName(row as unknown as {
+          user_id: string;
+          full_name: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+        });
+
+        const phone =
+          typeof (row as { phone?: unknown }).phone === "string"
+            ? ((row as { phone?: string }).phone ?? "").trim()
+            : "";
+        const metadata =
+          row && typeof (row as { metadata?: unknown }).metadata === "object" && !Array.isArray((row as { metadata?: unknown }).metadata)
+            ? ((row as { metadata?: Record<string, unknown> | null }).metadata as Record<string, unknown>)
+            : null;
+        const metadataEmailCandidates = ["ops_email", "work_email", "email", "contact_email", "primary_email", "notification_email"];
+        const metadataPhoneCandidates = ["ops_phone", "work_phone", "phone", "contact_phone"];
+        let metaEmail: string | null = null;
+        let metaPhone: string | null = null;
+        if (metadata) {
+          for (const key of metadataEmailCandidates) {
+            const value = metadata[key];
+            if (typeof value === "string" && value.trim().length > 0) {
+              metaEmail = value.trim();
+              break;
+            }
+          }
+          for (const key of metadataPhoneCandidates) {
+            const value = metadata[key];
+            if (typeof value === "string" && value.trim().length > 0) {
+              metaPhone = value.trim();
+              break;
+            }
+          }
+        }
+
+        if (!nameMap.has(userId) && name) {
+          nameMap.set(userId, name);
+        }
+        if (!phoneMap.has(userId) && phone.length > 0) {
+          phoneMap.set(userId, phone);
+        }
+        if (!phoneMap.has(userId) && metaPhone) {
+          phoneMap.set(userId, metaPhone);
+        }
+        if (!emailMap.has(userId) && metaEmail) {
+          emailMap.set(userId, metaEmail);
+        }
+      });
+    }
+  }
+
+  return tasks.map((task) => {
+    const nextName = task.assigneeUserId ? nameMap.get(task.assigneeUserId) ?? null : null;
+    const nextPhone = task.assigneeUserId ? phoneMap.get(task.assigneeUserId) ?? null : null;
+    const nextEmail = task.assigneeUserId ? emailMap.get(task.assigneeUserId) ?? null : null;
+    if (!nextName && !nextPhone && !nextEmail) return task;
+    return {
+      ...task,
+      assigneeFullName: nextName ?? task.assigneeFullName,
+      assigneePhone: nextPhone ?? task.assigneePhone,
+      assigneeEmail: nextEmail ?? task.assigneeEmail,
+    };
+  });
 }
 
 export type WorkspaceTaskFilters = {
@@ -227,7 +425,8 @@ export async function getWorkspaceTasks(
   }
 
   const rows = (data ?? []) as unknown as TaskRow[];
-  return rows.map(mapTaskRow);
+  const tasks = rows.map(mapTaskRow);
+  return hydrateTaskAssigneeNames(tasks, supabase);
 }
 
 export async function getWorkspaceTaskById(id: string): Promise<WorkspaceTask | null> {
@@ -247,5 +446,7 @@ export async function getWorkspaceTaskById(id: string): Promise<WorkspaceTask | 
     return null;
   }
 
-  return mapTaskRow(data as TaskRow);
+  const mapped = mapTaskRow(data as TaskRow);
+  const [hydrated] = await hydrateTaskAssigneeNames([mapped], supabase);
+  return hydrated ?? mapped;
 }

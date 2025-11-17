@@ -57,7 +57,7 @@ import type {
   OpsVehicleProfile,
   OpsVehicleServiceLogEntry,
 } from "@/lib/supabase/queries/operations";
-import { mapTaskRow, TASK_SELECT } from "@/lib/supabase/queries/tasks";
+import { hydrateTaskAssigneeNames, mapTaskRow, TASK_SELECT } from "@/lib/supabase/queries/tasks";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 
@@ -144,7 +144,6 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "quotationPrepared",
         label: "Коммерческое предложение сформировано",
-        requiresDocument: true,
       },
     ],
   },
@@ -3359,7 +3358,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     console.error("[SERVER-OPS] failed to load deal tasks", tasksError);
   }
 
-  const allDealTasks = (tasksData ?? []).map(mapTaskRow);
+  const rawDealTasks = (tasksData ?? []).map(mapTaskRow);
+  const allDealTasks = await hydrateTaskAssigneeNames(rawDealTasks, supabase);
   const stageTasks = allDealTasks.filter((task) => task.workflowStageKey === statusKey);
   const workflowTasks = buildDealWorkflowTasks({
     statusKey,
