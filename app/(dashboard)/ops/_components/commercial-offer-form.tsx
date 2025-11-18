@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { type CommercialOfferData } from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
-import { CommercialOfferDownloadButtonRenty } from "@/app/(dashboard)/ops/_components/commercial-offer-pdf-renty";
+import {
+  type CommercialOfferData,
+  CommercialOfferDownloadButtonRenty,
+} from "@/app/(dashboard)/ops/_components/commercial-offer-pdf-renty";
 import { saveCommercialOffer, type SaveCommercialOfferResult } from "@/app/(dashboard)/ops/deals/[id]/actions";
 import type { OpsCommercialOffer } from "@/lib/supabase/queries/operations";
 

@@ -7,6 +7,7 @@ import {
   Font,
   Image,
   Page,
+  Link,
   StyleSheet,
   Text,
   View,
@@ -14,8 +15,27 @@ import {
 } from "@react-pdf/renderer/lib/react-pdf.browser.js";
 import QRCode from "qrcode";
 
-import type { CommercialOfferData } from "./commercial-offer-pdf";
 import { Button } from "@/components/ui/button";
+
+export type CommercialOfferData = {
+  dealNumber?: string | null;
+  clientName?: string | null;
+  vehicleName?: string | null;
+  vehicleVin?: string | null;
+  priceVat?: string | null;
+  termMonths?: string | null;
+  downPayment?: string | null;
+  interestRateAnnual?: string | null;
+  insuranceRateAnnual?: string | null;
+  comment?: string | null;
+  preparedBy?: string | null;
+  preparedByPhone?: string | null;
+  preparedByEmail?: string | null;
+  preparedAt?: string | null;
+  companyName?: string | null;
+  loginUrl?: string | null;
+  qrSrc?: string | null;
+};
 
 
 const RENTY_LOGO_DATA = "data:image/png;base64,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";
@@ -306,6 +326,7 @@ function Benefit({ children }: { children: string }) {
 function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
   ensureFonts();
 
+  const loginUrl = data.loginUrl ?? resolveLoginUrl(null);
   const preparedAt = data.preparedAt
     ? new Date(data.preparedAt).toLocaleDateString("en-GB", {
         day: "2-digit",
@@ -418,8 +439,16 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
             <Text style={styles.sectionTitle}>Fast application</Text>
             <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
               <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontSize: 9, color: renty.textSecondary }}>Scan QR or open the link:</Text>
-                <Text style={{ fontSize: 9, color: renty.accent }}>{resolveLoginUrl(data.loginUrl)}</Text>
+                <Text style={{ fontSize: 9, color: renty.textSecondary }}>
+                  Scan QR or open the{" "}
+                  <Link
+                    src={loginUrl}
+                    style={{ color: renty.accent, textDecoration: "underline", fontWeight: 600 }}
+                  >
+                    link
+                  </Link>
+                  :
+                </Text>
               </View>
               {data.qrSrc ? (
                 <>
