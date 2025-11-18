@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Link,
   pdf,
 } from "@react-pdf/renderer/lib/react-pdf.browser.js";
 import QRCode from "qrcode";
@@ -254,6 +255,12 @@ const styles = StyleSheet.create({
   highlightValue: {
     color: geist.link,
   },
+  link: {
+    color: geist.link,
+    textDecoration: "underline",
+    textDecorationColor: geist.link,
+    fontWeight: 600,
+  },
   commentBox: {
     backgroundColor: geist.backgroundAlt,
     border: `1 solid ${geist.stroke}`,
@@ -304,6 +311,7 @@ const styles = StyleSheet.create({
 function CommercialOfferDocument({ data }: { data: CommercialOfferData }) {
   ensureFonts();
 
+  const loginUrl = data.loginUrl ?? resolveLoginUrl(null);
   const preparedAtDisplay = data.preparedAt
     ? new Date(data.preparedAt).toLocaleDateString("ru-RU", {
         day: "2-digit",
@@ -436,9 +444,11 @@ function CommercialOfferDocument({ data }: { data: CommercialOfferData }) {
                 Вход в личный кабинет
               </Text>
               <Text style={{ fontSize: 9, color: geist.textSecondary, maxWidth: 210 }}>
-                Сканируйте, чтобы зайти:
-                {"\n"}
-                {data.loginUrl ?? resolveLoginUrl(null)}
+                Scan QR or open the{" "}
+                <Link src={loginUrl} style={styles.link}>
+                  link
+                </Link>
+                .
               </Text>
             </View>
           </View>
