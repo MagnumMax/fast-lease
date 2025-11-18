@@ -439,7 +439,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
           </Card>
 
           <Card className="bg-card/60 backdrop-blur" id="commercial-offer">
-            <CardHeader>
+            <CardHeader className="space-y-1">
               <CardTitle>Коммерческое предложение</CardTitle>
             </CardHeader>
             <CardContent>

@@ -1,16 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition, type FormEvent } from "react";
-import { CheckCircle2, Loader2, RefreshCw } from "lucide-react";
+import { CheckCircle2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  CommercialOfferDownloadButton,
-  type CommercialOfferData,
-} from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
+import { type CommercialOfferData } from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
 import { CommercialOfferDownloadButtonRenty } from "@/app/(dashboard)/ops/_components/commercial-offer-pdf-renty";
 import { saveCommercialOffer, type SaveCommercialOfferResult } from "@/app/(dashboard)/ops/deals/[id]/actions";
 import type { OpsCommercialOffer } from "@/lib/supabase/queries/operations";
@@ -72,7 +69,6 @@ export function CommercialOfferForm({
   );
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<SaveCommercialOfferResult | null>(null);
-  const [template, setTemplate] = useState<"classic" | "renty">("classic");
 
   const offerData: CommercialOfferData | null = useMemo(() => {
     const hasValues =
@@ -176,7 +172,9 @@ export function CommercialOfferForm({
               Обновлено: {lastUpdated} {offer?.updatedByName ? `• ${offer.updatedByName}` : ""}
             </p>
           </div>
-        ) : <div />}
+        ) : (
+          <div />
+        )}
       </div>
 
       <form id="commercial-offer-form" className="space-y-3" onSubmit={handleSubmit}>
@@ -213,33 +211,11 @@ export function CommercialOfferForm({
               <CheckCircle2 className="h-4 w-4" />
               {result.success ? "Сохранено" : result.error}
             </div>
-          ) : <div />}
+          ) : (
+            <div />
+          )}
 
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:ml-auto">
-            <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-xs text-muted-foreground">
-              <span>Шаблон PDF:</span>
-              <div className="flex gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={template === "classic" ? "subtle" : "ghost"}
-                  className="h-7 px-2"
-                  onClick={() => setTemplate("classic")}
-                >
-                  v1
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={template === "renty" ? "subtle" : "ghost"}
-                  className="h-7 px-2"
-                  onClick={() => setTemplate("renty")}
-                >
-                  draft Renty
-                </Button>
-              </div>
-            </div>
-
             <Button type="submit" size="sm" className="rounded-lg" disabled={pending}>
               {pending ? (
                 <span className="flex items-center gap-2">
@@ -247,26 +223,16 @@ export function CommercialOfferForm({
                   Сохраняем...
                 </span>
               ) : (
-                "Сохранить"
+                "Сохранить КП"
               )}
             </Button>
-            {template === "classic" ? (
-              <CommercialOfferDownloadButton
-                data={offerData}
-                label="Скачать"
-                iconOnly={false}
-                ariaLabel="Скачать КП (PDF)"
-                onGenerate={handleDownloadClick}
-              />
-            ) : (
-              <CommercialOfferDownloadButtonRenty
-                data={offerData}
-                label="Download (draft)"
-                iconOnly={false}
-                ariaLabel="Download proposal (draft Renty)"
-                onGenerate={handleDownloadClick}
-              />
-            )}
+            <CommercialOfferDownloadButtonRenty
+              data={offerData}
+              label="Скачать PDF (Renty)"
+              iconOnly={false}
+              ariaLabel="Скачать КП в шаблоне Renty"
+              onGenerate={handleDownloadClick}
+            />
           </div>
         </div>
       </form>

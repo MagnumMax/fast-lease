@@ -1,18 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock3,
-  FileText,
-  Paperclip,
-  UploadCloud,
-  ClipboardCheck,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, FileText, Paperclip } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +11,6 @@ import type { OpsDealWorkflowTask } from "@/lib/supabase/queries/operations";
 
 type DealStageTasksProps = {
   tasks: OpsDealWorkflowTask[];
-  onUploadDocument?: (taskId: string) => void;
 };
 
 type StatusVariant = {
@@ -56,89 +46,7 @@ function renderMetaLine(label: string, value: string | null) {
   );
 }
 
-function renderDocumentChecklist(
-  documentTasks: OpsDealWorkflowTask[],
-  onUploadDocument?: (taskId: string) => void,
-) {
-  if (documentTasks.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-xl border border-dashed border-amber-400/60 bg-amber-50/80 p-4 dark:border-amber-300/40 dark:bg-amber-500/10">
-      <div className="mb-3 flex items-center gap-2">
-        <ClipboardCheck className="h-4 w-4 text-amber-500" />
-        <p className="text-sm font-semibold text-foreground">Чек-лист документов</p>
-      </div>
-      <ul className="space-y-3">
-        {documentTasks.map((task) => {
-          const isUploaded = Boolean(task.attachmentUrl || task.fulfilled);
-          return (
-            <li key={`doc-${task.id}`} className="flex flex-col gap-2 rounded-lg bg-white/70 p-3 shadow-sm dark:bg-amber-500/5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={isUploaded ? "success" : "warning"}
-                    className="rounded-lg text-xs font-semibold"
-                  >
-                    {isUploaded ? "Загружено" : "Нет файла"}
-                  </Badge>
-                  <span className="text-sm font-medium text-foreground">
-                    {task.guardLabel ?? task.title}
-                  </span>
-                </div>
-                {task.guardLabel && task.guardLabel !== task.title ? (
-                  <p className="text-xs text-muted-foreground">{task.title}</p>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {isUploaded && task.attachmentUrl ? (
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="outline"
-                    className="rounded-lg"
-                  >
-                    <Link href={task.attachmentUrl} target="_blank">
-                      <Paperclip className="mr-2 h-3.5 w-3.5" />
-                      Открыть файл
-                    </Link>
-                  </Button>
-                ) : null}
-                <Button
-                  size="sm"
-                  variant={isUploaded ? "outline" : "default"}
-                  className="rounded-lg"
-                  onClick={() => (onUploadDocument ? onUploadDocument(task.id) : undefined)}
-                  asChild={!onUploadDocument}
-                >
-                  {onUploadDocument ? (
-                    <>
-                      <UploadCloud className="mr-2 h-3.5 w-3.5" />
-                      {isUploaded ? "Заменить" : "Загрузить"}
-                    </>
-                  ) : (
-                    <Link href={`/ops/tasks/${task.id}?focus=document`}>
-                      <UploadCloud className="mr-2 h-3.5 w-3.5" />
-                      {isUploaded ? "Заменить" : "Загрузить"}
-                    </Link>
-                  )}
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-
-export function DealStageTasks({ tasks, onUploadDocument }: DealStageTasksProps) {
-  const documentTasks = useMemo(
-    () => tasks.filter((task) => task.requiresDocument),
-    [tasks],
-  );
-
+export function DealStageTasks({ tasks }: DealStageTasksProps) {
   if (!tasks.length) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -152,7 +60,7 @@ export function DealStageTasks({ tasks, onUploadDocument }: DealStageTasksProps)
       <div className="space-y-3">
         {tasks.map((task) => {
           const statusMeta = getStatusVariant(task.status);
-          const guardLabel = task.guardLabel ?? task.title;
+          const title = task.title?.trim() || "Без названия";
           const note = task.note?.trim() ? task.note.trim() : null;
           const hasMeta = Boolean(note || task.attachmentUrl);
 
@@ -179,7 +87,7 @@ export function DealStageTasks({ tasks, onUploadDocument }: DealStageTasksProps)
                       </Badge>
                     ) : null}
                   </div>
-                  <p className="text-sm font-semibold text-foreground">{guardLabel}</p>
+                  <p className="text-sm font-semibold text-foreground">{title}</p>
                 </div>
                 <Button asChild size="sm" variant="outline" className="rounded-lg">
                   <Link href={`/ops/tasks/${task.id}`}>Перейти к задаче</Link>
@@ -205,8 +113,6 @@ export function DealStageTasks({ tasks, onUploadDocument }: DealStageTasksProps)
           );
         })}
       </div>
-
-      {renderDocumentChecklist(documentTasks, onUploadDocument)}
     </div>
   );
 }
