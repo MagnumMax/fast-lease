@@ -17,7 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePickerInput } from "@/components/ui/date-picker";
-import { DateTimePickerInput } from "@/components/ui/date-time-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -65,8 +64,6 @@ type FormState = {
   monthlyLeaseRate: string;
   interestRate: string;
   downPaymentAmount: string;
-  securityDeposit: string;
-  processingFee: string;
   termMonths: string;
   contractStartDate: string;
   contractEndDate: string;
@@ -256,8 +253,6 @@ export function DealEditDialog({
       monthlyLeaseRate: formatNumberInput(defaults.monthlyLeaseRate, 4),
       interestRate: formatNumberInput(defaults.interestRate, 4),
       downPaymentAmount: formatNumberInput(defaults.downPaymentAmount, 2),
-      securityDeposit: formatNumberInput(defaults.securityDeposit, 2),
-      processingFee: formatNumberInput(defaults.processingFee, 2),
       termMonths:
         defaults.termMonths != null && Number.isFinite(defaults.termMonths)
           ? String(defaults.termMonths)
@@ -595,8 +590,6 @@ export function DealEditDialog({
         monthlyLeaseRate: form.monthlyLeaseRate,
         interestRate: form.interestRate,
         downPaymentAmount: form.downPaymentAmount,
-        securityDeposit: form.securityDeposit,
-        processingFee: form.processingFee,
         termMonths: form.termMonths,
         contractStartDate: form.contractStartDate,
         contractEndDate: form.contractEndDate,
@@ -968,81 +961,6 @@ export function DealEditDialog({
               </div>
             </FormSection>
 
-            <FormSection title="Финансы" description="Суммы и ставки" columns={3}>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Сумма сделки</Label>
-                <Input
-                  value={form.principalAmount}
-                  onChange={handleChange("principalAmount")}
-                  placeholder="Например, 150000"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Общая сумма</Label>
-                <Input
-                  value={form.totalAmount}
-                  onChange={handleChange("totalAmount")}
-                  placeholder="Введите общую сумму"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ежемесячный платёж</Label>
-                <Input
-                  value={form.monthlyPayment}
-                  onChange={handleChange("monthlyPayment")}
-                  placeholder="Например, 3200"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ставка лизинга</Label>
-                <Input
-                  value={form.monthlyLeaseRate}
-                  onChange={handleChange("monthlyLeaseRate")}
-                  placeholder="0.015"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Процентная ставка</Label>
-                <Input
-                  value={form.interestRate}
-                  onChange={handleChange("interestRate")}
-                  placeholder="0.08"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Первоначальный взнос</Label>
-                <Input
-                  value={form.downPaymentAmount}
-                  onChange={handleChange("downPaymentAmount")}
-                  placeholder="Например, 20000"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Страховой депозит</Label>
-                <Input
-                  value={form.securityDeposit}
-                  onChange={handleChange("securityDeposit")}
-                  placeholder="Введите сумму"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Комиссия</Label>
-                <Input
-                  value={form.processingFee}
-                  onChange={handleChange("processingFee")}
-                  placeholder="Например, 1500"
-                  className="rounded-lg"
-                />
-              </div>
-            </FormSection>
-
             <FormSection title="Страховка" description="Данные полиса и платежей" columns={2}>
               <div className="space-y-1">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Провайдер</Label>
@@ -1158,59 +1076,6 @@ export function DealEditDialog({
               </div>
             </FormSection>
 
-            <FormSection title="Договор" description="Сроки и ключевые даты" columns={3}>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Срок (мес.)</Label>
-                <Input
-                  value={form.termMonths}
-                  onChange={handleChange("termMonths")}
-                  placeholder="24"
-                  className="rounded-lg"
-                  type="number"
-                  min={0}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Старт договора</Label>
-                <DatePickerInput
-                  id="contract-start-date"
-                  value={form.contractStartDate}
-                  onChange={(nextValue) => setForm((prev) => ({ ...prev, contractStartDate: nextValue }))}
-                  buttonClassName="rounded-lg"
-                  placeholder="Выберите дату"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Окончание договора</Label>
-                <DatePickerInput
-                  id="contract-end-date"
-                  value={form.contractEndDate}
-                  onChange={(nextValue) => setForm((prev) => ({ ...prev, contractEndDate: nextValue }))}
-                  buttonClassName="rounded-lg"
-                  placeholder="Выберите дату"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Первая оплата</Label>
-                <DatePickerInput
-                  id="contract-first-payment"
-                  value={form.firstPaymentDate}
-                  onChange={(nextValue) => setForm((prev) => ({ ...prev, firstPaymentDate: nextValue }))}
-                  buttonClassName="rounded-lg"
-                  placeholder="Выберите дату"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Завершение</Label>
-                <DateTimePickerInput
-                  id="deal-completed-at"
-                  value={form.completedAt}
-                  onChange={(nextValue) => setForm((prev) => ({ ...prev, completedAt: nextValue }))}
-                  buttonClassName="rounded-lg"
-                  placeholder="Выберите дату и время"
-                />
-              </div>
-            </FormSection>
           </div>
 
           {errorMessage ? (

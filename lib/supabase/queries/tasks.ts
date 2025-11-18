@@ -197,69 +197,64 @@ export async function hydrateTaskAssigneeNames(
   // 1) Основной источник — auth.users
   try {
     const serviceClient = await createSupabaseServiceClient();
-    const { data: authRows, error: authError } = await serviceClient
-      .from("auth.users")
-      .select("id, email, phone, raw_user_meta_data, user_metadata")
-      .in("id", uniqueIds);
+    const authUsers = await Promise.all(
+      uniqueIds.map(async (userId) => {
+        const { data, error } = await serviceClient.auth.admin.getUserById(userId);
+        if (error) {
+          console.info("[workspace-tasks] auth.admin.getUserById failed:", userId, error.message ?? error);
+          return null;
+        }
+        return data?.user ?? null;
+      }),
+    );
 
-    if (!authError && Array.isArray(authRows)) {
-      authRows.forEach(
-        (row: {
-          id?: string;
-          email?: string | null;
-          phone?: string | null;
-          raw_user_meta_data?: Record<string, unknown> | null;
-          user_metadata?: Record<string, unknown> | null;
-        }) => {
-          if (!row.id) return;
-          const meta =
-            (row.raw_user_meta_data && typeof row.raw_user_meta_data === "object"
-              ? row.raw_user_meta_data
-              : null) ||
-            (row.user_metadata && typeof row.user_metadata === "object" ? row.user_metadata : null);
+    authUsers
+      .filter((user): user is NonNullable<typeof user> => Boolean(user))
+      .forEach((user) => {
+        if (!user.id) return;
+        const meta =
+          (user.user_metadata && typeof user.user_metadata === "object"
+            ? user.user_metadata
+            : null) || null;
 
-          const metaEmailCandidates = ["email", "contact_email", "work_email", "primary_email", "notification_email"];
-          const metaPhoneCandidates = ["phone", "contact_phone", "work_phone"];
+        const metaEmailCandidates = ["email", "contact_email", "work_email", "primary_email", "notification_email"];
+        const metaPhoneCandidates = ["phone", "contact_phone", "work_phone"];
 
-          const metaNameCandidates = ["full_name", "name", "title"];
-          const metaFirst = typeof meta?.["first_name"] === "string" ? meta["first_name"]?.toString().trim() : "";
-          const metaLast = typeof meta?.["last_name"] === "string" ? meta["last_name"]?.toString().trim() : "";
+        const metaNameCandidates = ["full_name", "name", "title"];
+        const metaFirst = typeof meta?.["first_name"] === "string" ? meta["first_name"]?.toString().trim() : "";
+        const metaLast = typeof meta?.["last_name"] === "string" ? meta["last_name"]?.toString().trim() : "";
 
-          let metaName: string | null = null;
-          for (const key of metaNameCandidates) {
-            const val = meta?.[key];
-            if (typeof val === "string" && val.trim().length > 0) {
-              metaName = val.trim();
-              break;
-            }
+        let metaName: string | null = null;
+        for (const key of metaNameCandidates) {
+          const val = meta?.[key];
+          if (typeof val === "string" && val.trim().length > 0) {
+            metaName = val.trim();
+            break;
           }
-          if (!metaName) {
-            const combined = [metaFirst, metaLast].filter(Boolean).join(" ").trim();
-            metaName = combined.length > 0 ? combined : null;
-          }
+        }
+        if (!metaName) {
+          const combined = [metaFirst, metaLast].filter(Boolean).join(" ").trim();
+          metaName = combined.length > 0 ? combined : null;
+        }
 
-          const email =
-            typeof row.email === "string" && row.email.trim().length > 0
-              ? row.email.trim()
-              : metaEmailCandidates
-                  .map((key) => (typeof meta?.[key] === "string" ? (meta[key] as string).trim() : ""))
-                  .find((val) => val.length > 0) || null;
+        const email =
+          typeof user.email === "string" && user.email.trim().length > 0
+            ? user.email.trim()
+            : metaEmailCandidates
+                .map((key) => (typeof meta?.[key] === "string" ? (meta[key] as string).trim() : ""))
+                .find((val) => val.length > 0) || null;
 
-          const phone =
-            typeof row.phone === "string" && row.phone.trim().length > 0
-              ? row.phone.trim()
-              : metaPhoneCandidates
-                  .map((key) => (typeof meta?.[key] === "string" ? (meta[key] as string).trim() : ""))
-                  .find((val) => val.length > 0) || null;
+        const phone =
+          typeof user.phone === "string" && user.phone.trim().length > 0
+            ? user.phone.trim()
+            : metaPhoneCandidates
+                .map((key) => (typeof meta?.[key] === "string" ? (meta[key] as string).trim() : ""))
+                .find((val) => val.length > 0) || null;
 
-          if (metaName) nameMap.set(row.id, metaName);
-          if (phone) phoneMap.set(row.id, phone);
-          if (email) emailMap.set(row.id, email);
-        },
-      );
-    } else if (authError) {
-      console.info("[workspace-tasks] auth.users lookup failed:", authError.message ?? authError);
-    }
+        if (metaName) nameMap.set(user.id, metaName);
+        if (phone) phoneMap.set(user.id, phone);
+        if (email) emailMap.set(user.id, email);
+      });
   } catch (err) {
     console.info("[workspace-tasks] auth.users service lookup unavailable:", err);
   }

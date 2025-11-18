@@ -485,17 +485,23 @@ export function OpsDealsBoard({
       return [] as Array<{ optionValue: string; optionLabel: string; titleLabel: string }>;
     }
 
-    const normalized = vehicleOptions.map((vehicle) => ({
-      optionValue: vehicle.optionValue,
-      name: (vehicle.name ?? FALLBACK_VEHICLE).trim() || FALLBACK_VEHICLE,
-      secondary: resolveVehicleSecondaryLabel(vehicle),
-    }));
-    const padLength = normalized.reduce((max, item) => Math.max(max, item.name.length), 0) + 3;
+    const normalized = vehicleOptions.map((vehicle) => {
+      const name = (vehicle.name ?? FALLBACK_VEHICLE).trim() || FALLBACK_VEHICLE;
+      const displayName = vehicle.year ? `${name} ${vehicle.year}` : name;
+
+      return {
+        optionValue: vehicle.optionValue,
+        displayName,
+        secondary: resolveVehicleSecondaryLabel(vehicle),
+      };
+    });
+    const padLength =
+      normalized.reduce((max, item) => Math.max(max, item.displayName.length), 0) + 3;
 
     return normalized.map((item) => ({
       optionValue: item.optionValue,
-      optionLabel: buildPaddedOptionLabel(item.name, item.secondary, padLength),
-      titleLabel: `${item.name} · ${item.secondary}`,
+      optionLabel: buildPaddedOptionLabel(item.displayName, item.secondary, padLength),
+      titleLabel: `${item.displayName} · ${item.secondary}`,
     }));
   }, [vehicleOptions]);
   const vehicleComboboxOptions = useMemo(
@@ -933,12 +939,6 @@ export function OpsDealsBoard({
               options={clientComboboxOptions}
               disabled={clientDirectory.length === 0}
             />
-            {selectedClient ? (
-              <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-                <p>{selectedClient.email || "—"}</p>
-                <p>{selectedClient.phone}</p>
-              </div>
-            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -952,15 +952,6 @@ export function OpsDealsBoard({
               options={vehicleComboboxOptions}
               disabled={vehicleOptions.length === 0}
             />
-            {selectedVehicle ? (
-              <div className="rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground">
-                <p className="font-medium text-foreground/70">{selectedVehicle.name}</p>
-                <p>VIN: {selectedVehicle.vin}</p>
-                <p>
-                  {selectedVehicle.year} · {selectedVehicle.type}
-                </p>
-              </div>
-            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -1256,21 +1247,17 @@ export function OpsDealsBoard({
                   <TableHead aria-sort={getAriaSort("client")}>
                     {renderSortButton("client", "Client")}
                   </TableHead>
-                  <TableHead aria-sort={getAriaSort("status")}>
-                    {renderSortButton("status", "Status")}
-                  </TableHead>
-                  <TableHead aria-sort={getAriaSort("nextAction")}>
-                    {renderSortButton("nextAction", "Next action")}
-                  </TableHead>
-                  <TableHead aria-sort={getAriaSort("contractStartDate")}>
-                    {renderSortButton("contractStartDate", "Contract start")}
-                  </TableHead>
-                  <TableHead>Links</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedDeals.map((deal) => {
-                  const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
+              <TableHead aria-sort={getAriaSort("status")}>
+                {renderSortButton("status", "Status")}
+              </TableHead>
+              <TableHead aria-sort={getAriaSort("contractStartDate")}>
+                {renderSortButton("contractStartDate", "Contract start")}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedDeals.map((deal) => {
+              const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
                   const registrationLabel = deal.vehicleRegistration ?? deal.vehicleVin ?? null;
                   return (
                     <TableRow key={deal.id}>
@@ -1291,31 +1278,17 @@ export function OpsDealsBoard({
                         </div>
                       </TableCell>
                       <TableCell>{deal.client}</TableCell>
-                      <TableCell>
-                        <Badge variant={DEAL_STATUS_BADGE_VARIANTS[deal.statusKey]} className="rounded-lg">
-                          {STATUS_LABELS[deal.statusKey]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{deal.nextAction}</TableCell>
-                      <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
-                      <TableCell className="align-top">
-                        <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                          <Link className="hover:text-foreground" href="/ops/clients">
-                            Client
-                          </Link>
-                          <Link className="hover:text-foreground" href="/ops/cars">
-                            Vehicle
-                          </Link>
-                          <Link className="hover:text-foreground" href="/client/invoices">
-                            Invoices
-                          </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  <TableCell>
+                    <Badge variant={DEAL_STATUS_BADGE_VARIANTS[deal.statusKey]} className="rounded-lg">
+                      {STATUS_LABELS[deal.statusKey]}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
           </CardContent>
         </Card>
       )}

@@ -319,8 +319,6 @@ monthly_lease_rate: numeric(16,2)
 term_months: integer
 interest_rate: numeric(8,4)
 down_payment_amount: numeric(16,2)
-security_deposit: numeric(16,2)
-processing_fee: numeric(16,2)
 contract_start_date: date
 contract_end_date: date
 first_payment_date: date
@@ -1035,8 +1033,6 @@ monthly_payment: 29800.00
 term_months: 36
 interest_rate: 0.0450
 down_payment_amount: 195000.00
-security_deposit: 85000.00
-processing_fee: 5500.00
 contract_start_date: "2025-10-15"
 contract_end_date: "2027-12-15"
 first_payment_date: "2025-10-27"

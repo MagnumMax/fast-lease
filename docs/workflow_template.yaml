@@ -102,41 +102,15 @@ statuses:
           sla: { hours: 8 }
           schema:
             version: "1.0"
-            fields:
-              - id: deal_id
-                type: badge
-                label: "ID сделки"
-              - id: price_vat
-                type: text
-                label: "Цена автомобиля с VAT, AED"
-                required: true
-                hint: "Введите итоговую стоимость авто с учетом VAT"
-              - id: term_months
-                type: text
-                label: "Срок, месяцев"
-                required: true
-                hint: "Количество месяцев лизинга"
-              - id: down_payment_amount
-                type: text
-                label: "Аванс, AED"
-                required: true
-                hint: "Размер первоначального взноса"
-              - id: interest_rate_annual
-                type: text
-                label: "Ставка по финансированию, % годовых"
-                required: true
-                hint: "Годовая процентная ставка по займу"
-              - id: insurance_rate_annual
-                type: text
-                label: "Ставка по страховке, % годовых"
-                required: true
-                hint: "Годовая страховая ставка"
+            fields: []
+          defaults:
+            instructions: "Загрузите подписанное КП клиента через задачу. Сам документ формируйте в карточке сделки."
           bindings:
             deal_id: "{{deal.id}}"
     exit_requirements:
       - key: quotationPrepared
         rule: "== true"
-        message: "Не сформировано коммерческое предложение."
+        message: "Нет подписанного КП."
 
   VEHICLE_CHECK:
     title: "Проверка авто"

@@ -3,19 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 
-import {
-  BellRing,
-  CalendarDays,
-  CalendarRange,
-  Download,
-  FileText,
-  Gauge,
-  Hash,
-  Mail,
-  Phone,
-  Wrench,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,13 +16,9 @@ import { DealStageTasks } from "@/app/(dashboard)/ops/_components/deal-stage-tas
 import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dialog";
 import { DocumentList } from "./document-list";
 import { VehicleGallery } from "./vehicle-gallery";
+import { CommercialOfferForm } from "./commercial-offer-form";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { getDealStatusBadgeMeta } from "@/app/(dashboard)/ops/_components/deal-status-badge-meta";
-import {
-  CommercialOfferDownloadButton,
-  CommercialOfferDownloadButtonApple,
-  type CommercialOfferData,
-} from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
 
 type DealDetailProps = {
   detail: OpsDealDetail;
@@ -48,32 +32,6 @@ function slugifyRouteSegment(value: string): string {
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()
     .replace(/\s+/g, "-");
-}
-
-function getVehicleInfoIcon(label: string): LucideIcon {
-  const normalized = label.toLowerCase();
-
-  if (normalized.includes("vin")) {
-    return Hash;
-  }
-
-  if (normalized.includes("program") || normalized.includes("term")) {
-    return CalendarRange;
-  }
-
-  if (normalized.includes("issue") || normalized.includes("дата")) {
-    return CalendarDays;
-  }
-
-  if (normalized.includes("mileage") || normalized.includes("пробег")) {
-    return Gauge;
-  }
-
-  if (normalized.includes("service") || normalized.includes("сервис")) {
-    return Wrench;
-  }
-
-  return FileText;
 }
 
 function parseCurrencyValue(value: string | null | undefined): number | null {
@@ -137,10 +95,9 @@ function resolveAssignee(task: WorkspaceTask): string {
 
 type DealTasksListProps = {
   tasks: WorkspaceTask[];
-  buildOfferData?: (task: WorkspaceTask) => { data: CommercialOfferData | null } | null;
 };
 
-function DealTasksList({ tasks, buildOfferData }: DealTasksListProps) {
+function DealTasksList({ tasks }: DealTasksListProps) {
   if (!tasks.length) {
     return <p className="text-sm text-muted-foreground">Для сделки пока нет задач.</p>;
   }
@@ -155,16 +112,11 @@ function DealTasksList({ tasks, buildOfferData }: DealTasksListProps) {
             <TableHead>Статус</TableHead>
             <TableHead>Назначено</TableHead>
             <TableHead>SLA / дедлайн</TableHead>
-            <TableHead className="text-right">Действия</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {tasks.map((task) => {
             const statusMeta = TASK_STATUS_META[task.status] ?? TASK_STATUS_META.OPEN;
-            const offer =
-              buildOfferData && task.type === "PREPARE_QUOTE" && task.status === "DONE"
-                ? buildOfferData(task)
-                : null;
             return (
               <TableRow key={task.id} className="align-top">
                 <TableCell className="max-w-[240px]">
@@ -175,18 +127,12 @@ function DealTasksList({ tasks, buildOfferData }: DealTasksListProps) {
                     >
                       {task.title}
                     </Link>
-                    <p className="text-xs text-muted-foreground">
-                      Создана: {formatDateTime(task.createdAt)}
-                    </p>
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="text-sm text-foreground">
                     {task.workflowStageTitle ?? "—"}
                   </div>
-                  {task.workflowStageKey ? (
-                    <div className="text-xs text-muted-foreground">{task.workflowStageKey}</div>
-                  ) : null}
                 </TableCell>
                 <TableCell>
                   <Badge variant={statusMeta.variant} className="rounded-lg">
@@ -196,19 +142,6 @@ function DealTasksList({ tasks, buildOfferData }: DealTasksListProps) {
                 <TableCell className="text-sm text-foreground">{resolveAssignee(task)}</TableCell>
                 <TableCell className="text-sm text-foreground">
                   {formatDateTime(task.slaDueAt)}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex flex-col items-end gap-2">
-                    {offer?.data ? (
-                      <>
-                        <CommercialOfferDownloadButton data={offer.data} label="КП (Geist, PDF)" />
-                        <CommercialOfferDownloadButtonApple data={offer.data} label="КП (Apple, PDF)" />
-                      </>
-                    ) : null}
-                    <Button asChild variant="outline" size="sm" className="rounded-lg">
-                      <Link href={`/ops/tasks/${task.id}`}>Открыть</Link>
-                    </Button>
-                  </div>
                 </TableCell>
               </TableRow>
             );
@@ -227,18 +160,17 @@ export function DealDetailView({ detail }: DealDetailProps) {
     clientDocuments,
     keyInformation,
     overview = [],
-    financials = [],
-    contract = [],
     documents,
     sellerDocuments,
     invoices,
     timeline,
     workflowTasks,
-    guardStatuses,
-    tasks,
-    slug,
-    insurance,
-  } = detail;
+  guardStatuses,
+  tasks,
+  slug,
+  insurance,
+  commercialOffer,
+} = detail;
 
   const hasPendingTasks = workflowTasks.some((task) => !task.fulfilled);
   const dealTitle = slug.startsWith("deal-")
@@ -339,39 +271,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
     { label: "Последний платёж", value: insurance?.lastPaymentDateLabel ?? "—" },
   ];
   const hasInsuranceData = insuranceEntries.some((entry) => entry.value && entry.value !== "—");
-  const warnings = useMemo(() => {
-    const list: Array<{ id: string; text: string; href?: string }> = [];
-    if (hasDebt) {
-      list.push({
-        id: "debt",
-        text: `Есть задолженность по сделке на сумму ${profile.dueAmount}`,
-      });
-    }
-    overdueInvoices.slice(0, 3).forEach((invoice) => {
-      list.push({
-        id: `invoice-${invoice.id}`,
-        text: `Просрочен платёж ${invoice.invoiceNumber}`,
-      });
-    });
-    workflowTasks
-      .filter((task) => task.requiresDocument && !task.attachmentUrl)
-      .forEach((task) => {
-        list.push({
-          id: `doc-${task.id}`,
-          text: `Нет документа: ${task.guardLabel ?? task.title}`,
-          href: `/ops/tasks/${task.id}?focus=document`,
-        });
-      });
-    const blockedTask = workflowTasks.find((task) => task.status.toUpperCase() === "BLOCKED");
-    if (blockedTask) {
-      list.push({
-        id: `blocked-${blockedTask.id}`,
-        text: `Задача заблокирована: ${blockedTask.guardLabel ?? blockedTask.title}`,
-        href: `/ops/tasks/${blockedTask.id}`,
-      });
-    }
-    return list;
-  }, [hasDebt, profile.dueAmount, overdueInvoices, workflowTasks]);
   const dealTasksOrdered = useMemo(() => {
     return [...tasks].sort((a, b) => {
       const aTime = new Date(a.createdAt).getTime();
@@ -379,60 +278,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
       return Number.isNaN(bTime) || Number.isNaN(aTime) ? 0 : bTime - aTime;
     });
   }, [tasks]);
-  const buildOfferData = useMemo(
-    () =>
-      (task: WorkspaceTask) => {
-        if (task.type !== "PREPARE_QUOTE") return null;
-
-        const getField = (fieldId: string) => {
-          const value = task.fields?.[fieldId];
-          if (typeof value === "string") return value.trim();
-          if (typeof value === "number") return value.toString();
-          return "";
-        };
-
-        const priceVat = getField("price_vat");
-        const termMonths = getField("term_months");
-        const downPayment = getField("down_payment_amount");
-        const interestRateAnnual = getField("interest_rate_annual");
-        const insuranceRateAnnual = getField("insurance_rate_annual");
-        const filled = [priceVat, termMonths, downPayment, interestRateAnnual, insuranceRateAnnual].filter(
-          (value) => value && value.length > 0,
-        );
-
-        const data: CommercialOfferData = {
-          dealNumber: task.dealNumber ?? profile.dealId ?? detail.slug,
-          clientName: client.name ?? null,
-          vehicleName: profile.vehicleName ?? null,
-          vehicleVin: null,
-          priceVat: priceVat || null,
-          termMonths: termMonths || null,
-          downPayment: downPayment || null,
-          interestRateAnnual: interestRateAnnual || null,
-          insuranceRateAnnual: insuranceRateAnnual || null,
-          comment:
-            typeof task.payload?.["guard_note"] === "string"
-              ? (task.payload["guard_note"] as string)
-              : null,
-          loginUrl:
-            typeof window !== "undefined"
-              ? new URL("/login", window.location.origin).toString()
-              : null,
-          preparedBy:
-            task.assigneeFullName ??
-            (task.assigneeRole ? WORKFLOW_ROLE_LABELS[task.assigneeRole] ?? task.assigneeRole : null),
-          preparedByPhone: task.assigneePhone ?? null,
-          preparedByEmail: task.assigneeEmail ?? null,
-          preparedAt: task.completedAt ?? task.updatedAt ?? new Date().toISOString(),
-          companyName: company?.name ?? "Fast Lease",
-        };
-
-        return {
-          data: filled.length === 0 ? null : data,
-        };
-      },
-    [client.name, company, detail.slug, profile.dealId, profile.vehicleName],
-  );
   const companyDocuments = useMemo(
     () => clientDocuments.filter((doc) => doc.context === "company"),
     [clientDocuments],
@@ -483,8 +328,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
     [guardStatuses],
   );
   const dealCostEntry = keyInformation.find((item) => item.label.toLowerCase().includes("стоим"));
-  const contractTermEntry = contract.find((item) => item.label.toLowerCase().includes("term"));
-  const contractStartEntry = contract.find((item) => item.label.toLowerCase().includes("contract start"));
   const normalizedClientName = client.name?.trim() ?? "";
   const clientDisplayName = normalizedClientName.length > 0 ? normalizedClientName : null;
   const normalizedVehicleName = profile.vehicleName?.trim() ?? "";
@@ -501,39 +344,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
     label: string;
     value: string;
     tone?: "danger" | "success";
-  }> = [
-    {
-      id: "amount",
-      label: "Сумма сделки",
-      value: dealCostEntry?.value ?? "—",
-    },
-    {
-      id: "term",
-      label: "Term (months)",
-      value: contractTermEntry?.value ?? "—",
-    },
-    {
-      id: "contract-start",
-      label: "Contract start",
-      value: contractStartEntry?.value ?? "—",
-    },
-    {
-      id: "next-payment",
-      label: "Следующий платёж",
-      value: nextPaymentDisplay.length > 0 ? nextPaymentDisplay : "—",
-    },
-    {
-      id: "debt",
-      label: "Задолженность",
-      value: profile.dueAmount || "—",
-      tone: hasDebt ? "danger" : "success",
-    },
-    {
-      id: "created",
-      label: "Создана",
-      value: createdAtEntry?.value ?? "—",
-    },
-  ];
+  }> = [];
 
   return (
     <div className="space-y-6 pb-10">
@@ -556,14 +367,8 @@ export function DealDetailView({ detail }: DealDetailProps) {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Номер сделки</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <CardTitle className="text-2xl">{dealTitle}</CardTitle>
-                  {company ? (
-                    <Badge variant="outline" className="rounded-lg border-dashed px-3 py-1 text-[0.75rem] uppercase tracking-wide">
-                      {company.prefix} · {company.name}
-                    </Badge>
-                  ) : null}
                   <Badge
                     variant={statusBadgeMeta.variant}
                     className="ml-auto rounded-lg px-3 py-1.5 text-[0.75rem] uppercase tracking-wide"
@@ -575,28 +380,30 @@ export function DealDetailView({ detail }: DealDetailProps) {
               <CardDescription className="text-sm text-muted-foreground">
                 {clientVehicleLine}
               </CardDescription>
-              <dl className="grid gap-3 sm:grid-cols-3">
-                {summaryCards.map((item) => {
-                  const toneClass =
-                    item.tone === "danger"
-                      ? "text-rose-600"
-                      : item.tone === "success"
-                        ? "text-emerald-600"
-                        : "text-foreground";
-                  return (
-                    <div key={item.id} className="space-y-1">
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
-                      <dd className={`text-sm font-semibold ${toneClass}`}>{item.value}</dd>
-                    </div>
-                  );
-                })}
-              </dl>
+              {summaryCards.length ? (
+                <dl className="grid gap-3 sm:grid-cols-3">
+                  {summaryCards.map((item) => {
+                    const toneClass =
+                      item.tone === "danger"
+                        ? "text-rose-600"
+                        : item.tone === "success"
+                          ? "text-emerald-600"
+                          : "text-foreground";
+                    return (
+                      <div key={item.id} className="space-y-1">
+                        <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
+                        <dd className={`text-sm font-semibold ${toneClass}`}>{item.value}</dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              ) : null}
             </div>
             <div className="space-y-2">
               <VehicleGallery
                 images={galleryPreview}
                 fallbackImageSrc={galleryFallbackImage ?? undefined}
-                emptyMessage="Фото автомобиля пока недоступны."
+                emptyMessage="Фото автомобиля отсутствуют"
                 className="rounded-xl border border-border/60 bg-background/60 p-2"
                 gridClassName="grid gap-2 sm:grid-cols-2"
                 showLabels={false}
@@ -613,37 +420,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
 
       <div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
         <div className="space-y-6">
-          {warnings.length ? (
-            <Card className="border border-amber-300/60 bg-amber-50/80 backdrop-blur dark:bg-amber-500/10">
-              <CardHeader className="flex flex-row items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <BellRing className="h-4 w-4 text-amber-500" />
-                  <CardTitle>Предупреждения</CardTitle>
-                </div>
-                <Badge variant="warning" className="rounded-lg">
-                  {warnings.length}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm">
-                  {warnings.map((warning) => (
-                    <li
-                      key={warning.id}
-                      className="flex flex-col gap-2 rounded-lg border border-amber-200/60 bg-white/70 px-3 py-2 shadow-sm dark:bg-amber-500/5 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <span className="text-foreground">{warning.text}</span>
-                      {warning.href ? (
-                        <Button asChild size="sm" variant="outline" className="rounded-lg">
-                          <Link href={warning.href}>Открыть</Link>
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ) : null}
-
           <Card
             className={`backdrop-blur transition-shadow ${
               hasPendingTasks
@@ -655,15 +431,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
             <CardHeader className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle>Оперативные задачи</CardTitle>
-                {hasPendingTasks ? (
-                  <Badge variant="warning" className="rounded-lg">
-                    Требуют внимания
-                  </Badge>
-                ) : (
-                  <Badge variant="success" className="rounded-lg">
-                    Всё готово
-                  </Badge>
-                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -671,41 +438,22 @@ export function DealDetailView({ detail }: DealDetailProps) {
             </CardContent>
           </Card>
 
-          {contract.length ? (
-            <Card className="bg-card/60 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Договор</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-3 md:grid-cols-2">
-                  {contract.map((entry, index) => (
-                    <div key={`${entry.label}-${index}`}>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
-                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {financials.length ? (
-            <Card className="bg-card/60 backdrop-blur">
-              <CardHeader>
-                <CardTitle>Финансовые параметры</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid gap-3 md:grid-cols-2">
-                  {financials.map((entry, index) => (
-                    <div key={`${entry.label}-${index}`}>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
-                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
-          ) : null}
+          <Card className="bg-card/60 backdrop-blur" id="commercial-offer">
+            <CardHeader>
+              <CardTitle>Коммерческое предложение</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CommercialOfferForm
+                dealId={detail.dealUuid}
+                slug={slug}
+                dealNumber={profile.dealId ?? null}
+                clientName={client.name ?? null}
+                vehicleName={profile.vehicleName ?? null}
+                companyName={company?.name ?? "Fast Lease"}
+                offer={commercialOffer}
+              />
+            </CardContent>
+          </Card>
 
           <Card className="bg-card/60 backdrop-blur">
             <CardHeader>
@@ -769,17 +517,12 @@ export function DealDetailView({ detail }: DealDetailProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <dl className="grid gap-3 sm:grid-cols-2">
-                {filteredKeyInformation.map((item) => {
-                  const InfoIcon = getVehicleInfoIcon(item.label);
-                  return (
-                    <div key={item.label}>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
-                      <dd className="mt-1 flex items-center gap-2 text-sm text-foreground">
-                        <InfoIcon className="h-4 w-4 text-muted-foreground" /> {item.value}
-                      </dd>
-                    </div>
-                  );
-                })}
+                {filteredKeyInformation.map((item) => (
+                  <div key={item.label}>
+                    <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
+                    <dd className="mt-1 text-sm text-foreground">{item.value}</dd>
+                  </div>
+                ))}
               </dl>
               {vehicleChecklist.length ? (
                 <div className="rounded-lg border border-border/60 bg-surface-subtle p-3">
@@ -885,7 +628,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DealTasksList tasks={dealTasksOrdered} buildOfferData={buildOfferData} />
+            <DealTasksList tasks={dealTasksOrdered} />
           </CardContent>
         </Card>
 

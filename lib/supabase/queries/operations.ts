@@ -67,7 +67,8 @@ export const OPS_WORKFLOW_STATUSES = [
     exitGuards: [
       {
         key: "quotationPrepared",
-        label: "Коммерческое предложение сформировано",
+        label: "Подписанное КП загружено",
+        requiresDocument: true,
       },
     ],
   },
@@ -81,7 +82,7 @@ export const OPS_WORKFLOW_STATUSES = [
     exitGuards: [
       {
         key: "vehicle.verified",
-        label: "Данные по авто подтверждены",
+        label: "Проверить VIN/комплектацию/цену",
       },
     ],
   },
@@ -605,14 +606,26 @@ export type OpsDealEditDefaults = {
   monthlyLeaseRate: number | null;
   interestRate: number | null;
   downPaymentAmount: number | null;
-  securityDeposit: number | null;
-  processingFee: number | null;
   termMonths: number | null;
   contractStartDate: string | null;
   contractEndDate: string | null;
   firstPaymentDate: string | null;
   completedAt: string | null;
   insurance: OpsInsuranceEditDefaults | null;
+};
+
+export type OpsCommercialOffer = {
+  priceVat: number | null;
+  termMonths: number | null;
+  downPaymentAmount: number | null;
+  interestRateAnnual: number | null;
+  insuranceRateAnnual: number | null;
+  comment: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  updatedByName: string | null;
+  updatedByEmail: string | null;
+  updatedByPhone: string | null;
 };
 
 export type OpsDealTimelineEvent = {
@@ -1205,6 +1218,7 @@ export type OpsDealDetail = {
   structuredData: OpsDealDetailJsonBlock[];
   paymentSchedule: OpsDealDetailsEntry[];
   editDefaults: OpsDealEditDefaults;
+  commercialOffer: OpsCommercialOffer | null;
   clientDocuments: OpsClientDocument[];
   documents: OpsDealDocument[];
   sellerDocuments: OpsSellerDocument[];

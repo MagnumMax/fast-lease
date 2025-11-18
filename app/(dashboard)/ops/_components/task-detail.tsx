@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState, type JSX } from "react";
+import { useActionState, useState, type JSX } from "react";
 
 import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Paperclip } from "lucide-react";
 
@@ -17,10 +17,6 @@ import {
   WORKFLOW_ROLE_LABELS,
   getClientDocumentLabel,
 } from "@/lib/supabase/queries/operations";
-import {
-  CommercialOfferDownloadButton,
-  CommercialOfferDownloadButtonApple,
-} from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
 import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
 
 import type { FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
@@ -145,20 +141,14 @@ export function TaskDetailView({
   completeAction,
 }: TaskDetailViewProps) {
   const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
+  const [, setDraftRequiredValues] = useState<Record<string, string>>({});
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
-  const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
-  const editableFields = schemaFields.filter((field) => isEditableField(field));
-  const requiredFieldIds = schemaFields.filter((field) => field.required).map((field) => field.id);
-  const [draftRequiredValues, setDraftRequiredValues] = useState<Record<string, string>>(() => {
-    const initial: Record<string, string> = {};
-    for (const id of requiredFieldIds) {
-      const value = resolveFieldValue(id, payload).trim();
-      if (value.length > 0) initial[id] = value;
-    }
-    return initial;
-  });
+  const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
 
+  const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
+  const effectiveSchemaFields = isPrepareQuoteTask ? [] : schemaFields;
+  const editableFields = effectiveSchemaFields.filter((field) => isEditableField(field));
   const statusMeta = getTaskStatusMeta(task.status);
   const slaInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
@@ -179,73 +169,6 @@ export function TaskDetailView({
   const guardDocumentTypeLabel = guardState?.documentType
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
-  const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
-
-  const requiredFieldIdsKey = requiredFieldIds.join("|");
-  const normalizedRequiredFieldIds = useMemo(
-    () => (requiredFieldIdsKey ? requiredFieldIdsKey.split("|").filter(Boolean) : []),
-    [requiredFieldIdsKey],
-  );
-
-  const requiredFieldsFilled = useMemo(() => {
-    if (!isPrepareQuoteTask) return false;
-    if (normalizedRequiredFieldIds.length === 0) return false;
-    return normalizedRequiredFieldIds.every((id) => {
-      const fromDraft = draftRequiredValues[id];
-      if (fromDraft) return true;
-      return resolveFieldValue(id, payload).trim().length > 0;
-    });
-  }, [draftRequiredValues, isPrepareQuoteTask, normalizedRequiredFieldIds, payload]);
-
-  const commercialOffer = useMemo(() => {
-    if (!isPrepareQuoteTask) {
-      return { data: null };
-    }
-
-    const getField = (fieldId: string) => {
-      const raw = draftRequiredValues[fieldId] ?? resolveFieldValue(fieldId, payload);
-      const normalized = raw.trim();
-      return normalized.length > 0 ? normalized : null;
-    };
-
-    const priceVat = getField("price_vat");
-    const termMonths = getField("term_months");
-    const downPayment = getField("down_payment_amount");
-    const interestRateAnnual = getField("interest_rate_annual");
-    const insuranceRateAnnual = getField("insurance_rate_annual");
-    const filled = [priceVat, termMonths, downPayment, interestRateAnnual, insuranceRateAnnual].filter(Boolean);
-
-    const data = {
-      dealNumber: deal?.dealNumber ?? task.dealNumber ?? null,
-      clientName: task.dealClientName ?? null,
-      vehicleName: task.dealVehicleName ?? null,
-      vehicleVin: null,
-      priceVat,
-      termMonths,
-      downPayment,
-      interestRateAnnual,
-      insuranceRateAnnual,
-      comment:
-        guardState?.note && guardState.note.trim().length > 0
-          ? guardState.note
-          : typeof payload?.["guard_note"] === "string"
-            ? (payload["guard_note"] as string)
-            : null,
-      loginUrl:
-        typeof window !== "undefined"
-          ? new URL("/login", window.location.origin).toString()
-          : null,
-      preparedBy:
-        task.assigneeFullName ??
-        (task.assigneeRole ? WORKFLOW_ROLE_LABELS[task.assigneeRole] ?? task.assigneeRole : null),
-      preparedByPhone: task.assigneePhone ?? null,
-      preparedByEmail: task.assigneeEmail ?? null,
-      preparedAt: task.completedAt ?? task.updatedAt ?? new Date().toISOString(),
-      companyName: "Fast Lease",
-    };
-
-    return { data: requiredFieldsFilled ? data : null };
-  }, [deal?.dealNumber, draftRequiredValues, guardState, isPrepareQuoteTask, payload, requiredFieldsFilled, task]);
 
   function resolveDocumentLabel(doc: GuardDocumentLink): string {
     const rawTitle = doc.title?.trim();
@@ -508,18 +431,6 @@ export function TaskDetailView({
                             required={isRequired}
                             placeholder={hint}
                             className="rounded-lg"
-                            onChange={(event) => {
-                              if (isRequired) {
-                                const next = event.target.value.trim();
-                                setDraftRequiredValues((prev) =>
-                                  next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
-                                    const clone = { ...prev };
-                                    delete clone[fieldId];
-                                    return clone;
-                                  })(),
-                                );
-                              }
-                            }}
                           />
                           {hint ? (
                             <p className="text-xs text-muted-foreground">{hint}</p>
@@ -543,15 +454,8 @@ export function TaskDetailView({
               </div>
 
               {isPrepareQuoteTask ? (
-                <div className="pt-2 flex flex-col gap-2">
-                  <CommercialOfferDownloadButton
-                    data={commercialOffer.data}
-                    label="Скачать КП (Geist, PDF)"
-                  />
-                  <CommercialOfferDownloadButtonApple
-                    data={commercialOffer.data}
-                    label="Скачать КП (Apple, PDF)"
-                  />
+                <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+                  Сформируйте КП в карточке сделки и приложите подписанный вариант. Без вложенного файла задача не будет закрыта.
                 </div>
               ) : null}
 
@@ -573,7 +477,11 @@ export function TaskDetailView({
                   value="complete"
                   disabled={pending}
                 >
-                  {pending ? "Сохраняем..." : "Завершить задачу"}
+                  {pending
+                    ? "Сохраняем..."
+                    : requiresDocument
+                      ? "Завершить и приложить документ"
+                      : "Завершить задачу"}
                 </Button>
               </div>
             </form>

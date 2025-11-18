@@ -408,7 +408,8 @@ export async function completeTaskFormAction(
     return { status: "error", message: "Задача не найдена" };
   }
 
-  if (existing.status === "DONE") {
+  const isPrepareQuoteTask = existing.type === "PREPARE_QUOTE";
+  if (existing.status === "DONE" && !(isPrepareQuoteTask && intent === "save")) {
     return { status: "success", message: "Задача уже завершена" };
   }
 
@@ -548,6 +549,9 @@ export async function completeTaskFormAction(
     };
     if (existing.status === "OPEN") {
       updatePayload.status = "IN_PROGRESS";
+    }
+    if (existing.status === "DONE" && isPrepareQuoteTask) {
+      updatePayload.status = "DONE";
     }
     if (effectiveAssignee) {
       updatePayload.assignee_user_id = effectiveAssignee;

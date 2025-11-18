@@ -43,6 +43,7 @@ import type {
   OpsDealSummary,
   OpsDealEditDefaults,
   OpsDealProfile,
+  OpsCommercialOffer,
   OpsDealTimelineEvent,
   OpsDealWorkflowTask,
   OpsInsuranceInfo,
@@ -157,7 +158,7 @@ export const OPS_WORKFLOW_STATUSES = [
     exitGuards: [
       {
         key: "vehicle.verified",
-        label: "Данные по авто подтверждены",
+        label: "Проверить VIN/комплектацию/цену",
       },
     ],
   },
@@ -475,6 +476,23 @@ function getNumber(value: unknown): number | null {
   return null;
 }
 
+function parseQuoteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value !== "string") return null;
+
+  const normalized = value
+    .replace(/[^0-9.,-]/g, "")
+    .replace(/\s+/g, "")
+    .replace(/,(?=\d{3}\b)/g, "")
+    .replace(/,/g, ".");
+
+  if (!normalized) return null;
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function isUuid(value: string | null | undefined): value is string {
   if (!value) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -576,6 +594,68 @@ function formatJsonObject(value: Record<string, unknown> | null | undefined): {
       isEmpty: false,
     };
   }
+}
+
+type CommercialOfferExtract = {
+  priceVat: number | null;
+  termMonths: number | null;
+  downPaymentAmount: number | null;
+  interestRateAnnual: number | null;
+  insuranceRateAnnual: number | null;
+  comment: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+  updatedByName: string | null;
+  updatedByEmail: string | null;
+  updatedByPhone: string | null;
+};
+
+function extractCommercialOffer(payload: Record<string, unknown> | null | undefined): CommercialOfferExtract | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+
+  const priceVat = parseQuoteNumber((payload as Record<string, unknown>)["price_vat"]);
+  const termMonths = parseQuoteNumber((payload as Record<string, unknown>)["term_months"]);
+  const downPaymentAmount = parseQuoteNumber((payload as Record<string, unknown>)["down_payment_amount"]);
+  const interestRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["interest_rate_annual"]);
+  const insuranceRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["insurance_rate_annual"]);
+
+  const metaBranch =
+    (payload as Record<string, unknown>)["quote_meta"] &&
+    typeof (payload as Record<string, unknown>)["quote_meta"] === "object" &&
+    !Array.isArray((payload as Record<string, unknown>)["quote_meta"])
+      ? ((payload as Record<string, unknown>)["quote_meta"] as Record<string, unknown>)
+      : {};
+
+  const comment =
+    getString(metaBranch["comment"]) ??
+    getString((payload as Record<string, unknown>)["guard_note"]) ??
+    null;
+
+  const result: CommercialOfferExtract = {
+    priceVat,
+    termMonths,
+    downPaymentAmount,
+    interestRateAnnual,
+    insuranceRateAnnual,
+    comment,
+    updatedAt: getString(metaBranch["updated_at"]),
+    updatedBy: getString(metaBranch["updated_by"]),
+    updatedByName: getString(metaBranch["updated_by_name"]),
+    updatedByEmail: getString(metaBranch["updated_by_email"]),
+    updatedByPhone: getString(metaBranch["updated_by_phone"]),
+  };
+
+  const hasValue =
+    result.priceVat != null ||
+    result.termMonths != null ||
+    result.downPaymentAmount != null ||
+    result.interestRateAnnual != null ||
+    result.insuranceRateAnnual != null ||
+    (result.comment && result.comment.length > 0);
+
+  return hasValue ? result : null;
 }
 
 function normalizeClientStatus(raw: unknown): { display: string; filter: "Active" | "Blocked" } {
@@ -2563,6 +2643,7 @@ type DealDetailResult = {
   structuredData: OpsDealDetailJsonBlock[];
   paymentSchedule: OpsDealDetailsEntry[];
   editDefaults: OpsDealEditDefaults;
+  commercialOffer: OpsCommercialOffer | null;
   clientDocuments: OpsClientDocument[];
   documents: OpsDealDocument[];
   sellerDocuments: OpsSellerDocument[];
@@ -2603,8 +2684,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     principal_amount,
     interest_rate,
     down_payment_amount,
-    security_deposit,
-    processing_fee,
     payload,
     contract_terms,
     insurance_details,
@@ -2638,8 +2717,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     principal_amount: number | null;
     interest_rate: number | null;
     down_payment_amount: number | null;
-    security_deposit: number | null;
-    processing_fee: number | null;
     payload: Record<string, unknown> | null;
     contract_terms: Record<string, unknown> | null;
     insurance_details: Record<string, unknown> | null;
@@ -3606,6 +3683,55 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     ? managerProfiles.find((profile) => profile.user_id === dealRow.op_manager_id) ?? null
     : null;
 
+  const commercialOfferExtract = extractCommercialOffer(dealRow.payload);
+  const commercialOffer: OpsCommercialOffer | null = commercialOfferExtract
+    ? {
+        priceVat: commercialOfferExtract.priceVat,
+        termMonths: commercialOfferExtract.termMonths,
+        downPaymentAmount: commercialOfferExtract.downPaymentAmount,
+        interestRateAnnual: commercialOfferExtract.interestRateAnnual,
+        insuranceRateAnnual: commercialOfferExtract.insuranceRateAnnual,
+        comment: commercialOfferExtract.comment,
+        updatedAt: commercialOfferExtract.updatedAt,
+        updatedBy: commercialOfferExtract.updatedBy,
+        updatedByName: commercialOfferExtract.updatedByName,
+        updatedByEmail: commercialOfferExtract.updatedByEmail,
+        updatedByPhone: commercialOfferExtract.updatedByPhone,
+      }
+    : null;
+
+  const quotedFinancials: OpsDealDetailsEntry[] = [];
+  if (commercialOfferExtract?.priceVat != null) {
+    quotedFinancials.push({
+      label: "Quoted price (VAT)",
+      value: formatCurrency(commercialOfferExtract.priceVat),
+    });
+  }
+  if (commercialOfferExtract?.downPaymentAmount != null) {
+    quotedFinancials.push({
+      label: "Quoted down payment",
+      value: formatCurrency(commercialOfferExtract.downPaymentAmount),
+    });
+  }
+  if (commercialOfferExtract?.termMonths != null) {
+    quotedFinancials.push({
+      label: "Quoted term (months)",
+      value: `${commercialOfferExtract.termMonths}`,
+    });
+  }
+  if (commercialOfferExtract?.interestRateAnnual != null) {
+    quotedFinancials.push({
+      label: "Quoted interest rate (annual)",
+      value: formatRate(commercialOfferExtract.interestRateAnnual),
+    });
+  }
+  if (commercialOfferExtract?.insuranceRateAnnual != null) {
+    quotedFinancials.push({
+      label: "Quoted insurance rate (annual)",
+      value: formatRate(commercialOfferExtract.insuranceRateAnnual),
+    });
+  }
+
   const formatProfileValue = (
     id: string | null,
     profile: { full_name: string | null; status: string | null } | null,
@@ -3625,15 +3751,13 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   };
 
   const financials: OpsDealDetailsEntry[] = [
+    ...quotedFinancials,
     { label: "Principal amount", value: formatCurrency(dealRow.principal_amount) },
     { label: "Total amount", value: formatCurrency(dealRow.total_amount) },
     { label: "Monthly payment", value: formatCurrency(dealRow.monthly_payment) },
     { label: "Monthly lease rate", value: formatRate(dealRow.monthly_lease_rate) },
     { label: "Interest rate", value: formatRate(dealRow.interest_rate) },
     { label: "Down payment", value: formatCurrency(dealRow.down_payment_amount) },
-    { label: "Security deposit", value: formatCurrency(dealRow.security_deposit) },
-    { label: "Processing fee", value: formatCurrency(dealRow.processing_fee) },
-    { label: "Outstanding amount", value: outstandingAmountDisplay },
   ];
 
   const contractDetails: OpsDealDetailsEntry[] = [
@@ -3837,8 +3961,6 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     monthlyLeaseRate: getNumber(dealRow.monthly_lease_rate),
     interestRate: getNumber(dealRow.interest_rate),
     downPaymentAmount: getNumber(dealRow.down_payment_amount),
-    securityDeposit: getNumber(dealRow.security_deposit),
-    processingFee: getNumber(dealRow.processing_fee),
     termMonths:
       typeof dealRow.term_months === "number"
         ? dealRow.term_months
@@ -3877,6 +3999,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     structuredData,
     paymentSchedule: paymentScheduleEntries,
     editDefaults,
+    commercialOffer,
     clientDocuments,
     documents,
     sellerDocuments,

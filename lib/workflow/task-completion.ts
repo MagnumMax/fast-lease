@@ -221,14 +221,6 @@ export async function handleTaskCompletion(
     // Строим guard context
     const dealPayload = ensureWorkflowPayloadBranches(context.dealPayload);
 
-    // Если это задача подготовки КП — выносим ключевые параметры сделки в payload
-    if (context.taskType === "PREPARE_QUOTE") {
-      const quoteFields = extractQuoteFieldsFromTaskPayload(context.taskPayload);
-      if (quoteFields) {
-        Object.assign(dealPayload, quoteFields);
-      }
-    }
-
     const taskStorageKey = deriveTaskStorageKey(guardKey);
     // Обновляем guard флаги в payload
     setNestedGuardFlag(dealPayload, guardKey);

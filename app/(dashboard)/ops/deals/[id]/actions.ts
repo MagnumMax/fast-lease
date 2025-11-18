@@ -56,6 +56,28 @@ function resolveUploadedFileName(file: FileLike): string {
   return rawName.length > 0 ? rawName : FALLBACK_UPLOAD_NAME;
 }
 
+function parseCommercialNumber(value?: string | null): number | null {
+  if (!value) return null;
+  const normalized = value
+    .toString()
+    .trim()
+    .replace(/[^0-9.,-]/g, "")
+    .replace(/\s+/g, "")
+    .replace(/,(?=\d{3}\b)/g, "")
+    .replace(/,/g, ".");
+
+  if (!normalized) return null;
+  const parsed = Number.parseFloat(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function ensureDealPayload(payload: unknown): Record<string, unknown> {
+  if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+    return structuredClone(payload) as Record<string, unknown>;
+  }
+  return {};
+}
+
 const uploadDealDocumentsSchema = z.object({
   dealId: z.string().uuid(),
   slug: z.string().min(1),
@@ -70,6 +92,17 @@ const deleteDealDocumentSchema = z.object({
   dealId: z.string().uuid(),
   documentId: z.string().uuid(),
   slug: z.string().min(1),
+});
+
+const saveCommercialOfferSchema = z.object({
+  dealId: z.string().uuid(),
+  slug: z.string().min(1),
+  priceVat: z.string().optional(),
+  termMonths: z.string().optional(),
+  downPayment: z.string().optional(),
+  interestRateAnnual: z.string().optional(),
+  insuranceRateAnnual: z.string().optional(),
+  comment: z.string().optional(),
 });
 
 export type UploadDealDocumentsResult =
@@ -92,6 +125,12 @@ type DeleteDealDocumentInput = z.infer<typeof deleteDealDocumentSchema>;
 
 export type DeleteDealDocumentResult =
   | { success: true }
+  | { success: false; error: string };
+
+type SaveCommercialOfferInput = z.infer<typeof saveCommercialOfferSchema>;
+
+export type SaveCommercialOfferResult =
+  | { success: true; message?: string }
   | { success: false; error: string };
 
 export async function uploadDealDocuments(formData: FormData): Promise<UploadDealDocumentsResult> {
@@ -428,6 +467,95 @@ export async function deleteDealDocument(
   }
 }
 
+export async function saveCommercialOffer(
+  input: SaveCommercialOfferInput,
+): Promise<SaveCommercialOfferResult> {
+  const parsed = saveCommercialOfferSchema.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[operations] invalid commercial offer payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные КП." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
+  const { dealId, slug, priceVat, termMonths, downPayment, interestRateAnnual, insuranceRateAnnual, comment } =
+    parsed.data;
+
+  try {
+    const supabase = await createSupabaseServiceClient();
+    const sessionClient = await createSupabaseServerClient();
+    const { data: dealRow, error: loadError } = await supabase
+      .from("deals")
+      .select("payload, deal_number")
+      .eq("id", dealId)
+      .maybeSingle();
+
+    if (loadError) {
+      console.error("[operations] failed to load deal before saving commercial offer", loadError);
+      return { success: false, error: "Не удалось загрузить сделку." };
+    }
+
+    if (!dealRow) {
+      return { success: false, error: "Сделка не найдена." };
+    }
+
+    const nextPayload = ensureDealPayload(dealRow.payload ?? null);
+
+    nextPayload.price_vat = parseCommercialNumber(priceVat);
+    nextPayload.term_months = parseCommercialNumber(termMonths);
+    nextPayload.down_payment_amount = parseCommercialNumber(downPayment);
+    nextPayload.interest_rate_annual = parseCommercialNumber(interestRateAnnual);
+    nextPayload.insurance_rate_annual = parseCommercialNumber(insuranceRateAnnual);
+
+    const metaBranch =
+      nextPayload.quote_meta &&
+      typeof nextPayload.quote_meta === "object" &&
+      !Array.isArray(nextPayload.quote_meta)
+        ? (structuredClone(nextPayload.quote_meta) as Record<string, unknown>)
+        : {};
+
+    const normalizedComment = typeof comment === "string" && comment.trim().length > 0 ? comment.trim() : null;
+    const now = new Date().toISOString();
+    const { data: auth } = await sessionClient.auth.getUser();
+
+    metaBranch.updated_at = now;
+    metaBranch.updated_by = sessionUser.user.id;
+    metaBranch.updated_by_name = sessionUser.profile?.full_name ?? auth?.user?.email ?? sessionUser.user.id;
+    metaBranch.updated_by_email = auth?.user?.email ?? null;
+    metaBranch.updated_by_phone = sessionUser.profile?.phone ?? null;
+    metaBranch.comment = normalizedComment;
+
+    nextPayload.quote_meta = metaBranch;
+
+    const { error: updateError } = await supabase
+      .from("deals")
+      .update({ payload: nextPayload })
+      .eq("id", dealId);
+
+    if (updateError) {
+      console.error("[operations] failed to save commercial offer", updateError);
+      return { success: false, error: "Не удалось сохранить КП." };
+    }
+
+    for (const path of getWorkspacePaths("deals")) {
+      revalidatePath(path);
+    }
+    revalidatePath(`/ops/deals/${slug}`);
+    if (slug !== dealId) {
+      revalidatePath(`/ops/deals/${dealId}`);
+    }
+
+    return { success: true, message: "КП сохранено" };
+  } catch (error) {
+    console.error("[operations] unexpected error while saving commercial offer", error);
+    return { success: false, error: "Произошла ошибка при сохранении КП." };
+  }
+}
+
 function resolveGuardMeta(statusKey: string, guardKey: string) {
   const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey as keyof typeof OPS_WORKFLOW_STATUS_MAP];
   if (!statusMeta) return null;
@@ -456,8 +584,6 @@ const updateDealSchema = z.object({
   monthlyLeaseRate: z.string().optional(),
   interestRate: z.string().optional(),
   downPaymentAmount: z.string().optional(),
-  securityDeposit: z.string().optional(),
-  processingFee: z.string().optional(),
   termMonths: z.string().optional(),
   contractStartDate: z.string().optional(),
   contractEndDate: z.string().optional(),
@@ -842,8 +968,6 @@ export async function updateOperationsDeal(
     monthlyLeaseRate,
     interestRate,
     downPaymentAmount,
-    securityDeposit,
-    processingFee,
     termMonths,
     contractStartDate,
     contractEndDate,
@@ -877,8 +1001,6 @@ export async function updateOperationsDeal(
     monthly_lease_rate: parseDecimalInput(monthlyLeaseRate),
     interest_rate: parseDecimalInput(interestRate),
     down_payment_amount: parseDecimalInput(downPaymentAmount),
-    security_deposit: parseDecimalInput(securityDeposit),
-    processing_fee: parseDecimalInput(processingFee),
     term_months: parseIntegerInput(termMonths),
     contract_start_date: normalizeDateInput(contractStartDate),
     contract_end_date: normalizeDateInput(contractEndDate),
