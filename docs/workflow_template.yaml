@@ -100,9 +100,6 @@ statuses:
           assignee_role: OP_MANAGER
           guard_key: "quotationPrepared"
           sla: { hours: 8 }
-          schema:
-            version: "1.0"
-            fields: []
           defaults:
             instructions: "Загрузите подписанное КП клиента через задачу. Сам документ формируйте в карточке сделки."
           bindings:

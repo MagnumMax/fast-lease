@@ -432,6 +432,15 @@ export const parseWorkflowTemplate = (source: string): WorkflowTemplate => {
 
   const parsed = templateSchema.safeParse(rawContents);
   if (!parsed.success) {
+    const issues = parsed.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      code: issue.code,
+      message: issue.message,
+    }));
+    console.error("[workflow] template validation failed", {
+      issues: issues.slice(0, 10),
+      totalIssues: issues.length,
+    });
     throw new WorkflowTemplateParseError(
       "Workflow template structure is invalid",
       parsed.error.flatten(),

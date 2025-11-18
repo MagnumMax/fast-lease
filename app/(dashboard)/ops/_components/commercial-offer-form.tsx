@@ -11,16 +11,9 @@ import {
   CommercialOfferDownloadButton,
   type CommercialOfferData,
 } from "@/app/(dashboard)/ops/_components/commercial-offer-pdf";
+import { CommercialOfferDownloadButtonRenty } from "@/app/(dashboard)/ops/_components/commercial-offer-pdf-renty";
 import { saveCommercialOffer, type SaveCommercialOfferResult } from "@/app/(dashboard)/ops/deals/[id]/actions";
 import type { OpsCommercialOffer } from "@/lib/supabase/queries/operations";
-
-const DEFAULT_COMMERCIAL_OFFER = {
-  priceVat: 350000,
-  termMonths: 12,
-  downPayment: 70000,
-  interestRateAnnual: 25,
-  insuranceRateAnnual: 4,
-};
 
 const FIELD_CONFIG: Array<{
   id: "priceVat" | "termMonths" | "downPayment" | "interestRateAnnual" | "insuranceRateAnnual";
@@ -69,18 +62,17 @@ export function CommercialOfferForm({
 }: CommercialOfferFormProps) {
   const [form, setForm] = useState<FormState>(
     () => ({
-      priceVat: formatInitialNumber(offer?.priceVat ?? DEFAULT_COMMERCIAL_OFFER.priceVat),
-      termMonths: formatInitialNumber(offer?.termMonths ?? DEFAULT_COMMERCIAL_OFFER.termMonths),
-      downPayment: formatInitialNumber(offer?.downPaymentAmount ?? DEFAULT_COMMERCIAL_OFFER.downPayment),
-      interestRateAnnual: formatInitialNumber(offer?.interestRateAnnual ?? DEFAULT_COMMERCIAL_OFFER.interestRateAnnual),
-      insuranceRateAnnual: formatInitialNumber(
-        offer?.insuranceRateAnnual ?? DEFAULT_COMMERCIAL_OFFER.insuranceRateAnnual,
-      ),
+      priceVat: formatInitialNumber(offer?.priceVat ?? null),
+      termMonths: formatInitialNumber(offer?.termMonths ?? null),
+      downPayment: formatInitialNumber(offer?.downPaymentAmount ?? null),
+      interestRateAnnual: formatInitialNumber(offer?.interestRateAnnual ?? null),
+      insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? null),
       comment: offer?.comment ?? "",
     }),
   );
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<SaveCommercialOfferResult | null>(null);
+  const [template, setTemplate] = useState<"classic" | "renty">("classic");
 
   const offerData: CommercialOfferData | null = useMemo(() => {
     const hasValues =
@@ -127,13 +119,11 @@ export function CommercialOfferForm({
 
   function resetToPayload() {
     setForm({
-      priceVat: formatInitialNumber(offer?.priceVat ?? DEFAULT_COMMERCIAL_OFFER.priceVat),
-      termMonths: formatInitialNumber(offer?.termMonths ?? DEFAULT_COMMERCIAL_OFFER.termMonths),
-      downPayment: formatInitialNumber(offer?.downPaymentAmount ?? DEFAULT_COMMERCIAL_OFFER.downPayment),
-      interestRateAnnual: formatInitialNumber(offer?.interestRateAnnual ?? DEFAULT_COMMERCIAL_OFFER.interestRateAnnual),
-      insuranceRateAnnual: formatInitialNumber(
-        offer?.insuranceRateAnnual ?? DEFAULT_COMMERCIAL_OFFER.insuranceRateAnnual,
-      ),
+      priceVat: formatInitialNumber(offer?.priceVat ?? null),
+      termMonths: formatInitialNumber(offer?.termMonths ?? null),
+      downPayment: formatInitialNumber(offer?.downPaymentAmount ?? null),
+      interestRateAnnual: formatInitialNumber(offer?.interestRateAnnual ?? null),
+      insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? null),
       comment: offer?.comment ?? "",
     });
     setResult(null);
@@ -226,6 +216,30 @@ export function CommercialOfferForm({
           ) : <div />}
 
           <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:ml-auto">
+            <div className="flex items-center gap-2 rounded-lg border px-2 py-1 text-xs text-muted-foreground">
+              <span>Шаблон PDF:</span>
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={template === "classic" ? "subtle" : "ghost"}
+                  className="h-7 px-2"
+                  onClick={() => setTemplate("classic")}
+                >
+                  v1
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={template === "renty" ? "subtle" : "ghost"}
+                  className="h-7 px-2"
+                  onClick={() => setTemplate("renty")}
+                >
+                  draft Renty
+                </Button>
+              </div>
+            </div>
+
             <Button type="submit" size="sm" className="rounded-lg" disabled={pending}>
               {pending ? (
                 <span className="flex items-center gap-2">
@@ -236,13 +250,23 @@ export function CommercialOfferForm({
                 "Сохранить"
               )}
             </Button>
-            <CommercialOfferDownloadButton
-              data={offerData}
-              label="Скачать"
-              iconOnly={false}
-              ariaLabel="Скачать КП (PDF)"
-              onGenerate={handleDownloadClick}
-            />
+            {template === "classic" ? (
+              <CommercialOfferDownloadButton
+                data={offerData}
+                label="Скачать"
+                iconOnly={false}
+                ariaLabel="Скачать КП (PDF)"
+                onGenerate={handleDownloadClick}
+              />
+            ) : (
+              <CommercialOfferDownloadButtonRenty
+                data={offerData}
+                label="Download (draft)"
+                iconOnly={false}
+                ariaLabel="Download proposal (draft Renty)"
+                onGenerate={handleDownloadClick}
+              />
+            )}
           </div>
         </div>
       </form>
