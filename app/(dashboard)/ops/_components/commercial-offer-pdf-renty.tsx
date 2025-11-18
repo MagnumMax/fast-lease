@@ -183,15 +183,20 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   card: {
-    flex: 1,
     padding: 12,
     backgroundColor: renty.bg,
     borderRadius: 10,
     border: `1 solid ${renty.stroke}`,
     gap: 8,
+  },
+  cardStretch: {
+    flex: 1,
+  },
+  cardTight: {
+    gap: 4,
   },
   sectionTitle: {
     fontSize: 10,
@@ -229,10 +234,10 @@ const styles = StyleSheet.create({
     width: "47%",
   },
   check: {
-    width: 10,
-    height: 10,
-    borderRadius: 3,
-    backgroundColor: renty.accent,
+    fontSize: 11,
+    fontWeight: 700,
+    color: renty.accent,
+    marginTop: -1,
   },
   footnote: {
     fontSize: 9,
@@ -240,8 +245,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   cta: {
-    marginTop: 12,
-    marginBottom: 12,
+    marginTop: 4,
+    marginBottom: 10,
     padding: 12,
     borderRadius: 10,
     border: `1 solid ${renty.strokeBold}`,
@@ -292,7 +297,7 @@ const styles = StyleSheet.create({
 function Benefit({ children }: { children: string }) {
   return (
     <View style={styles.benefitItem}>
-      <View style={styles.check} />
+      <Text style={styles.check}>✓</Text>
       <Text>{children}</Text>
     </View>
   );
@@ -354,7 +359,7 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
         </View>
 
         <View style={styles.grid}>
-          <View style={styles.card}>
+          <View style={[styles.card, styles.cardStretch]}>
             <Text style={styles.sectionTitle}>Financing</Text>
             <View style={{ marginTop: 4 }}>
               <View style={styles.row}>
@@ -372,7 +377,7 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
             </View>
           </View>
 
-          <View style={styles.card}>
+          <View style={[styles.card, styles.cardStretch]}>
             <Text style={styles.sectionTitle}>Insurance</Text>
             <View style={{ marginTop: 4 }}>
               <View style={styles.row}>
@@ -408,10 +413,10 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
           </View>
         </View>
 
-        <View style={[styles.grid, { gap: 12, marginTop: 10 }]}>
-          <View style={[styles.card, { flex: 1, gap: 8 }]}> 
+        <View style={[styles.grid, { gap: 12, marginTop: 6 }]}>
+          <View style={[styles.card, styles.cardStretch, styles.cardTight]}> 
             <Text style={styles.sectionTitle}>Fast application</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ fontSize: 9, color: renty.textSecondary }}>Scan QR or open the link:</Text>
                 <Text style={{ fontSize: 9, color: renty.accent }}>{resolveLoginUrl(data.loginUrl)}</Text>
@@ -428,11 +433,11 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
             <Text style={styles.sectionTitle}>Sales manager</Text>
             <View style={{ gap: 6 }}>
               <Text style={{ fontSize: 10.5, fontWeight: 700, color: renty.textPrimary }}>
-                {data.preparedBy ?? "Dmytro Parokhod"}
+                Dmytro Parokhod
               </Text>
               <View style={{ gap: 2 }}>
-                <Text style={styles.salesText}>{data.preparedByPhone ?? "+971 50 714 0877"}</Text>
-                <Text style={styles.salesText}>{data.preparedByEmail ?? "dima@renty.ae"}</Text>
+                <Text style={styles.salesText}>+971 50 714 0877</Text>
+                <Text style={styles.salesText}>dmitrii.p@fastlease.ae</Text>
               </View>
             </View>
           </View>
