@@ -93,6 +93,7 @@ function createDocumentDraft(): DocumentDraft {
 const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
 const DOCUMENT_TYPE_EMPTY_VALUE = "__workflow-doc-none__";
 const CLIENT_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
+const TASKS_LIST_ROUTE = "/ops/tasks";
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
 
@@ -229,6 +230,14 @@ export function TaskDetailView({
     : null;
   const allowDocumentDeletion = Boolean(deal?.clientId);
 
+  function handleBackNavigation() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push(TASKS_LIST_ROUTE);
+  }
+
   function handleAddDocumentDraft() {
     setDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
   }
@@ -363,13 +372,17 @@ export function TaskDetailView({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <div className="flex">
-        <Button asChild variant="ghost" size="sm" className="rounded-lg px-2 py-1 text-sm font-medium">
-          <Link href="/ops/tasks" className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Назад
-          </Link>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleBackNavigation}
+          className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-medium"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Назад
         </Button>
       </div>
       <Card className="border-border/80 bg-card/80 backdrop-blur">
