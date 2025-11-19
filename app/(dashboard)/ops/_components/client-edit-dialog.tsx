@@ -932,7 +932,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                 onDeleteExisting: handleDeleteExistingDocument,
                 isDeleting: isDocumentDeleting,
                 title: "Документы клиента",
-                description: "Загрузка документов клиента для идентификации.",
+                description: "Загрузка документов для идентификации.",
                 emptyMessage: "Документы клиента пока не загружены.",
                 options: PERSON_DOCUMENT_OPTIONS,
                 actionError: documentActionError,

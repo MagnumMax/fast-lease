@@ -868,6 +868,10 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "company_license", label: "Лицензия компании", context: "company" as const },
   { value: "corporate_documents", label: "Корпоративные документы", context: "company" as const },
   { value: "company_bank_statement", label: "Банковская выписка компании", context: "company" as const },
+  { value: "lease_agreement", label: "Договор аренды", context: "any" as const },
+  { value: "payment_schedule", label: "Платёжный график", context: "any" as const },
+  { value: "delivery_act", label: "Акт приёма-передачи", context: "any" as const },
+  { value: "commercial_offer", label: "Коммерческое предложение", context: "any" as const },
   { value: "other", label: "Другой документ", context: "any" as const },
 ] as const;
 

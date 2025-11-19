@@ -197,7 +197,9 @@ export function TaskDetailView({
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
 
   const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
-  const effectiveSchemaFields = isPrepareQuoteTask ? [] : schemaFields;
+  const filteredSchemaFields =
+    task.type === "AECB_CHECK" ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
+  const effectiveSchemaFields = isPrepareQuoteTask ? [] : filteredSchemaFields;
   const editableFields = effectiveSchemaFields.filter((field) => isEditableField(field));
   const statusMeta = getTaskStatusMeta(task.status);
   const slaInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
@@ -630,7 +632,7 @@ export function TaskDetailView({
               {requiresDocument ? (
                 <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
                   <div className="space-y-1">
-                    <span className="text-sm font-semibold text-foreground">Загрузка документов клиента</span>
+                    <span className="text-sm font-semibold text-foreground">Загрузка документов</span>
                     <p className="text-xs text-muted-foreground">
                       Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG.
                     </p>
