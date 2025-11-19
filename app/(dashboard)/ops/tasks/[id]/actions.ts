@@ -26,6 +26,8 @@ import {
 } from "@/lib/workflow/documents-checklist";
 
 export type FormStatus = { status: "idle" | "success" | "error"; message?: string };
+type DeleteGuardDocumentInput = z.infer<typeof DELETE_GUARD_DOCUMENT_SCHEMA>;
+export type DeleteGuardDocumentResult = { success: true } | { success: false; error: string };
 
 const COMPLETE_FORM_SCHEMA = z.object({
   taskId: z.string().uuid(),
@@ -35,6 +37,15 @@ const COMPLETE_FORM_SCHEMA = z.object({
   requiresDocument: z.enum(["true", "false"]).default("false"),
   initialNote: z.string().optional(),
   intent: z.enum(["save", "complete"]).optional(),
+});
+
+const DELETE_GUARD_DOCUMENT_SCHEMA = z.object({
+  documentId: z.string().uuid(),
+  clientId: z.string().uuid(),
+  clientSlug: z.string().min(1).optional(),
+  taskId: z.string().uuid(),
+  dealId: z.string().uuid().optional(),
+  dealSlug: z.string().min(1).optional(),
 });
 
 const CLIENT_DOCUMENT_BUCKET = "client-documents";
@@ -356,6 +367,85 @@ async function syncDocsGuardPayload(options: {
   }
 }
 
+export async function deleteTaskGuardDocumentAction(
+  input: DeleteGuardDocumentInput,
+): Promise<DeleteGuardDocumentResult> {
+  const parsed = DELETE_GUARD_DOCUMENT_SCHEMA.safeParse(input);
+
+  if (!parsed.success) {
+    console.warn("[workflow] invalid guard document delete payload", parsed.error.flatten());
+    return { success: false, error: "Некорректные данные для удаления документа." };
+  }
+
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
+  const { documentId, clientId, clientSlug, taskId, dealId, dealSlug } = parsed.data;
+
+  try {
+    const supabase = await createSupabaseServiceClient();
+
+    const { data: documentRecord, error: lookupError } = await supabase
+      .from("client_documents")
+      .select("id, client_id, storage_path")
+      .eq("id", documentId)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error("[workflow] failed to load guard document before deletion", lookupError);
+      return { success: false, error: "Не удалось найти документ." };
+    }
+
+    if (!documentRecord || String(documentRecord.client_id) !== clientId) {
+      return { success: false, error: "Документ не найден или принадлежит другому клиенту." };
+    }
+
+    const storagePath =
+      typeof documentRecord.storage_path === "string" && documentRecord.storage_path.length > 0
+        ? documentRecord.storage_path
+        : null;
+
+    if (storagePath) {
+      const { error: storageError } = await supabase.storage.from(CLIENT_DOCUMENT_BUCKET).remove([storagePath]);
+      if (storageError && !String(storageError.message ?? "").toLowerCase().includes("not found")) {
+        console.error("[workflow] failed to remove guard document file", storageError);
+        return { success: false, error: "Не удалось удалить файл документа." };
+      }
+    }
+
+    const { error: deleteError } = await supabase
+      .from("client_documents")
+      .delete()
+      .eq("id", documentId)
+      .eq("client_id", clientId);
+
+    if (deleteError) {
+      console.error("[workflow] failed to delete guard document entry", deleteError);
+      return { success: false, error: "Не удалось удалить запись документа." };
+    }
+
+    for (const path of buildPathsToRevalidate(taskId, dealId, dealSlug)) {
+      revalidatePath(path);
+    }
+
+    for (const path of getWorkspacePaths("clients")) {
+      revalidatePath(path);
+    }
+    revalidatePath("/ops/clients");
+    revalidatePath(`/ops/clients/${clientId}`);
+    if (clientSlug && clientSlug !== clientId) {
+      revalidatePath(`/ops/clients/${clientSlug}`);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("[workflow] unexpected error while deleting guard document", error);
+    return { success: false, error: "Произошла ошибка при удалении документа." };
+  }
+}
+
 export async function completeTaskFormAction(
   _prevState: FormStatus,
   formData: FormData,
@@ -425,9 +515,6 @@ export async function completeTaskFormAction(
   }
 
   let effectiveAssignee = existing.assignee_user_id ?? null;
-  if (existing.assignee_user_id && existing.assignee_user_id !== sessionUser.user.id) {
-    return { status: "error", message: "Задача закреплена за другим пользователем" };
-  }
 
   if (!existing.assignee_user_id) {
     const claimResult = await supabase

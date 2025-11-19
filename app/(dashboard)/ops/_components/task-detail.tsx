@@ -1,25 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState, type JSX } from "react";
+import { useActionState, useEffect, useState, type JSX } from "react";
+import { useRouter } from "next/navigation";
 
-import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Paperclip } from "lucide-react";
+import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Loader2, Paperclip, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { sortDocumentOptions } from "@/lib/documents/options";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { buildSlugWithId } from "@/lib/utils/slugs";
-import { Textarea } from "@/components/ui/textarea";
 import {
+  CLIENT_DOCUMENT_TYPES,
   WORKFLOW_ROLE_LABELS,
   getClientDocumentLabel,
+  type ClientDocumentTypeValue,
 } from "@/lib/supabase/queries/operations";
 import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
 
-import type { FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
+import { deleteTaskGuardDocumentAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
 
 type TaskDetailViewProps = {
   task: WorkspaceTask;
@@ -63,8 +68,31 @@ type GuardDocumentLink = {
   title: string | null;
   documentType: string | null;
   storagePath?: string | null;
+  status?: string | null;
   url: string | null;
 };
+
+type DocumentDraft = {
+  id: string;
+  type: ClientDocumentTypeValue | "";
+  file: File | null;
+};
+
+function createDocumentDraft(): DocumentDraft {
+  const identifier =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `doc-${Math.random().toString(36).slice(2, 10)}`;
+  return {
+    id: identifier,
+    type: "",
+    file: null,
+  };
+}
+
+const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+const DOCUMENT_TYPE_EMPTY_VALUE = "__workflow-doc-none__";
+const CLIENT_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
 
@@ -142,6 +170,27 @@ export function TaskDetailView({
 }: TaskDetailViewProps) {
   const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
   const [, setDraftRequiredValues] = useState<Record<string, string>>({});
+  const router = useRouter();
+  const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
+  const [documentActionError, setDocumentActionError] = useState<string | null>(null);
+  const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
+  const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([]);
+
+  function setDocumentDeleting(id: string, deleting: boolean) {
+    setDeletingDocumentIds((prev) => {
+      const next = new Set(prev);
+      if (deleting) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }
+
+  function isDocumentDeleting(id: string): boolean {
+    return deletingDocumentIds.has(id);
+  }
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
@@ -153,6 +202,15 @@ export function TaskDetailView({
   const slaInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const requiresDocument = guardMeta?.requiresDocument ?? false;
+
+  useEffect(() => {
+    if (!requiresDocument) {
+      setDocumentDrafts([]);
+      return;
+    }
+    setDocumentDrafts((prev) => (prev.length > 0 ? prev : [createDocumentDraft()]));
+  }, [requiresDocument]);
+
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
   const hasForm = task.status !== "DONE";
   const isCompletedWorkflow = !hasForm && task.isWorkflow;
@@ -169,6 +227,61 @@ export function TaskDetailView({
   const guardDocumentTypeLabel = guardState?.documentType
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
+  const allowDocumentDeletion = Boolean(deal?.clientId);
+
+  function handleAddDocumentDraft() {
+    setDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
+  }
+
+  function handleRemoveDocumentDraft(id: string) {
+    setDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
+  }
+
+  async function handleDeleteGuardDocument(documentId: string) {
+    if (!allowDocumentDeletion || !deal?.clientId) {
+      setDocumentActionError("Невозможно удалить документ: не определён клиент сделки.");
+      return;
+    }
+    if (isDocumentDeleting(documentId)) {
+      return;
+    }
+
+    setDocumentActionError(null);
+    setDocumentActionMessage(null);
+    setDocumentDeleting(documentId, true);
+
+    try {
+      const result = await deleteTaskGuardDocumentAction({
+        documentId,
+        clientId: deal.clientId,
+        clientSlug: clientSlug ?? undefined,
+        taskId: task.id,
+        dealId: deal?.id ?? undefined,
+        dealSlug: dealSlug ?? undefined,
+      });
+
+      if (!result.success) {
+        setDocumentActionError(result.error ?? "Не удалось удалить документ.");
+        return;
+      }
+
+      setDocumentActionMessage("Документ удалён.");
+      router.refresh();
+    } catch (error) {
+      console.error("[workflow] guard document delete error", error);
+      setDocumentActionError("Не удалось удалить документ. Попробуйте ещё раз.");
+    } finally {
+      setDocumentDeleting(documentId, false);
+    }
+  }
+
+  function handleDocumentDraftTypeChange(id: string, type: ClientDocumentTypeValue | "") {
+    setDocumentDrafts((prev) => prev.map((draft) => (draft.id === id ? { ...draft, type } : draft)));
+  }
+
+  function handleDocumentDraftFileChange(id: string, file: File | null) {
+    setDocumentDrafts((prev) => prev.map((draft) => (draft.id === id ? { ...draft, file } : draft)));
+  }
 
   function resolveDocumentLabel(doc: GuardDocumentLink): string {
     const rawTitle = doc.title?.trim();
@@ -188,6 +301,65 @@ export function TaskDetailView({
     if (!path) return null;
     const normalized = path.split("/").filter(Boolean).pop();
     return normalized ?? null;
+  }
+
+  function renderGuardDocumentList(showActions: boolean) {
+    if (!guardDocumentLinks.length) {
+      return null;
+    }
+
+    return (
+      <div className="flex flex-col gap-2">
+        {guardDocumentLinks.map((doc) => {
+          const label = resolveDocumentLabel(doc);
+          const deleting = isDocumentDeleting(doc.id);
+          const openButton = doc.url ? (
+            <Button asChild size="sm" variant="outline" className="rounded-lg">
+              <Link href={doc.url} target="_blank">
+                Открыть
+              </Link>
+            </Button>
+          ) : (
+            <Badge variant="outline" className="rounded-lg text-muted-foreground">
+              Нет ссылки
+            </Badge>
+          );
+
+          return (
+            <div
+              key={doc.id}
+              className="flex flex-col gap-2 rounded-md border border-border/60 bg-background px-3 py-2 text-xs text-foreground"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="flex items-center gap-2 font-medium text-foreground">
+                  <Paperclip className="h-3 w-3 text-brand-600" />
+                  {label}
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {openButton}
+                  {showActions ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="rounded-lg text-destructive hover:bg-destructive/5"
+                      onClick={() => handleDeleteGuardDocument(doc.id)}
+                      disabled={pending || deleting || !allowDocumentDeletion}
+                    >
+                      {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                      <span className="ml-1 text-xs">{deleting ? "Удаляем..." : "Удалить"}</span>
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+              {doc.status ? (
+                <span className="text-[11px] text-muted-foreground">{doc.status}</span>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    );
   }
 
   return (
@@ -442,6 +614,129 @@ export function TaskDetailView({
                 </div>
               ) : null}
 
+              {requiresDocument ? (
+                <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
+                  <div className="space-y-1">
+                    <span className="text-sm font-semibold text-foreground">Загрузка документов клиента</span>
+                    <p className="text-xs text-muted-foreground">
+                      Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG.
+                    </p>
+                  </div>
+
+                  {hasGuardDocuments ? (
+                    <div className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                        Уже загружено
+                      </span>
+                      {renderGuardDocumentList(true)}
+                    </div>
+                  ) : null}
+                  {documentActionMessage ? (
+                    <p className="text-xs text-emerald-600">{documentActionMessage}</p>
+                  ) : null}
+                  {documentActionError ? (
+                    <p className="text-xs text-destructive">{documentActionError}</p>
+                  ) : null}
+
+                  <div className="space-y-3">
+                    {documentDrafts.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Документы для загрузки не выбраны. Добавьте хотя бы один файл.
+                      </p>
+                    ) : (
+                      documentDrafts.map((draft, index) => (
+                        <div
+                          key={draft.id}
+                          className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                              Документ {index + 1}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="rounded-lg text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemoveDocumentDraft(draft.id)}
+                              disabled={pending}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              <span className="sr-only">Удалить файл</span>
+                            </Button>
+                          </div>
+                          <div className="flex flex-col gap-3 md:flex-row">
+                            <div className="flex-1 space-y-2">
+                              <Label>Тип документа</Label>
+                              <Select
+                                value={draft.type || DOCUMENT_TYPE_EMPTY_VALUE}
+                                onValueChange={(nextValue) => {
+                                  const normalized =
+                                    nextValue === DOCUMENT_TYPE_EMPTY_VALUE
+                                      ? ""
+                                      : (nextValue as ClientDocumentTypeValue);
+                                  handleDocumentDraftTypeChange(draft.id, normalized);
+                                }}
+                                disabled={pending}
+                              >
+                                <SelectTrigger className="rounded-lg">
+                                  <SelectValue placeholder="Выберите тип документа" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={DOCUMENT_TYPE_EMPTY_VALUE}>Не выбран</SelectItem>
+                                  {CLIENT_DOCUMENT_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <input type="hidden" name={`documents[${draft.id}][type]`} value={draft.type} />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <Label htmlFor={`document-file-${draft.id}`}>Файл</Label>
+                              <Input
+                                id={`document-file-${draft.id}`}
+                                type="file"
+                                name={`documents[${draft.id}][file]`}
+                                accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                                onChange={(event) =>
+                                  handleDocumentDraftFileChange(draft.id, event.currentTarget.files?.[0] ?? null)
+                                }
+                                className="rounded-lg"
+                                disabled={pending}
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                {draft.file?.name
+                                  ? `Выбран файл: ${draft.file.name}`
+                                  : "Максимальный размер — 10 МБ для каждого файла."}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2 rounded-lg"
+                      onClick={handleAddDocumentDraft}
+                      disabled={pending}
+                    >
+                      <Plus className="h-4 w-4" />
+                      Добавить документ
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                      После отправки файлы автоматически попадут в карточку клиента и сделки.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="space-y-2">
                 <Label htmlFor="task-note">Комментарий</Label>
                 <Textarea
@@ -493,40 +788,13 @@ export function TaskDetailView({
                     <Paperclip className="h-3 w-3" />
                     <span>Загруженные документы</span>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {guardDocumentLinks.map((doc) => {
-                      const label = resolveDocumentLabel(doc);
-                      if (!doc.url) {
-                        return (
-                          <div
-                            key={doc.id}
-                            className="flex items-center justify-between rounded-md border border-border/50 bg-background px-3 py-2 text-xs text-foreground"
-                          >
-                            <span className="flex items-center gap-2">
-                              <Paperclip className="h-3 w-3 text-muted-foreground" />
-                              {label}
-                            </span>
-                            <span className="text-[11px] text-muted-foreground/80">Нет ссылки</span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <Link
-                          key={doc.id}
-                          href={doc.url}
-                          target="_blank"
-                          className="flex items-center justify-between rounded-md border border-border/60 bg-background px-3 py-2 text-xs font-medium text-foreground transition hover:border-brand-200 hover:bg-muted/40"
-                        >
-                          <span className="flex items-center gap-2">
-                            <Paperclip className="h-3 w-3 text-brand-600" />
-                            {label}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">Открыть</span>
-                        </Link>
-                      );
-                    })}
-                  </div>
+                  {renderGuardDocumentList(true)}
+                  {documentActionError ? (
+                    <p className="mt-2 text-xs text-destructive">{documentActionError}</p>
+                  ) : null}
+                  {documentActionMessage ? (
+                    <p className="mt-1 text-xs text-emerald-600">{documentActionMessage}</p>
+                  ) : null}
                 </div>
               ) : null}
               {isCompletedWorkflow ? (
