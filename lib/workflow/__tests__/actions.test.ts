@@ -184,4 +184,58 @@ describe("workflow action executor", () => {
       expect.objectContaining({ action: "NOTIFY_TRIGGER" }),
     );
   });
+
+  it("creates a task with extended fields (template, schema, bindings)", async () => {
+    const { client, tasksChain } = createSupabaseMock();
+    const executor = createWorkflowActionExecutor(client);
+
+    await executor(
+      {
+        type: "TASK_CREATE",
+        task: {
+          templateId: "extended_task_v1",
+          type: "MANUAL_TASK",
+          title: "Extended Task",
+          assigneeRole: "ADMIN",
+          sla: { hours: 24 },
+          schema: {
+            version: "1.0",
+            fields: [{ id: "f1", type: "string" }],
+          },
+          bindings: { deal_id: "{{deal.id}}" },
+          defaults: { priority: "high" },
+          guardKey: "guard.key",
+        },
+      },
+      {
+        actorRole: "ADMIN",
+        transition: { from: "A", to: "B" },
+        template: {
+          workflow: { id: "wf-1" },
+        } as any,
+        dealId: "deal-1",
+        payload: {},
+      },
+    );
+
+    const [taskPayload] = tasksChain.upsert.mock.calls[0];
+    expect(taskPayload).toMatchObject({
+      payload: expect.objectContaining({
+        template_id: "extended_task_v1",
+        schema_version: "1.0",
+        schema: {
+          version: "1.0",
+          fields: [{ id: "f1", type: "string" }],
+        },
+        defaults: { priority: "high" },
+        guard_key: "guard.key",
+        fields: expect.objectContaining({
+          priority: "high",
+          deal_id: "deal-1",
+        }),
+      }),
+      sla_status: "ON_TRACK",
+      sla_due_at: expect.any(String),
+    });
+  });
 });

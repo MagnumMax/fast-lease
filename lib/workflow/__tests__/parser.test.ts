@@ -108,4 +108,78 @@ notifications:
       WorkflowTemplateParseError,
     );
   });
+
+  it("parses extended task fields in TASK_CREATE actions", () => {
+    const yamlWithTask = `
+workflow:
+  id: test-v1
+  title: Test
+  entity: Deal
+  owner_role: ADMIN
+  timezone: UTC
+roles:
+  - code: ADMIN
+    name: Admin
+    categories: [auth]
+kanban_order: [STAGE1]
+statuses:
+  STAGE1:
+    title: Stage 1
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          template_id: tpl-1
+          type: MANUAL_TASK
+          title: Manual Task
+          assignee_role: ADMIN
+          schema:
+            version: "1.0"
+            fields:
+              - id: field1
+                type: string
+          bindings:
+            deal_id: "\${deal.id}"
+          defaults:
+            priority: high
+          guard_key: "guard-1"
+transitions:
+  - from: STAGE1
+    to: STAGE1
+    by_roles: [ADMIN]
+permissions: {}
+integrations: {}
+metrics: { enabled: false }
+notifications: { channels: [], templates: {} }
+`;
+
+    let template;
+    try {
+      template = parseWorkflowTemplate(yamlWithTask);
+    } catch (error) {
+      if (error instanceof WorkflowTemplateParseError) {
+        console.error(JSON.stringify(error, null, 2));
+        // @ts-ignore
+        console.error(JSON.stringify(error.cause, null, 2));
+      }
+      throw error;
+    }
+    const action = template.stages.STAGE1.entryActions?.[0];
+
+    if (action?.type !== "TASK_CREATE") {
+      throw new Error("Expected TASK_CREATE action");
+    }
+
+    expect(action.task).toEqual(
+      expect.objectContaining({
+        templateId: "tpl-1",
+        schema: {
+          version: "1.0",
+          fields: [{ id: "field1", type: "string" }],
+        },
+        bindings: { deal_id: "${deal.id}" },
+        defaults: { priority: "high" },
+        guardKey: "guard-1",
+      }),
+    );
+  });
 });

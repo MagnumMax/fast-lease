@@ -8,6 +8,7 @@ import {
   WorkflowVersionService,
   type WorkflowVersionRecord,
   type WorkflowVersionRepository,
+  type WorkflowTaskTemplateCacheEntry,
 } from "../versioning";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -19,9 +20,9 @@ const TEMPLATE_PATH = resolve(
 const BASE_CREATED_AT = "2025-01-01T00:00:00.000Z";
 
 class InMemoryWorkflowVersionRepository
-  implements WorkflowVersionRepository
-{
+  implements WorkflowVersionRepository {
   private records: WorkflowVersionRecord[] = [];
+  public taskTemplates: Record<string, WorkflowTaskTemplateCacheEntry[]> = {};
   private sequence = 1;
 
   async insert(input: Parameters<WorkflowVersionRepository["insert"]>[0]) {
@@ -81,6 +82,13 @@ class InMemoryWorkflowVersionRepository
       return { ...record, isActive: false };
     });
   }
+
+  async syncTaskTemplates(
+    versionId: string,
+    templates: WorkflowTaskTemplateCacheEntry[],
+  ) {
+    this.taskTemplates[versionId] = templates;
+  }
 }
 
 describe("WorkflowVersionService", () => {
@@ -134,5 +142,31 @@ describe("WorkflowVersionService", () => {
         workflowId: "fast-lease-v2",
       }),
     ).rejects.toThrow(/Workflow ID mismatch/);
+  });
+
+  it("syncs task templates when creating a version", async () => {
+    const record = await service.createVersion({
+      sourceYaml: yaml,
+      version: "2025-02-12",
+    });
+
+    const templates = repository.taskTemplates[record.id];
+    expect(templates).toBeDefined();
+    expect(templates.length).toBeGreaterThan(0);
+
+    const confirmCar = templates.find((t) => t.templateId === "confirm_car_v1");
+    expect(confirmCar).toBeDefined();
+    expect(confirmCar).toMatchObject({
+      taskType: "CONFIRM_CAR",
+      defaults: {
+        instructions: expect.stringContaining("Свяжитесь с дилером"),
+      },
+    });
+    expect(confirmCar?.schema).toMatchObject({
+      version: "1.0",
+      fields: expect.arrayContaining([
+        expect.objectContaining({ id: "deal_id" }),
+      ]),
+    });
   });
 });
