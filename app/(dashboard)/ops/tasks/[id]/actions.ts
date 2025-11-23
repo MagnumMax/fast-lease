@@ -25,7 +25,7 @@ import {
   type ClientDocumentSummary,
 } from "@/lib/workflow/documents-checklist";
 
-export type FormStatus = { status: "idle" | "success" | "error"; message?: string };
+export type FormStatus = { status: "idle" | "success" | "error"; message?: string; redirectTo?: string };
 type DeleteGuardDocumentInput = z.infer<typeof DELETE_GUARD_DOCUMENT_SCHEMA>;
 export type DeleteGuardDocumentResult = { success: true } | { success: false; error: string };
 
@@ -766,5 +766,6 @@ export async function completeTaskFormAction(
     message: completionResult.transitionSuccess
       ? `Задача завершена, статус сделки: ${completionResult.newStatus}`
       : "Задача завершена",
+    redirectTo: dealSlug ? `/ops/deals/${dealSlug}` : `/ops/deals/${dealId}`,
   };
 }

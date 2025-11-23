@@ -102,7 +102,13 @@ const INITIAL_STATE: FormStatus = { status: "idle" };
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
   try {
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleString("ru-RU", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
     return value;
   }
@@ -167,7 +173,6 @@ export function TaskDetailView({
   guardState,
   checklist,
   deal,
-  stageTitle,
   guardDocuments,
   completeAction,
 }: TaskDetailViewProps) {
@@ -214,7 +219,7 @@ export function TaskDetailView({
     (field) => isEditableField(field) && !fieldsToSkip.has(field.id),
   );
   const statusMeta = getTaskStatusMeta(task.status);
-  const slaInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
+  const deadlineInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const requiresDocument = guardMeta?.requiresDocument ?? false;
 
@@ -243,6 +248,11 @@ export function TaskDetailView({
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
   const allowDocumentDeletion = Boolean(deal?.clientId);
+  const taskInstruction = hasForm
+    ? deadlineInfo
+      ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
+      : "Проверьте детали, заполните форму ниже и завершите задачу."
+    : "Задача завершена — просмотрите ответы и вложения или вернитесь к списку.";
 
   function handleBackNavigation() {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -255,6 +265,12 @@ export function TaskDetailView({
   function handleAddDocumentDraft() {
     setDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
   }
+
+  useEffect(() => {
+    if (formState.status === "success" && formState.redirectTo) {
+      router.push(formState.redirectTo);
+    }
+  }, [formState, router]);
 
   function handleRemoveDocumentDraft(id: string) {
     setDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
@@ -408,10 +424,6 @@ export function TaskDetailView({
               {statusMeta.label}
             </Badge>
           </div>
-          <CardDescription>
-            {stageTitle ? `Этап: ${stageTitle}` : "Задача workflow"}
-            {task.assigneeRole ? ` • Ответственный: ${task.assigneeRole}` : ""}
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           {deal ? (
@@ -455,10 +467,10 @@ export function TaskDetailView({
               ) : null}
             </div>
           ) : null}
-          {slaInfo ? (
+          {deadlineInfo ? (
             <div className="flex items-center gap-2">
               <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
-              <span>SLA: {slaInfo}</span>
+              <span>Крайний срок: {deadlineInfo}</span>
             </div>
           ) : null}
           {completedInfo && task.status === "DONE" ? (
@@ -510,16 +522,16 @@ export function TaskDetailView({
               </ul>
             </div>
           ) : null}
+          <div className="mt-2 rounded-lg border border-dashed border-border/70 bg-muted/25 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Что сделать</p>
+            <p className="mt-1 text-sm text-foreground/80">{taskInstruction}</p>
+          </div>
         </CardContent>
       </Card>
 
       <Card className="border-border/80 bg-card/80 backdrop-blur">
         <CardHeader className="space-y-2">
           <CardTitle className="text-lg font-semibold">Выполнение задачи</CardTitle>
-          <CardDescription>
-            Заполните необходимые поля и приложите подтверждающие документы, чтобы завершить задачу
-            и разблокировать переход по workflow.
-          </CardDescription>
         </CardHeader>
         <CardContent>
           {formState.status === "success" ? (
@@ -562,7 +574,10 @@ export function TaskDetailView({
                     if (type === "textarea") {
                       return (
                         <div key={fieldId} className="space-y-2">
-                          <Label htmlFor={`field-${fieldId}`}>{label}</Label>
+                          <Label htmlFor={`field-${fieldId}`}>
+                            {label}
+                            {isRequired ? <span className="ml-1 text-destructive">*</span> : null}
+                          </Label>
                           <Textarea
                             id={`field-${fieldId}`}
                             name={`field:${fieldId}`}
@@ -597,7 +612,10 @@ export function TaskDetailView({
                       const checklist = parsedChecklist ? filterChecklistTypes(parsedChecklist) : [];
                       return (
                         <div key={fieldId} className="space-y-2">
-                          <Label htmlFor={`field-${fieldId}`}>{label}</Label>
+                          <Label htmlFor={`field-${fieldId}`}>
+                            {label}
+                            {isRequired ? <span className="ml-1 text-destructive">*</span> : null}
+                          </Label>
                           <input
                             type="hidden"
                             id={`field-${fieldId}`}
@@ -624,7 +642,10 @@ export function TaskDetailView({
 
                     return (
                       <div key={fieldId} className="space-y-2">
-                        <Label htmlFor={`field-${fieldId}`}>{label}</Label>
+                        <Label htmlFor={`field-${fieldId}`}>
+                          {label}
+                          {isRequired ? <span className="ml-1 text-destructive">*</span> : null}
+                        </Label>
                         <Input
                           id={`field-${fieldId}`}
                           name={`field:${fieldId}`}
@@ -825,57 +846,9 @@ export function TaskDetailView({
                   ) : null}
                 </div>
               ) : null}
-              {isCompletedWorkflow ? (
-                <div className="space-y-4">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Ответы исполнителя
-                  </span>
-                  {editableFields.length > 0 ? (
-                    <div className="space-y-2">
-                      {editableFields.map((field) => {
-                        const value = resolveFieldValue(field.id, payload);
-                        const displayValue = value.trim().length > 0 ? value : "—";
-                        return (
-                          <div
-                            key={field.id}
-                            className="space-y-1 rounded-lg border border-border/60 bg-muted/40 px-3 py-2"
-                          >
-                            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              {field.label ?? field.id}
-                            </span>
-                            <p className="whitespace-pre-wrap text-sm text-foreground/80">{displayValue}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                  {guardState?.note ? (
-                    <div className="space-y-1 rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Комментарий
-                      </span>
-                      <p className="whitespace-pre-wrap text-sm text-foreground/80">{guardState.note}</p>
-                    </div>
-                  ) : null}
-                  {!hasGuardDocuments && guardState?.attachmentUrl ? (
-                    <Link
-                      href={guardState.attachmentUrl}
-                      target="_blank"
-                      className="inline-flex items-center gap-2 text-xs font-semibold text-brand-600 underline underline-offset-2"
-                    >
-                      <Paperclip className="h-3 w-3" />
-                      Просмотреть вложенный документ
-                    </Link>
-                  ) : null}
-                  {editableFields.length === 0 && !guardState?.note ? (
-                    <p className="text-sm text-muted-foreground">Данные по выполнению задачи отсутствуют.</p>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Задача уже завершена. Обновите страницу, чтобы увидеть актуальные данные.
-                </p>
-              )}
+              <p className="text-sm text-muted-foreground">
+                Задача завершена. Обновите страницу при необходимости.
+              </p>
             </>
           )}
         </CardContent>
