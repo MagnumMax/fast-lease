@@ -406,7 +406,7 @@ export function TaskDetailView({
     }
 
     return (
-      <div className="flex flex-col gap-2">
+      <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
         {guardDocumentLinks.map((doc) => {
           const label = resolveDocumentLabel(doc);
           const deleting = isDocumentDeleting(doc.id);
@@ -597,11 +597,6 @@ export function TaskDetailView({
               {formState.message ?? "Задача успешно завершена"}
             </div>
           ) : null}
-          {formState.status === "error" ? (
-            <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {formState.message ?? "Не удалось завершить задачу. Попробуйте снова."}
-            </div>
-          ) : null}
 
           {hasForm ? (
             <form action={formAction} className="space-y-5">
@@ -736,7 +731,7 @@ export function TaskDetailView({
               {requiresDocument ? (
                 <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
                   <div className="space-y-1">
-                    <span className="text-sm font-semibold text-foreground">Загрузка подписанных документов</span>
+                    <span className="text-sm font-semibold text-foreground">Загрузка документов</span>
                     <p className="text-xs text-muted-foreground">
                       Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG.
                     </p>
@@ -813,7 +808,7 @@ export function TaskDetailView({
                                 <SelectTrigger className="rounded-lg">
                                   <SelectValue placeholder="Выберите тип документа" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="max-h-72 overflow-y-auto">
                                   <SelectItem value={DOCUMENT_TYPE_EMPTY_VALUE}>Не выбран</SelectItem>
                                   {CLIENT_DOCUMENT_OPTIONS.map((option) => (
                                     <SelectItem key={option.value} value={option.value}>
@@ -885,6 +880,12 @@ export function TaskDetailView({
                   className="min-h-[120px] rounded-lg"
                 />
               </div>
+
+              {formState.status === "error" ? (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {formState.message ?? "Не удалось завершить задачу. Попробуйте снова."}
+                </div>
+              ) : null}
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 <Button

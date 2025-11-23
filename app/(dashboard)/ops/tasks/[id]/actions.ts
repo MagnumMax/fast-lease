@@ -278,6 +278,19 @@ function prepareDealPayloadBranches(source: unknown): PreparedPayloadBranches {
   };
 }
 
+function resolveChecklistAttachmentPath(checklist: ClientDocumentChecklist | null): string | null {
+  if (!checklist) return null;
+  for (const item of checklist.items) {
+    const match = item.matches.find(
+      (entry) => typeof entry.storage_path === "string" && entry.storage_path.length > 0,
+    );
+    if (match?.storage_path) {
+      return match.storage_path;
+    }
+  }
+  return null;
+}
+
 async function evaluateAndSyncDocsGuard(options: {
   supabase: Awaited<ReturnType<typeof createSupabaseServiceClient>>;
   clientId: string;
@@ -577,8 +590,33 @@ export async function completeTaskFormAction(
     }
   }
 
-  const mustUploadDocuments = requiresDoc && !existingGuardAttachmentPath;
-  if (intent === "complete" && mustUploadDocuments && documentUploads.length === 0) {
+  const enforcedChecklist = guardKey === VEHICLE_VERIFICATION_GUARD_KEY ? [TECHNICAL_REPORT_TYPE] : [];
+  const requiredChecklist = Array.from(
+    new Set([...extractChecklistFromTaskPayload(existing.payload ?? null), ...enforcedChecklist]),
+  );
+  let syncedChecklist: ClientDocumentChecklist | null = null;
+
+  if (clientId && guardKey && requiredChecklist.length > 0 && documentUploads.length === 0) {
+    syncedChecklist = await evaluateAndSyncDocsGuard({
+      supabase,
+      clientId,
+      dealId,
+      guardKey,
+      dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
+      requiredChecklist,
+    });
+    if (!existingGuardAttachmentPath) {
+      existingGuardAttachmentPath = resolveChecklistAttachmentPath(syncedChecklist);
+    }
+  }
+
+  const mustUploadDocuments =
+    intent === "complete" &&
+    requiresDoc &&
+    documentUploads.length === 0 &&
+    requiredChecklist.length === 0 &&
+    !existingGuardAttachmentPath;
+  if (mustUploadDocuments) {
     return { status: "error", message: "Необходимо приложить документ" };
   }
 
@@ -617,13 +655,7 @@ export async function completeTaskFormAction(
     documentType: null,
   });
 
-  const enforcedChecklist =
-    guardKey === VEHICLE_VERIFICATION_GUARD_KEY ? [TECHNICAL_REPORT_TYPE] : [];
-  const requiredChecklist = Array.from(
-    new Set([...extractChecklistFromTaskPayload(existing.payload ?? null), ...enforcedChecklist]),
-  );
-  let syncedChecklist: ClientDocumentChecklist | null = null;
-  if (clientId && guardKey && requiredChecklist.length > 0) {
+  if (clientId && guardKey && requiredChecklist.length > 0 && (documentUploads.length > 0 || !syncedChecklist)) {
     syncedChecklist = await evaluateAndSyncDocsGuard({
       supabase,
       clientId,
@@ -632,6 +664,9 @@ export async function completeTaskFormAction(
       dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
       requiredChecklist,
     });
+    if (!existingGuardAttachmentPath) {
+      existingGuardAttachmentPath = resolveChecklistAttachmentPath(syncedChecklist);
+    }
   }
 
   const dealSlug = typeof dealRow.deal_number === "string" ? (dealRow.deal_number as string) : null;
