@@ -81,6 +81,8 @@ type DocumentDraft = {
 const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
+const AECB_TASK_TYPE = "AECB_CHECK";
+const AECB_CREDIT_REPORT_TYPE: ClientDocumentTypeValue = "aecb_credit_report";
 const ANALOG_FIELD_DEFS: TaskFieldDefinition[] = [
   {
     id: "analog_market_url_1",
@@ -238,6 +240,7 @@ export function TaskDetailView({
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
+  const isAecbTask = task.type === AECB_TASK_TYPE;
   const confirmCarInstructions =
     task.type === "CONFIRM_CAR"
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
@@ -247,7 +250,7 @@ export function TaskDetailView({
 
   const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
   const filteredSchemaFields =
-    task.type === "AECB_CHECK" ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
+    isAecbTask ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
   let effectiveSchemaFields = isPrepareQuoteTask ? [] : filteredSchemaFields;
   const fieldsToSkip = new Set<string>();
   if (task.type === "CONFIRM_CAR") {
@@ -270,19 +273,31 @@ export function TaskDetailView({
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
   const requiresDocument = (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
+  const documentsEnabled = requiresDocument || isAecbTask;
+  const defaultDocumentType = enforcedDocumentType ?? (isAecbTask ? AECB_CREDIT_REPORT_TYPE : "");
   const requiredDocumentLabel = enforcedDocumentType
     ? getClientDocumentLabel(enforcedDocumentType) ?? "Технический отчёт"
     : null;
+  const documentSectionDescription = requiresDocument
+    ? "Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG."
+    : isAecbTask
+      ? "При необходимости загрузите AECB credit report для внутренней проверки. Поддерживаются PDF, JPG и PNG."
+      : "Добавьте связанные документы при необходимости. Поддерживаются PDF, JPG и PNG.";
+  const documentEmptyStateText = requiresDocument
+    ? "Документы для загрузки не выбраны. Добавьте хотя бы один файл."
+    : isAecbTask
+      ? "Документы не выбраны. Этот шаг можно пропустить или приложить AECB credit report."
+      : "Документы для загрузки не выбраны.";
 
   useEffect(() => {
-    if (!requiresDocument) {
+    if (!documentsEnabled) {
       setDocumentDrafts([]);
       return;
     }
     setDocumentDrafts((prev) =>
-      prev.length > 0 ? prev : [createDocumentDraft(enforcedDocumentType ?? "")],
+      prev.length > 0 ? prev : [createDocumentDraft(defaultDocumentType)],
     );
-  }, [enforcedDocumentType, requiresDocument]);
+  }, [defaultDocumentType, documentsEnabled]);
 
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
   const hasForm = task.status !== "DONE";
@@ -321,7 +336,7 @@ export function TaskDetailView({
   }
 
   function handleAddDocumentDraft() {
-    setDocumentDrafts((prev) => [...prev, createDocumentDraft(enforcedDocumentType ?? "")]);
+    setDocumentDrafts((prev) => [...prev, createDocumentDraft(defaultDocumentType)]);
   }
 
   useEffect(() => {
@@ -728,12 +743,12 @@ export function TaskDetailView({
                 </div>
               ) : null}
 
-              {requiresDocument ? (
+              {documentsEnabled ? (
                 <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
                   <div className="space-y-1">
                     <span className="text-sm font-semibold text-foreground">Загрузка документов</span>
                     <p className="text-xs text-muted-foreground">
-                      Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG.
+                      {documentSectionDescription}
                     </p>
                     {requiredDocumentLabel ? (
                       <p className="text-xs font-semibold text-foreground">
@@ -759,9 +774,7 @@ export function TaskDetailView({
 
                   <div className="space-y-3">
                     {documentDrafts.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        Документы для загрузки не выбраны. Добавьте хотя бы один файл.
-                      </p>
+                      <p className="text-xs text-muted-foreground">{documentEmptyStateText}</p>
                     ) : (
                       documentDrafts.map((draft, index) => (
                         <div

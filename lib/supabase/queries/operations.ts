@@ -108,7 +108,7 @@ export const OPS_WORKFLOW_STATUSES = [
     description: "AECB скоринг и внутреннее одобрение риска.",
     ownerRole: "RISK_MANAGER",
     slaLabel: "SLA 24h",
-    entryActions: ["AECB и скоринг", "Отправить запрос AECB"],
+    entryActions: ["Провести проверку и внутренний скоринг", "Отправить запрос AECB"],
     exitGuards: [
       {
         key: "risk.approved",
@@ -873,6 +873,7 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "payment_schedule", label: "Платёжный график", context: "any" as const },
   { value: "delivery_act", label: "Акт приёма-передачи", context: "any" as const },
   { value: "technical_report", label: "Технический отчёт", context: "any" as const },
+  { value: "aecb_credit_report", label: "AECB credit report", context: "any" as const },
   { value: "commercial_offer", label: "Коммерческое предложение", context: "any" as const },
   { value: "signed_commercial_offer", label: "Коммерческое предложение (подписанное)", context: "any" as const },
   { value: "other", label: "Другой документ", context: "any" as const },

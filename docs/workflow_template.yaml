@@ -184,21 +184,16 @@ statuses:
         task:
           template_id: aecb_check_v1
           type: AECB_CHECK
-          title: "AECB и скоринг"
+          title: "Провести проверку и внутренний скоринг"
           assignee_role: RISK_MANAGER
           guard_key: "risk.approved"
           sla: { hours: 24 }
           schema:
             version: "1.0"
             fields:
-              - id: score_target
-                type: number
-                label: "Минимальный скоринговый балл"
               - id: notes
                 type: textarea
                 label: "Комментарии"
-          defaults:
-            score_target: 720
       - type: WEBHOOK
         endpoint: "aecb.request"
         payload: { dealId: "{{deal.id}}", clientId: "{{deal.client_id}}" }

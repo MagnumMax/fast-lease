@@ -185,7 +185,7 @@ export const OPS_WORKFLOW_STATUSES = [
     description: "AECB скоринг и внутреннее одобрение риска.",
     ownerRole: "RISK_MANAGER",
     slaLabel: "SLA 24h",
-    entryActions: ["AECB и скоринг", "Отправить запрос AECB"],
+    entryActions: ["Провести проверку и внутренний скоринг", "Отправить запрос AECB"],
     exitGuards: [
       {
         key: "risk.approved",
