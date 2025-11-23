@@ -94,6 +94,8 @@ const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
 const DOCUMENT_TYPE_EMPTY_VALUE = "__workflow-doc-none__";
 const CLIENT_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 const TASKS_LIST_ROUTE = "/ops/tasks";
+const CONFIRM_CAR_INSTRUCTIONS =
+  "Свяжитесь с дилером/брокером и подтвердите доступность выбранного авто.";
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
 
@@ -195,12 +197,22 @@ export function TaskDetailView({
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
+  const confirmCarInstructions =
+    task.type === "CONFIRM_CAR"
+      ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
+      : null;
 
   const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
   const filteredSchemaFields =
     task.type === "AECB_CHECK" ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
   const effectiveSchemaFields = isPrepareQuoteTask ? [] : filteredSchemaFields;
-  const editableFields = effectiveSchemaFields.filter((field) => isEditableField(field));
+  const fieldsToSkip = new Set<string>();
+  if (task.type === "CONFIRM_CAR") {
+    fieldsToSkip.add("instructions");
+  }
+  const editableFields = effectiveSchemaFields.filter(
+    (field) => isEditableField(field) && !fieldsToSkip.has(field.id),
+  );
   const statusMeta = getTaskStatusMeta(task.status);
   const slaInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
@@ -530,102 +542,103 @@ export function TaskDetailView({
               {guardMeta ? <input type="hidden" name="guardKey" value={guardMeta.key} /> : null}
               {guardMeta ? <input type="hidden" name="guardLabel" value={guardMeta.label} /> : null}
 
+              {confirmCarInstructions ? (
+                <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground">
+                  {confirmCarInstructions}
+                </div>
+              ) : null}
+
               {editableFields.length > 0 ? (
-                <div className="space-y-4">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Поля для заполнения
-                  </span>
-                  <div className="space-y-3">
-                    {editableFields.map((field) => {
-                      const fieldId = field.id;
-                      const value = resolveFieldValue(fieldId, payload);
-                      const label = field.label ?? fieldId;
-                      const hint = field.hint ?? "";
-                      const type = field.type?.toLowerCase();
+                <div className="space-y-3">
+                  {editableFields.map((field) => {
+                    const fieldId = field.id;
+                    const value = resolveFieldValue(fieldId, payload);
+                    const label = field.label ?? fieldId;
+                    const hint = field.hint ?? "";
+                    const type = field.type?.toLowerCase();
 
-                      const isRequired = field.required ?? false;
+                    const isRequired = field.required ?? false;
 
-                      if (type === "textarea") {
-                        return (
-                          <div key={fieldId} className="space-y-2">
-                            <Label htmlFor={`field-${fieldId}`}>{label}</Label>
-                            <Textarea
-                              id={`field-${fieldId}`}
-                              name={`field:${fieldId}`}
-                              defaultValue={value}
-                              required={isRequired}
-                              placeholder={hint}
-                              className="min-h-[120px] rounded-lg"
-                              onChange={(event) => {
-                                if (isRequired) {
-                                  const next = event.target.value.trim();
-                                  setDraftRequiredValues((prev) =>
-                                    next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
-                                      const clone = { ...prev };
-                                      delete clone[fieldId];
-                                      return clone;
-                                    })(),
-                                  );
-                                }
-                              }}
-                            />
-                            {hint ? (
-                              <p className="text-xs text-muted-foreground">
-                                {hint}
-                              </p>
-                            ) : null}
-                          </div>
-                        );
-                      }
-
-                      if (type === "checklist") {
-                        const parsedChecklist = normalizeChecklistCandidate(value);
-                        const checklist = parsedChecklist ? filterChecklistTypes(parsedChecklist) : [];
-                        return (
-                          <div key={fieldId} className="space-y-2">
-                            <Label htmlFor={`field-${fieldId}`}>{label}</Label>
-                            <input
-                              type="hidden"
-                              id={`field-${fieldId}`}
-                              name={`field:${fieldId}`}
-                              value={JSON.stringify(checklist)}
-                            />
-                            {checklist.length > 0 ? (
-                              <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
-                                {checklist.map((item) => (
-                                  <Badge key={item} variant="secondary" className="rounded-lg text-xs">
-                                    {getClientDocumentLabel(item) ?? item}
-                                  </Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-xs text-muted-foreground">
-                                Чек-лист пуст.
-                              </p>
-                            )}
-                            {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-                          </div>
-                        );
-                      }
-
+                    if (type === "textarea") {
                       return (
                         <div key={fieldId} className="space-y-2">
                           <Label htmlFor={`field-${fieldId}`}>{label}</Label>
-                          <Input
+                          <Textarea
                             id={`field-${fieldId}`}
                             name={`field:${fieldId}`}
                             defaultValue={value}
                             required={isRequired}
                             placeholder={hint}
-                            className="rounded-lg"
+                            className="min-h-[120px] rounded-lg"
+                            onChange={(event) => {
+                              if (isRequired) {
+                                const next = event.target.value.trim();
+                                setDraftRequiredValues((prev) =>
+                                  next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
+                                    const clone = { ...prev };
+                                    delete clone[fieldId];
+                                    return clone;
+                                  })(),
+                                );
+                              }
+                            }}
                           />
                           {hint ? (
-                            <p className="text-xs text-muted-foreground">{hint}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {hint}
+                            </p>
                           ) : null}
                         </div>
                       );
-                    })}
-                  </div>
+                    }
+
+                    if (type === "checklist") {
+                      const parsedChecklist = normalizeChecklistCandidate(value);
+                      const checklist = parsedChecklist ? filterChecklistTypes(parsedChecklist) : [];
+                      return (
+                        <div key={fieldId} className="space-y-2">
+                          <Label htmlFor={`field-${fieldId}`}>{label}</Label>
+                          <input
+                            type="hidden"
+                            id={`field-${fieldId}`}
+                            name={`field:${fieldId}`}
+                            value={JSON.stringify(checklist)}
+                          />
+                          {checklist.length > 0 ? (
+                            <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+                              {checklist.map((item) => (
+                                <Badge key={item} variant="secondary" className="rounded-lg text-xs">
+                                  {getClientDocumentLabel(item) ?? item}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-xs text-muted-foreground">
+                              Чек-лист пуст.
+                            </p>
+                          )}
+                          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div key={fieldId} className="space-y-2">
+                        <Label htmlFor={`field-${fieldId}`}>{label}</Label>
+                        <Input
+                          id={`field-${fieldId}`}
+                          name={`field:${fieldId}`}
+                          defaultValue={value}
+                          required={isRequired}
+                          placeholder={hint}
+                          className="rounded-lg"
+                        />
+                        {hint ? (
+                          <p className="text-xs text-muted-foreground">{hint}</p>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
 

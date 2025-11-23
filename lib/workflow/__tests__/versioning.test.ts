@@ -158,15 +158,18 @@ describe("WorkflowVersionService", () => {
     expect(confirmCar).toBeDefined();
     expect(confirmCar).toMatchObject({
       taskType: "CONFIRM_CAR",
-      defaults: {
-        instructions: expect.stringContaining("Свяжитесь с дилером"),
-      },
+      defaults: null,
     });
-    expect(confirmCar?.schema).toMatchObject({
-      version: "1.0",
-      fields: expect.arrayContaining([
-        expect.objectContaining({ id: "deal_id" }),
-      ]),
-    });
+    expect(confirmCar?.schema).toMatchObject({ version: "1.0" });
+
+    const confirmCarFields =
+      (confirmCar?.schema as { fields?: { id?: string }[] } | null)?.fields ?? [];
+    const fieldIds = confirmCarFields
+      .map((field) => field?.id)
+      .filter((id): id is string => Boolean(id));
+
+    expect(fieldIds).toContain("deal_id");
+    expect(fieldIds).toContain("current_status");
+    expect(fieldIds).not.toContain("instructions");
   });
 });

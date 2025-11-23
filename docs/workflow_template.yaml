@@ -73,14 +73,9 @@ statuses:
               - id: current_status
                 type: badge
                 label: "Текущий этап"
-              - id: instructions
-                type: text
-                label: "Инструкции"
           bindings:
             deal_id: "{{deal.id}}"
             current_status: "{{deal.status}}"
-          defaults:
-            instructions: "Свяжитесь с дилером/брокером и подтвердите доступность выбранного авто."
       - type: NOTIFY
         to_roles: [OP_MANAGER]
         template: "new_deal_created"
