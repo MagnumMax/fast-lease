@@ -75,14 +75,15 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "VEHICLE_CHECK",
     title: "Проверка авто",
-    description: "Проверка VIN, комплектации и цены поставщика.",
+    description: "Проверка технического состояния и рыночной стоимости автомобиля.",
     ownerRole: "TECH_SPECIALIST",
     slaLabel: "SLA 8h",
-    entryActions: ["Проверить VIN/комплектацию/цену"],
+    entryActions: ["Проверка тех состояния и оценочной стоимости авто"],
     exitGuards: [
       {
         key: "vehicle.verified",
-        label: "Проверить VIN/комплектацию/цену",
+        label: "Проверка тех состояния и оценочной стоимости авто",
+        requiresDocument: true,
       },
     ],
   },
@@ -871,6 +872,7 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "lease_agreement", label: "Договор аренды", context: "any" as const },
   { value: "payment_schedule", label: "Платёжный график", context: "any" as const },
   { value: "delivery_act", label: "Акт приёма-передачи", context: "any" as const },
+  { value: "technical_report", label: "Технический отчёт", context: "any" as const },
   { value: "commercial_offer", label: "Коммерческое предложение", context: "any" as const },
   { value: "signed_commercial_offer", label: "Коммерческое предложение (подписанное)", context: "any" as const },
   { value: "other", label: "Другой документ", context: "any" as const },

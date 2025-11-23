@@ -78,14 +78,50 @@ type DocumentDraft = {
   file: File | null;
 };
 
-function createDocumentDraft(): DocumentDraft {
+const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
+const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
+const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
+const ANALOG_FIELD_DEFS: TaskFieldDefinition[] = [
+  {
+    id: "analog_market_url_1",
+    type: "text",
+    label: "Аналоги на площадках #1",
+  },
+  {
+    id: "analog_market_url_2",
+    type: "text",
+    label: "Аналоги на площадках #2",
+  },
+  {
+    id: "analog_market_url_3",
+    type: "text",
+    label: "Аналоги на площадках #3",
+  },
+  {
+    id: "analog_market_plus1_url_1",
+    type: "text",
+    label: "Аналоги на площадках +1 год #1",
+  },
+  {
+    id: "analog_market_plus1_url_2",
+    type: "text",
+    label: "Аналоги на площадках +1 год #2",
+  },
+  {
+    id: "analog_market_plus1_url_3",
+    type: "text",
+    label: "Аналоги на площадках +1 год #3",
+  },
+];
+
+function createDocumentDraft(defaultType: ClientDocumentTypeValue | "" = ""): DocumentDraft {
   const identifier =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
       : `doc-${Math.random().toString(36).slice(2, 10)}`;
   return {
     id: identifier,
-    type: "",
+    type: defaultType,
     file: null,
   };
 }
@@ -206,14 +242,25 @@ export function TaskDetailView({
     task.type === "CONFIRM_CAR"
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
       : null;
+  const isVehicleVerificationTask =
+    task.type === VEHICLE_VERIFICATION_TASK_TYPE || guardMeta?.key === VEHICLE_VERIFICATION_GUARD_KEY;
 
   const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
   const filteredSchemaFields =
     task.type === "AECB_CHECK" ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
-  const effectiveSchemaFields = isPrepareQuoteTask ? [] : filteredSchemaFields;
+  let effectiveSchemaFields = isPrepareQuoteTask ? [] : filteredSchemaFields;
   const fieldsToSkip = new Set<string>();
   if (task.type === "CONFIRM_CAR") {
     fieldsToSkip.add("instructions");
+  }
+  if (isVehicleVerificationTask) {
+    fieldsToSkip.add("vin");
+    fieldsToSkip.add("supplier");
+    const existingIds = new Set(effectiveSchemaFields.map((field) => field.id));
+    const missingAnalogs = ANALOG_FIELD_DEFS.filter((field) => !existingIds.has(field.id));
+    if (missingAnalogs.length > 0) {
+      effectiveSchemaFields = [...effectiveSchemaFields, ...missingAnalogs];
+    }
   }
   const editableFields = effectiveSchemaFields.filter(
     (field) => isEditableField(field) && !fieldsToSkip.has(field.id),
@@ -221,15 +268,21 @@ export function TaskDetailView({
   const statusMeta = getTaskStatusMeta(task.status);
   const deadlineInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
-  const requiresDocument = guardMeta?.requiresDocument ?? false;
+  const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
+  const requiresDocument = (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
+  const requiredDocumentLabel = enforcedDocumentType
+    ? getClientDocumentLabel(enforcedDocumentType) ?? "Технический отчёт"
+    : null;
 
   useEffect(() => {
     if (!requiresDocument) {
       setDocumentDrafts([]);
       return;
     }
-    setDocumentDrafts((prev) => (prev.length > 0 ? prev : [createDocumentDraft()]));
-  }, [requiresDocument]);
+    setDocumentDrafts((prev) =>
+      prev.length > 0 ? prev : [createDocumentDraft(enforcedDocumentType ?? "")],
+    );
+  }, [enforcedDocumentType, requiresDocument]);
 
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
   const hasForm = task.status !== "DONE";
@@ -248,9 +301,11 @@ export function TaskDetailView({
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
   const allowDocumentDeletion = Boolean(deal?.clientId);
-  const taskTitle = isPrepareQuoteTask
-    ? "Подготовка и подписание клиентом коммерческого предложения"
-    : task.title;
+  const taskTitle = isVehicleVerificationTask
+    ? "Проверка тех состояния и оценочной стоимости авто"
+    : isPrepareQuoteTask
+      ? "Подготовка и подписание клиентом коммерческого предложения"
+      : task.title;
   const taskInstruction = hasForm
     ? deadlineInfo
       ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
@@ -266,7 +321,7 @@ export function TaskDetailView({
   }
 
   function handleAddDocumentDraft() {
-    setDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
+    setDocumentDrafts((prev) => [...prev, createDocumentDraft(enforcedDocumentType ?? "")]);
   }
 
   useEffect(() => {
@@ -685,6 +740,11 @@ export function TaskDetailView({
                     <p className="text-xs text-muted-foreground">
                       Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG.
                     </p>
+                    {requiredDocumentLabel ? (
+                      <p className="text-xs font-semibold text-foreground">
+                        Обязателен документ: {requiredDocumentLabel}
+                      </p>
+                    ) : null}
                   </div>
 
                   {hasGuardDocuments ? (

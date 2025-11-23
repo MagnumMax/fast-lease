@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { TaskDetailView } from "@/app/(dashboard)/ops/_components/task-detail";
-import { OPS_WORKFLOW_STATUS_MAP } from "@/lib/supabase/queries/operations";
+import { OPS_WORKFLOW_STATUS_MAP, type ClientDocumentTypeValue } from "@/lib/supabase/queries/operations";
 import { getWorkspaceTaskById } from "@/lib/supabase/queries/tasks";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
@@ -13,6 +13,9 @@ import {
   type ClientDocumentChecklist,
   type ClientDocumentSummary,
 } from "@/lib/workflow/documents-checklist";
+
+const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
+const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
 
 type GuardDocumentLink = {
   id: string;
@@ -216,7 +219,11 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           documentType: resolvedDocumentType ?? null,
         };
 
-        const requiredChecklist = extractChecklistFromTaskPayload(task.payload ?? null);
+        const enforcedChecklist =
+          guardKey === VEHICLE_VERIFICATION_GUARD_KEY ? [TECHNICAL_REPORT_TYPE] : [];
+        const requiredChecklist = Array.from(
+          new Set([...extractChecklistFromTaskPayload(task.payload ?? null), ...enforcedChecklist]),
+        );
         if (requiredChecklist.length > 0 && clientDocuments.length > 0) {
           clientChecklist = evaluateClientDocumentChecklist(requiredChecklist, clientDocuments);
         } else if (requiredChecklist.length > 0) {

@@ -112,7 +112,7 @@ statuses:
         task:
           template_id: verify_vehicle_v1
           type: VERIFY_VEHICLE
-          title: "Проверить VIN/комплектацию/цену"
+          title: "Проверка тех состояния и оценочной стоимости авто"
           assignee_role: TECH_SPECIALIST
           guard_key: "vehicle.verified"
           sla: { hours: 8 }
@@ -122,20 +122,33 @@ statuses:
               - id: deal_id
                 type: badge
                 label: "ID сделки"
-              - id: vin
+              - id: analog_market_url_1
                 type: text
-                label: "VIN"
-              - id: supplier
+                label: "Аналоги на площадках #1"
+              - id: analog_market_url_2
                 type: text
-                label: "Поставщик"
+                label: "Аналоги на площадках #2"
+              - id: analog_market_url_3
+                type: text
+                label: "Аналоги на площадках #3"
+              - id: analog_market_plus1_url_1
+                type: text
+                label: "Аналоги на площадках +1 год #1"
+              - id: analog_market_plus1_url_2
+                type: text
+                label: "Аналоги на площадках +1 год #2"
+              - id: analog_market_plus1_url_3
+                type: text
+                label: "Аналоги на площадках +1 год #3"
+          defaults:
+            checklist:
+              - technical_report
           bindings:
             deal_id: "{{deal.id}}"
-            vin: "{{payload.vehicle.vin}}"
-            supplier: "{{payload.vehicle.supplier_name}}"
     exit_requirements:
       - key: vehicle.verified
         rule: "== true"
-        message: "Данные по авто не подтверждены."
+        message: "Технический отчёт и оценка авто не подтверждены."
 
   DOCS_COLLECT:
     title: "Сбор документов"

@@ -368,6 +368,14 @@ function resolveVehicleName(task: WorkspaceTask): string | null {
   return nested;
 }
 
+const TASK_TITLE_OVERRIDES: Record<string, string> = {
+  VERIFY_VEHICLE: "Проверка тех состояния и оценочной стоимости авто",
+};
+
+function resolveTaskTitle(task: WorkspaceTask): string {
+  return TASK_TITLE_OVERRIDES[task.type] ?? task.title;
+}
+
 function formatDate(value: string | null | undefined, withTime = true) {
   if (!value) return "—";
   try {
@@ -965,6 +973,7 @@ export function OpsTasksBoard({
                   const roleLabel = task.assigneeRole ?? "Роль не назначена";
                   const clientName = resolveClientName(task);
                   const vehicleName = resolveVehicleName(task);
+                  const taskTitle = resolveTaskTitle(task);
                   const dealSlug = task.dealId
                     ? buildSlugWithId(task.dealNumber ?? null, task.dealId) || task.dealId
                     : null;
@@ -977,7 +986,7 @@ export function OpsTasksBoard({
                             href={`/ops/tasks/${task.id}`}
                             className="font-medium text-primary hover:underline"
                           >
-                            {task.title}
+                            {taskTitle}
                           </Link>
                           {clientName || vehicleName ? (
                             <div className="space-y-1 text-xs text-muted-foreground">

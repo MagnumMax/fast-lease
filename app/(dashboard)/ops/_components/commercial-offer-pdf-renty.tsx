@@ -519,7 +519,11 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
             </Text>
           </View>
           {data.qrSrc ? (
-            <Image src={data.qrSrc} style={{ width: 68, height: 68 }} />
+            <>
+              {/* react-pdf Image does not support alt; lint noise suppressed for PDF rendering context */}
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image src={data.qrSrc} style={{ width: 68, height: 68 }} />
+            </>
           ) : null}
         </View>
       </Page>

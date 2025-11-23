@@ -152,14 +152,15 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "VEHICLE_CHECK",
     title: "Проверка авто",
-    description: "Проверка VIN, комплектации и цены поставщика.",
+    description: "Проверка технического состояния и рыночной стоимости автомобиля.",
     ownerRole: "TECH_SPECIALIST",
     slaLabel: "SLA 8h",
-    entryActions: ["Проверить VIN/комплектацию/цену"],
+    entryActions: ["Проверка тех состояния и оценочной стоимости авто"],
     exitGuards: [
       {
         key: "vehicle.verified",
-        label: "Проверить VIN/комплектацию/цену",
+        label: "Проверка тех состояния и оценочной стоимости авто",
+        requiresDocument: true,
       },
     ],
   },
