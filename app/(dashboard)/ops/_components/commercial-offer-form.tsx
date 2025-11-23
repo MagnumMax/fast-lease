@@ -165,6 +165,63 @@ export function CommercialOfferForm({
     setResult(response);
   };
 
+  const calculations = useMemo(() => {
+    const parseNumberInput = (value: string): number | null => {
+      if (!value) return null;
+      const digits = value.replace(/[^\d.,-]/g, "").replace(",", ".");
+      const parsed = Number(digits);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const formatCurrencyAED = (value: number | null): string => {
+      if (value == null || Number.isNaN(value)) return "—";
+      return `AED ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+    };
+    const formatPercent = (value: number | null): string => {
+      if (value == null || Number.isNaN(value)) return "—";
+      return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
+    };
+
+    const price = parseNumberInput(form.priceVat);
+    const termMonths = parseNumberInput(form.termMonths);
+    const downPayment = parseNumberInput(form.downPayment) ?? 0;
+    const annualRate = parseNumberInput(form.interestRateAnnual);
+    const insuranceAnnualRate = parseNumberInput(form.insuranceRateAnnual);
+
+    const principal = price != null ? Math.max(0, price - downPayment) : null;
+    const monthlyRatePercent = annualRate != null ? annualRate / 12 : null;
+    const periodRatePercent =
+      annualRate != null && termMonths != null ? (annualRate * termMonths) / 12 : null;
+    const totalInterestAmount =
+      principal != null && annualRate != null && termMonths != null && termMonths > 0
+        ? principal * (annualRate / 100) * (termMonths / 12)
+        : null;
+    const payoffWithInterest =
+      principal != null && totalInterestAmount != null ? principal + totalInterestAmount : null;
+    const monthlyLeasePayment =
+      payoffWithInterest != null && termMonths != null && termMonths > 0
+        ? payoffWithInterest / termMonths
+        : null;
+    const insuranceTotal =
+      price != null && insuranceAnnualRate != null && termMonths != null && termMonths > 0
+        ? price * (insuranceAnnualRate / 100) * (termMonths / 12)
+        : null;
+    const totalForClient =
+      payoffWithInterest != null && insuranceTotal != null
+        ? payoffWithInterest + insuranceTotal + downPayment
+        : null;
+
+    return [
+      { label: "Месячная ставка, %", value: formatPercent(monthlyRatePercent) },
+      { label: "Ставка за срок, %", value: formatPercent(periodRatePercent) },
+      { label: "Финансируемая сумма", value: formatCurrencyAED(principal) },
+      { label: "Итого к погашению", value: formatCurrencyAED(payoffWithInterest) },
+      { label: "Ежемесячный платёж", value: formatCurrencyAED(monthlyLeasePayment) },
+      { label: "Доход по процентам", value: formatCurrencyAED(totalInterestAmount) },
+      { label: "Страховые платежи", value: formatCurrencyAED(insuranceTotal) },
+      { label: "Итого для клиента (страх. + аванс)", value: formatCurrencyAED(totalForClient) },
+    ];
+  }, [form.downPayment, form.insuranceRateAnnual, form.interestRateAnnual, form.priceVat, form.termMonths]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -194,6 +251,19 @@ export function CommercialOfferForm({
               />
             </div>
           ))}
+        </div>
+        <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Расчётные показатели
+          </p>
+          <dl className="grid gap-2 md:grid-cols-2">
+            {calculations.map((item) => (
+              <div key={item.label} className="space-y-0.5 rounded-md bg-background/40 p-2">
+                <dt className="text-xs text-muted-foreground">{item.label}</dt>
+                <dd className="text-sm font-semibold text-foreground">{item.value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
         <div className="space-y-1">
           <Label htmlFor="offer-comment">Комментарий (виден в КП)</Label>

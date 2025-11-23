@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Download, Loader2 } from "lucide-react";
 import {
   Document,
@@ -242,6 +242,53 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     color: renty.textPrimary,
   },
+  signatureCard: {
+    padding: 12,
+    backgroundColor: renty.bg,
+    borderRadius: 10,
+    border: `1 solid ${renty.stroke}`,
+    gap: 8,
+    flex: 1,
+  },
+  signatureRow: {
+    gap: 2,
+  },
+  signatureLabel: {
+    fontSize: 9,
+    color: renty.textSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.2,
+  },
+  signatureLine: {
+    fontSize: 10.5,
+    color: renty.textPrimary,
+    paddingVertical: 6,
+    borderBottom: `1 solid ${renty.strokeBold}`,
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: renty.card,
+    border: `1 solid ${renty.stroke}`,
+    marginTop: 10,
+  },
+  footerLead: {
+    fontSize: 10.5,
+    fontWeight: 700,
+    color: renty.textPrimary,
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  footerNote: {
+    fontSize: 9,
+    color: renty.textSecondary,
+    lineHeight: 1.4,
+  },
   benefits: {
     gap: 6,
     flexDirection: "row",
@@ -253,6 +300,14 @@ const styles = StyleSheet.create({
     gap: 6,
     width: "47%",
   },
+  benefitText: {
+    fontSize: 9,
+    color: renty.textSecondary,
+  },
+  benefitsCard: {
+    marginTop: 14,
+    marginBottom: 14,
+  },
   check: {
     fontSize: 11,
     fontWeight: 700,
@@ -263,17 +318,6 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: renty.textSecondary,
     marginTop: 6,
-  },
-  cta: {
-    marginTop: 4,
-    marginBottom: 10,
-    padding: 12,
-    borderRadius: 10,
-    border: `1 solid ${renty.strokeBold}`,
-    backgroundColor: renty.card,
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: 6,
   },
   qrBox: {
     flexDirection: "row",
@@ -314,11 +358,11 @@ const styles = StyleSheet.create({
   },
 });
 
-function Benefit({ children }: { children: string }) {
+function Benefit({ children }: { children: ReactNode }) {
   return (
     <View style={styles.benefitItem}>
       <Text style={styles.check}>✓</Text>
-      <Text>{children}</Text>
+      <Text style={styles.benefitText}>{children}</Text>
     </View>
   );
 }
@@ -361,7 +405,7 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
             <Text style={styles.heroSubtitle}>Your exclusive car leasing proposal</Text>
             <Text style={styles.heroTitle}>{data.vehicleName ?? "Vehicle"}</Text>
             <View style={styles.heroMeta}>
-              <Text style={styles.heroSubtitle}>Client: {data.clientName ?? "—"}</Text>
+              <Text style={styles.heroSubtitle}>{data.clientName ?? "—"}</Text>
               <Text style={styles.heroSubtitle}>{data.dealNumber ? `Deal ${data.dealNumber}` : "Deal —"}</Text>
             </View>
           </View>
@@ -416,48 +460,31 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
           </View>
         </View>
 
-        <View style={styles.cta}>
-          <Text style={{ fontSize: 11, fontWeight: 700, color: renty.textPrimary }}>
-            Car ready within 48 hours after signing and down payment.
-          </Text>
-          <Text style={{ fontSize: 10, color: renty.success }}>Simple paperwork • Quick start • Buy-out at the end</Text>
-        </View>
-
-        <View style={styles.card}>
+        <View style={[styles.card, styles.benefitsCard]}>
           <Text style={styles.sectionTitle}>Benefits</Text>
           <View style={[styles.benefits, { marginTop: 8, rowGap: 6 }]}>
-            <Benefit>Certified inspection and prep</Benefit>
-            <Benefit>Scheduled maintenance at authorised centres</Benefit>
-            <Benefit>Notifications about fines and servicing</Benefit>
-            <Benefit>Partner discounts on detailing and washes</Benefit>
-            <Benefit>Upgrade to higher class on request</Benefit>
+            <Benefit>
+              <Text style={{ fontWeight: 700 }}>Car ready</Text> in 48h after signing & down payment
+            </Benefit>
+            <Benefit>
+              <Text style={{ fontWeight: 700 }}>Certified inspection</Text> and prep before handover
+            </Benefit>
+            <Benefit>
+              <Text style={{ fontWeight: 700 }}>Scheduled maintenance</Text> at authorised centres
+            </Benefit>
+            <Benefit>
+              <Text style={{ fontWeight: 700 }}>Proactive alerts</Text> about fines and servicing
+            </Benefit>
+            <Benefit>
+              <Text style={{ fontWeight: 700 }}>Partner discounts</Text> on detailing and washes
+            </Benefit>
+            <Benefit>
+              <Text style={{ fontWeight: 700 }}>Upgrade option</Text> to higher class on request
+            </Benefit>
           </View>
         </View>
 
         <View style={[styles.grid, { gap: 12, marginTop: 6 }]}>
-          <View style={[styles.card, styles.cardStretch, styles.cardTight]}> 
-            <Text style={styles.sectionTitle}>Fast application</Text>
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ fontSize: 9, color: renty.textSecondary }}>
-                  Scan QR or open the{" "}
-                  <Link
-                    src={loginUrl}
-                    style={{ color: renty.accent, textDecoration: "underline", fontWeight: 600 }}
-                  >
-                    link
-                  </Link>
-                  :
-                </Text>
-              </View>
-              {data.qrSrc ? (
-                <>
-                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                  <Image src={data.qrSrc} style={{ width: 78, height: 78 }} />
-                </>
-              ) : null}
-            </View>
-          </View>
           <View style={[styles.card, { flex: 1, gap: 6 }]}> 
             <Text style={styles.sectionTitle}>Sales manager</Text>
             <View style={{ gap: 6 }}>
@@ -470,12 +497,30 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
               </View>
             </View>
           </View>
+          <View style={styles.signatureCard}>
+            <Text style={styles.sectionTitle}>Client confirmation</Text>
+            <View style={styles.signatureRow}>
+              <Text style={styles.signatureLabel}>Signature</Text>
+              <Text style={styles.signatureLine}> </Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.footer}>
-          <Text style={{ fontSize: 8 }}>
-            Preliminary draft offer. Figures and terms are indicative and may change after final credit and insurance approval.
-          </Text>
+        <View style={styles.footerRow}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={styles.footerLead}>Fast application</Text>
+            <Text style={styles.footerNote}>
+              Scan the QR or open the{" "}
+              <Link src={loginUrl} style={{ color: renty.accent, textDecoration: "underline", fontWeight: 600 }}>
+                link
+              </Link>
+              . Preliminary draft offer. Figures and terms are indicative and may change after final credit and
+              insurance approval.
+            </Text>
+          </View>
+          {data.qrSrc ? (
+            <Image src={data.qrSrc} style={{ width: 68, height: 68 }} />
+          ) : null}
         </View>
       </Page>
     </Document>
