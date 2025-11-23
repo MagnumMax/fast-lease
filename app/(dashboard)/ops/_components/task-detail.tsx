@@ -248,6 +248,9 @@ export function TaskDetailView({
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
   const allowDocumentDeletion = Boolean(deal?.clientId);
+  const taskTitle = isPrepareQuoteTask
+    ? "Подготовка и подписание клиентом коммерческого предложения"
+    : task.title;
   const taskInstruction = hasForm
     ? deadlineInfo
       ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
@@ -418,7 +421,7 @@ export function TaskDetailView({
       <Card className="border-border/80 bg-card/80 backdrop-blur">
         <CardHeader className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-xl font-semibold">{task.title}</CardTitle>
+            <CardTitle className="text-xl font-semibold">{taskTitle}</CardTitle>
             <Badge variant={statusMeta.variant} className="flex items-center gap-1 rounded-lg">
               {statusMeta.icon}
               {statusMeta.label}
@@ -576,7 +579,11 @@ export function TaskDetailView({
                         <div key={fieldId} className="space-y-2">
                           <Label htmlFor={`field-${fieldId}`}>
                             {label}
-                            {isRequired ? <span className="ml-1 text-destructive">*</span> : null}
+                            {isRequired ? (
+                              <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+                                *
+                              </span>
+                            ) : null}
                           </Label>
                           <Textarea
                             id={`field-${fieldId}`}
@@ -614,7 +621,11 @@ export function TaskDetailView({
                         <div key={fieldId} className="space-y-2">
                           <Label htmlFor={`field-${fieldId}`}>
                             {label}
-                            {isRequired ? <span className="ml-1 text-destructive">*</span> : null}
+                            {isRequired ? (
+                              <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+                                *
+                              </span>
+                            ) : null}
                           </Label>
                           <input
                             type="hidden"
@@ -644,7 +655,11 @@ export function TaskDetailView({
                       <div key={fieldId} className="space-y-2">
                         <Label htmlFor={`field-${fieldId}`}>
                           {label}
-                          {isRequired ? <span className="ml-1 text-destructive">*</span> : null}
+                          {isRequired ? (
+                            <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+                              *
+                            </span>
+                          ) : null}
                         </Label>
                         <Input
                           id={`field-${fieldId}`}
@@ -666,7 +681,7 @@ export function TaskDetailView({
               {requiresDocument ? (
                 <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
                   <div className="space-y-1">
-                    <span className="text-sm font-semibold text-foreground">Загрузка документов</span>
+                    <span className="text-sm font-semibold text-foreground">Загрузка подписанных документов</span>
                     <p className="text-xs text-muted-foreground">
                       Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG.
                     </p>
@@ -716,7 +731,14 @@ export function TaskDetailView({
                           </div>
                           <div className="flex flex-col gap-3 md:flex-row">
                             <div className="flex-1 space-y-2">
-                              <Label>Тип документа</Label>
+                              <Label>
+                                Тип документа
+                                {requiresDocument ? (
+                                  <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+                                    *
+                                  </span>
+                                ) : null}
+                              </Label>
                               <Select
                                 value={draft.type || DOCUMENT_TYPE_EMPTY_VALUE}
                                 onValueChange={(nextValue) => {
@@ -743,7 +765,14 @@ export function TaskDetailView({
                               <input type="hidden" name={`documents[${draft.id}][type]`} value={draft.type} />
                             </div>
                             <div className="flex-1 space-y-2">
-                              <Label htmlFor={`document-file-${draft.id}`}>Файл</Label>
+                              <Label htmlFor={`document-file-${draft.id}`}>
+                                Файл
+                                {requiresDocument ? (
+                                  <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+                                    *
+                                  </span>
+                                ) : null}
+                              </Label>
                               <Input
                                 id={`document-file-${draft.id}`}
                                 type="file"
@@ -797,23 +826,7 @@ export function TaskDetailView({
                 />
               </div>
 
-              {isPrepareQuoteTask ? (
-                <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-                  Сформируйте КП в карточке сделки и приложите подписанный вариант. Без вложенного файла задача не будет закрыта.
-                </div>
-              ) : null}
-
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-                <Button
-                  type="submit"
-                  variant="outline"
-                  className="rounded-lg"
-                  name="intent"
-                  value="save"
-                  disabled={pending}
-                >
-                  {pending ? "Сохраняем..." : "Сохранить черновик"}
-                </Button>
                 <Button
                   type="submit"
                   className="rounded-lg"
@@ -822,9 +835,9 @@ export function TaskDetailView({
                   disabled={pending}
                 >
                   {pending
-                    ? "Сохраняем..."
+                    ? "Завершаем..."
                     : requiresDocument
-                      ? "Завершить и приложить документ"
+                      ? "Завершить задачу"
                       : "Завершить задачу"}
                 </Button>
               </div>

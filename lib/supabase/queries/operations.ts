@@ -63,7 +63,7 @@ export const OPS_WORKFLOW_STATUSES = [
     description: "Формирование коммерческого предложения и расчётов.",
     ownerRole: "OP_MANAGER",
     slaLabel: "SLA 8h",
-    entryActions: ["Подготовить коммерческое предложение"],
+    entryActions: ["Подготовка и подписание клиентом коммерческого предложения"],
     exitGuards: [
       {
         key: "quotationPrepared",
@@ -872,6 +872,7 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "payment_schedule", label: "Платёжный график", context: "any" as const },
   { value: "delivery_act", label: "Акт приёма-передачи", context: "any" as const },
   { value: "commercial_offer", label: "Коммерческое предложение", context: "any" as const },
+  { value: "signed_commercial_offer", label: "Коммерческое предложение (подписанное)", context: "any" as const },
   { value: "other", label: "Другой документ", context: "any" as const },
 ] as const;
 

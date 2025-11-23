@@ -91,12 +91,13 @@ statuses:
         task:
           template_id: prepare_quote_v1
           type: PREPARE_QUOTE
-          title: "Подготовить коммерческое предложение"
+          title: "Подготовка и подписание клиентом коммерческого предложения"
           assignee_role: OP_MANAGER
           guard_key: "quotationPrepared"
           sla: { hours: 8 }
           defaults:
             instructions: "Загрузите подписанное КП клиента через задачу. Сам документ формируйте в карточке сделки."
+            checklist: ["signed_commercial_offer"]
           bindings:
             deal_id: "{{deal.id}}"
     exit_requirements:

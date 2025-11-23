@@ -140,11 +140,12 @@ export const OPS_WORKFLOW_STATUSES = [
     description: "Формирование коммерческого предложения и расчётов.",
     ownerRole: "OP_MANAGER",
     slaLabel: "SLA 8h",
-    entryActions: ["Подготовить коммерческое предложение"],
+    entryActions: ["Подготовка и подписание клиентом коммерческого предложения"],
     exitGuards: [
       {
         key: "quotationPrepared",
-        label: "Коммерческое предложение сформировано",
+        label: "Подписанное КП загружено",
+        requiresDocument: true,
       },
     ],
   },
