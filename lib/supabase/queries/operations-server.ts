@@ -114,6 +114,7 @@ export type OpsDealStatusKey =
   | "FINANCE_REVIEW"
   | "INVESTOR_PENDING"
   | "CONTRACT_PREP"
+  | "DOC_SIGNING"
   | "SIGNING_FUNDING"
   | "VEHICLE_DELIVERY"
   | "ACTIVE"
@@ -234,6 +235,21 @@ export const OPS_WORKFLOW_STATUSES = [
     ],
   },
   {
+    key: "DOC_SIGNING",
+    title: "Подписание документов",
+    description: "Загрузка подписанных договоров, графиков и актов.",
+    ownerRole: "OP_MANAGER",
+    slaLabel: "SLA 24h",
+    entryActions: ["Подписание документов"],
+    exitGuards: [
+      {
+        key: "contracts.signedUploaded",
+        label: "Подписанные документы загружены",
+        requiresDocument: true,
+      },
+    ],
+  },
+  {
     key: "SIGNING_FUNDING",
     title: "Подписание и финансирование",
     description: "Организация подписания и платежей поставщику.",
@@ -320,6 +336,7 @@ export const OPS_DEAL_PIPELINE_GROUPS = [
   { label: "Finance", statuses: ["FINANCE_REVIEW" as OpsDealStatusKey] },
   { label: "Investor", statuses: ["INVESTOR_PENDING" as OpsDealStatusKey] },
   { label: "Contract", statuses: ["CONTRACT_PREP" as OpsDealStatusKey] },
+  { label: "Doc Signing", statuses: ["DOC_SIGNING" as OpsDealStatusKey] },
   { label: "Signing & Funding", statuses: ["SIGNING_FUNDING" as OpsDealStatusKey] },
   { label: "Delivery", statuses: ["VEHICLE_DELIVERY" as OpsDealStatusKey] },
   { label: "Active", statuses: ["ACTIVE" as OpsDealStatusKey] },
@@ -347,6 +364,7 @@ export const OPS_WORKFLOW_STATUS_EXIT_ROLE: Record<OpsDealStatusKey, WorkflowRol
   FINANCE_REVIEW: "FINANCE",
   INVESTOR_PENDING: "INVESTOR",
   CONTRACT_PREP: "LEGAL",
+  DOC_SIGNING: "OP_MANAGER",
   SIGNING_FUNDING: "FINANCE",
   VEHICLE_DELIVERY: "OP_MANAGER",
   ACTIVE: null,

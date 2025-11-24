@@ -84,7 +84,7 @@ function getStatusBadgeVariant(statusKey?: string): "default" | "secondary" | "o
   if (normalized === "CANCELLED" || normalized === "BLOCKED" || normalized === "SUSPENDED") {
     return "danger";
   }
-  if (["SIGNING_FUNDING", "CONTRACT_PREP"].includes(normalized)) return "secondary";
+  if (["SIGNING_FUNDING", "CONTRACT_PREP", "DOC_SIGNING"].includes(normalized)) return "secondary";
   return "outline";
 }
 

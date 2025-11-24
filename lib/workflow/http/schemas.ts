@@ -62,6 +62,7 @@ export const transitionRequestSchema = z.object({
       "FINANCE_REVIEW",
       "INVESTOR_PENDING",
       "CONTRACT_PREP",
+      "DOC_SIGNING",
       "SIGNING_FUNDING",
       "VEHICLE_DELIVERY",
       "ACTIVE",

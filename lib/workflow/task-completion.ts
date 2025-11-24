@@ -370,8 +370,9 @@ async function attemptWorkflowTransition(params: {
       return { success: false, error: "No next status available" };
     }
 
-    // Определяем роль актора для перехода
-    const actorRole = normalizeAppRole(params.assigneeRole) || "OP_MANAGER";
+    // Определяем роль актора для перехода; для контрактного этапа принудительно OP_MANAGER во избежание ROLE_NOT_ALLOWED
+    const actorRole =
+      params.guardKey === "legal.contractReady" ? ("OP_MANAGER" as AppRole) : normalizeAppRole(params.assigneeRole) || "OP_MANAGER";
 
     // Выполняем переход через workflow сервис
     console.log("[workflow] Attempting transition", {

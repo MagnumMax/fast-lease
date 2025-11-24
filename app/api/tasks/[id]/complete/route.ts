@@ -27,6 +27,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const supabase = await createSupabaseServiceClient();
   const sessionUser = await getSessionUser();
+  const canOverrideAssignment = sessionUser?.roles.some((role) => role === "ADMIN" || role === "OP_MANAGER") ?? false;
 
   if (!sessionUser) {
     return NextResponse.json(
@@ -58,7 +59,8 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (
     existing.data.assignee_user_id &&
-    existing.data.assignee_user_id !== sessionUser.user.id
+    existing.data.assignee_user_id !== sessionUser.user.id &&
+    !canOverrideAssignment
   ) {
     return NextResponse.json(
       { error: "Task reserved for another user" },

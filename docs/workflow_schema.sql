@@ -291,10 +291,11 @@ INSERT INTO deal_statuses (code, title, sort_order) VALUES
   ('FINANCE_REVIEW',    'Финансовое утверждение',       6),
   ('INVESTOR_PENDING',  'Одобрение инвестора',          7),
   ('CONTRACT_PREP',     'Подготовка договора',          8),
-  ('SIGNING_FUNDING',   'Подписание и финансирование',  9),
-  ('VEHICLE_DELIVERY',  'Выдача автомобиля',           10),
-  ('ACTIVE',            'Активный лизинг',             11),
-  ('CANCELLED',         'Отменена',                    12)
+  ('DOC_SIGNING',       'Подписание документов',        9),
+  ('SIGNING_FUNDING',   'Подписание и финансирование', 10),
+  ('VEHICLE_DELIVERY',  'Выдача автомобиля',           11),
+  ('ACTIVE',            'Активный лизинг',             12),
+  ('CANCELLED',         'Отменена',                    13)
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------- Сиды: разрешённые переходы ----------
@@ -306,7 +307,8 @@ INSERT INTO deal_transitions (from_status, to_status, role_required) VALUES
   ('RISK_REVIEW',      'FINANCE_REVIEW',   'RISK_MANAGER'),
   ('FINANCE_REVIEW',   'INVESTOR_PENDING', 'FINANCE'),
   ('INVESTOR_PENDING', 'CONTRACT_PREP',    'INVESTOR'),
-  ('CONTRACT_PREP',    'SIGNING_FUNDING',  'LEGAL'),
+  ('CONTRACT_PREP',    'DOC_SIGNING',      'OP_MANAGER'),
+  ('DOC_SIGNING',      'SIGNING_FUNDING',  'OP_MANAGER'),
   ('SIGNING_FUNDING',  'VEHICLE_DELIVERY', 'TECH_SPECIALIST'),
   ('VEHICLE_DELIVERY', 'ACTIVE',           'TECH_SPECIALIST'),
   ('NEW',              'CANCELLED',        'OP_MANAGER'),
@@ -317,6 +319,7 @@ INSERT INTO deal_transitions (from_status, to_status, role_required) VALUES
   ('FINANCE_REVIEW',   'CANCELLED',        'FINANCE'),
   ('INVESTOR_PENDING', 'CANCELLED',        'INVESTOR'),
   ('CONTRACT_PREP',    'CANCELLED',        'LEGAL'),
+  ('DOC_SIGNING',      'CANCELLED',        'OP_MANAGER'),
   ('SIGNING_FUNDING',  'CANCELLED',        'FINANCE'),
   ('VEHICLE_DELIVERY', 'CANCELLED',        'TECH_SPECIALIST')
 ON CONFLICT DO NOTHING;

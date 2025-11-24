@@ -46,6 +46,7 @@ function resolveDealStatusTone(status: string | null | undefined) {
       "FINANCE_REVIEW",
       "INVESTOR_PENDING",
       "CONTRACT_PREP",
+      "DOC_SIGNING",
       "SIGNING_FUNDING",
       "VEHICLE_DELIVERY",
     ].includes(normalized)

@@ -37,6 +37,7 @@ export type OpsDealStatusKey =
   | "FINANCE_REVIEW"
   | "INVESTOR_PENDING"
   | "CONTRACT_PREP"
+  | "DOC_SIGNING"
   | "SIGNING_FUNDING"
   | "VEHICLE_DELIVERY"
   | "ACTIVE"
@@ -157,6 +158,21 @@ export const OPS_WORKFLOW_STATUSES = [
     ],
   },
   {
+    key: "DOC_SIGNING",
+    title: "Подписание документов",
+    description: "Загрузка подписанных договоров, графиков и актов.",
+    ownerRole: "OP_MANAGER",
+    slaLabel: "SLA 24h",
+    entryActions: ["Подписание документов"],
+    exitGuards: [
+      {
+        key: "contracts.signedUploaded",
+        label: "Подписанные документы загружены",
+        requiresDocument: true,
+      },
+    ],
+  },
+  {
     key: "SIGNING_FUNDING",
     title: "Подписание и финансирование",
     description: "Организация подписания и платежей поставщику.",
@@ -243,6 +259,7 @@ export const OPS_DEAL_PIPELINE_GROUPS = [
   { label: "Finance", statuses: ["FINANCE_REVIEW" as OpsDealStatusKey] },
   { label: "Investor", statuses: ["INVESTOR_PENDING" as OpsDealStatusKey] },
   { label: "Contract", statuses: ["CONTRACT_PREP" as OpsDealStatusKey] },
+  { label: "Doc Signing", statuses: ["DOC_SIGNING" as OpsDealStatusKey] },
   { label: "Signing & Funding", statuses: ["SIGNING_FUNDING" as OpsDealStatusKey] },
   { label: "Delivery", statuses: ["VEHICLE_DELIVERY" as OpsDealStatusKey] },
   { label: "Active", statuses: ["ACTIVE" as OpsDealStatusKey] },
@@ -270,6 +287,7 @@ export const OPS_WORKFLOW_STATUS_EXIT_ROLE: Record<OpsDealStatusKey, WorkflowRol
   FINANCE_REVIEW: "FINANCE",
   INVESTOR_PENDING: "INVESTOR",
   CONTRACT_PREP: "LEGAL",
+  DOC_SIGNING: "OP_MANAGER",
   SIGNING_FUNDING: "FINANCE",
   VEHICLE_DELIVERY: "OP_MANAGER",
   ACTIVE: null,
@@ -870,14 +888,18 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "corporate_documents", label: "Корпоративные документы", context: "company" as const },
   { value: "company_bank_statement", label: "Банковская выписка компании", context: "company" as const },
   { value: "lease_agreement", label: "Договор аренды", context: "any" as const },
+  { value: "signed_lease_agreement", label: "Договор аренды (подписанный)", context: "any" as const },
   { value: "purchase_agreement", label: "Договор покупки", context: "any" as const },
+  { value: "signed_purchase_agreement", label: "Договор покупки (подписанный)", context: "any" as const },
   {
     value: "preliminary_purchase_agreement",
     label: "Предварительный договор купли-продажи",
     context: "any" as const,
   },
   { value: "payment_schedule", label: "Платёжный график", context: "any" as const },
+  { value: "signed_payment_schedule", label: "Платёжный график (подписанный)", context: "any" as const },
   { value: "delivery_act", label: "Акт приёма-передачи", context: "any" as const },
+  { value: "signed_delivery_act", label: "Акт приёма-передачи (подписанный)", context: "any" as const },
   { value: "technical_report", label: "Технический отчёт", context: "any" as const },
   { value: "aecb_credit_report", label: "AECB credit report", context: "any" as const },
   { value: "commercial_offer", label: "Коммерческое предложение", context: "any" as const },

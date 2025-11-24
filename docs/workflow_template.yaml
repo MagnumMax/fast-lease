@@ -46,6 +46,7 @@ kanban_order:
   - FINANCE_REVIEW
   - INVESTOR_PENDING
   - CONTRACT_PREP
+  - DOC_SIGNING
   - SIGNING_FUNDING
   - VEHICLE_DELIVERY
   - ACTIVE
@@ -296,6 +297,34 @@ statuses:
         rule: "== true"
         message: "Договор ещё не готов."
 
+  DOC_SIGNING:
+    title: "Подписание документов"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          template_id: doc_signing_v1
+          type: DOC_SIGNING
+          title: "Подписание документов"
+          assignee_role: OP_MANAGER
+          guard_key: "contracts.signedUploaded"
+          sla: { hours: 24 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: checklist
+                type: checklist
+                label: "Подписанные файлы"
+          defaults:
+            checklist:
+              - signed_purchase_agreement
+              - signed_lease_agreement
+              - signed_payment_schedule
+              - signed_delivery_act
+    exit_requirements:
+      - key: contracts.signedUploaded
+        rule: "== true"
+        message: "Нет подписанных документов."
+
   SIGNING_FUNDING:
     title: "Подписание и финансирование"
     entry_actions:
@@ -465,10 +494,17 @@ transitions:
         rule: "== true"
 
   - from: CONTRACT_PREP
-    to: SIGNING_FUNDING
+    to: DOC_SIGNING
     by_roles: [OP_MANAGER, LEGAL]
     guards:
       - key: legal.contractReady
+        rule: "== true"
+
+  - from: DOC_SIGNING
+    to: SIGNING_FUNDING
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: contracts.signedUploaded
         rule: "== true"
 
   - from: SIGNING_FUNDING
@@ -514,6 +550,9 @@ transitions:
   - from: CONTRACT_PREP
     to: CANCELLED
     by_roles: [OP_MANAGER]
+  - from: DOC_SIGNING
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
   - from: SIGNING_FUNDING
     to: CANCELLED
     by_roles: [OP_MANAGER]
@@ -530,7 +569,7 @@ permissions:
   STATUS_TRANSITION:
     rules:
       - role: OP_MANAGER
-        allowed_from: [NEW, OFFER_PREP, DOCS_COLLECT]
+        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY]
       - role: TECH_SPECIALIST
         allowed_from: [VEHICLE_CHECK, VEHICLE_DELIVERY]
       - role: RISK_MANAGER

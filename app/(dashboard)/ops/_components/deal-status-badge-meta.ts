@@ -12,6 +12,7 @@ const DEAL_STATUS_BADGE_VARIANTS: Record<OpsDealStatusKey, DealStatusBadgeVarian
   FINANCE_REVIEW: "warning",
   INVESTOR_PENDING: "secondary",
   CONTRACT_PREP: "outline",
+  DOC_SIGNING: "info",
   SIGNING_FUNDING: "info",
   VEHICLE_DELIVERY: "warning",
   ACTIVE: "success",

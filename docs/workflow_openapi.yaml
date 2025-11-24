@@ -231,7 +231,7 @@ components:
         source: { type: string }
         status:
           type: string
-          enum: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, SIGNING_FUNDING, VEHICLE_DELIVERY, ACTIVE]
+          enum: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY, ACTIVE]
         op_manager_id: { type: string, format: uuid }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
@@ -339,7 +339,7 @@ components:
       properties:
         to_status:
           type: string
-          enum: [OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, SIGNING_FUNDING, VEHICLE_DELIVERY, ACTIVE]
+          enum: [OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY, ACTIVE]
         actor_role:
           type: string
           enum: [OP_MANAGER, RISK_MANAGER, FINANCE, INVESTOR, LEGAL, ACCOUNTING, ADMIN]

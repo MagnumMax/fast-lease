@@ -872,6 +872,7 @@ UNIQUE(workflow_id, version)
       "sla": {"maxHours": 24}
     },
     "CONTRACT_PREP": {...},
+    "DOC_SIGNING": {...},
     "SIGNING_FUNDING": {...},
     "ACTIVE": {...}
   },
@@ -1172,9 +1173,10 @@ graph TD
 #### Статусы сделок:
 1. **DOCS_COLLECT** - Сбор документов
 2. **CONTRACT_PREP** - Подготовка договора
-3. **SIGNING_FUNDING** - Подписание и финансирование
-4. **ACTIVE** - Активная сделка
-5. **COMPLETED** - Завершенная сделка
+3. **DOC_SIGNING** - Подписание документов
+4. **SIGNING_FUNDING** - Подписание и финансирование
+5. **ACTIVE** - Активная сделка
+6. **COMPLETED** - Завершенная сделка
 
 #### Ключевые задачи по статусам:
 
@@ -1185,6 +1187,9 @@ graph TD
 **CONTRACT_PREP:**
 - `legal.contractReady` (LEGAL → OP_MANAGER, SLA: 72h)
 - `esign.allSigned` (CLIENT → LEGAL, SLA: 168h)
+
+**DOC_SIGNING:**
+- `contracts.signedUploaded` (OP_MANAGER → OP_MANAGER, SLA: 24h)
 
 **SIGNING_FUNDING:**
 - `payments.advanceReceived` (FINANCE → OP_MANAGER, SLA: 24h)

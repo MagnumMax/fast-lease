@@ -543,7 +543,7 @@ do $$
 declare
   app_record record;
   ops_ids uuid[];
-  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
+  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','DOC_SIGNING','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
   sources text[] := array['Website','Broker','Referral','Partner Portal','Corporate RFP'];
   wf_version_active uuid;
   wf_version_previous uuid;
@@ -867,7 +867,7 @@ declare
   busy_deals uuid[];
   deal_id uuid;
   ref_counter int := 0;
-  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
+  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','DOC_SIGNING','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
 begin
   select array_agg(id order by created_at) into support_ids
   from auth.users where email like '%@support.fastlease.dev';
