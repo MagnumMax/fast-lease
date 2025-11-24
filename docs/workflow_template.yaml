@@ -42,6 +42,7 @@ kanban_order:
   - OFFER_PREP
   - VEHICLE_CHECK
   - DOCS_COLLECT
+  - DOCS_COLLECT_SELLER
   - RISK_REVIEW
   - FINANCE_REVIEW
   - INVESTOR_PENDING
@@ -152,13 +153,13 @@ statuses:
         message: "Технический отчёт и оценка авто не подтверждены."
 
   DOCS_COLLECT:
-    title: "Сбор документов"
+    title: "Сбор документов покупателя"
     entry_actions:
       - type: TASK_CREATE
         task:
           template_id: collect_docs_v1
           type: COLLECT_DOCS
-          title: "Собрать пакет документов от клиента"
+          title: "Собрать пакет документов покупателя"
           assignee_role: OP_MANAGER
           guard_key: "docs.required.allUploaded"
           sla: { hours: 48 }
@@ -177,7 +178,35 @@ statuses:
     exit_requirements:
       - key: docs.required.allUploaded
         rule: "== true"
-        message: "Не все обязательные документы загружены."
+        message: "Не все обязательные документы покупателя загружены."
+
+  DOCS_COLLECT_SELLER:
+    title: "Сбор документов продавца"
+    entry_actions:
+      - type: TASK_CREATE
+        task:
+          template_id: collect_seller_docs_v1
+          type: COLLECT_SELLER_DOCS
+          title: "Собрать пакет документов продавца"
+          assignee_role: OP_MANAGER
+          guard_key: "docs.seller.allUploaded"
+          sla: { hours: 48 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: checklist
+                type: checklist
+                label: "Документы продавца"
+          defaults:
+            checklist:
+              - seller_id
+              - vehicle_registration
+              - ownership_proof
+              - seller_bank_details
+    exit_requirements:
+      - key: docs.seller.allUploaded
+        rule: "== true"
+        message: "Не все обязательные документы продавца загружены."
 
   RISK_REVIEW:
     title: "Проверка риска"
@@ -462,10 +491,17 @@ transitions:
         rule: "== true"
 
   - from: DOCS_COLLECT
-    to: RISK_REVIEW
+    to: DOCS_COLLECT_SELLER
     by_roles: [OP_MANAGER]
     guards:
       - key: docs.required.allUploaded
+        rule: "== true"
+
+  - from: DOCS_COLLECT_SELLER
+    to: RISK_REVIEW
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: docs.seller.allUploaded
         rule: "== true"
 
   - from: RISK_REVIEW
@@ -534,6 +570,9 @@ transitions:
   - from: DOCS_COLLECT
     to: CANCELLED
     by_roles: [OP_MANAGER]
+  - from: DOCS_COLLECT_SELLER
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
   - from: RISK_REVIEW
     to: CANCELLED
     by_roles: [OP_MANAGER]
@@ -565,7 +604,7 @@ permissions:
   STATUS_TRANSITION:
     rules:
       - role: OP_MANAGER
-        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY]
+        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, DOCS_COLLECT_SELLER, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY]
       - role: TECH_SPECIALIST
         allowed_from: [VEHICLE_CHECK, VEHICLE_DELIVERY]
       - role: RISK_MANAGER
@@ -592,8 +631,11 @@ integrations:
 metrics:
   enabled: true
   timers:
-    - name: "t_docs_collect"
+    - name: "t_docs_collect_buyer"
       from: DOCS_COLLECT
+      to: DOCS_COLLECT_SELLER
+    - name: "t_docs_collect_seller"
+      from: DOCS_COLLECT_SELLER
       to: RISK_REVIEW
     - name: "t_risk_review"
       from: RISK_REVIEW

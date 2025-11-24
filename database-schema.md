@@ -867,7 +867,13 @@ UNIQUE(workflow_id, version)
   "stages": {
     "DOCS_COLLECT": {
       "code": "DOCS_COLLECT",
-      "title": "Сбор документов",
+      "title": "Сбор документов покупателя",
+      "entryActions": [...],
+      "sla": {"maxHours": 24}
+    },
+    "DOCS_COLLECT_SELLER": {
+      "code": "DOCS_COLLECT_SELLER",
+      "title": "Сбор документов продавца",
       "entryActions": [...],
       "sla": {"maxHours": 24}
     },
@@ -884,7 +890,8 @@ UNIQUE(workflow_id, version)
 ### Типы задач workflow
 
 #### 1. Задачи документооборота
-- `docs.required.allUploaded` - проверка загрузки всех документов
+- `docs.required.allUploaded` - проверка загрузки документов покупателя
+- `docs.seller.allUploaded` - проверка загрузки документов продавца
 - `docs.kyc.completed` - завершение KYC проверки
 
 #### 2. Финансовые задачи
@@ -1171,18 +1178,22 @@ graph TD
 ### 2. Workflow сделки
 
 #### Статусы сделок:
-1. **DOCS_COLLECT** - Сбор документов
-2. **CONTRACT_PREP** - Подготовка договора
-3. **DOC_SIGNING** - Подписание документов
-4. **SIGNING_FUNDING** - Подписание и финансирование
-5. **ACTIVE** - Активная сделка
-6. **COMPLETED** - Завершенная сделка
+1. **DOCS_COLLECT** - Сбор документов покупателя
+2. **DOCS_COLLECT_SELLER** - Сбор документов продавца
+3. **CONTRACT_PREP** - Подготовка договора
+4. **DOC_SIGNING** - Подписание документов
+5. **SIGNING_FUNDING** - Подписание и финансирование
+6. **ACTIVE** - Активная сделка
+7. **COMPLETED** - Завершенная сделка
 
 #### Ключевые задачи по статусам:
 
-**DOCS_COLLECT:**
+**DOCS_COLLECT (покупатель):**
 - `docs.required.allUploaded` (CLIENT → OP_MANAGER, SLA: 24h)
 - `docs.kyc.completed` (OP_MANAGER → RISK_MANAGER, SLA: 48h)
+
+**DOCS_COLLECT_SELLER:**
+- `docs.seller.allUploaded` (OP_MANAGER → OP_MANAGER, SLA: 48h)
 
 **CONTRACT_PREP:**
 - `legal.contractReady` (LEGAL → OP_MANAGER, SLA: 72h)

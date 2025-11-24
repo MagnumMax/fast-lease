@@ -33,6 +33,7 @@ export type OpsDealStatusKey =
   | "OFFER_PREP"
   | "VEHICLE_CHECK"
   | "DOCS_COLLECT"
+  | "DOCS_COLLECT_SELLER"
   | "RISK_REVIEW"
   | "FINANCE_REVIEW"
   | "INVESTOR_PENDING"
@@ -90,15 +91,30 @@ export const OPS_WORKFLOW_STATUSES = [
   },
   {
     key: "DOCS_COLLECT",
-    title: "Сбор документов",
-    description: "Комплектование KYC/финансовых документов клиента.",
+    title: "Сбор документов покупателя",
+    description: "Комплектование KYC/финансовых документов покупателя.",
     ownerRole: "OP_MANAGER",
     slaLabel: "SLA 48h",
-    entryActions: ["Собрать пакет документов от клиента"],
+    entryActions: ["Собрать пакет документов покупателя"],
     exitGuards: [
       {
         key: "docs.required.allUploaded",
-        label: "Все обязательные документы загружены",
+        label: "Документы покупателя загружены",
+        requiresDocument: true,
+      },
+    ],
+  },
+  {
+    key: "DOCS_COLLECT_SELLER",
+    title: "Сбор документов продавца",
+    description: "Комплектование пакета документов от продавца/дилера.",
+    ownerRole: "OP_MANAGER",
+    slaLabel: "SLA 48h",
+    entryActions: ["Собрать пакет документов продавца"],
+    exitGuards: [
+      {
+        key: "docs.seller.allUploaded",
+        label: "Документы продавца загружены",
         requiresDocument: true,
       },
     ],
@@ -253,7 +269,10 @@ export const OPS_DEAL_PIPELINE_GROUPS = [
   { label: "New Leads", statuses: ["NEW" as OpsDealStatusKey] },
   { label: "Offer Prep", statuses: ["OFFER_PREP" as OpsDealStatusKey] },
   { label: "Vehicle Check", statuses: ["VEHICLE_CHECK" as OpsDealStatusKey] },
-  { label: "Docs Collection", statuses: ["DOCS_COLLECT" as OpsDealStatusKey] },
+  {
+    label: "Docs Collection",
+    statuses: ["DOCS_COLLECT" as OpsDealStatusKey, "DOCS_COLLECT_SELLER" as OpsDealStatusKey],
+  },
   { label: "Risk Review", statuses: ["RISK_REVIEW" as OpsDealStatusKey] },
   { label: "Finance", statuses: ["FINANCE_REVIEW" as OpsDealStatusKey] },
   { label: "Investor", statuses: ["INVESTOR_PENDING" as OpsDealStatusKey] },
@@ -282,6 +301,7 @@ export const OPS_WORKFLOW_STATUS_EXIT_ROLE: Record<OpsDealStatusKey, WorkflowRol
   OFFER_PREP: "OP_MANAGER",
   VEHICLE_CHECK: "OP_MANAGER",
   DOCS_COLLECT: "OP_MANAGER",
+  DOCS_COLLECT_SELLER: "OP_MANAGER",
   RISK_REVIEW: "RISK_MANAGER",
   FINANCE_REVIEW: "FINANCE",
   INVESTOR_PENDING: "INVESTOR",

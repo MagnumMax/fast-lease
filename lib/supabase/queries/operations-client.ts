@@ -482,6 +482,11 @@ function buildOperationsDashboardSnapshotFromData(
     .sort((a, b) => b.activeCount - a.activeCount);
 
   // Узкие места (упрощённо)
+  const docsBuyerCount = normalizedDeals.filter((deal) => deal.statusKey === "DOCS_COLLECT").length;
+  const docsSellerCount = normalizedDeals.filter(
+    (deal) => deal.statusKey === "DOCS_COLLECT_SELLER",
+  ).length;
+
   const bottlenecks: OpsBottleneckItem[] = [
     {
       id: "risk-review",
@@ -491,9 +496,16 @@ function buildOperationsDashboardSnapshotFromData(
       impact: "high",
     },
     {
-      id: "docs-collect",
-      stage: "Сбор документов",
-      count: normalizedDeals.filter((deal) => deal.statusKey === "DOCS_COLLECT").length,
+      id: "docs-collect-buyer",
+      stage: "Сбор документов покупателя",
+      count: docsBuyerCount,
+      avgTime: "28h",
+      impact: "medium",
+    },
+    {
+      id: "docs-collect-seller",
+      stage: "Сбор документов продавца",
+      count: docsSellerCount,
       avgTime: "28h",
       impact: "medium",
     },

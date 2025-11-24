@@ -43,7 +43,7 @@ describe("WorkflowStateMachine", () => {
     await expect(
       machine.performTransition({
         from: "DOCS_COLLECT",
-        to: "RISK_REVIEW",
+        to: "DOCS_COLLECT_SELLER",
         actorRole: "OP_MANAGER",
       }),
     ).rejects.toMatchObject({
@@ -57,7 +57,7 @@ describe("WorkflowStateMachine", () => {
   it("executes entry actions when guards pass", async () => {
     const result = await machine.performTransition({
       from: "DOCS_COLLECT",
-      to: "RISK_REVIEW",
+      to: "DOCS_COLLECT_SELLER",
       actorRole: "OP_MANAGER",
       guardContext: {
         docs: {
@@ -72,8 +72,8 @@ describe("WorkflowStateMachine", () => {
       },
     });
 
-    expect(result.newStatus.code).toBe("RISK_REVIEW");
-    expect(executed).toHaveLength((template.stages.RISK_REVIEW.entryActions ?? []).length);
+    expect(result.newStatus.code).toBe("DOCS_COLLECT_SELLER");
+    expect(executed).toHaveLength((template.stages.DOCS_COLLECT_SELLER.entryActions ?? []).length);
     expect(executed[0]?.context.dealId).toBe("deal-123");
   });
 

@@ -166,14 +166,14 @@ describe("WorkflowService", () => {
         id: "deal-1",
         workflowId: "fast-lease-v1",
         workflowVersionId: null,
-        status: "DOCS_COLLECT",
+        status: "DOCS_COLLECT_SELLER",
         payload: null,
       },
       {
         id: "deal-guard",
         workflowId: "fast-lease-v1",
         workflowVersionId: null,
-        status: "DOCS_COLLECT",
+        status: "DOCS_COLLECT_SELLER",
         payload: null,
       },
     ]);
@@ -194,7 +194,7 @@ describe("WorkflowService", () => {
       actorRole: "OP_MANAGER",
       guardContext: {
         docs: {
-          required: {
+          seller: {
             allUploaded: true,
           },
         },

@@ -3,6 +3,7 @@ export const TASK_GUARD_KEY_FALLBACK: Record<string, string> = {
   PREPARE_QUOTE: "quotationPrepared",
   VERIFY_VEHICLE: "vehicle.verified",
   COLLECT_DOCS: "docs.required.allUploaded",
+  COLLECT_SELLER_DOCS: "docs.seller.allUploaded",
   AECB_CHECK: "risk.approved",
   FIN_CALC: "finance.approved",
   INVESTOR_APPROVAL: "investor.approved",
