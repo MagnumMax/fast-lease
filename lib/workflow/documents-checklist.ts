@@ -32,24 +32,41 @@ export type ClientDocumentChecklist = {
   fulfilled: boolean;
 };
 
+function extractChecklistArray(source: unknown): string[] | null {
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    return null;
+  }
+
+  const branch = source as Record<string, unknown>;
+  const checklist = branch.checklist;
+  if (Array.isArray(checklist)) {
+    return checklist.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  }
+  if (typeof checklist === "string") {
+    try {
+      const parsed = JSON.parse(checklist);
+      return Array.isArray(parsed)
+        ? parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 export function extractChecklistFromTaskPayload(taskPayload: unknown): string[] {
   if (!taskPayload || typeof taskPayload !== "object" || Array.isArray(taskPayload)) {
     return [];
   }
 
   const payload = taskPayload as Record<string, unknown>;
-  const defaults = payload.defaults;
-  if (!defaults || typeof defaults !== "object" || Array.isArray(defaults)) {
-    return [];
-  }
+  const fieldsChecklist = extractChecklistArray(payload.fields);
+  const defaultsChecklist = extractChecklistArray(payload.defaults);
+  const combined = fieldsChecklist ?? defaultsChecklist ?? [];
 
-  const checklist = (defaults as Record<string, unknown>).checklist;
-  if (!Array.isArray(checklist)) {
-    return [];
-  }
-
-  const normalized = checklist.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-  return filterChecklistTypes(normalized);
+  return filterChecklistTypes(combined);
 }
 
 export function evaluateClientDocumentChecklist(

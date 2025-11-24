@@ -166,15 +166,21 @@ statuses:
           schema:
             version: "1.0"
             fields:
+              - id: buyer_type
+                type: select
+                label: "Тип покупателя"
+                hint: "Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны."
+                options:
+                  - value: company
+                    label: "Юридическое лицо"
+                  - value: individual
+                    label: "Физическое лицо"
               - id: checklist
                 type: checklist
-                label: "Обязательные документы"
+                label: "Рекомендуемые документы (необязательно)"
           defaults:
-            checklist:
-              - passport
-              - emirates_id
-              - driver_license
-              - preliminary_purchase_agreement
+            buyer_type: ""
+            checklist: []
     exit_requirements:
       - key: docs.required.allUploaded
         rule: "== true"

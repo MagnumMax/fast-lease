@@ -100,7 +100,8 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "docs.required.allUploaded",
         label: "Документы покупателя загружены",
-        requiresDocument: true,
+        requiresDocument: false,
+        hint: "Документы загружаются по необходимости — выберите тип покупателя, чтобы показать список.",
       },
     ],
   },

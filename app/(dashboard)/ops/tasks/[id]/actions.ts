@@ -50,6 +50,7 @@ const DELETE_GUARD_DOCUMENT_SCHEMA = z.object({
 const DEAL_DOCUMENT_BUCKET = "deal-documents";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
+const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
 const DEAL_DOCUMENT_CATEGORY_MAP: Record<string, string> = DEAL_DOCUMENT_TYPES.reduce((acc, entry) => {
   acc[entry.value] = entry.category;
   return acc;
@@ -487,7 +488,8 @@ export async function completeTaskFormAction(
 
   const { taskId, dealId, guardKey, guardLabel, requiresDocument, initialNote } = parsed.data;
   const intent = parsed.data.intent ?? "complete";
-  const requiresDoc = requiresDocument === "true" || guardKey === VEHICLE_VERIFICATION_GUARD_KEY;
+  const isBuyerDocsGuard = guardKey === BUYER_DOCS_GUARD_KEY;
+  const requiresDoc = !isBuyerDocsGuard && (requiresDocument === "true" || guardKey === VEHICLE_VERIFICATION_GUARD_KEY);
   const fields = parseFieldEntries(formData);
   const documentUploads = extractDocumentUploads(formData);
   const noteRaw = (formData.get("note") as string | null) ?? "";
@@ -597,9 +599,8 @@ export async function completeTaskFormAction(
   }
 
   const enforcedChecklist = guardKey === VEHICLE_VERIFICATION_GUARD_KEY ? [TECHNICAL_REPORT_TYPE] : [];
-  const requiredChecklist = Array.from(
-    new Set([...extractChecklistFromTaskPayload(existing.payload ?? null), ...enforcedChecklist]),
-  );
+  const baseChecklist = isBuyerDocsGuard ? [] : extractChecklistFromTaskPayload(existing.payload ?? null);
+  const requiredChecklist = Array.from(new Set([...baseChecklist, ...enforcedChecklist]));
   let syncedChecklist: ClientDocumentChecklist | null = null;
 
   if (guardKey && requiredChecklist.length > 0 && documentUploads.length === 0) {
