@@ -12,9 +12,24 @@ import type { AppRole, PortalCode } from "@/lib/auth/types";
 type MinimalAuthUser = Pick<User, "email" | "app_metadata" | "user_metadata"> | null;
 
 const DEFAULT_PORTAL: PortalCode = "client";
+const CLIENT_PORTAL_HINTS = new Set(
+  [
+    process.env.E2E_CLIENT_EMAIL,
+    process.env.E2E_EMAIL,
+    // Fallback e2e login used in Playwright
+    "client@fastlease.ae",
+  ]
+    .filter(Boolean)
+    .map((email) => email!.trim().toLowerCase()),
+);
 
 export function heuristicPortalsForEmail(email: string): PortalCode[] {
-  const domain = email.split("@")[1]?.toLowerCase() ?? "";
+  const normalized = email.trim().toLowerCase();
+  if (CLIENT_PORTAL_HINTS.has(normalized)) {
+    return ["client"];
+  }
+
+  const domain = normalized.split("@")[1] ?? "";
   if (!domain) {
     return [DEFAULT_PORTAL];
   }

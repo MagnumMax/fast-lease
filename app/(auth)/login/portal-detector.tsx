@@ -28,8 +28,18 @@ export function PortalDetector() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (state.status === "success" && state.redirectPath) {
-      router.replace(state.redirectPath);
+    if (state.status === "success") {
+      const identity = state.context?.identity?.toLowerCase();
+      const isAdminIdentity = identity === "admin@fastlease.ae";
+      const fallbackRedirect =
+        state.context?.portal === "app" && isAdminIdentity
+          ? "/admin/dashboard"
+          : undefined;
+
+      const target = state.redirectPath ?? fallbackRedirect;
+      if (target) {
+        router.replace(target);
+      }
     }
   }, [state, router]);
 

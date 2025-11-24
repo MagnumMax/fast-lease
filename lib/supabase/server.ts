@@ -39,6 +39,7 @@ export async function createSupabaseServerClient(
   options: SupabaseServerClientOptions = {},
 ) {
   const cookieStore = await resolveCookieStore(options.cookieStore);
+  const isProd = process.env.NODE_ENV === "production";
 
   const supabaseUrlVar = resolveEnvVariable(
     "NEXT_PUBLIC_SUPABASE_URL",
@@ -64,24 +65,32 @@ export async function createSupabaseServerClient(
     );
   }
 
-  return createServerClient(supabaseUrlVar.value, supabaseAnonKeyVar.value, {
-    cookies: {
-      getAll() {
-        return cookieStore
-          .getAll()
-          .map(({ name, value }) => ({ name, value }));
-      },
-      setAll(cookies) {
-        for (const { name, value, options } of cookies) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch {
-            /* cookies() is read-only in edge/server components */
+  return createServerClient(
+    supabaseUrlVar.value,
+    supabaseAnonKeyVar.value,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore
+            .getAll()
+            .map(({ name, value }) => ({ name, value }));
+        },
+        setAll(cookies) {
+          for (const { name, value, options } of cookies) {
+            try {
+              cookieStore.set({ name, value, ...options });
+            } catch {
+              /* cookies() is read-only in edge/server components */
+            }
           }
-        }
+        },
+      },
+      cookieOptions: {
+        // Для локальной среды на http отключаем secure, иначе браузер не сохраняет куки
+        secure: isProd,
       },
     },
-  });
+  );
 }
 
 export async function createSupabaseServiceClient(): Promise<SupabaseClient> {

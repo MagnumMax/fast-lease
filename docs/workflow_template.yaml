@@ -172,6 +172,7 @@ statuses:
               - passport
               - emirates_id
               - driver_license
+              - preliminary_purchase_agreement
     exit_requirements:
       - key: docs.required.allUploaded
         rule: "== true"
@@ -274,23 +275,19 @@ statuses:
         task:
           template_id: prepare_contract_v1
           type: PREPARE_CONTRACT
-          title: "Сформировать договор/график/акт"
+          title: "Сформировать договор/график платежей/акт приема-передачи"
           assignee_role: LEGAL
           guard_key: "legal.contractReady"
           sla: { hours: 24 }
           schema:
             version: "1.0"
             fields:
-              - id: contract_number
-                type: text
-                label: "Номер договора"
               - id: deliverables
                 type: checklist
                 label: "Файлы"
-          bindings:
-            contract_number: "{{payload.contract.number}}"
           defaults:
             deliverables:
+              - purchase_agreement
               - lease_agreement
               - payment_schedule
               - delivery_act

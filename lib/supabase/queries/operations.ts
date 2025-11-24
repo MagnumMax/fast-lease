@@ -870,6 +870,12 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "corporate_documents", label: "Корпоративные документы", context: "company" as const },
   { value: "company_bank_statement", label: "Банковская выписка компании", context: "company" as const },
   { value: "lease_agreement", label: "Договор аренды", context: "any" as const },
+  { value: "purchase_agreement", label: "Договор покупки", context: "any" as const },
+  {
+    value: "preliminary_purchase_agreement",
+    label: "Предварительный договор купли-продажи",
+    context: "any" as const,
+  },
   { value: "payment_schedule", label: "Платёжный график", context: "any" as const },
   { value: "delivery_act", label: "Акт приёма-передачи", context: "any" as const },
   { value: "technical_report", label: "Технический отчёт", context: "any" as const },
@@ -937,6 +943,7 @@ export const DEAL_DOCUMENT_TYPES = [
   { value: "investment_agreement", label: "Инвестиционный договор", category: "required" as const },
   { value: "invoice", label: "Инвойс", category: "other" as const },
   { value: "lease_agreement", label: "Договор аренды", category: "required" as const },
+  { value: "purchase_agreement", label: "Договор покупки", category: "required" as const },
   { value: "memorandum_of_understanding", label: "Меморандум о взаимопонимании", category: "signature" as const },
   { value: "payment_schedule", label: "Платёжный график", category: "required" as const },
   { value: "proforma_invoice", label: "Проформа-инвойс", category: "other" as const },
@@ -968,7 +975,6 @@ const DEAL_DOCUMENT_TYPE_ALIAS_ENTRIES = [
   ["rent_payment_schedule", "payment_schedule"],
   ["schedule", "payment_schedule"],
   ["preliminary_vehicle_purchase_agreement", "vehicle_purchase_agreement"],
-  ["purchase_agreement", "vehicle_purchase_agreement"],
   ["vehicle_sales_agreement", "vehicle_sale_contract"],
   ["sale_confirmation_letter", "sale_confirmation"],
 ] as const satisfies ReadonlyArray<[string, DealDocumentTypeValue]>;

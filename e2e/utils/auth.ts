@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const DEFAULT_PASSWORD = "123456";
+const DEFAULT_ADMIN_PASSWORD = "12345678";
 
 type Creds = {
   email?: string | null;
@@ -43,6 +44,18 @@ export function getOpsCreds(): Required<Creds> {
   return { email, password };
 }
 
+export function getAdminCreds(): Required<Creds> {
+  const email =
+    process.env.E2E_ADMIN_EMAIL ??
+    process.env.E2E_EMAIL_ADMIN ??
+    "admin@fastlease.ae";
+  const password =
+    process.env.E2E_ADMIN_PASSWORD ??
+    process.env.E2E_PASSWORD ??
+    DEFAULT_ADMIN_PASSWORD;
+  return { email, password };
+}
+
 export async function loginViaUi(page: Page, creds: Creds) {
   const email = creds.email ?? "";
   const password = creds.password ?? "";
@@ -52,5 +65,6 @@ export async function loginViaUi(page: Page, creds: Creds) {
   await page.locator("#login-identity").fill(email);
   await page.locator("#login-password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForLoadState("networkidle");
+  // Даём время server action установить сессию и куки
+  await page.waitForTimeout(1500);
 }

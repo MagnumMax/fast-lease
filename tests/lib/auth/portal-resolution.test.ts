@@ -13,6 +13,11 @@ describe("heuristicPortalsForEmail / inferPortalForEmail", () => {
     expect(inferPortalForEmail("ops@fastlease.ae")).toBe("app");
   });
 
+  it("routes known client e2e emails to the client portal", () => {
+    expect(inferPortalForEmail("client@fastlease.ae")).toBe("client");
+    expect(heuristicPortalsForEmail("client@fastlease.ae")).toEqual(["client"]);
+  });
+
   it("routes investor hints to the investor portal", () => {
     expect(inferPortalForEmail("ceo@investor-holdings.com")).toBe("investor");
   });
