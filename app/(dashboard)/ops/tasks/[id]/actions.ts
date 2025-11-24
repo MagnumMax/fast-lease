@@ -17,6 +17,7 @@ import {
   CLIENT_DOCUMENT_TYPE_LABEL_MAP,
   type ClientDocumentTypeValue,
   normalizeClientDocumentType,
+  DEAL_DOCUMENT_TYPES,
 } from "@/lib/supabase/queries/operations";
 import {
   evaluateClientDocumentChecklist,
@@ -41,27 +42,22 @@ const COMPLETE_FORM_SCHEMA = z.object({
 
 const DELETE_GUARD_DOCUMENT_SCHEMA = z.object({
   documentId: z.string().uuid(),
-  clientId: z.string().uuid(),
-  clientSlug: z.string().min(1).optional(),
   taskId: z.string().uuid(),
-  dealId: z.string().uuid().optional(),
+  dealId: z.string().uuid(),
   dealSlug: z.string().min(1).optional(),
 });
 
-const CLIENT_DOCUMENT_BUCKET = "client-documents";
+const DEAL_DOCUMENT_BUCKET = "deal-documents";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
-const CLIENT_DOCUMENT_CATEGORY_MAP: Record<ClientDocumentTypeValue, string> = CLIENT_DOCUMENT_TYPES.reduce(
-  (acc, entry) => {
-    acc[entry.value] = entry.context === "company" ? "company" : "identity";
-    return acc;
-  },
-  {} as Record<ClientDocumentTypeValue, string>,
-);
+const DEAL_DOCUMENT_CATEGORY_MAP: Record<string, string> = DEAL_DOCUMENT_TYPES.reduce((acc, entry) => {
+  acc[entry.value] = entry.category;
+  return acc;
+}, {} as Record<string, string>);
 
-function resolveClientDocumentCategory(value: ClientDocumentTypeValue | null): string {
-  if (!value) return "identity";
-  return CLIENT_DOCUMENT_CATEGORY_MAP[value] ?? "identity";
+function resolveDealDocumentCategory(value: string | null): string {
+  if (!value) return "other";
+  return DEAL_DOCUMENT_CATEGORY_MAP[value] ?? "other";
 }
 
 function parseFieldEntries(formData: FormData): Record<string, unknown> {
@@ -128,21 +124,20 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
 async function uploadAttachment(options: {
   supabase: Awaited<ReturnType<typeof createSupabaseServiceClient>>;
   dealId: string;
-  clientId: string;
   guardKey: string;
   guardLabel?: string;
   file: FileLike;
   documentType: ClientDocumentTypeValue;
   uploadedBy: string | null;
 }): Promise<{ path: string } | { error: string }> {
-  const { supabase, dealId, clientId, guardKey, guardLabel, file, documentType, uploadedBy } = options;
+  const { supabase, dealId, guardKey, guardLabel, file, documentType, uploadedBy } = options;
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const baseName = getFileName(file) || guardKey || "attachment";
   const sanitizedName = sanitizeFileName(baseName);
-  const path = `${clientId}/${guardKey}/${Date.now()}-${sanitizedName}`;
-  const documentCategory = resolveClientDocumentCategory(documentType);
+  const path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
+  const documentCategory = resolveDealDocumentCategory(documentType);
   const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? null;
   const metadata = {
     upload_context: "workflow_task",
@@ -152,7 +147,7 @@ async function uploadAttachment(options: {
     guard_deal_id: dealId,
   };
 
-  const { error: uploadError } = await supabase.storage.from(CLIENT_DOCUMENT_BUCKET).upload(path, buffer, {
+  const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).upload(path, buffer, {
     contentType: file.type || "application/octet-stream",
     upsert: true,
   });
@@ -162,8 +157,8 @@ async function uploadAttachment(options: {
     return { error: "Не удалось загрузить вложение" };
   }
 
-  const { error: insertError } = await supabase.from("client_documents").insert({
-    client_id: clientId,
+  const { error: insertError } = await supabase.from("deal_documents").insert({
+    deal_id: dealId,
     title: typeLabel ?? guardLabel ?? guardKey,
     document_type: documentType,
     document_category: documentCategory,
@@ -293,25 +288,40 @@ function resolveChecklistAttachmentPath(checklist: ClientDocumentChecklist | nul
 
 async function evaluateAndSyncDocsGuard(options: {
   supabase: Awaited<ReturnType<typeof createSupabaseServiceClient>>;
-  clientId: string;
   dealId: string;
   guardKey: string;
   dealPayload: Record<string, unknown> | null;
   requiredChecklist: string[];
 }): Promise<ClientDocumentChecklist | null> {
-  const { supabase, clientId, dealId, guardKey, dealPayload, requiredChecklist } = options;
+  const { supabase, dealId, guardKey, dealPayload, requiredChecklist } = options;
 
   const { data: docsData, error: docsError } = await supabase
-    .from("client_documents")
-    .select("id, document_type, title, status, storage_path")
-    .eq("client_id", clientId);
+    .from("deal_documents")
+    .select("id, document_type, title, status, storage_path, metadata")
+    .eq("deal_id", dealId);
 
   if (docsError) {
-    console.error("[workflow] failed to load client documents for guard sync", docsError);
+    console.error("[workflow] failed to load deal documents for guard sync", docsError);
     return null;
   }
 
-  const documents = Array.isArray(docsData) ? (docsData as ClientDocumentSummary[]) : [];
+  const documentsRaw = Array.isArray(docsData)
+    ? (docsData as Array<ClientDocumentSummary & { metadata?: unknown }>)
+    : [];
+  const documents = documentsRaw.filter((doc) => {
+    const metadata =
+      doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+        ? (doc.metadata as Record<string, unknown>)
+        : null;
+    const metadataGuardKey =
+      metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
+    const metadataDealId =
+      metadata && typeof metadata.guard_deal_id === "string" ? (metadata.guard_deal_id as string) : null;
+
+    if (metadataGuardKey && metadataGuardKey !== guardKey) return false;
+    if (metadataDealId && metadataDealId !== dealId) return false;
+    return true;
+  });
   const checklist = evaluateClientDocumentChecklist(requiredChecklist, documents);
   if (checklist.items.length === 0) {
     return checklist;
@@ -397,14 +407,14 @@ export async function deleteTaskGuardDocumentAction(
     return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
-  const { documentId, clientId, clientSlug, taskId, dealId, dealSlug } = parsed.data;
+  const { documentId, taskId, dealId, dealSlug } = parsed.data;
 
   try {
     const supabase = await createSupabaseServiceClient();
 
     const { data: documentRecord, error: lookupError } = await supabase
-      .from("client_documents")
-      .select("id, client_id, storage_path")
+      .from("deal_documents")
+      .select("id, deal_id, storage_path")
       .eq("id", documentId)
       .maybeSingle();
 
@@ -413,8 +423,8 @@ export async function deleteTaskGuardDocumentAction(
       return { success: false, error: "Не удалось найти документ." };
     }
 
-    if (!documentRecord || String(documentRecord.client_id) !== clientId) {
-      return { success: false, error: "Документ не найден или принадлежит другому клиенту." };
+    if (!documentRecord || String(documentRecord.deal_id) !== dealId) {
+      return { success: false, error: "Документ не найден или принадлежит другой сделке." };
     }
 
     const storagePath =
@@ -423,7 +433,7 @@ export async function deleteTaskGuardDocumentAction(
         : null;
 
     if (storagePath) {
-      const { error: storageError } = await supabase.storage.from(CLIENT_DOCUMENT_BUCKET).remove([storagePath]);
+      const { error: storageError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).remove([storagePath]);
       if (storageError && !String(storageError.message ?? "").toLowerCase().includes("not found")) {
         console.error("[workflow] failed to remove guard document file", storageError);
         return { success: false, error: "Не удалось удалить файл документа." };
@@ -431,10 +441,10 @@ export async function deleteTaskGuardDocumentAction(
     }
 
     const { error: deleteError } = await supabase
-      .from("client_documents")
+      .from("deal_documents")
       .delete()
       .eq("id", documentId)
-      .eq("client_id", clientId);
+      .eq("deal_id", dealId);
 
     if (deleteError) {
       console.error("[workflow] failed to delete guard document entry", deleteError);
@@ -445,14 +455,10 @@ export async function deleteTaskGuardDocumentAction(
       revalidatePath(path);
     }
 
-    for (const path of getWorkspacePaths("clients")) {
+    for (const path of getWorkspacePaths("deals")) {
       revalidatePath(path);
     }
-    revalidatePath("/ops/clients");
-    revalidatePath(`/ops/clients/${clientId}`);
-    if (clientSlug && clientSlug !== clientId) {
-      revalidatePath(`/ops/clients/${clientSlug}`);
-    }
+    revalidatePath("/ops/deals");
 
     return { success: true };
   } catch (error) {
@@ -596,10 +602,9 @@ export async function completeTaskFormAction(
   );
   let syncedChecklist: ClientDocumentChecklist | null = null;
 
-  if (clientId && guardKey && requiredChecklist.length > 0 && documentUploads.length === 0) {
+  if (guardKey && requiredChecklist.length > 0 && documentUploads.length === 0) {
     syncedChecklist = await evaluateAndSyncDocsGuard({
       supabase,
-      clientId,
       dealId,
       guardKey,
       dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
@@ -624,15 +629,11 @@ export async function completeTaskFormAction(
     if (!guardKey) {
       return { status: "error", message: "Вложение доступно только для задач с guard" };
     }
-    if (!clientId) {
-      return { status: "error", message: "У сделки отсутствует клиент, невозможно сохранить документ" };
-    }
 
     for (const upload of documentUploads) {
       const uploadResult = await uploadAttachment({
         supabase,
         dealId,
-        clientId,
         guardKey,
         guardLabel,
         file: upload.file,
@@ -655,10 +656,9 @@ export async function completeTaskFormAction(
     documentType: null,
   });
 
-  if (clientId && guardKey && requiredChecklist.length > 0 && (documentUploads.length > 0 || !syncedChecklist)) {
+  if (guardKey && requiredChecklist.length > 0 && (documentUploads.length > 0 || !syncedChecklist)) {
     syncedChecklist = await evaluateAndSyncDocsGuard({
       supabase,
-      clientId,
       dealId,
       guardKey,
       dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,

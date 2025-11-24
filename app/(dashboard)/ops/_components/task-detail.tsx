@@ -297,7 +297,9 @@ export function TaskDetailView({
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
   const requiresDocument = (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
   const documentsEnabled = requiresDocument || isAecbTask || isPaySupplierTask;
-  const defaultDocumentType = enforcedDocumentType ?? (isAecbTask ? AECB_CREDIT_REPORT_TYPE : "");
+  const defaultDocumentType: ClientDocumentTypeValue | "" =
+    enforcedDocumentType ??
+    (isAecbTask ? AECB_CREDIT_REPORT_TYPE : isPrepareQuoteTask ? "signed_commercial_offer" : "");
   const requiredDocumentLabel = enforcedDocumentType
     ? getClientDocumentLabel(enforcedDocumentType) ?? "Технический отчёт"
     : null;
@@ -338,11 +340,11 @@ export function TaskDetailView({
   const guardDocumentTypeLabel = guardState?.documentType
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
-  const allowDocumentDeletion = Boolean(deal?.clientId);
+  const allowDocumentDeletion = Boolean(deal?.id);
   const taskTitle = isVehicleVerificationTask
     ? "Проверка тех состояния и оценочной стоимости авто"
     : isPrepareQuoteTask
-      ? "Подготовка и подписание клиентом коммерческого предложения"
+      ? "Подписание клиентом коммерческого предложения"
       : isFinanceReviewTask
         ? FINANCE_REVIEW_TITLE
         : task.title;
@@ -379,8 +381,8 @@ export function TaskDetailView({
   }
 
   async function handleDeleteGuardDocument(documentId: string) {
-    if (!allowDocumentDeletion || !deal?.clientId) {
-      setDocumentActionError("Невозможно удалить документ: не определён клиент сделки.");
+    if (!allowDocumentDeletion || !deal?.id) {
+      setDocumentActionError("Невозможно удалить документ: не определена сделка.");
       return;
     }
     if (isDocumentDeleting(documentId)) {
@@ -394,10 +396,8 @@ export function TaskDetailView({
     try {
       const result = await deleteTaskGuardDocumentAction({
         documentId,
-        clientId: deal.clientId,
-        clientSlug: clientSlug ?? undefined,
         taskId: task.id,
-        dealId: deal?.id ?? undefined,
+        dealId: deal.id,
         dealSlug: dealSlug ?? undefined,
       });
 
@@ -677,7 +677,7 @@ export function TaskDetailView({
           {checklist && checklist.items.length > 0 ? (
             <div className="mt-4 space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
               <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                <span>Чек-лист клиента</span>
+                <span>Чек-лист документов</span>
                 <Badge variant={checklist.fulfilled ? "success" : "secondary"} className="rounded-lg text-[11px]">
                   {checklist.fulfilled ? "Готово" : "Ожидает"}
                 </Badge>
@@ -688,14 +688,22 @@ export function TaskDetailView({
                     key={item.key}
                     className="flex items-center justify-between gap-3 rounded-md bg-background/40 px-3 py-2 text-foreground"
                   >
+                    {(() => {
+                      const itemLabel =
+                        getClientDocumentLabel((item.normalizedType as ClientDocumentTypeValue | null) ?? null) ??
+                        getClientDocumentLabel(item.key as ClientDocumentTypeValue) ??
+                        item.label;
+                      return (
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium">{item.label}</span>
+                        <span className="text-sm font-medium">{itemLabel}</span>
                       <span>
                         {item.fulfilled
                           ? `Загружено файлов: ${item.matches.length}`
                           : "Документ отсутствует"}
                       </span>
                     </div>
+                      );
+                    })()}
                     <Badge variant={item.fulfilled ? "success" : "secondary"} className="rounded-lg text-[11px]">
                       {item.fulfilled ? "OK" : "Нет"}
                     </Badge>

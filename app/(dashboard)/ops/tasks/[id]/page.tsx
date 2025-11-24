@@ -401,10 +401,22 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
                 : null;
             const metadataGuardKey =
               metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
-            if (metadataGuardKey && metadataGuardKey === guardKey) {
-              return true;
-            }
-            return document.document_type === guardKey && Boolean(document.storage_path);
+            const metadataGuardDealId =
+              metadata && typeof metadata.guard_deal_id === "string" ? (metadata.guard_deal_id as string) : null;
+            const metadataGuardType =
+              metadata && typeof metadata.guard_document_type === "string"
+                ? (metadata.guard_document_type as string)
+                : null;
+
+            if (metadataGuardKey && metadataGuardKey !== guardKey) return false;
+            if (metadataGuardDealId && metadataGuardDealId !== task.dealId) return false;
+
+            return (
+              Boolean(document.storage_path) &&
+              (metadataGuardKey === guardKey ||
+                document.document_type === guardKey ||
+                metadataGuardType === guardKey)
+            );
           });
 
           attachmentPath = attachmentPath ?? matchingDoc?.storage_path ?? null;
@@ -422,31 +434,42 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           }
         }
 
-        if (guardKey && clientDocuments.length > 0) {
+        if (guardKey && dealDocuments.length > 0) {
           const seenPaths = new Set<string>();
           const guardDealId = task.dealId;
-          const relevantDocs = clientDocuments.filter((doc) => {
+          const relevantDocs = dealDocuments.filter((doc) => {
             const metadata =
               doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
                 ? (doc.metadata as Record<string, unknown>)
                 : null;
             const metadataGuardKey =
               metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
+            const metadataGuardType =
+              metadata && typeof metadata.guard_document_type === "string"
+                ? (metadata.guard_document_type as string)
+                : null;
             const metadataDealId = metadata && typeof metadata.guard_deal_id === "string"
               ? (metadata.guard_deal_id as string)
               : null;
 
-            if (metadataGuardKey !== guardKey) return false;
+            if (metadataGuardKey && metadataGuardKey !== guardKey) return false;
             if (guardDealId && metadataDealId && metadataDealId !== guardDealId) return false;
+            if (
+              !metadataGuardKey &&
+              resolvedDocumentType &&
+              doc.document_type !== resolvedDocumentType &&
+              metadataGuardType !== resolvedDocumentType
+            ) {
+              return false;
+            }
+            if (!metadataGuardKey && !resolvedDocumentType && doc.document_type !== guardKey) return false;
             return doc.storage_path ? !seenPaths.has(doc.storage_path) : true;
           });
 
           const guardDocsWithUrls: GuardDocumentLink[] = [];
           for (const doc of relevantDocs) {
             const storagePath = doc.storage_path ?? null;
-            const signedUrl = storagePath
-              ? await createSignedStorageUrl({ bucket: CLIENT_STORAGE_BUCKET, path: storagePath })
-              : null;
+            const signedUrl = doc.signedUrl ?? null;
             const titleFallback = guardMeta?.label ?? "Документ";
             const link: GuardDocumentLink = {
               id: doc.id,
@@ -470,7 +493,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
 
         let attachmentUrl: string | null = null;
         if (attachmentPath != null) {
-          const bucketsToTry = [CLIENT_STORAGE_BUCKET, DEAL_STORAGE_BUCKET];
+          const bucketsToTry = [DEAL_STORAGE_BUCKET, CLIENT_STORAGE_BUCKET];
           for (const bucket of bucketsToTry) {
             attachmentUrl = await createSignedStorageUrl({ bucket, path: attachmentPath });
             if (attachmentUrl) {
@@ -494,8 +517,19 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         const requiredChecklist = Array.from(
           new Set([...extractChecklistFromTaskPayload(task.payload ?? null), ...enforcedChecklist]),
         );
-        if (requiredChecklist.length > 0 && clientDocuments.length > 0) {
-          clientChecklist = evaluateClientDocumentChecklist(requiredChecklist, clientDocuments);
+        if (requiredChecklist.length > 0 && dealDocuments.length > 0) {
+          const checklistDocs = dealDocuments.map<ClientDocumentSummary>((doc) => ({
+            id: doc.id,
+            document_type: doc.document_type,
+            status: doc.status,
+            title: doc.title,
+            storage_path: doc.storage_path,
+            metadata:
+              doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+                ? (doc.metadata as Record<string, unknown>)
+                : null,
+          }));
+          clientChecklist = evaluateClientDocumentChecklist(requiredChecklist, checklistDocs);
         } else if (requiredChecklist.length > 0) {
           clientChecklist = {
             items: requiredChecklist.map((key) => ({

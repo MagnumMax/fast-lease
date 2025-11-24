@@ -92,7 +92,7 @@ statuses:
         task:
           template_id: prepare_quote_v1
           type: PREPARE_QUOTE
-          title: "Подготовка и подписание клиентом коммерческого предложения"
+          title: "Подписание клиентом коммерческого предложения"
           assignee_role: OP_MANAGER
           guard_key: "quotationPrepared"
           sla: { hours: 8 }
