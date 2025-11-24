@@ -216,7 +216,7 @@ statuses:
         task:
           template_id: finance_review_v1
           type: FIN_CALC
-          title: "Проверить график/взнос/остаток/маржу"
+          title: "Проверка и утверждение финансовой структуры сделки"
           assignee_role: FINANCE
           guard_key: "finance.approved"
           sla: { hours: 48 }
@@ -226,12 +226,8 @@ statuses:
               - id: deal_id
                 type: badge
                 label: "Сделка"
-              - id: monthly_payment
-                type: currency
-                label: "Платёж"
           bindings:
             deal_id: "{{deal.id}}"
-            monthly_payment: "{{payload.finance.monthly_payment}}"
     exit_requirements:
       - key: finance.approved
         rule: "== true"

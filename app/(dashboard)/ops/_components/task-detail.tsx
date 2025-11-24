@@ -39,6 +39,7 @@ type TaskDetailViewProps = {
   deal: { id: string; dealNumber: string | null; clientId: string | null; vehicleId: string | null } | null;
   stageTitle: string | null;
   guardDocuments: GuardDocumentLink[];
+  financeSnapshot?: FinanceReviewSnapshot | null;
   completeAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
 };
 
@@ -78,11 +79,24 @@ type DocumentDraft = {
   file: File | null;
 };
 
+type SummaryDataPoint = { label: string; value: string };
+type SummaryDocumentEntry = { label: string; value: string; status?: string | null; url?: string | null };
+type FinanceEntitySnapshot = {
+  title: string;
+  data: SummaryDataPoint[];
+  documents: SummaryDocumentEntry[];
+};
+type FinanceReviewSnapshot = {
+  deal: FinanceEntitySnapshot;
+};
+
 const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
 const AECB_TASK_TYPE = "AECB_CHECK";
 const AECB_CREDIT_REPORT_TYPE: ClientDocumentTypeValue = "aecb_credit_report";
+const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
+const FINANCE_REVIEW_TITLE = "Проверка и утверждение финансовой структуры сделки";
 const ANALOG_FIELD_DEFS: TaskFieldDefinition[] = [
   {
     id: "analog_market_url_1",
@@ -212,6 +226,7 @@ export function TaskDetailView({
   checklist,
   deal,
   guardDocuments,
+  financeSnapshot,
   completeAction,
 }: TaskDetailViewProps) {
   const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
@@ -241,6 +256,7 @@ export function TaskDetailView({
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
   const isAecbTask = task.type === AECB_TASK_TYPE;
+  const isFinanceReviewTask = task.type === FINANCE_REVIEW_TASK_TYPE;
   const confirmCarInstructions =
     task.type === "CONFIRM_CAR"
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
@@ -255,6 +271,9 @@ export function TaskDetailView({
   const fieldsToSkip = new Set<string>();
   if (task.type === "CONFIRM_CAR") {
     fieldsToSkip.add("instructions");
+  }
+  if (isFinanceReviewTask) {
+    fieldsToSkip.add("monthly_payment");
   }
   if (isVehicleVerificationTask) {
     fieldsToSkip.add("vin");
@@ -320,7 +339,9 @@ export function TaskDetailView({
     ? "Проверка тех состояния и оценочной стоимости авто"
     : isPrepareQuoteTask
       ? "Подготовка и подписание клиентом коммерческого предложения"
-      : task.title;
+      : isFinanceReviewTask
+        ? FINANCE_REVIEW_TITLE
+        : task.title;
   const taskInstruction = hasForm
     ? deadlineInfo
       ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
@@ -474,6 +495,86 @@ export function TaskDetailView({
     );
   }
 
+  function renderFinanceSnapshot(snapshot: FinanceReviewSnapshot | null) {
+    if (!snapshot) return null;
+    const entities = [snapshot.deal].filter(Boolean) as FinanceEntitySnapshot[];
+    if (!entities.length) return null;
+
+    return (
+      <Card className="border-border/80 bg-card/80 backdrop-blur">
+        <CardHeader className="space-y-2">
+          <CardTitle className="text-lg font-semibold">Контекст по сделке</CardTitle>
+          <CardDescription>
+            Используйте уже заполненные данные и загруженные документы, чтобы принять решение без возврата задачи.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {entities.map((entity) => (
+              <div
+                key={entity.title}
+                className="flex w-full flex-col gap-3 rounded-xl border border-border/70 bg-muted/20 p-4 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-foreground">{entity.title}</span>
+                </div>
+                <div className="space-y-2">
+                  {entity.data.map((item) => (
+                    <div
+                      key={`${entity.title}-${item.label}`}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
+                      <span className="text-muted-foreground">{item.label}</span>
+                      <span className="max-w-[60%] text-right font-medium text-foreground">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Документы
+                  </p>
+                  {entity.documents.length ? (
+                    <div className="flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
+                      {entity.documents.map((doc) => (
+                        <div
+                          key={`${entity.title}-doc-${doc.label}`}
+                          className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/80 px-3 py-2 text-xs"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium text-foreground">{doc.label}</span>
+                            <span className="text-muted-foreground">
+                              {doc.value}
+                              {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
+                            </span>
+                          </div>
+                          {doc.url ? (
+                            <Button asChild size="sm" variant="outline" className="rounded-lg">
+                              <Link href={doc.url} target="_blank">
+                                Открыть
+                              </Link>
+                            </Button>
+                          ) : (
+                            <Badge variant="outline" className="rounded-lg text-[11px] text-muted-foreground">
+                              {doc.value === "—" ? "—" : doc.status ?? "Нет ссылки"}
+                            </Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                      —
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="flex w-full flex-col gap-6">
       <div className="flex">
@@ -601,6 +702,12 @@ export function TaskDetailView({
           </div>
         </CardContent>
       </Card>
+
+      {financeSnapshot ? (
+        <div className="w-full">
+          {renderFinanceSnapshot(financeSnapshot)}
+        </div>
+      ) : null}
 
       <Card className="border-border/80 bg-card/80 backdrop-blur">
         <CardHeader className="space-y-2">
@@ -901,6 +1008,11 @@ export function TaskDetailView({
               ) : null}
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                {isFinanceReviewTask ? (
+                  <Button type="button" variant="outline" className="rounded-lg" disabled>
+                    Вернуть на доработку
+                  </Button>
+                ) : null}
                 <Button
                   type="submit"
                   className="rounded-lg"
@@ -909,9 +1021,11 @@ export function TaskDetailView({
                   disabled={pending}
                 >
                   {pending
-                    ? "Завершаем..."
-                    : requiresDocument
-                      ? "Завершить задачу"
+                    ? isFinanceReviewTask
+                      ? "Утверждаем..."
+                      : "Завершаем..."
+                    : isFinanceReviewTask
+                      ? "Утвердить"
                       : "Завершить задачу"}
                 </Button>
               </div>
