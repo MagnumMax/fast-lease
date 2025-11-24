@@ -246,7 +246,19 @@ statuses:
           sla: { hours: 48 }
           schema:
             version: "1.0"
-            fields: []
+            fields:
+              - id: decision
+                type: select
+                label: "Решение инвестора"
+                required: true
+                options:
+                  - value: approved
+                    label: "Одобрено"
+                  - value: rejected
+                    label: "Отклонено"
+              - id: notes
+                type: textarea
+                label: "Комментарий"
       - type: NOTIFY
         to_roles: [INVESTOR]
         template: "need_investor_approval"
