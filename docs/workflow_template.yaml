@@ -339,22 +339,20 @@ statuses:
         task:
           template_id: receive_advance_v1
           type: RECEIVE_ADVANCE
-          title: "Получить аванс от клиента"
+          title: "Создание инвойса на оплату аванса"
           assignee_role: FINANCE
           guard_key: "payments.advanceReceived"
           sla: { hours: 24 }
           schema:
             version: "1.0"
             fields:
-              - id: amount
-                type: currency
-                label: "Сумма"
-              - id: due_date
-                type: date
-                label: "Крайний срок"
-          bindings:
-            amount: "{{payload.finance.down_payment}}"
-            due_date: "{{payload.finance.down_payment_due_at}}"
+              - id: checklist
+                type: checklist
+                label: "Документы"
+                required: true
+          defaults:
+            checklist:
+              - tax_invoice
       - type: TASK_CREATE
         task:
           template_id: pay_supplier_v1
