@@ -191,7 +191,6 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "payments.supplierPaid",
         label: "Поставщику оплачено",
-        requiresDocument: true,
       },
     ],
   },
@@ -905,6 +904,8 @@ export const CLIENT_DOCUMENT_TYPES = [
   { value: "aecb_credit_report", label: "AECB credit report", context: "any" as const },
   { value: "commercial_offer", label: "Коммерческое предложение", context: "any" as const },
   { value: "signed_commercial_offer", label: "Коммерческое предложение (подписанное)", context: "any" as const },
+  { value: "quotation", label: "Квотейшен", context: "any" as const },
+  { value: "payment_receipt", label: "Платёжка", context: "any" as const },
   { value: "other", label: "Другой документ", context: "any" as const },
 ] as const;
 
@@ -937,6 +938,12 @@ const CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES = [
   ["company_corporate_documents", "corporate_documents"],
   ["corporate_document", "corporate_documents"],
   ["company_bank_statements", "company_bank_statement"],
+  ["quote", "quotation"],
+  ["quotation_doc", "quotation"],
+  ["supplier_quotation", "quotation"],
+  ["payment_receipt_doc", "payment_receipt"],
+  ["payment_receipt_supplier", "payment_receipt"],
+  ["payment_order", "payment_receipt"],
 ] as const satisfies ReadonlyArray<[string, ClientDocumentTypeValue]>;
 
 const CLIENT_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<

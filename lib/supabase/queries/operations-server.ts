@@ -268,7 +268,6 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "payments.supplierPaid",
         label: "Поставщику оплачено",
-        requiresDocument: true,
       },
     ],
   },

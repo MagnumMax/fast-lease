@@ -260,6 +260,7 @@ export function TaskDetailView({
   const isFinanceReviewTask = task.type === FINANCE_REVIEW_TASK_TYPE;
   const isInvestorApprovalTask = task.type === INVESTOR_APPROVAL_TASK_TYPE;
   const isApprovalTask = isFinanceReviewTask || isInvestorApprovalTask;
+  const isPaySupplierTask = task.type === "PAY_SUPPLIER";
   const confirmCarInstructions =
     task.type === "CONFIRM_CAR"
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
@@ -295,7 +296,7 @@ export function TaskDetailView({
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
   const requiresDocument = (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
-  const documentsEnabled = requiresDocument || isAecbTask;
+  const documentsEnabled = requiresDocument || isAecbTask || isPaySupplierTask;
   const defaultDocumentType = enforcedDocumentType ?? (isAecbTask ? AECB_CREDIT_REPORT_TYPE : "");
   const requiredDocumentLabel = enforcedDocumentType
     ? getClientDocumentLabel(enforcedDocumentType) ?? "Технический отчёт"

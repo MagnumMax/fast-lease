@@ -364,15 +364,13 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: supplier
-                type: text
-                label: "Поставщик"
-              - id: amount
-                type: currency
-                label: "Сумма"
-          bindings:
-            supplier: "{{payload.vehicle.supplier_name}}"
-            amount: "{{payload.finance.total_amount}}"
+              - id: optional_docs
+                type: checklist
+                label: "Документы (опционально)"
+          defaults:
+            optional_docs:
+              - quotation
+              - payment_receipt
     webhooks:
       on_event:
         - event: esign.completed
