@@ -15,16 +15,19 @@ import { saveCommercialOffer, type SaveCommercialOfferResult } from "@/app/(dash
 import type { OpsCommercialOffer } from "@/lib/supabase/queries/operations";
 
 const FIELD_CONFIG: Array<{
-  id: "priceVat" | "termMonths" | "downPayment" | "interestRateAnnual" | "insuranceRateAnnual";
+  id: "priceVat" | "termMonths" | "downPayment" | "insuranceRateAnnual";
   label: string;
   placeholder: string;
 }> = [
   { id: "priceVat", label: "Стоимость с VAT, AED", placeholder: "Например, 145000" },
   { id: "termMonths", label: "Срок, месяцев", placeholder: "36" },
   { id: "downPayment", label: "Аванс, AED", placeholder: "20000" },
-  { id: "interestRateAnnual", label: "Ставка финансирования, % годовых", placeholder: "8.5" },
   { id: "insuranceRateAnnual", label: "Ставка страхования, % годовых", placeholder: "2.1" },
 ];
+const INTEREST_RATE_LABEL = "Ставка финансирования, % годовых";
+const INTEREST_RATE_MIN = 16;
+const INTEREST_RATE_MAX = 25;
+const INTEREST_RATE_STEP = 0.5;
 
 type FormState = {
   priceVat: string;
@@ -50,6 +53,20 @@ function formatInitialNumber(value: number | null): string {
   return `${value}`;
 }
 
+function normalizeInterestRate(value: number | null): number {
+  if (value == null || Number.isNaN(value)) return INTEREST_RATE_MIN;
+
+  const clamped = Math.min(INTEREST_RATE_MAX, Math.max(INTEREST_RATE_MIN, value));
+  const stepsFromMin = Math.round((clamped - INTEREST_RATE_MIN) / INTEREST_RATE_STEP);
+  const snapped = INTEREST_RATE_MIN + stepsFromMin * INTEREST_RATE_STEP;
+
+  return Number(snapped.toFixed(1));
+}
+
+function formatInitialInterestRate(value: number | null): string {
+  return normalizeInterestRate(value ?? INTEREST_RATE_MIN).toString();
+}
+
 export function CommercialOfferForm({
   dealId,
   slug,
@@ -64,7 +81,7 @@ export function CommercialOfferForm({
       priceVat: formatInitialNumber(offer?.priceVat ?? null),
       termMonths: formatInitialNumber(offer?.termMonths ?? null),
       downPayment: formatInitialNumber(offer?.downPaymentAmount ?? null),
-      interestRateAnnual: formatInitialNumber(offer?.interestRateAnnual ?? null),
+      interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
       insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? null),
       comment: offer?.comment ?? "",
     }),
@@ -115,12 +132,22 @@ export function CommercialOfferForm({
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function handleInterestRateChange(nextValue: number) {
+    const normalized = normalizeInterestRate(nextValue);
+    handleInputChange("interestRateAnnual", normalized.toString());
+  }
+
+  const interestRateValue = useMemo(
+    () => normalizeInterestRate(Number.parseFloat(form.interestRateAnnual)),
+    [form.interestRateAnnual],
+  );
+
   function resetToPayload() {
     setForm({
       priceVat: formatInitialNumber(offer?.priceVat ?? null),
       termMonths: formatInitialNumber(offer?.termMonths ?? null),
       downPayment: formatInitialNumber(offer?.downPaymentAmount ?? null),
-      interestRateAnnual: formatInitialNumber(offer?.interestRateAnnual ?? null),
+      interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
       insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? null),
       comment: offer?.comment ?? "",
     });
@@ -251,6 +278,34 @@ export function CommercialOfferForm({
               />
             </div>
           ))}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="interestRateAnnual">{INTEREST_RATE_LABEL}</Label>
+              <span className="text-sm font-semibold text-foreground">
+                {interestRateValue.toFixed(1)}%
+              </span>
+            </div>
+            <input
+              id="interestRateAnnual"
+              name="interestRateAnnual"
+              type="range"
+              min={INTEREST_RATE_MIN}
+              max={INTEREST_RATE_MAX}
+              step={INTEREST_RATE_STEP}
+              value={interestRateValue}
+              onChange={(event) => handleInterestRateChange(Number.parseFloat(event.target.value))}
+              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+              aria-valuemin={INTEREST_RATE_MIN}
+              aria-valuemax={INTEREST_RATE_MAX}
+              aria-valuenow={interestRateValue}
+              aria-valuetext={`${interestRateValue.toFixed(1)}%`}
+            />
+            <div className="flex justify-between text-[11px] text-muted-foreground">
+              <span>{INTEREST_RATE_MIN}%</span>
+              <span>Шаг 0.5%</span>
+              <span>{INTEREST_RATE_MAX}%</span>
+            </div>
+          </div>
         </div>
         <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-3">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
