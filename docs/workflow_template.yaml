@@ -246,20 +246,7 @@ statuses:
           sla: { hours: 48 }
           schema:
             version: "1.0"
-            fields:
-              - id: investor_name
-                type: text
-                label: "Инвестор"
-              - id: deal_size
-                type: currency
-                label: "Объём сделки"
-              - id: irr
-                type: percent
-                label: "IRR"
-          bindings:
-            investor_name: "{{payload.investor.full_name}}"
-            deal_size: "{{payload.finance.total_amount}}"
-            irr: "{{payload.finance.irr}}"
+            fields: []
       - type: NOTIFY
         to_roles: [INVESTOR]
         template: "need_investor_approval"

@@ -96,6 +96,7 @@ const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
 const AECB_TASK_TYPE = "AECB_CHECK";
 const AECB_CREDIT_REPORT_TYPE: ClientDocumentTypeValue = "aecb_credit_report";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
+const INVESTOR_APPROVAL_TASK_TYPE = "INVESTOR_APPROVAL";
 const FINANCE_REVIEW_TITLE = "Проверка и утверждение финансовой структуры сделки";
 const ANALOG_FIELD_DEFS: TaskFieldDefinition[] = [
   {
@@ -257,6 +258,8 @@ export function TaskDetailView({
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
   const isAecbTask = task.type === AECB_TASK_TYPE;
   const isFinanceReviewTask = task.type === FINANCE_REVIEW_TASK_TYPE;
+  const isInvestorApprovalTask = task.type === INVESTOR_APPROVAL_TASK_TYPE;
+  const isApprovalTask = isFinanceReviewTask || isInvestorApprovalTask;
   const confirmCarInstructions =
     task.type === "CONFIRM_CAR"
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
@@ -267,7 +270,7 @@ export function TaskDetailView({
   const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
   const filteredSchemaFields =
     isAecbTask ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
-  let effectiveSchemaFields = isPrepareQuoteTask ? [] : filteredSchemaFields;
+  let effectiveSchemaFields = isPrepareQuoteTask || isInvestorApprovalTask ? [] : filteredSchemaFields;
   const fieldsToSkip = new Set<string>();
   if (task.type === "CONFIRM_CAR") {
     fieldsToSkip.add("instructions");
@@ -343,9 +346,13 @@ export function TaskDetailView({
         ? FINANCE_REVIEW_TITLE
         : task.title;
   const taskInstruction = hasForm
-    ? deadlineInfo
-      ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
-      : "Проверьте детали, заполните форму ниже и завершите задачу."
+    ? isApprovalTask
+      ? deadlineInfo
+        ? `Проверьте данные и утвердите решение до ${deadlineInfo}.`
+        : "Проверьте данные и утвердите решение."
+      : deadlineInfo
+        ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
+        : "Проверьте детали, заполните форму ниже и завершите задачу."
     : "Задача завершена — просмотрите ответы и вложения или вернитесь к списку.";
 
   function handleBackNavigation() {
@@ -1008,7 +1015,7 @@ export function TaskDetailView({
               ) : null}
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-                {isFinanceReviewTask ? (
+                {isApprovalTask ? (
                   <Button type="button" variant="outline" className="rounded-lg" disabled>
                     Вернуть на доработку
                   </Button>
@@ -1021,10 +1028,10 @@ export function TaskDetailView({
                   disabled={pending}
                 >
                   {pending
-                    ? isFinanceReviewTask
+                    ? isApprovalTask
                       ? "Утверждаем..."
                       : "Завершаем..."
-                    : isFinanceReviewTask
+                    : isApprovalTask
                       ? "Утвердить"
                       : "Завершить задачу"}
                 </Button>
