@@ -80,9 +80,9 @@ type DocumentDraft = {
   file: File | null;
 };
 
-type BuyerTypeValue = "company" | "individual";
+type PartyTypeValue = "company" | "individual";
 
-type BuyerDocumentRequirement = {
+type DocumentRequirement = {
   label: string;
   docType?: ClientDocumentTypeValue;
   note?: string;
@@ -107,7 +107,8 @@ const AECB_CREDIT_REPORT_TYPE: ClientDocumentTypeValue = "aecb_credit_report";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
 const INVESTOR_APPROVAL_TASK_TYPE = "INVESTOR_APPROVAL";
 const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
-const BUYER_TYPE_EMPTY_VALUE = "__buyer-type-none__";
+const SELLER_DOCS_GUARD_KEY = "docs.seller.allUploaded";
+const PARTY_TYPE_EMPTY_VALUE = "__party-type-none__";
 const FINANCE_REVIEW_TITLE = "Проверка и утверждение финансовой структуры сделки";
 const ANALOG_FIELD_DEFS: TaskFieldDefinition[] = [
   {
@@ -142,12 +143,12 @@ const ANALOG_FIELD_DEFS: TaskFieldDefinition[] = [
   },
 ];
 
-const BUYER_TYPE_OPTIONS: ReadonlyArray<{ value: BuyerTypeValue; label: string }> = [
+const PARTY_TYPE_OPTIONS: ReadonlyArray<{ value: PartyTypeValue; label: string }> = [
   { value: "company", label: "Юридическое лицо" },
   { value: "individual", label: "Физическое лицо" },
 ];
 
-const BUYER_DOCUMENT_REQUIREMENTS: Record<BuyerTypeValue, BuyerDocumentRequirement[]> = {
+const BUYER_DOCUMENT_REQUIREMENTS: Record<PartyTypeValue, DocumentRequirement[]> = {
   company: [
     { label: "Лицензия компании", docType: "company_license" },
     { label: "ID менеджера лицензии (Emirates ID)", docType: "emirates_id" },
@@ -157,14 +158,11 @@ const BUYER_DOCUMENT_REQUIREMENTS: Record<BuyerTypeValue, BuyerDocumentRequireme
     { label: "Виза водителя (ответственный)", docType: "visa" },
     { label: "Паспорт водителя (ответственный)", docType: "passport" },
     { label: "Права клиента/водителя", docType: "driving_license" },
-    {
-      label: "Электронная почта и номер телефона компании",
-      note: "добавьте в комментарий или приложите при необходимости",
-    },
-    {
-      label: "Электронная почта и номер телефона клиента/водителя",
-      note: "добавьте в комментарий или приложите при необходимости",
-    },
+    { label: "VCC (Vehicle Certificate of Conformity)", docType: "vcc_certificate" },
+    { label: "Vehicle Possession Certificate", docType: "vehicle_possession_certificate" },
+    { label: "Hiyaza", docType: "hiyaza_certificate" },
+    { label: "Mulkia", docType: "mulkia_certificate" },
+    { label: "Passing", docType: "passing_certificate" },
   ],
   individual: [
     { label: "Паспорт", docType: "passport" },
@@ -172,19 +170,66 @@ const BUYER_DOCUMENT_REQUIREMENTS: Record<BuyerTypeValue, BuyerDocumentRequireme
     { label: "ID клиента", docType: "emirates_id" },
     { label: "Права клиента", docType: "driving_license" },
     {
-      label: "Электронная почта и номер телефона клиента/водителя",
-      note: "добавьте в комментарий или приложите при необходимости",
-    },
-    {
       label: "Данные второго водителя (если есть)",
       note: "добавьте второй комплект документов через кнопку «Добавить документ»",
     },
+    { label: "VCC (Vehicle Certificate of Conformity)", docType: "vcc_certificate" },
+    { label: "Vehicle Possession Certificate", docType: "vehicle_possession_certificate" },
+    { label: "Hiyaza", docType: "hiyaza_certificate" },
+    { label: "Mulkia", docType: "mulkia_certificate" },
+    { label: "Passing", docType: "passing_certificate" },
   ],
 };
 
-const BUYER_CHECKLIST_BY_TYPE: Record<BuyerTypeValue, string[]> = {
+const BUYER_CHECKLIST_BY_TYPE: Record<PartyTypeValue, string[]> = {
   company: ["company_license", "emirates_id", "visa", "passport", "driving_license"],
   individual: ["passport", "visa", "emirates_id", "driving_license"],
+};
+
+const SELLER_DOCUMENT_REQUIREMENTS: Record<PartyTypeValue, DocumentRequirement[]> = {
+  individual: [
+    { label: "VCC (Vehicle Certificate of Conformity)", docType: "vcc_certificate" },
+    { label: "Vehicle Possession Certificate", docType: "vehicle_possession_certificate" },
+    { label: "Hiyaza", docType: "hiyaza_certificate" },
+    { label: "Mulkia", docType: "mulkia_certificate" },
+    { label: "Passing", docType: "passing_certificate" },
+    { label: "ID продавца, электронная почта, номер телефона", docType: "emirates_id" },
+    { label: "Invoice от физлица на авто (контракт SPA)", docType: "spa_invoice" },
+  ],
+  company: [
+    { label: "Лицензия компании", docType: "company_license" },
+    { label: "Квотейшен (Quotation)", docType: "quotation" },
+    { label: "Такс инвойс (Tax Invoice)", docType: "tax_invoice" },
+    { label: "Passing", docType: "passing_certificate" },
+    { label: "Mulkia", docType: "mulkia_certificate" },
+    { label: "Hiyaza", docType: "hiyaza_certificate" },
+    { label: "NOC letter от компании", docType: "noc_company_letter" },
+    { label: "NOC letter от GPS (для Rent-a-car)", docType: "noc_gps_letter" },
+    { label: "TRN-сертификат (при наличии)", docType: "trn_certificate" },
+  ],
+};
+
+const SELLER_CHECKLIST_BY_TYPE: Record<PartyTypeValue, string[]> = {
+  individual: [
+    "vcc_certificate",
+    "vehicle_possession_certificate",
+    "hiyaza_certificate",
+    "mulkia_certificate",
+    "passing_certificate",
+    "emirates_id",
+    "spa_invoice",
+  ],
+  company: [
+    "company_license",
+    "quotation",
+    "tax_invoice",
+    "passing_certificate",
+    "mulkia_certificate",
+    "hiyaza_certificate",
+    "noc_company_letter",
+    "noc_gps_letter",
+    "trn_certificate",
+  ],
 };
 
 function createDocumentDraft(defaultType: ClientDocumentTypeValue | "" = ""): DocumentDraft {
@@ -199,7 +244,7 @@ function createDocumentDraft(defaultType: ClientDocumentTypeValue | "" = ""): Do
   };
 }
 
-function normalizeBuyerType(value: string | null | undefined): BuyerTypeValue | "" {
+function normalizePartyType(value: string | null | undefined): PartyTypeValue | "" {
   if (value === "company" || value === "individual") {
     return value;
   }
@@ -214,6 +259,18 @@ const CONFIRM_CAR_INSTRUCTIONS =
   "Свяжитесь с дилером/брокером и подтвердите доступность выбранного авто.";
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
+
+const HINTLESS_FIELD_IDS = new Set([
+  "buyer_type",
+  "seller_type",
+  "buyer_company_email",
+  "buyer_company_phone",
+  "buyer_contact_email",
+  "buyer_contact_phone",
+  "seller_contact_email",
+  "seller_contact_phone",
+  "seller_bank_details",
+]);
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -325,18 +382,30 @@ export function TaskDetailView({
   const isApprovalTask = isFinanceReviewTask || isInvestorApprovalTask;
   const isPaySupplierTask = task.type === "PAY_SUPPLIER";
   const isBuyerDocsTask = task.type === "COLLECT_DOCS" || guardMeta?.key === BUYER_DOCS_GUARD_KEY;
+  const isSellerDocsTask = task.type === "COLLECT_SELLER_DOCS" || guardMeta?.key === SELLER_DOCS_GUARD_KEY;
   const confirmCarInstructions =
     task.type === "CONFIRM_CAR"
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
       : null;
   const isVehicleVerificationTask =
     task.type === VEHICLE_VERIFICATION_TASK_TYPE || guardMeta?.key === VEHICLE_VERIFICATION_GUARD_KEY;
-  const initialBuyerType = normalizeBuyerType(resolveFieldValue("buyer_type", payload));
-  const [buyerType, setBuyerType] = useState<BuyerTypeValue | "">(() => initialBuyerType);
+  const initialBuyerType = normalizePartyType(resolveFieldValue("buyer_type", payload));
+  const [buyerType, setBuyerType] = useState<PartyTypeValue | "">(() => initialBuyerType);
+  const initialSellerType = normalizePartyType(resolveFieldValue("seller_type", payload));
+  const [sellerType, setSellerType] = useState<PartyTypeValue | "">(() => initialSellerType);
   const buyerChecklist = buyerType ? BUYER_CHECKLIST_BY_TYPE[buyerType] : [];
-  const buyerRecommendations: BuyerDocumentRequirement[] = buyerType ? BUYER_DOCUMENT_REQUIREMENTS[buyerType] : [];
+  const buyerRecommendations: DocumentRequirement[] = buyerType ? BUYER_DOCUMENT_REQUIREMENTS[buyerType] : [];
+  const sellerChecklist = sellerType ? SELLER_CHECKLIST_BY_TYPE[sellerType] : [];
+  const sellerRecommendations: DocumentRequirement[] = sellerType ? SELLER_DOCUMENT_REQUIREMENTS[sellerType] : [];
 
-  const schemaFields = Array.isArray(payload?.schema?.fields) ? payload?.schema?.fields ?? [] : [];
+  const schemaFieldsRaw = payload?.schema?.fields;
+  const schemaFields = Array.isArray(schemaFieldsRaw)
+    ? schemaFieldsRaw
+    : schemaFieldsRaw && typeof schemaFieldsRaw === "object" && !Array.isArray(schemaFieldsRaw)
+      ? (Array.isArray((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields)
+          ? ((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields as TaskFieldDefinition[])
+          : [])
+      : [];
   const filteredSchemaFields =
     isAecbTask ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
   let effectiveSchemaFields = isPrepareQuoteTask || isInvestorApprovalTask ? [] : filteredSchemaFields;
@@ -344,7 +413,7 @@ export function TaskDetailView({
   if (task.type === "CONFIRM_CAR") {
     fieldsToSkip.add("instructions");
   }
-  if (isBuyerDocsTask) {
+  if (isBuyerDocsTask || isSellerDocsTask) {
     fieldsToSkip.add("checklist");
   }
   if (isFinanceReviewTask) {
@@ -367,17 +436,18 @@ export function TaskDetailView({
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
   const buyerDefaultDocType = buyerRecommendations.find((item) => item.docType)?.docType ?? "";
-  const requiresDocument = isBuyerDocsTask
+  const sellerDefaultDocType = sellerRecommendations.find((item) => item.docType)?.docType ?? "";
+  const requiresDocument = isBuyerDocsTask || isSellerDocsTask
     ? false
     : (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
-  const documentsEnabled = isBuyerDocsTask || requiresDocument || isAecbTask || isPaySupplierTask;
+  const documentsEnabled = isBuyerDocsTask || isSellerDocsTask || requiresDocument || isAecbTask || isPaySupplierTask;
   const defaultDocumentType: ClientDocumentTypeValue | "" =
     enforcedDocumentType ??
     (isAecbTask
       ? AECB_CREDIT_REPORT_TYPE
       : isPrepareQuoteTask
         ? "signed_commercial_offer"
-        : buyerDefaultDocType);
+        : buyerDefaultDocType || sellerDefaultDocType);
   const requiredDocumentLabel = enforcedDocumentType
     ? getClientDocumentLabel(enforcedDocumentType) ?? "Технический отчёт"
     : null;
@@ -385,18 +455,24 @@ export function TaskDetailView({
     ? buyerType
       ? "Документы необязательны — используйте список ниже и добавьте файлы, которые есть. Для двух водителей добавьте второй комплект через «Добавить документ»."
       : "Выберите тип покупателя, чтобы показать рекомендуемые документы. Все пункты необязательны."
-    : requiresDocument
-      ? "Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG."
-      : isAecbTask
-        ? "При необходимости загрузите AECB credit report для внутренней проверки. Поддерживаются PDF, JPG и PNG."
-        : "Добавьте связанные документы при необходимости. Поддерживаются PDF, JPG и PNG.";
+    : isSellerDocsTask
+      ? sellerType
+        ? "Документы необязательны — используйте список ниже и добавьте файлы, которые есть."
+        : "Выберите тип продавца, чтобы показать рекомендуемые документы. Все пункты необязательны."
+      : requiresDocument
+        ? "Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG."
+        : isAecbTask
+          ? "При необходимости загрузите AECB credit report для внутренней проверки. Поддерживаются PDF, JPG и PNG."
+          : "Добавьте связанные документы при необходимости. Поддерживаются PDF, JPG и PNG.";
   const documentEmptyStateText = isBuyerDocsTask
     ? "Документы пока не выбраны. Используйте список рекомендаций выше, добавьте нужные файлы или сохраните без вложений."
-    : requiresDocument
-      ? "Документы для загрузки не выбраны. Добавьте хотя бы один файл."
-      : isAecbTask
-        ? "Документы не выбраны. Этот шаг можно пропустить или приложить AECB credit report."
-        : "Документы для загрузки не выбраны.";
+    : isSellerDocsTask
+      ? "Документы пока не выбраны. Используйте список рекомендаций выше, добавьте нужные файлы или сохраните без вложений."
+      : requiresDocument
+        ? "Документы для загрузки не выбраны. Добавьте хотя бы один файл."
+        : isAecbTask
+          ? "Документы не выбраны. Этот шаг можно пропустить или приложить AECB credit report."
+          : "Документы для загрузки не выбраны.";
 
   useEffect(() => {
     if (!documentsEnabled) {
@@ -840,17 +916,44 @@ export function TaskDetailView({
                   {editableFields.map((field) => {
                     const fieldId = field.id;
                     const value = resolveFieldValue(fieldId, payload);
-                    const label = field.label ?? fieldId;
-                    const hint = field.hint ?? "";
+                    const baseLabel = field.label ?? fieldId;
+                    const rawHint = field.hint ?? "";
+                    const hint = HINTLESS_FIELD_IDS.has(fieldId) ? "" : rawHint;
+                    let label = baseLabel;
+                    if (fieldId === "buyer_contact_email" && buyerType === "individual") {
+                      label = "Электронная почта покупателя";
+                    } else if (fieldId === "buyer_contact_phone" && buyerType === "individual") {
+                      label = "Телефон покупателя";
+                    }
                     const type = field.type?.toLowerCase();
 
                     const isRequired = field.required ?? false;
 
-                    if (fieldId === "buyer_type") {
-                      const options =
+                    // Hide company contact fields for individuals
+                    if (
+                      (fieldId === "buyer_company_email" || fieldId === "buyer_company_phone") &&
+                      buyerType !== "company"
+                    ) {
+                      return (
+                        <input
+                          key={fieldId}
+                          type="hidden"
+                          name={`field:${fieldId}`}
+                          value=""
+                        />
+                      );
+                    }
+
+                    if (fieldId === "buyer_type" || fieldId === "seller_type") {
+                      const effectiveOptions =
                         Array.isArray(field.options) && field.options.length > 0
                           ? field.options
-                          : BUYER_TYPE_OPTIONS;
+                          : PARTY_TYPE_OPTIONS;
+                      const options = effectiveOptions;
+                      const currentValue = fieldId === "buyer_type" ? buyerType : sellerType;
+                      const setValue = fieldId === "buyer_type" ? setBuyerType : setSellerType;
+                      const placeholder =
+                        fieldId === "buyer_type" ? "Выберите тип покупателя" : "Выберите тип продавца";
                       return (
                         <div key={fieldId} className="space-y-2">
                           <Label htmlFor={`field-${fieldId}`}>
@@ -862,18 +965,18 @@ export function TaskDetailView({
                             ) : null}
                           </Label>
                           <Select
-                            value={buyerType || BUYER_TYPE_EMPTY_VALUE}
+                            value={currentValue || PARTY_TYPE_EMPTY_VALUE}
                             onValueChange={(value) => {
-                              const normalized = value === BUYER_TYPE_EMPTY_VALUE ? "" : (value as BuyerTypeValue);
-                              setBuyerType(normalized);
+                              const normalized = value === PARTY_TYPE_EMPTY_VALUE ? "" : (value as PartyTypeValue);
+                              setValue(normalized);
                             }}
                             disabled={pending}
                           >
                             <SelectTrigger id={`field-${fieldId}`} className="rounded-lg">
-                              <SelectValue placeholder="Выберите тип покупателя" />
+                              <SelectValue placeholder={placeholder} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value={BUYER_TYPE_EMPTY_VALUE}>Не выбрано</SelectItem>
+                              <SelectItem value={PARTY_TYPE_EMPTY_VALUE}>Не выбрано</SelectItem>
                               {options.map((option) => (
                                 <SelectItem key={option.value} value={option.value}>
                                   {option.label}
@@ -881,7 +984,11 @@ export function TaskDetailView({
                               ))}
                             </SelectContent>
                           </Select>
-                          <input type="hidden" name={`field:${fieldId}`} value={buyerType} />
+                      <input
+                        type="hidden"
+                        name={`field:${fieldId}`}
+                        value={currentValue}
+                      />
                           {hint ? (
                             <p className="text-xs text-muted-foreground">
                               {hint}
@@ -1043,6 +1150,88 @@ export function TaskDetailView({
                     )}
                     <p className="text-[11px] text-muted-foreground">
                       Если нужно добавить второго водителя, создайте дополнительный комплект файлов через «Добавить документ».
+                    </p>
+                  </div>
+                </>
+              ) : null}
+
+              {isSellerDocsTask ? (
+                <>
+                  <input type="hidden" name="field:checklist" value={JSON.stringify(sellerChecklist)} />
+                  <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/15 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">Рекомендуемые документы продавца</p>
+                        <p className="text-xs text-muted-foreground">
+                          Все пункты необязательны. Выберите тип продавца и прикрепите доступные файлы.
+                        </p>
+                      </div>
+                      {sellerType ? (
+                        <Badge variant="outline" className="rounded-lg text-xs font-semibold">
+                          {sellerType === "company" ? "Юридическое лицо" : "Физическое лицо"}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    {sellerType ? (
+                      <ul className="grid gap-2 sm:grid-cols-2">
+                        {sellerRecommendations.map((item) => {
+                          const docLabel = item.docType ? getClientDocumentLabel(item.docType) ?? item.docType : null;
+                          return (
+                            <li
+                              key={`${item.label}-${item.docType ?? "free"}`}
+                              className="space-y-1 rounded-xl border border-border/60 bg-background/60 px-3 py-2"
+                            >
+                              <span className="text-sm font-medium text-foreground">{item.label}</span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                {docLabel ? (
+                                  <Badge variant="secondary" className="rounded-lg text-[11px]">
+                                    {docLabel}
+                                  </Badge>
+                                ) : null}
+                                {item.note ? (
+                                  <span className="text-xs text-muted-foreground">{item.note}</span>
+                                ) : null}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground">
+                          Пока не выбран тип продавца — показываем оба списка.
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {(["individual", "company"] as const).map((kind) => {
+                            const items = SELLER_DOCUMENT_REQUIREMENTS[kind];
+                            return (
+                              <div
+                                key={kind}
+                                className="space-y-2 rounded-xl border border-border/60 bg-background/60 p-3"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-semibold text-foreground">
+                                    {kind === "company" ? "Юр. лицо" : "Физ. лицо"}
+                                  </span>
+                                  <Badge variant="secondary" className="rounded-lg text-[11px]">
+                                    {items.length} док.
+                                  </Badge>
+                                </div>
+                                <ul className="space-y-1">
+                                  {items.map((item) => (
+                                    <li key={`${kind}-${item.label}`} className="text-xs text-foreground/80">
+                                      {item.label}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Если нужно приложить несколько вариантов (например, VCC и Mulkia), добавьте несколько файлов через «Добавить документ».
                     </p>
                   </div>
                 </>

@@ -32,6 +32,7 @@ const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
 const INVESTOR_APPROVAL_TASK_TYPE = "INVESTOR_APPROVAL";
 const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
+const SELLER_DOCS_GUARD_KEY = "docs.seller.allUploaded";
 
 type GuardDocumentLink = {
   id: string;
@@ -516,7 +517,9 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         const enforcedChecklist =
           guardKey === VEHICLE_VERIFICATION_GUARD_KEY ? [TECHNICAL_REPORT_TYPE] : [];
         const baseChecklist =
-          guardKey === BUYER_DOCS_GUARD_KEY ? [] : extractChecklistFromTaskPayload(task.payload ?? null);
+          guardKey === BUYER_DOCS_GUARD_KEY || guardKey === SELLER_DOCS_GUARD_KEY
+            ? []
+            : extractChecklistFromTaskPayload(task.payload ?? null);
         const requiredChecklist = Array.from(new Set([...baseChecklist, ...enforcedChecklist]));
         if (requiredChecklist.length > 0 && dealDocuments.length > 0) {
           const checklistDocs = dealDocuments.map<ClientDocumentSummary>((doc) => ({

@@ -178,6 +178,22 @@ statuses:
               - id: checklist
                 type: checklist
                 label: "Рекомендуемые документы (необязательно)"
+              - id: buyer_company_email
+                type: text
+                label: "Электронная почта компании"
+                hint: "Необязательно. Укажите, если есть."
+              - id: buyer_company_phone
+                type: text
+                label: "Телефон компании"
+                hint: "Необязательно. Укажите, если есть."
+              - id: buyer_contact_email
+                type: text
+                label: "Электронная почта водителя"
+                hint: "Необязательно. Укажите, если есть."
+              - id: buyer_contact_phone
+                type: text
+                label: "Телефон водителя"
+                hint: "Необязательно. Укажите, если есть."
           defaults:
             buyer_type: ""
             checklist: []
@@ -200,15 +216,36 @@ statuses:
           schema:
             version: "1.0"
             fields:
+              - id: seller_type
+                type: select
+                label: "Тип продавца"
+                hint: "Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны."
+                options:
+                  - value: company
+                    label: "Юридическое лицо"
+                  - value: individual
+                    label: "Физическое лицо"
               - id: checklist
                 type: checklist
-                label: "Документы продавца"
+                label: "Рекомендуемые документы (необязательно)"
+              - id: seller_contact_email
+                type: text
+                label: "Электронная почта продавца"
+                hint: "Необязательно. Укажите, если есть."
+              - id: seller_contact_phone
+                type: text
+                label: "Телефон продавца"
+                hint: "Необязательно. Укажите, если есть."
+              - id: seller_bank_details
+                type: text
+                label: "Банковские реквизиты"
+                hint: "Необязательно. Укажите, если есть."
           defaults:
-            checklist:
-              - seller_id
-              - vehicle_registration
-              - ownership_proof
-              - seller_bank_details
+            seller_type: ""
+            checklist: []
+            seller_contact_email: ""
+            seller_contact_phone: ""
+            seller_bank_details: ""
     exit_requirements:
       - key: docs.seller.allUploaded
         rule: "== true"
