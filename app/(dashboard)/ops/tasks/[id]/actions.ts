@@ -52,6 +52,33 @@ const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
 const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
 const SELLER_DOCS_GUARD_KEY = "docs.seller.allUploaded";
+const DOC_FIELD_TYPE_MAP: Record<string, ClientDocumentTypeValue> = {
+  doc_company_license: "company_license",
+  doc_emirates_id_manager: "emirates_id",
+  doc_visa_manager: "visa",
+  doc_passport_manager: "passport",
+  doc_emirates_id_driver: "emirates_id",
+  doc_visa_driver: "visa",
+  doc_passport_driver: "passport",
+  doc_driving_license: "driving_license",
+  doc_passport_buyer: "passport",
+  doc_visa_buyer: "visa",
+  doc_emirates_id_buyer: "emirates_id",
+  doc_driving_license_buyer: "driving_license",
+  doc_vcc_certificate: "vcc_certificate",
+  doc_vehicle_possession_certificate: "vehicle_possession_certificate",
+  doc_hiyaza_certificate: "hiyaza_certificate",
+  doc_mulkia_certificate: "mulkia_certificate",
+  doc_passing_certificate: "passing_certificate",
+  doc_quotation: "quotation",
+  doc_tax_invoice: "tax_invoice",
+  doc_noc_company_letter: "noc_company_letter",
+  doc_noc_gps_letter: "noc_gps_letter",
+  doc_trn_certificate: "trn_certificate",
+  doc_emirates_id_seller: "emirates_id",
+  doc_spa_invoice: "spa_invoice",
+  doc_second_driver_bundle: "other",
+};
 const DEAL_DOCUMENT_CATEGORY_MAP: Record<string, string> = DEAL_DOCUMENT_TYPES.reduce((acc, entry) => {
   acc[entry.value] = entry.category;
   return acc;
@@ -89,6 +116,7 @@ type ParsedDocumentUpload = {
 };
 
 const DOCUMENT_FIELD_REGEX = /^documents\[(.+?)\]\[(type|file)\]$/;
+const DOC_FIELD_UPLOAD_REGEX = /^documentFields\[(.+?)\]\[(type|file)\]$/;
 
 function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
   const entries = new Map<string, { type?: string; file?: FileLike }>();
@@ -120,6 +148,43 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
     uploads.push({ id, type: normalized, file: entry.file });
   }
 
+  return uploads;
+}
+
+type FieldDocumentUpload = {
+  fieldId: string;
+  type: ClientDocumentTypeValue;
+  file: FileLike;
+};
+
+function mapDocFieldIdToDocType(fieldId: string): ClientDocumentTypeValue | null {
+  return DOC_FIELD_TYPE_MAP[fieldId] ?? null;
+}
+
+function extractFieldDocumentUploads(formData: FormData): FieldDocumentUpload[] {
+  const entries = new Map<string, { type?: string; file?: FileLike }>();
+
+  for (const [key, value] of formData.entries()) {
+    const match = DOC_FIELD_UPLOAD_REGEX.exec(key);
+    if (!match) continue;
+    const [, fieldId, field] = match;
+    const current = entries.get(fieldId) ?? {};
+    if (field === "type" && typeof value === "string") {
+      current.type = value.trim();
+    } else if (field === "file" && isFileLike(value) && value.size > 0) {
+      current.file = value;
+    }
+    entries.set(fieldId, current);
+  }
+
+  const uploads: FieldDocumentUpload[] = [];
+  for (const [fieldId, entry] of entries.entries()) {
+    if (!entry.file) continue;
+    const docType = mapDocFieldIdToDocType(fieldId);
+    const normalizedType = entry.type ? normalizeClientDocumentType(entry.type) : docType;
+    if (!normalizedType) continue;
+    uploads.push({ fieldId, type: normalizedType, file: entry.file });
+  }
   return uploads;
 }
 
@@ -497,6 +562,7 @@ export async function completeTaskFormAction(
     (requiresDocument === "true" || guardKey === VEHICLE_VERIFICATION_GUARD_KEY);
   const fields = parseFieldEntries(formData);
   const documentUploads = extractDocumentUploads(formData);
+  const fieldDocumentUploads = extractFieldDocumentUploads(formData);
   const noteRaw = (formData.get("note") as string | null) ?? "";
   const noteTrimmed = noteRaw.trim();
   const noteChanged = noteTrimmed !== (initialNote ?? "");
@@ -654,6 +720,27 @@ export async function completeTaskFormAction(
     }
   }
 
+  if (fieldDocumentUploads.length > 0) {
+    const guardKeyForFields = guardKey ?? "task-field-docs";
+    for (const upload of fieldDocumentUploads) {
+      const uploadResult = await uploadAttachment({
+        supabase,
+        dealId,
+        guardKey: guardKeyForFields,
+        guardLabel: guardLabel ?? upload.fieldId,
+        file: upload.file,
+        documentType: upload.type,
+        uploadedBy: sessionUser.user.id,
+      });
+
+      if ("error" in uploadResult) {
+        return { status: "error", message: uploadResult.error };
+      }
+
+      fields[upload.fieldId] = uploadResult.path;
+    }
+  }
+
   const mergedPayload = buildTaskPayloadPatch({
     existingPayload: (existing.payload as Record<string, unknown> | null) ?? null,
     fields,
@@ -772,10 +859,18 @@ export async function completeTaskFormAction(
   }
 
   if (!completionResult.transitionAttempted) {
+    const message =
+      completionResult.transitionSkippedReason ??
+      "Задача закрыта, но не связана с автоматическим переходом. Проверьте, что тип задачи соответствует guard'у этапа.";
     return {
-      status: "error",
-      message:
-        "Задача закрыта, но не связана с автоматическим переходом. Проверьте, что тип задачи соответствует guard'у этапа.",
+      status: completionResult.transitionSkippedReason ? "success" : "error",
+      message,
+      redirectTo:
+        completionResult.transitionSkippedReason && (dealSlug || dealId)
+          ? dealSlug
+            ? `/ops/deals/${dealSlug}`
+            : `/ops/deals/${dealId}`
+          : undefined,
     };
   }
 

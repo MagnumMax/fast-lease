@@ -4,6 +4,10 @@ import { createWorkflowService } from "@/lib/workflow";
 import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 
+type WorkflowStageMeta = {
+  exitRequirements?: Array<{ key?: string | null }>;
+};
+
 type WorkflowPayloadWithGuards = Record<string, unknown> & {
   tasks: Record<string, unknown>;
   guard_tasks: Record<string, unknown>;
@@ -161,6 +165,8 @@ export interface TaskCompletionResult {
   transitionSuccess?: boolean;
   newStatus?: string;
   error?: string;
+  transitionSkippedReason?: string;
+  expectedExitGuards?: string[];
 }
 
 /**
@@ -311,9 +317,20 @@ export async function handleTaskCompletion(
     console.log("[workflow] Workflow transition result", {
       dealId: context.dealId,
       success: transitionResult.success,
+      skipped: transitionResult.skipped,
       newStatus: transitionResult.newStatus,
       error: transitionResult.error,
     });
+
+    if (transitionResult.skipped) {
+      return {
+        taskUpdated: true,
+        transitionAttempted: false,
+        transitionSkippedReason: transitionResult.error,
+        expectedExitGuards: transitionResult.expectedGuards,
+        error: transitionResult.error,
+      };
+    }
 
     return {
       taskUpdated: true,
@@ -343,7 +360,13 @@ async function attemptWorkflowTransition(params: {
   guardContext: Record<string, unknown>;
   assigneeRole?: string | null;
   assigneeUserId?: string | null;
-}): Promise<{ success: boolean; newStatus?: string; error?: string }> {
+}): Promise<{
+  success: boolean;
+  newStatus?: string;
+  error?: string;
+  skipped?: boolean;
+  expectedGuards?: string[];
+}> {
   try {
     // Нормализуем статус
     const statusKey = normalizeStatusKey(params.currentStatus);
@@ -358,10 +381,20 @@ async function attemptWorkflowTransition(params: {
     }
 
     // Проверяем, соответствует ли guard key выходным guard'ам статуса
-    const exitGuards = statusMeta.exitRequirements || [];
-    const guardMatches = exitGuards.some((guard: { key: string }) => guard.key === params.guardKey);
-    if (!guardMatches) {
-      return { success: false, error: "Guard key does not match exit guards" };
+    const exitGuards = statusMeta.exitRequirements ?? [];
+    const exitGuardKeys = exitGuards
+      .map((guard) => guard?.key ?? null)
+      .filter((key): key is string => Boolean(key));
+    const guardMatches = exitGuardKeys.some((key) => key === params.guardKey);
+    if (!guardMatches && exitGuardKeys.length > 0) {
+      const reason = `Guard '${params.guardKey}' не подходит для статуса '${statusKey}'. Ожидаемые guard'ы: ${exitGuardKeys.join(", ")}`;
+      console.warn("[workflow] guard key does not match exit guards", {
+        dealId: params.dealId,
+        statusKey,
+        guardKey: params.guardKey,
+        expected: exitGuardKeys,
+      });
+      return { success: false, error: reason, skipped: true, expectedGuards: exitGuardKeys };
     }
 
     // Определяем следующий статус
@@ -436,7 +469,7 @@ function normalizeStatusKey(value: string | null | undefined): string | null {
 /**
  * Получает метаданные статуса из workflow конфигурации
  */
-async function getWorkflowStatusMeta(statusKey: string, dealId: string): Promise<any> {
+async function getWorkflowStatusMeta(statusKey: string, dealId: string): Promise<WorkflowStageMeta | null> {
   const supabase = await createSupabaseServiceClient();
 
   // Получаем информацию о сделке для определения workflow версии
@@ -481,7 +514,7 @@ async function getWorkflowStatusMeta(statusKey: string, dealId: string): Promise
     return null;
   }
 
-  const template = version.template as any;
+  const template = version.template as { stages?: Record<string, WorkflowStageMeta> } | null;
   if (!template || !template.stages) {
     console.error("[workflow] invalid workflow template structure");
     return null;

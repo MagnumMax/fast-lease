@@ -82,12 +82,6 @@ type DocumentDraft = {
 
 type PartyTypeValue = "company" | "individual";
 
-type DocumentRequirement = {
-  label: string;
-  docType?: ClientDocumentTypeValue;
-  note?: string;
-};
-
 type SummaryDataPoint = { label: string; value: string };
 type SummaryDocumentEntry = { label: string; value: string; status?: string | null; url?: string | null };
 type FinanceEntitySnapshot = {
@@ -148,90 +142,6 @@ const PARTY_TYPE_OPTIONS: ReadonlyArray<{ value: PartyTypeValue; label: string }
   { value: "individual", label: "Физическое лицо" },
 ];
 
-const BUYER_DOCUMENT_REQUIREMENTS: Record<PartyTypeValue, DocumentRequirement[]> = {
-  company: [
-    { label: "Лицензия компании", docType: "company_license" },
-    { label: "ID менеджера лицензии (Emirates ID)", docType: "emirates_id" },
-    { label: "Виза менеджера лицензии", docType: "visa" },
-    { label: "Паспорт менеджера лицензии", docType: "passport" },
-    { label: "ID водителя (ответственный)", docType: "emirates_id" },
-    { label: "Виза водителя (ответственный)", docType: "visa" },
-    { label: "Паспорт водителя (ответственный)", docType: "passport" },
-    { label: "Права клиента/водителя", docType: "driving_license" },
-    { label: "VCC (Vehicle Certificate of Conformity)", docType: "vcc_certificate" },
-    { label: "Vehicle Possession Certificate", docType: "vehicle_possession_certificate" },
-    { label: "Hiyaza", docType: "hiyaza_certificate" },
-    { label: "Mulkia", docType: "mulkia_certificate" },
-    { label: "Passing", docType: "passing_certificate" },
-  ],
-  individual: [
-    { label: "Паспорт", docType: "passport" },
-    { label: "Виза", docType: "visa" },
-    { label: "ID клиента", docType: "emirates_id" },
-    { label: "Права клиента", docType: "driving_license" },
-    {
-      label: "Данные второго водителя (если есть)",
-      note: "добавьте второй комплект документов через кнопку «Добавить документ»",
-    },
-    { label: "VCC (Vehicle Certificate of Conformity)", docType: "vcc_certificate" },
-    { label: "Vehicle Possession Certificate", docType: "vehicle_possession_certificate" },
-    { label: "Hiyaza", docType: "hiyaza_certificate" },
-    { label: "Mulkia", docType: "mulkia_certificate" },
-    { label: "Passing", docType: "passing_certificate" },
-  ],
-};
-
-const BUYER_CHECKLIST_BY_TYPE: Record<PartyTypeValue, string[]> = {
-  company: ["company_license", "emirates_id", "visa", "passport", "driving_license"],
-  individual: ["passport", "visa", "emirates_id", "driving_license"],
-};
-
-const SELLER_DOCUMENT_REQUIREMENTS: Record<PartyTypeValue, DocumentRequirement[]> = {
-  individual: [
-    { label: "VCC (Vehicle Certificate of Conformity)", docType: "vcc_certificate" },
-    { label: "Vehicle Possession Certificate", docType: "vehicle_possession_certificate" },
-    { label: "Hiyaza", docType: "hiyaza_certificate" },
-    { label: "Mulkia", docType: "mulkia_certificate" },
-    { label: "Passing", docType: "passing_certificate" },
-    { label: "ID продавца, электронная почта, номер телефона", docType: "emirates_id" },
-    { label: "Invoice от физлица на авто (контракт SPA)", docType: "spa_invoice" },
-  ],
-  company: [
-    { label: "Лицензия компании", docType: "company_license" },
-    { label: "Квотейшен (Quotation)", docType: "quotation" },
-    { label: "Такс инвойс (Tax Invoice)", docType: "tax_invoice" },
-    { label: "Passing", docType: "passing_certificate" },
-    { label: "Mulkia", docType: "mulkia_certificate" },
-    { label: "Hiyaza", docType: "hiyaza_certificate" },
-    { label: "NOC letter от компании", docType: "noc_company_letter" },
-    { label: "NOC letter от GPS (для Rent-a-car)", docType: "noc_gps_letter" },
-    { label: "TRN-сертификат (при наличии)", docType: "trn_certificate" },
-  ],
-};
-
-const SELLER_CHECKLIST_BY_TYPE: Record<PartyTypeValue, string[]> = {
-  individual: [
-    "vcc_certificate",
-    "vehicle_possession_certificate",
-    "hiyaza_certificate",
-    "mulkia_certificate",
-    "passing_certificate",
-    "emirates_id",
-    "spa_invoice",
-  ],
-  company: [
-    "company_license",
-    "quotation",
-    "tax_invoice",
-    "passing_certificate",
-    "mulkia_certificate",
-    "hiyaza_certificate",
-    "noc_company_letter",
-    "noc_gps_letter",
-    "trn_certificate",
-  ],
-};
-
 function createDocumentDraft(defaultType: ClientDocumentTypeValue | "" = ""): DocumentDraft {
   const identifier =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -257,6 +167,69 @@ const CLIENT_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 const TASKS_LIST_ROUTE = "/ops/tasks";
 const CONFIRM_CAR_INSTRUCTIONS =
   "Свяжитесь с дилером/брокером и подтвердите доступность выбранного авто.";
+const INDIVIDUAL_DOC_LABELS: Record<string, string> = {
+  doc_passport_driver: "Паспорт покупателя",
+  doc_visa_driver: "Виза покупателя",
+  doc_emirates_id_driver: "Emirates ID покупателя",
+  doc_driving_license: "Права покупателя",
+};
+const HIDE_FOR_INDIVIDUAL = new Set([
+  "buyer_company_email",
+  "buyer_company_phone",
+  "doc_company_license",
+  "doc_emirates_id_manager",
+  "doc_visa_manager",
+  "doc_passport_manager",
+  "doc_emirates_id_driver",
+  "doc_visa_driver",
+  "doc_passport_driver",
+  "doc_driving_license",
+]);
+const HIDE_FOR_COMPANY = new Set([
+  "doc_passport_buyer",
+  "doc_visa_buyer",
+  "doc_emirates_id_buyer",
+  "doc_driving_license_buyer",
+  "doc_second_driver_bundle",
+]);
+const INDIVIDUAL_ONLY_FIELDS = new Set([
+  "doc_passport_buyer",
+  "doc_visa_buyer",
+  "doc_emirates_id_buyer",
+  "doc_driving_license_buyer",
+  "doc_second_driver_bundle",
+]);
+const DOC_FIELD_TYPE_MAP: Record<string, ClientDocumentTypeValue> = {
+  doc_company_license: "company_license",
+  doc_emirates_id_manager: "emirates_id",
+  doc_visa_manager: "visa",
+  doc_passport_manager: "passport",
+  doc_emirates_id_driver: "emirates_id",
+  doc_visa_driver: "visa",
+  doc_passport_driver: "passport",
+  doc_driving_license: "driving_license",
+  doc_passport_buyer: "passport",
+  doc_visa_buyer: "visa",
+  doc_emirates_id_buyer: "emirates_id",
+  doc_driving_license_buyer: "driving_license",
+  doc_vcc_certificate: "vcc_certificate",
+  doc_vehicle_possession_certificate: "vehicle_possession_certificate",
+  doc_hiyaza_certificate: "hiyaza_certificate",
+  doc_mulkia_certificate: "mulkia_certificate",
+  doc_passing_certificate: "passing_certificate",
+  doc_quotation: "quotation",
+  doc_tax_invoice: "tax_invoice",
+  doc_noc_company_letter: "noc_company_letter",
+  doc_noc_gps_letter: "noc_gps_letter",
+  doc_trn_certificate: "trn_certificate",
+  doc_emirates_id_seller: "emirates_id",
+  doc_spa_invoice: "spa_invoice",
+  doc_second_driver_bundle: "other",
+};
+
+function mapDocFieldIdToDocType(fieldId: string): ClientDocumentTypeValue | null {
+  return DOC_FIELD_TYPE_MAP[fieldId] ?? null;
+}
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
 
@@ -357,6 +330,10 @@ export function TaskDetailView({
   const [documentActionError, setDocumentActionError] = useState<string | null>(null);
   const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
   const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([]);
+  const [docFieldFiles, setDocFieldFiles] = useState<Record<string, File | null>>({});
+  const [docFieldValues, setDocFieldValues] = useState<Record<string, string>>({});
+  const [formResetToken, setFormResetToken] = useState(0);
+  const [pendingBuyerType, setPendingBuyerType] = useState<PartyTypeValue | "">("");
 
   function setDocumentDeleting(id: string, deleting: boolean) {
     setDeletingDocumentIds((prev) => {
@@ -381,8 +358,17 @@ export function TaskDetailView({
   const isInvestorApprovalTask = task.type === INVESTOR_APPROVAL_TASK_TYPE;
   const isApprovalTask = isFinanceReviewTask || isInvestorApprovalTask;
   const isPaySupplierTask = task.type === "PAY_SUPPLIER";
-  const isBuyerDocsTask = task.type === "COLLECT_DOCS" || guardMeta?.key === BUYER_DOCS_GUARD_KEY;
-  const isSellerDocsTask = task.type === "COLLECT_SELLER_DOCS" || guardMeta?.key === SELLER_DOCS_GUARD_KEY;
+  const isBuyerDocsTask =
+    task.type === "COLLECT_DOCS" ||
+    task.type === "COLLECT_BUYER_DOCS" ||
+    task.type === "COLLECT_BUYER_DOCS_COMPANY" ||
+    task.type === "COLLECT_BUYER_DOCS_INDIVIDUAL" ||
+    guardMeta?.key === BUYER_DOCS_GUARD_KEY;
+  const isSellerDocsTask =
+    task.type === "COLLECT_SELLER_DOCS" ||
+    task.type === "COLLECT_SELLER_DOCS_COMPANY" ||
+    task.type === "COLLECT_SELLER_DOCS_INDIVIDUAL" ||
+    guardMeta?.key === SELLER_DOCS_GUARD_KEY;
   const confirmCarInstructions =
     task.type === "CONFIRM_CAR"
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
@@ -393,10 +379,16 @@ export function TaskDetailView({
   const [buyerType, setBuyerType] = useState<PartyTypeValue | "">(() => initialBuyerType);
   const initialSellerType = normalizePartyType(resolveFieldValue("seller_type", payload));
   const [sellerType, setSellerType] = useState<PartyTypeValue | "">(() => initialSellerType);
-  const buyerChecklist = buyerType ? BUYER_CHECKLIST_BY_TYPE[buyerType] : [];
-  const buyerRecommendations: DocumentRequirement[] = buyerType ? BUYER_DOCUMENT_REQUIREMENTS[buyerType] : [];
-  const sellerChecklist = sellerType ? SELLER_CHECKLIST_BY_TYPE[sellerType] : [];
-  const sellerRecommendations: DocumentRequirement[] = sellerType ? SELLER_DOCUMENT_REQUIREMENTS[sellerType] : [];
+  const buyerChecklist: string[] = [];
+  const sellerChecklist: string[] = [];
+  const hideFields = new Set<string>();
+  if (isBuyerDocsTask && buyerType === "individual") {
+    HIDE_FOR_INDIVIDUAL.forEach((id) => hideFields.add(id));
+  }
+  if (isBuyerDocsTask && buyerType === "company") {
+    HIDE_FOR_COMPANY.forEach((id) => hideFields.add(id));
+  }
+  const hasPendingBuyerChange = pendingBuyerType !== "" && pendingBuyerType !== buyerType;
 
   const schemaFieldsRaw = payload?.schema?.fields;
   const schemaFields = Array.isArray(schemaFieldsRaw)
@@ -428,15 +420,95 @@ export function TaskDetailView({
       effectiveSchemaFields = [...effectiveSchemaFields, ...missingAnalogs];
     }
   }
-  const editableFields = effectiveSchemaFields.filter(
+  let editableFields = effectiveSchemaFields.filter(
     (field) => isEditableField(field) && !fieldsToSkip.has(field.id),
   );
+  if (hideFields.size > 0) {
+    editableFields = editableFields.filter((field) => !hideFields.has(field.id));
+  }
+  // Add individual-only fields if not present and buyer is individual
+  if (isBuyerDocsTask && buyerType === "individual") {
+    const existingIds = new Set(editableFields.map((f) => f.id));
+    const individualFields: TaskFieldDefinition[] = [
+      { id: "doc_passport_buyer", type: "text", label: "Паспорт покупателя (файл)" },
+      { id: "doc_visa_buyer", type: "text", label: "Виза покупателя (файл)" },
+      { id: "doc_emirates_id_buyer", type: "text", label: "Emirates ID покупателя (файл)" },
+      { id: "doc_driving_license_buyer", type: "text", label: "Права покупателя (файл)" },
+      { id: "doc_second_driver_bundle", type: "text", label: "Документы второго водителя (файл)" },
+    ];
+    const toAdd = individualFields.filter((field) => !existingIds.has(field.id));
+    editableFields = [...editableFields, ...toAdd];
+  }
+  // Ensure contact/company fields exist when needed
+  if (isBuyerDocsTask && buyerType === "company") {
+    const existingIds = new Set(editableFields.map((f) => f.id));
+    const requiredCompanyFields: TaskFieldDefinition[] = [
+      { id: "buyer_company_email", type: "text", label: "Электронная почта компании" },
+      { id: "buyer_company_phone", type: "text", label: "Телефон компании" },
+      { id: "buyer_contact_email", type: "text", label: "Электронная почта клиента/водителя" },
+      { id: "buyer_contact_phone", type: "text", label: "Телефон клиента/водителя" },
+    ];
+    const companyDocs: TaskFieldDefinition[] = [
+      { id: "doc_company_license", type: "text", label: "Лицензия компании (файл)" },
+      { id: "doc_emirates_id_manager", type: "text", label: "Emirates ID менеджера лицензии (файл)" },
+      { id: "doc_visa_manager", type: "text", label: "Виза менеджера лицензии (файл)" },
+      { id: "doc_passport_manager", type: "text", label: "Паспорт менеджера лицензии (файл)" },
+      { id: "doc_emirates_id_driver", type: "text", label: "Emirates ID водителя (файл)" },
+      { id: "doc_visa_driver", type: "text", label: "Виза водителя (файл)" },
+      { id: "doc_passport_driver", type: "text", label: "Паспорт водителя (файл)" },
+      { id: "doc_driving_license", type: "text", label: "Права клиента/водителя (файл)" },
+    ];
+    const toAdd = [...requiredCompanyFields, ...companyDocs].filter((field) => !existingIds.has(field.id));
+    editableFields = [...editableFields, ...toAdd];
+  }
+  if (isBuyerDocsTask && buyerType === "individual") {
+    const existingIds = new Set(editableFields.map((f) => f.id));
+    const requiredContactFields: TaskFieldDefinition[] = [
+      { id: "buyer_contact_email", type: "text", label: "Электронная почта покупателя" },
+      { id: "buyer_contact_phone", type: "text", label: "Телефон покупателя" },
+    ];
+    const toAdd = requiredContactFields.filter((field) => !existingIds.has(field.id));
+    editableFields = [...editableFields, ...toAdd];
+  }
+  // Ensure selector for buyer type exists
+  if (isBuyerDocsTask) {
+    const hasBuyerType = editableFields.some((field) => field.id === "buyer_type");
+    if (!hasBuyerType) {
+      editableFields = [
+        {
+          id: "buyer_type",
+          type: "select",
+          label: "Тип покупателя",
+          options: [
+            { value: "company", label: "Юридическое лицо" },
+            { value: "individual", label: "Физическое лицо" },
+          ],
+        },
+        ...editableFields,
+      ];
+    }
+  }
+
+  // Reorder buyer contact fields to be right after buyer type
+  if (isBuyerDocsTask) {
+    const priorityOrder = new Map<string, number>([
+      ["buyer_type", 0],
+      ["buyer_contact_email", 1],
+      ["buyer_contact_phone", 2],
+    ]);
+    editableFields = [...editableFields].sort((a, b) => {
+      const aP = priorityOrder.has(a.id) ? priorityOrder.get(a.id)! : Number.POSITIVE_INFINITY;
+      const bP = priorityOrder.has(b.id) ? priorityOrder.get(b.id)! : Number.POSITIVE_INFINITY;
+      if (aP === bP) return 0;
+      return aP - bP;
+    });
+  }
   const statusMeta = getTaskStatusMeta(task.status);
   const deadlineInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
-  const buyerDefaultDocType = buyerRecommendations.find((item) => item.docType)?.docType ?? "";
-  const sellerDefaultDocType = sellerRecommendations.find((item) => item.docType)?.docType ?? "";
+  const buyerDefaultDocType = "";
+  const sellerDefaultDocType = "";
   const requiresDocument = isBuyerDocsTask || isSellerDocsTask
     ? false
     : (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
@@ -448,6 +520,7 @@ export function TaskDetailView({
       : isPrepareQuoteTask
         ? "signed_commercial_offer"
         : buyerDefaultDocType || sellerDefaultDocType);
+  const useTwoColumnFieldLayout = isBuyerDocsTask;
   const requiredDocumentLabel = enforcedDocumentType
     ? getClientDocumentLabel(enforcedDocumentType) ?? "Технический отчёт"
     : null;
@@ -913,21 +986,60 @@ export function TaskDetailView({
 
               {editableFields.length > 0 ? (
                 <div className="space-y-3">
-                  {editableFields.map((field) => {
-                    const fieldId = field.id;
-                    const value = resolveFieldValue(fieldId, payload);
-                    const baseLabel = field.label ?? fieldId;
-                    const rawHint = field.hint ?? "";
-                    const hint = HINTLESS_FIELD_IDS.has(fieldId) ? "" : rawHint;
+      {editableFields.map((field, index) => {
+        const fieldId = field.id;
+        const value = resolveFieldValue(fieldId, payload);
+        const baseLabel = field.label ?? fieldId;
+        const rawHint = field.hint ?? "";
+        const hint = ""; // хинты скрываем для компактности
                     let label = baseLabel;
                     if (fieldId === "buyer_contact_email" && buyerType === "individual") {
                       label = "Электронная почта покупателя";
                     } else if (fieldId === "buyer_contact_phone" && buyerType === "individual") {
                       label = "Телефон покупателя";
                     }
+                    if (buyerType === "individual" && INDIVIDUAL_DOC_LABELS[fieldId]) {
+                      label = INDIVIDUAL_DOC_LABELS[fieldId];
+                    }
+                    const docFieldType = mapDocFieldIdToDocType(fieldId);
+                    if (docFieldType && /(файл)/i.test(label)) {
+                      label = label.replace(/\s*\(файл\)/gi, "").trim();
+                    }
                     const type = field.type?.toLowerCase();
-
                     const isRequired = field.required ?? false;
+                    const isLastRow = index === editableFields.length - 1;
+                    const rowClass = useTwoColumnFieldLayout
+                      ? `grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,260px)_1fr] sm:items-center px-4 py-3 ${
+                          isLastRow ? "" : "border-b border-border/60"
+                        }`
+                      : "space-y-2 py-2";
+                    const labelNode = (
+                      <Label
+                        htmlFor={`field-${fieldId}`}
+                        className="text-sm font-semibold leading-tight text-foreground normal-case tracking-normal"
+                      >
+                        {label}
+                        {isRequired ? (
+                          <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+                            *
+                          </span>
+                        ) : null}
+                      </Label>
+                    );
+        const renderRow = (control: JSX.Element) =>
+          useTwoColumnFieldLayout ? (
+            <div key={`${fieldId}-${buyerType}-${formResetToken}`} className={rowClass}>
+              <div className="flex flex-col gap-1">
+                {labelNode}
+              </div>
+              <div className="space-y-2">{control}</div>
+            </div>
+          ) : (
+            <div key={`${fieldId}-${buyerType}-${formResetToken}`} className={rowClass}>
+              {labelNode}
+              {control}
+            </div>
+          );
 
                     // Hide company contact fields for individuals
                     if (
@@ -950,26 +1062,26 @@ export function TaskDetailView({
                           ? field.options
                           : PARTY_TYPE_OPTIONS;
                       const options = effectiveOptions;
-                      const currentValue = fieldId === "buyer_type" ? buyerType : sellerType;
-                      const setValue = fieldId === "buyer_type" ? setBuyerType : setSellerType;
+                      const currentValue =
+                        fieldId === "buyer_type" ? pendingBuyerType || buyerType : sellerType;
+                      const hiddenValue = fieldId === "buyer_type" ? buyerType : sellerType;
+                      const setValue = fieldId === "buyer_type" ? setPendingBuyerType : setSellerType;
+                      const handleChange = (value: string) => {
+                        const normalized =
+                          value === PARTY_TYPE_EMPTY_VALUE ? "" : (value as PartyTypeValue);
+                        if (fieldId === "buyer_type") {
+                          setValue(normalized);
+                          return;
+                        }
+                        setValue(normalized);
+                      };
                       const placeholder =
                         fieldId === "buyer_type" ? "Выберите тип покупателя" : "Выберите тип продавца";
-                      return (
-                        <div key={fieldId} className="space-y-2">
-                          <Label htmlFor={`field-${fieldId}`}>
-                            {label}
-                            {isRequired ? (
-                              <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-                                *
-                              </span>
-                            ) : null}
-                          </Label>
+                      const selectControl = (
+                        <>
                           <Select
                             value={currentValue || PARTY_TYPE_EMPTY_VALUE}
-                            onValueChange={(value) => {
-                              const normalized = value === PARTY_TYPE_EMPTY_VALUE ? "" : (value as PartyTypeValue);
-                              setValue(normalized);
-                            }}
+                            onValueChange={handleChange}
                             disabled={pending}
                           >
                             <SelectTrigger id={`field-${fieldId}`} className="rounded-lg">
@@ -984,73 +1096,84 @@ export function TaskDetailView({
                               ))}
                             </SelectContent>
                           </Select>
-                      <input
-                        type="hidden"
-                        name={`field:${fieldId}`}
-                        value={currentValue}
-                      />
-                          {hint ? (
-                            <p className="text-xs text-muted-foreground">
-                              {hint}
-                            </p>
+                          <input type="hidden" name={`field:${fieldId}`} value={hiddenValue} />
+                          {fieldId === "buyer_type" && pendingBuyerType && pendingBuyerType !== buyerType ? (
+                            <div className="mt-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                              <div>
+                                Тип покупателя будет изменён на
+                                {pendingBuyerType === "company" ? " «Юр. лицо»" : " «Физ. лицо»"}. Поля и файлы
+                                для другого типа будут очищены.
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="rounded-lg"
+                                  onClick={() => {
+                                    const normalized = pendingBuyerType;
+                                    if (!normalized || normalized === buyerType) {
+                                      setPendingBuyerType("");
+                                      return;
+                                    }
+                                    setDocFieldFiles({});
+                                    setDocFieldValues({});
+                                    setFormResetToken((prev) => prev + 1);
+                                    setBuyerType(normalized as PartyTypeValue);
+                                    setPendingBuyerType("");
+                                  }}
+                                  disabled={pending}
+                                >
+                                  Применить
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="rounded-lg"
+                                  onClick={() => setPendingBuyerType("")}
+                                  disabled={pending}
+                                >
+                                  Отмена
+                                </Button>
+                              </div>
+                            </div>
                           ) : null}
-                        </div>
+                        </>
                       );
+                      return renderRow(selectControl);
                     }
 
                     if (type === "textarea") {
-                      return (
-                        <div key={fieldId} className="space-y-2">
-                          <Label htmlFor={`field-${fieldId}`}>
-                            {label}
-                            {isRequired ? (
-                              <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-                                *
-                              </span>
-                            ) : null}
-                          </Label>
-                          <Textarea
-                            id={`field-${fieldId}`}
-                            name={`field:${fieldId}`}
-                            defaultValue={value}
-                            required={isRequired}
-                            placeholder={hint}
-                            className="min-h-[120px] rounded-lg"
-                            onChange={(event) => {
-                              if (isRequired) {
-                                const next = event.target.value.trim();
-                                setDraftRequiredValues((prev) =>
-                                  next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
-                                    const clone = { ...prev };
-                                    delete clone[fieldId];
-                                    return clone;
-                                  })(),
-                                );
-                              }
-                            }}
-                          />
-                          {hint ? (
-                            <p className="text-xs text-muted-foreground">
-                              {hint}
-                            </p>
-                          ) : null}
-                        </div>
+                      const textareaControl = (
+                        <Textarea
+                          id={`field-${fieldId}`}
+                          name={`field:${fieldId}`}
+                          defaultValue={value}
+                          required={isRequired}
+                          placeholder={hint}
+                          className="min-h-[120px] rounded-lg"
+                          onChange={(event) => {
+                            if (isRequired) {
+                              const next = event.target.value.trim();
+                              setDraftRequiredValues((prev) =>
+                                next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
+                                  const clone = { ...prev };
+                                  delete clone[fieldId];
+                                  return clone;
+                                })(),
+                              );
+                            }
+                          }}
+                        />
                       );
+                      return renderRow(textareaControl);
                     }
 
                     if (type === "checklist") {
                       const parsedChecklist = normalizeChecklistCandidate(value);
                       const checklist = parsedChecklist ? filterChecklistTypes(parsedChecklist) : [];
-                      return (
-                        <div key={fieldId} className="space-y-2">
-                          <Label htmlFor={`field-${fieldId}`}>
-                            {label}
-                            {isRequired ? (
-                              <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-                                *
-                              </span>
-                            ) : null}
-                          </Label>
+                      const checklistControl = (
+                        <>
                           <input
                             type="hidden"
                             id={`field-${fieldId}`}
@@ -1070,171 +1193,99 @@ export function TaskDetailView({
                               Чек-лист пуст.
                             </p>
                           )}
-                          {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-                        </div>
+                        </>
                       );
+                      return renderRow(checklistControl);
                     }
 
-                    return (
-                      <div key={fieldId} className="space-y-2">
-                        <Label htmlFor={`field-${fieldId}`}>
-                          {label}
-                          {isRequired ? (
-                            <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-                              *
-                            </span>
-                          ) : null}
-                        </Label>
-                        <Input
-                          id={`field-${fieldId}`}
-                          name={`field:${fieldId}`}
-                          defaultValue={value}
-                          required={isRequired}
-                          placeholder={hint}
-                          className="rounded-lg"
-                        />
-                        {hint ? (
-                          <p className="text-xs text-muted-foreground">{hint}</p>
-                        ) : null}
-                      </div>
+                    if (docFieldType) {
+                      const currentFile = docFieldFiles[fieldId] ?? null;
+                      const currentValue = docFieldValues[fieldId] ?? value ?? "";
+                      const fileLabel = currentFile?.name || getFileNameFromPath(currentValue) || null;
+
+                      const fileControl = (
+                        <div className="space-y-2">
+                          <input type="hidden" name={`documentFields[${fieldId}][type]`} value={docFieldType} />
+                          <input
+                            id={`document-field-${fieldId}`}
+                            type="file"
+                            name={`documentFields[${fieldId}][file]`}
+                            accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                            className="sr-only"
+                            onChange={(event) => {
+                              const file = event.currentTarget.files?.[0] ?? null;
+                              setDocFieldFiles((prev) => ({ ...prev, [fieldId]: file }));
+                              if (file) {
+                                setDocFieldValues((prev) => ({ ...prev, [fieldId]: currentValue }));
+                              }
+                            }}
+                            disabled={pending}
+                          />
+                          <input type="hidden" name={`field:${fieldId}`} value={currentValue} />
+                          <div className="flex flex-wrap items-center gap-3">
+                            <Button
+                              type="button"
+                              variant="default"
+                              className="rounded-lg"
+                              onClick={() => {
+                                const input = document.getElementById(`document-field-${fieldId}`) as
+                                  | HTMLInputElement
+                                  | null;
+                                input?.click();
+                              }}
+                              disabled={pending}
+                            >
+                              <Paperclip className="mr-2 h-4 w-4" />
+                              {fileLabel ? "Заменить файл" : "Загрузить файл"}
+                            </Button>
+                            {fileLabel ? (
+                              <span className="text-xs font-medium text-foreground">{fileLabel}</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Файл не выбран</span>
+                            )}
+                              {fileLabel ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                className="rounded-lg text-destructive"
+                                onClick={() => {
+                                  setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
+                                  setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
+                                }}
+                                disabled={pending}
+                              >
+                                  Удалить
+                                </Button>
+                              ) : null}
+                          </div>
+                        </div>
+                      );
+
+                      return renderRow(fileControl);
+                    }
+
+                    const inputControl = (
+                      <Input
+                        id={`field-${fieldId}`}
+                        name={`field:${fieldId}`}
+                        defaultValue={value}
+                        required={isRequired}
+                        placeholder={hint}
+                        className="rounded-lg"
+                      />
                     );
+                    return renderRow(inputControl);
                   })}
                 </div>
               ) : null}
 
               {isBuyerDocsTask ? (
-                <>
-                  <input type="hidden" name="field:checklist" value={JSON.stringify(buyerChecklist)} />
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/15 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-foreground">Рекомендуемые документы</p>
-                        <p className="text-xs text-muted-foreground">
-                          Все пункты необязательны. Выберите тип покупателя и прикрепите доступные файлы.
-                        </p>
-                      </div>
-                      {buyerType ? (
-                        <Badge variant="outline" className="rounded-lg text-xs font-semibold">
-                          {buyerType === "company" ? "Юридическое лицо" : "Физическое лицо"}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    {buyerType ? (
-                      <ul className="grid gap-2 sm:grid-cols-2">
-                        {buyerRecommendations.map((item) => {
-                          const docLabel = item.docType ? getClientDocumentLabel(item.docType) ?? item.docType : null;
-                          return (
-                            <li
-                              key={`${item.label}-${item.docType ?? "free"}`}
-                              className="space-y-1 rounded-xl border border-border/60 bg-background/60 px-3 py-2"
-                            >
-                              <span className="text-sm font-medium text-foreground">{item.label}</span>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {docLabel ? (
-                                  <Badge variant="secondary" className="rounded-lg text-[11px]">
-                                    {docLabel}
-                                  </Badge>
-                                ) : null}
-                                {item.note ? (
-                                  <span className="text-xs text-muted-foreground">{item.note}</span>
-                                ) : null}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-xs text-muted-foreground">
-                        Выберите тип покупателя, чтобы показать список рекомендованных документов.
-                      </p>
-                    )}
-                    <p className="text-[11px] text-muted-foreground">
-                      Если нужно добавить второго водителя, создайте дополнительный комплект файлов через «Добавить документ».
-                    </p>
-                  </div>
-                </>
+                <input type="hidden" name="field:checklist" value={JSON.stringify(buyerChecklist)} />
               ) : null}
 
               {isSellerDocsTask ? (
-                <>
-                  <input type="hidden" name="field:checklist" value={JSON.stringify(sellerChecklist)} />
-                  <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/15 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-foreground">Рекомендуемые документы продавца</p>
-                        <p className="text-xs text-muted-foreground">
-                          Все пункты необязательны. Выберите тип продавца и прикрепите доступные файлы.
-                        </p>
-                      </div>
-                      {sellerType ? (
-                        <Badge variant="outline" className="rounded-lg text-xs font-semibold">
-                          {sellerType === "company" ? "Юридическое лицо" : "Физическое лицо"}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    {sellerType ? (
-                      <ul className="grid gap-2 sm:grid-cols-2">
-                        {sellerRecommendations.map((item) => {
-                          const docLabel = item.docType ? getClientDocumentLabel(item.docType) ?? item.docType : null;
-                          return (
-                            <li
-                              key={`${item.label}-${item.docType ?? "free"}`}
-                              className="space-y-1 rounded-xl border border-border/60 bg-background/60 px-3 py-2"
-                            >
-                              <span className="text-sm font-medium text-foreground">{item.label}</span>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {docLabel ? (
-                                  <Badge variant="secondary" className="rounded-lg text-[11px]">
-                                    {docLabel}
-                                  </Badge>
-                                ) : null}
-                                {item.note ? (
-                                  <span className="text-xs text-muted-foreground">{item.note}</span>
-                                ) : null}
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <div className="space-y-2">
-                        <p className="text-xs text-muted-foreground">
-                          Пока не выбран тип продавца — показываем оба списка.
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {(["individual", "company"] as const).map((kind) => {
-                            const items = SELLER_DOCUMENT_REQUIREMENTS[kind];
-                            return (
-                              <div
-                                key={kind}
-                                className="space-y-2 rounded-xl border border-border/60 bg-background/60 p-3"
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className="text-sm font-semibold text-foreground">
-                                    {kind === "company" ? "Юр. лицо" : "Физ. лицо"}
-                                  </span>
-                                  <Badge variant="secondary" className="rounded-lg text-[11px]">
-                                    {items.length} док.
-                                  </Badge>
-                                </div>
-                                <ul className="space-y-1">
-                                  {items.map((item) => (
-                                    <li key={`${kind}-${item.label}`} className="text-xs text-foreground/80">
-                                      {item.label}
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-[11px] text-muted-foreground">
-                      Если нужно приложить несколько вариантов (например, VCC и Mulkia), добавьте несколько файлов через «Добавить документ».
-                    </p>
-                  </div>
-                </>
+                <input type="hidden" name="field:checklist" value={JSON.stringify(sellerChecklist)} />
               ) : null}
 
               {documentsEnabled ? (
@@ -1335,7 +1386,7 @@ export function TaskDetailView({
                                   </span>
                                 ) : null}
                               </Label>
-                              <Input
+                              <input
                                 id={`document-file-${draft.id}`}
                                 type="file"
                                 name={`documents[${draft.id}][file]`}
@@ -1343,14 +1394,31 @@ export function TaskDetailView({
                                 onChange={(event) =>
                                   handleDocumentDraftFileChange(draft.id, event.currentTarget.files?.[0] ?? null)
                                 }
-                                className="rounded-lg"
+                                className="sr-only"
                                 disabled={pending}
                               />
-                              <p className="text-xs text-muted-foreground">
-                                {draft.file?.name
-                                  ? `Выбран файл: ${draft.file.name}`
-                                  : "Максимальный размер — 10 МБ для каждого файла."}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  className="rounded-lg"
+                                  onClick={() => {
+                                    const input = document.getElementById(`document-file-${draft.id}`) as
+                                      | HTMLInputElement
+                                      | null;
+                                    input?.click();
+                                  }}
+                                  disabled={pending}
+                                >
+                                  <Paperclip className="mr-2 h-4 w-4" />
+                                  {draft.file?.name ? "Заменить файл" : "Выбрать файл"}
+                                </Button>
+                                <span className="text-xs text-muted-foreground">
+                                  {draft.file?.name
+                                    ? `Выбран файл: ${draft.file.name}`
+                                    : "Максимальный размер — 10 МБ для каждого файла."}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>

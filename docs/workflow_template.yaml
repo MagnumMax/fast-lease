@@ -53,6 +53,167 @@ kanban_order:
   - ACTIVE
   - CANCELLED
 
+schemas:
+  buyer_docs_company: &buyer_docs_company
+    version: "1.0"
+    fields:
+      - id: buyer_type
+        type: select
+        label: "Тип покупателя"
+        options:
+          - value: company
+            label: "Юридическое лицо"
+      - id: buyer_company_email
+        type: text
+        label: "Электронная почта компании"
+      - id: buyer_company_phone
+        type: text
+        label: "Телефон компании"
+      - id: buyer_contact_email
+        type: text
+        label: "Электронная почта клиента/водителя"
+      - id: buyer_contact_phone
+        type: text
+        label: "Телефон клиента/водителя"
+      - id: doc_company_license
+        type: text
+        label: "Лицензия компании (файл)"
+      - id: doc_emirates_id_manager
+        type: text
+        label: "Emirates ID менеджера лицензии (файл)"
+      - id: doc_visa_manager
+        type: text
+        label: "Виза менеджера лицензии (файл)"
+      - id: doc_passport_manager
+        type: text
+        label: "Паспорт менеджера лицензии (файл)"
+      - id: doc_emirates_id_driver
+        type: text
+        label: "Emirates ID водителя (файл)"
+      - id: doc_visa_driver
+        type: text
+        label: "Виза водителя (файл)"
+      - id: doc_passport_driver
+        type: text
+        label: "Паспорт водителя (файл)"
+      - id: doc_driving_license
+        type: text
+        label: "Права клиента/водителя (файл)"
+
+  buyer_docs_individual: &buyer_docs_individual
+    version: "1.0"
+    fields:
+      - id: buyer_type
+        type: select
+        label: "Тип покупателя"
+        options:
+          - value: individual
+            label: "Физическое лицо"
+      - id: buyer_contact_email
+        type: text
+        label: "Электронная почта клиента/водителя"
+      - id: buyer_contact_phone
+        type: text
+        label: "Телефон клиента/водителя"
+      - id: doc_passport_buyer
+        type: text
+        label: "Паспорт покупателя (файл)"
+      - id: doc_visa_buyer
+        type: text
+        label: "Виза покупателя (файл)"
+      - id: doc_emirates_id_buyer
+        type: text
+        label: "Emirates ID покупателя (файл)"
+      - id: doc_driving_license_buyer
+        type: text
+        label: "Права покупателя (файл)"
+      - id: doc_second_driver_bundle
+        type: text
+        label: "Комплект документов второго водителя (файл)"
+
+  seller_docs_company: &seller_docs_company
+    version: "1.0"
+    fields:
+      - id: seller_type
+        type: select
+        label: "Тип продавца"
+        options:
+          - value: company
+            label: "Юридическое лицо"
+      - id: seller_contact_email
+        type: text
+        label: "Электронная почта продавца"
+      - id: seller_contact_phone
+        type: text
+        label: "Телефон продавца"
+      - id: seller_bank_details
+        type: text
+        label: "Банковские реквизиты продавца"
+      - id: doc_company_license
+        type: text
+        label: "Лицензия компании (файл)"
+      - id: doc_quotation
+        type: text
+        label: "Quotation (файл)"
+      - id: doc_tax_invoice
+        type: text
+        label: "Tax Invoice (файл)"
+      - id: doc_passing_certificate
+        type: text
+        label: "Passing Certificate (файл)"
+      - id: doc_mulkia_certificate
+        type: text
+        label: "Mulkia (файл)"
+      - id: doc_hiyaza_certificate
+        type: text
+        label: "Hiyaza (файл)"
+      - id: doc_noc_company_letter
+        type: text
+        label: "NOC letter from company"
+      - id: doc_noc_gps_letter
+        type: text
+        label: "NOC letter for GPS removal"
+      - id: doc_trn_certificate
+        type: text
+        label: "TRN certificate"
+
+  seller_docs_individual: &seller_docs_individual
+    version: "1.0"
+    fields:
+      - id: seller_type
+        type: select
+        label: "Тип продавца"
+        options:
+          - value: individual
+            label: "Физическое лицо"
+      - id: seller_contact_email
+        type: text
+        label: "Электронная почта продавца"
+      - id: seller_contact_phone
+        type: text
+        label: "Телефон продавца"
+      - id: doc_vcc_certificate
+        type: text
+        label: "VCC certificate (файл)"
+      - id: doc_vehicle_possession_certificate
+        type: text
+        label: "Vehicle Possession Certificate (файл)"
+      - id: doc_hiyaza_certificate
+        type: text
+        label: "Hiyaza (файл)"
+      - id: doc_mulkia_certificate
+        type: text
+        label: "Mulkia (файл)"
+      - id: doc_passing_certificate
+        type: text
+        label: "Passing Certificate (файл)"
+      - id: doc_emirates_id_seller
+        type: text
+        label: "Emirates ID продавца (файл)"
+      - id: doc_spa_invoice
+        type: text
+        label: "SPA Invoice (файл)"
+
 statuses:
   NEW:
     title: "Новая заявка"
@@ -157,46 +318,45 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
-          template_id: collect_docs_v1
-          type: COLLECT_DOCS
-          title: "Собрать пакет документов покупателя"
+          template_id: collect_buyer_docs_company_v1
+          type: COLLECT_BUYER_DOCS_COMPANY
+          title: "Собрать пакет документов покупателя (юрлицо)"
           assignee_role: OP_MANAGER
           guard_key: "docs.required.allUploaded"
           sla: { hours: 48 }
-          schema:
-            version: "1.0"
-            fields:
-              - id: buyer_type
-                type: select
-                label: "Тип покупателя"
-                hint: "Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны."
-                options:
-                  - value: company
-                    label: "Юридическое лицо"
-                  - value: individual
-                    label: "Физическое лицо"
-              - id: checklist
-                type: checklist
-                label: "Рекомендуемые документы (необязательно)"
-              - id: buyer_company_email
-                type: text
-                label: "Электронная почта компании"
-                hint: "Необязательно. Укажите, если есть."
-              - id: buyer_company_phone
-                type: text
-                label: "Телефон компании"
-                hint: "Необязательно. Укажите, если есть."
-              - id: buyer_contact_email
-                type: text
-                label: "Электронная почта водителя"
-                hint: "Необязательно. Укажите, если есть."
-              - id: buyer_contact_phone
-                type: text
-                label: "Телефон водителя"
-                hint: "Необязательно. Укажите, если есть."
+          schema: *buyer_docs_company
           defaults:
-            buyer_type: ""
-            checklist: []
+            buyer_type: "company"
+            buyer_company_email: ""
+            buyer_company_phone: ""
+            buyer_contact_email: ""
+            buyer_contact_phone: ""
+            doc_company_license: ""
+            doc_emirates_id_manager: ""
+            doc_visa_manager: ""
+            doc_passport_manager: ""
+            doc_emirates_id_driver: ""
+            doc_visa_driver: ""
+            doc_passport_driver: ""
+            doc_driving_license: ""
+      - type: TASK_CREATE
+        task:
+          template_id: collect_buyer_docs_individual_v1
+          type: COLLECT_BUYER_DOCS_INDIVIDUAL
+          title: "Собрать пакет документов покупателя (физлицо)"
+          assignee_role: OP_MANAGER
+          guard_key: "docs.required.allUploaded"
+          sla: { hours: 48 }
+          schema: *buyer_docs_individual
+          defaults:
+            buyer_type: "individual"
+            buyer_contact_email: ""
+            buyer_contact_phone: ""
+            doc_passport_buyer: ""
+            doc_visa_buyer: ""
+            doc_emirates_id_buyer: ""
+            doc_driving_license_buyer: ""
+            doc_second_driver_bundle: ""
     exit_requirements:
       - key: docs.required.allUploaded
         rule: "== true"
@@ -207,45 +367,47 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
-          template_id: collect_seller_docs_v1
-          type: COLLECT_SELLER_DOCS
-          title: "Собрать пакет документов продавца"
+          template_id: collect_seller_docs_company_v1
+          type: COLLECT_SELLER_DOCS_COMPANY
+          title: "Собрать пакет документов продавца (юрлицо)"
           assignee_role: OP_MANAGER
           guard_key: "docs.seller.allUploaded"
           sla: { hours: 48 }
-          schema:
-            version: "1.0"
-            fields:
-              - id: seller_type
-                type: select
-                label: "Тип продавца"
-                hint: "Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны."
-                options:
-                  - value: company
-                    label: "Юридическое лицо"
-                  - value: individual
-                    label: "Физическое лицо"
-              - id: checklist
-                type: checklist
-                label: "Рекомендуемые документы (необязательно)"
-              - id: seller_contact_email
-                type: text
-                label: "Электронная почта продавца"
-                hint: "Необязательно. Укажите, если есть."
-              - id: seller_contact_phone
-                type: text
-                label: "Телефон продавца"
-                hint: "Необязательно. Укажите, если есть."
-              - id: seller_bank_details
-                type: text
-                label: "Банковские реквизиты"
-                hint: "Необязательно. Укажите, если есть."
+          schema: *seller_docs_company
           defaults:
             seller_type: ""
-            checklist: []
             seller_contact_email: ""
             seller_contact_phone: ""
             seller_bank_details: ""
+            doc_company_license: ""
+            doc_quotation: ""
+            doc_tax_invoice: ""
+            doc_passing_certificate: ""
+            doc_mulkia_certificate: ""
+            doc_hiyaza_certificate: ""
+            doc_noc_company_letter: ""
+            doc_noc_gps_letter: ""
+            doc_trn_certificate: ""
+      - type: TASK_CREATE
+        task:
+          template_id: collect_seller_docs_individual_v1
+          type: COLLECT_SELLER_DOCS_INDIVIDUAL
+          title: "Собрать пакет документов продавца (физлицо)"
+          assignee_role: OP_MANAGER
+          guard_key: "docs.seller.allUploaded"
+          sla: { hours: 48 }
+          schema: *seller_docs_individual
+          defaults:
+            seller_type: "individual"
+            seller_contact_email: ""
+            seller_contact_phone: ""
+            doc_vcc_certificate: ""
+            doc_vehicle_possession_certificate: ""
+            doc_hiyaza_certificate: ""
+            doc_mulkia_certificate: ""
+            doc_passing_certificate: ""
+            doc_emirates_id_seller: ""
+            doc_spa_invoice: ""
     exit_requirements:
       - key: docs.seller.allUploaded
         rule: "== true"

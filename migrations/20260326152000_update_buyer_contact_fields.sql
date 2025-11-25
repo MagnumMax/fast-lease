@@ -1,18 +1,17 @@
--- Ensure buyer tasks have separate contact email/phone fields in schema, defaults, and fields
+-- Ensure buyer tasks have separate contact email/phone fields in schema, defaults, and fields (without checklist)
 
 WITH buyer_tasks AS (
   SELECT id,
     jsonb_set(
       jsonb_set(
         jsonb_set(payload, '{schema,fields}',
-          '{\"fields\":[{\"id\":\"buyer_type\",\"type\":\"select\",\"label\":\"Тип покупателя\",\"hint\":\"\",\"options\":[{\"value\":\"company\",\"label\":\"Юридическое лицо\"},{\"value\":\"individual\",\"label\":\"Физическое лицо\"}]},{\"id\":\"checklist\",\"type\":\"checklist\",\"label\":\"Рекомендуемые документы (необязательно)\"},{\"id\":\"buyer_company_email\",\"type\":\"text\",\"label\":\"Электронная почта компании\"},{\"id\":\"buyer_company_phone\",\"type\":\"text\",\"label\":\"Телефон компании\"},{\"id\":\"buyer_contact_email\",\"type\":\"text\",\"label\":\"Электронная почта клиента\"},{\"id\":\"buyer_contact_phone\",\"type\":\"text\",\"label\":\"Телефон клиента\"}],\"version\":\"1.0\"}'::jsonb,
+          '{"fields":[{"id":"buyer_type","type":"select","label":"Тип покупателя","hint":"","options":[{"value":"company","label":"Юридическое лицо"},{"value":"individual","label":"Физическое лицо"}]},{"id":"buyer_company_email","type":"text","label":"Электронная почта компании"},{"id":"buyer_company_phone","type":"text","label":"Телефон компании"},{"id":"buyer_contact_email","type":"text","label":"Электронная почта клиента"},{"id":"buyer_contact_phone","type":"text","label":"Телефон клиента"}],"version":"1.0"}'::jsonb,
           true
         ),
         '{defaults}',
         coalesce(payload->'defaults','{}'::jsonb)
           || jsonb_build_object(
             'buyer_type', to_jsonb(coalesce(payload->'defaults'->>'buyer_type','')),
-            'checklist', coalesce(payload->'defaults'->'checklist','[]'::jsonb),
             'buyer_company_email', to_jsonb(coalesce(payload->'defaults'->>'buyer_company_email','')),
             'buyer_company_phone', to_jsonb(coalesce(payload->'defaults'->>'buyer_company_phone','')),
             'buyer_contact_email', to_jsonb(coalesce(payload->'defaults'->>'buyer_contact_email','')),
