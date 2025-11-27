@@ -364,6 +364,8 @@ function mapDealRowToSummary(
   };
 }
 
+const LEASE_ELIGIBLE_VEHICLE_STATUSES = new Set(["draft", "available", "maintenance"]);
+
 export function OpsDealsBoard({
   initialDeals,
   clientDirectory,
@@ -371,13 +373,22 @@ export function OpsDealsBoard({
 }: OpsDealsBoardProps) {
   const router = useRouter();
 
+  const eligibleVehicles = useMemo(
+    () =>
+      vehicleDirectory.filter((vehicle) =>
+        LEASE_ELIGIBLE_VEHICLE_STATUSES.has(String(vehicle.status ?? "").toLowerCase()),
+      ),
+    [vehicleDirectory],
+  );
+
   console.log("[DEBUG] OpsDealsBoard received:", {
     initialDealsCount: initialDeals.length,
     clientDirectoryCount: clientDirectory.length,
     vehicleDirectoryCount: vehicleDirectory.length,
+    eligibleVehicleCount: eligibleVehicles.length,
     firstDeal: initialDeals[0],
     firstClient: clientDirectory[0],
-    firstVehicle: vehicleDirectory[0],
+    firstVehicle: eligibleVehicles[0],
   });
 
   const [deals, setDeals] = useState<OpsDealSummary[]>(() => initialDeals);
@@ -446,11 +457,11 @@ export function OpsDealsBoard({
     return map;
   }, [clientDirectory, deals]);
   const vehicleOptions = useMemo<VehicleOption[]>(() => {
-    return vehicleDirectory.map((vehicle, index) => ({
+    return eligibleVehicles.map((vehicle, index) => ({
       ...vehicle,
       optionValue: resolveVehicleOptionValue(vehicle, index),
     }));
-  }, [vehicleDirectory]);
+  }, [eligibleVehicles]);
   const clientDropdownOptions = useMemo(() => {
     if (clientDirectory.length === 0) {
       return [] as Array<{ id: string; optionLabel: string; titleLabel: string }>;
@@ -517,7 +528,7 @@ export function OpsDealsBoard({
   );
   const vehicleNameMap = useMemo(() => {
     const map = new Map<string, string>();
-    vehicleOptions.forEach((vehicle) => {
+    vehicleDirectory.forEach((vehicle) => {
       if (vehicle.vin && vehicle.vin !== "—") {
         map.set(vehicle.vin, vehicle.name);
         map.set(vehicle.vin.toLowerCase(), vehicle.name);
@@ -530,7 +541,7 @@ export function OpsDealsBoard({
       }
     });
     return map;
-  }, [vehicleOptions]);
+  }, [vehicleDirectory]);
   const [formState, setFormState] = useState<DealFormState>(() => ({
     reference: "",
     clientId: clientDirectory[0]?.id ?? "",

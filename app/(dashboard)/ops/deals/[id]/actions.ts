@@ -24,6 +24,7 @@ import {
 import { DEAL_COMPANY_CODES, DEFAULT_DEAL_COMPANY_CODE } from "@/lib/data/deal-companies";
 import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
+import { buildSlugWithId } from "@/lib/utils/slugs";
 
 const inputSchema = z.object({
   dealId: z.string().uuid(),
@@ -1204,6 +1205,19 @@ export async function deleteOperationsDeal(
   try {
     const supabase = await createSupabaseServiceClient();
 
+    const { data: dealRow, error: dealLoadError } = await supabase
+      .from("deals")
+      .select("vehicle_id")
+      .eq("id", dealId)
+      .maybeSingle();
+
+    if (dealLoadError) {
+      console.error("[operations] failed to load deal before deletion", dealLoadError);
+      return { success: false, error: "Не удалось подготовить удаление сделки." };
+    }
+
+    const vehicleId = typeof dealRow?.vehicle_id === "string" ? dealRow.vehicle_id : null;
+
     const { data: documentsData, error: documentsError } = await supabase
       .from("deal_documents")
       .select("storage_path")
@@ -1334,6 +1348,48 @@ export async function deleteOperationsDeal(
     revalidatePath(`/ops/deals/${slug}`);
     if (slug !== dealId) {
       revalidatePath(`/ops/deals/${dealId}`);
+    }
+
+    if (vehicleId) {
+      const { data: remainingDeals, error: remainingDealsError } = await supabase
+        .from("deals")
+        .select("id")
+        .eq("vehicle_id", vehicleId);
+
+      if (remainingDealsError) {
+        console.warn("[operations] failed to check remaining vehicle deals after deletion", remainingDealsError);
+      } else if ((remainingDeals?.length ?? 0) === 0) {
+        const { data: vehicleRow, error: vehicleLoadError } = await supabase
+          .from("vehicles")
+          .select("id, make, model, vin, status")
+          .eq("id", vehicleId)
+          .maybeSingle();
+
+        if (vehicleLoadError) {
+          console.warn("[operations] failed to load vehicle for status reset", vehicleLoadError);
+        } else if (vehicleRow?.status === "reserved") {
+          const { error: vehicleUpdateError } = await supabase
+            .from("vehicles")
+            .update({ status: "available" })
+            .eq("id", vehicleId)
+            .eq("status", "reserved");
+
+          if (vehicleUpdateError) {
+            console.error("[operations] failed to reset vehicle status after deal deletion", vehicleUpdateError);
+          } else {
+            const vehicleSlug =
+              buildSlugWithId(
+                `${vehicleRow.make ?? ""} ${vehicleRow.model ?? ""}`.trim(),
+                vehicleId,
+              ) || buildSlugWithId(vehicleRow.vin ?? null, vehicleId) || vehicleId;
+
+            for (const path of getWorkspacePaths("cars")) {
+              revalidatePath(path);
+            }
+            revalidatePath(`/ops/cars/${vehicleSlug}`);
+          }
+        }
+      }
     }
 
     return { success: true };
