@@ -5,7 +5,7 @@ import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 
 type WorkflowStageMeta = {
-  exitRequirements?: Array<{ key?: string | null }>;
+  exitRequirements?: Array<{ key?: string | null; rule?: string | null }>;
 };
 
 type WorkflowPayloadWithGuards = Record<string, unknown> & {
@@ -157,6 +157,7 @@ export interface TaskCompletionContext {
   slaDueAt?: string | null;
   currentDealStatus: string | null;
   dealPayload: Record<string, unknown> | null;
+  actorRoles?: AppRole[] | null;
 }
 
 export interface TaskCompletionResult {
@@ -313,6 +314,7 @@ export async function handleTaskCompletion(
       guardContext: dealPayload,
       assigneeRole: context.assigneeRole,
       assigneeUserId: context.assigneeUserId,
+      actorRoles: context.actorRoles ?? undefined,
     });
     console.log("[workflow] Workflow transition result", {
       dealId: context.dealId,
@@ -360,6 +362,7 @@ async function attemptWorkflowTransition(params: {
   guardContext: Record<string, unknown>;
   assigneeRole?: string | null;
   assigneeUserId?: string | null;
+  actorRoles?: AppRole[] | null;
 }): Promise<{
   success: boolean;
   newStatus?: string;
@@ -367,6 +370,8 @@ async function attemptWorkflowTransition(params: {
   skipped?: boolean;
   expectedGuards?: string[];
 }> {
+  const guardContext = params.guardContext ?? {};
+
   try {
     // Нормализуем статус
     const statusKey = normalizeStatusKey(params.currentStatus);
@@ -397,6 +402,47 @@ async function attemptWorkflowTransition(params: {
       return { success: false, error: reason, skipped: true, expectedGuards: exitGuardKeys };
     }
 
+    const unsatisfiedGuards = exitGuards.filter((guard) => {
+      if (!guard || typeof guard.rule !== "string" || typeof guard.key !== "string") {
+        return true;
+      }
+      const actual = resolveGuardPathValue(guardContext, guard.key);
+      const rule = guard.rule.trim();
+      if (rule === "truthy") return !actual;
+      if (rule === "falsy") return Boolean(actual);
+      if (rule.startsWith("==")) {
+        return actual !== parseGuardExpectedValue(rule.slice(2));
+      }
+      if (rule.startsWith("!=")) {
+        return actual === parseGuardExpectedValue(rule.slice(2));
+      }
+      return true;
+    });
+
+    if (unsatisfiedGuards.length > 0) {
+      const missingKeys = unsatisfiedGuards
+        .map((guard) => guard?.key)
+        .filter((key): key is string => Boolean(key));
+      const reason =
+        missingKeys.length > 0
+          ? `Guard conditions not met: ${missingKeys.join(", ")}`
+          : "Guard conditions not met";
+
+      console.info("[workflow] skipping transition — guard conditions not met", {
+        dealId: params.dealId,
+        statusKey,
+        guardKey: params.guardKey,
+        missingKeys,
+      });
+
+      return {
+        success: false,
+        skipped: true,
+        expectedGuards: exitGuardKeys,
+        error: reason,
+      };
+    }
+
     // Определяем следующий статус
     const targetStatus = await determineNextStatus(statusKey, params.guardKey, params.dealId);
     if (!targetStatus) {
@@ -404,8 +450,11 @@ async function attemptWorkflowTransition(params: {
     }
 
     // Определяем роль актора для перехода; для контрактного этапа принудительно OP_MANAGER во избежание ROLE_NOT_ALLOWED
-    const actorRole =
-      params.guardKey === "legal.contractReady" ? ("OP_MANAGER" as AppRole) : normalizeAppRole(params.assigneeRole) || "OP_MANAGER";
+    const actorRole = resolveTransitionActorRole({
+      guardKey: params.guardKey,
+      assigneeRole: params.assigneeRole,
+      actorRoles: params.actorRoles ?? null,
+    });
 
     // Выполняем переход через workflow сервис
     console.log("[workflow] Attempting transition", {
@@ -454,6 +503,26 @@ async function attemptWorkflowTransition(params: {
       return { success: false, error: `Transition failed: ${error instanceof Error ? error.message : String(error)}` };
     }
   }
+}
+
+function resolveGuardPathValue(context: Record<string, unknown>, path: string): unknown {
+  if (!path) return undefined;
+  return path.split(".").reduce<unknown>((acc, segment) => {
+    if (acc === null || acc === undefined) return undefined;
+    if (typeof acc !== "object") return undefined;
+    return (acc as Record<string, unknown>)[segment];
+  }, context);
+}
+
+function parseGuardExpectedValue(raw: string): unknown {
+  const trimmed = raw.trim();
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  if (trimmed === "null") return null;
+  if (!Number.isNaN(Number(trimmed)) && trimmed !== "") {
+    return Number(trimmed);
+  }
+  return trimmed;
 }
 
 /**
@@ -600,6 +669,32 @@ async function determineNextStatus(
   }
 
   return null;
+}
+
+const SUPERVISOR_TRANSITION_ROLES: AppRole[] = ["ADMIN", "OP_MANAGER"];
+
+function resolveTransitionActorRole(params: {
+  guardKey: string;
+  assigneeRole?: string | null;
+  actorRoles?: AppRole[] | null;
+}): AppRole {
+  if (params.guardKey === "legal.contractReady") {
+    return "OP_MANAGER";
+  }
+
+  const normalizedUserRoles = (params.actorRoles ?? [])
+    .map((role) => normalizeAppRole(role))
+    .filter((role): role is AppRole => Boolean(role));
+
+  const supervisorRole = normalizedUserRoles.find((role) =>
+    SUPERVISOR_TRANSITION_ROLES.includes(role),
+  );
+
+  if (supervisorRole) {
+    return supervisorRole;
+  }
+
+  return normalizeAppRole(params.assigneeRole) ?? "OP_MANAGER";
 }
 
 /**

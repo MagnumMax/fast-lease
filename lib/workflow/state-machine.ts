@@ -53,6 +53,12 @@ export type WorkflowTransitionResult = {
   executedActions: WorkflowAction[];
 };
 
+const TRANSITION_SUPERVISOR_ROLES: AppRole[] = ["ADMIN", "OP_MANAGER"];
+
+function canBypassRoleCheck(role: AppRole): boolean {
+  return TRANSITION_SUPERVISOR_ROLES.includes(role);
+}
+
 export class WorkflowTransitionError extends Error {
   constructor(
     message: string,
@@ -202,7 +208,7 @@ export class WorkflowStateMachine {
   ): WorkflowTransition[] {
     const transitions = this.transitionsByFrom.get(from) ?? [];
     return transitions.filter((transition) =>
-      transition.byRoles.includes(role),
+      transition.byRoles.includes(role) || canBypassRoleCheck(role),
     );
   }
 
@@ -221,7 +227,7 @@ export class WorkflowStateMachine {
       };
     }
 
-    if (!transition.byRoles.includes(request.actorRole)) {
+    if (!transition.byRoles.includes(request.actorRole) && !canBypassRoleCheck(request.actorRole)) {
       console.log(`[ValidateTransition] Role '${request.actorRole}' not allowed for transition`);
       return {
         allowed: false,

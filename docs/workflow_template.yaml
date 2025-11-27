@@ -350,8 +350,6 @@ statuses:
                 label: "Аналоги на площадках +1 год #3"
           defaults:
             instruction_short: "Проверьте техсостояние авто, оценку стоимости и приложите отчёт."
-            checklist:
-              - technical_report
             doc_technical_report: ""
           bindings:
             deal_id: "{{deal.id}}"
@@ -630,16 +628,28 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: checklist
-                type: checklist
-                label: "Подписанные файлы"
+              - id: signed_purchase_agreement
+                type: file
+                label: "Подписанный договор купли-продажи"
+                document_type: signed_purchase_agreement
+                required: true
+              - id: signed_lease_agreement
+                type: file
+                label: "Подписанный договор лизинга"
+                document_type: signed_lease_agreement
+                required: true
+              - id: signed_payment_schedule
+                type: file
+                label: "Подписанный график платежей"
+                document_type: signed_payment_schedule
+                required: true
+              - id: signed_delivery_act
+                type: file
+                label: "Подписанный акт приема-передачи"
+                document_type: signed_delivery_act
+                required: true
           defaults:
             instruction_short: "Приложите подписанные документы сделки."
-            checklist:
-              - signed_purchase_agreement
-              - signed_lease_agreement
-              - signed_payment_schedule
-              - signed_delivery_act
     exit_requirements:
       - key: contracts.signedUploaded
         rule: "== true"
@@ -666,14 +676,13 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: checklist
-                type: checklist
-                label: "Документы"
+              - id: tax_invoice
+                type: file
+                label: "Инвойс на аванс"
+                document_type: tax_invoice
                 required: true
           defaults:
-            instruction_short: "Проверьте получение аванса и приложите подтверждение."
-            checklist:
-              - tax_invoice
+            instruction_short: "Проверьте получение аванса и приложите подтверждение (инвойс)."
       - type: TASK_CREATE
         task:
           template_id: pay_supplier_v1
@@ -685,27 +694,19 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: optional_docs
-                type: checklist
-                label: "Документы"
+              - id: quotation
+                type: file
+                label: "Quotation"
+                document_type: quotation
+                required: false
+              - id: payment_receipt
+                type: file
+                label: "Платёжка поставщику"
+                document_type: payment_receipt
+                required: true
           defaults:
             instruction_short: "Проверьте данные и приложите платёжку поставщику."
-            optional_docs:
-              - quotation
-              - payment_receipt
-    webhooks:
-      on_event:
-        - event: esign.completed
-          transition_to: VEHICLE_DELIVERY
-          conditions:
-            - key: payments.advanceReceived
-              rule: "== true"
-            - key: payments.supplierPaid
-              rule: "== true"
     exit_requirements:
-      - key: esign.allSigned
-        rule: "== true"
-        message: "Документы ещё не подписаны."
       - key: payments.advanceReceived
         rule: "== true"
         message: "Аванс не получен."
@@ -719,7 +720,7 @@ statuses:
       - type: TASK_CREATE
         task:
           defaults:
-            instruction_short: "Проверьте данные и приложите платёжку поставщику."
+            instruction_short: "Укажите слот и локацию выдачи, подтвердите готовность."
           template_id: arrange_delivery_v1
           type: ARRANGE_DELIVERY
           title: "Организовать выдачу авто покупателю"
@@ -838,8 +839,6 @@ transitions:
     to: VEHICLE_DELIVERY
     by_roles: [OP_MANAGER, TECH_SPECIALIST]
     guards:
-      - key: esign.allSigned
-        rule: "== true"
       - key: payments.advanceReceived
         rule: "== true"
       - key: payments.supplierPaid

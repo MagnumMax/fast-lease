@@ -40,7 +40,7 @@
 
 ## Автоматические переходы
 
-- `/api/webhooks/esign` — обновляет payload и при `COMPLETED` пытается переход `SIGNING_FUNDING → VEHICLE_DELIVERY`.
+- `/api/webhooks/esign` — обновляет payload; переход `SIGNING_FUNDING → VEHICLE_DELIVERY` теперь происходит после закрытия задач `payments.advanceReceived` и `payments.supplierPaid`, а этот вебхук служит для синхронизации статуса e-sign (может попытаться повторить переход, но он больше не обязателен).
 - `/api/webhooks/bank` — фиксирует платежи, синхронизирует guard-флаги, инициирует `SIGNING_FUNDING → VEHICLE_DELIVERY`.
 - `/api/webhooks/aecb` — сохраняет отчёт и при approve переводит `RISK_REVIEW → FINANCE_REVIEW`.
 - Все обработчики безопасно логируют guard-failure и продолжают приём вебхука.

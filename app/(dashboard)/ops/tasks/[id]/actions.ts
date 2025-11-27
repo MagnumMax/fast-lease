@@ -915,6 +915,7 @@ export async function completeTaskFormAction(
     slaDueAt: existing.sla_due_at,
     currentDealStatus: dealRow.status,
     dealPayload,
+    actorRoles: sessionUser.roles,
   };
 
   const completionResult = await handleTaskCompletion(completionContext);

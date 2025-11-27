@@ -222,7 +222,7 @@ export const OPS_WORKFLOW_STATUSES = [
       {
         key: "delivery.confirmed",
         label: "Акт выдачи подтверждён",
-        requiresDocument: true,
+        requiresDocument: false,
       },
     ],
   },

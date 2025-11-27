@@ -37,9 +37,7 @@ describe("workflow template parser", () => {
     expect(signingFunding.entryActions?.[0]).toEqual(
       expect.objectContaining({ type: "WEBHOOK" }),
     );
-    expect(signingFunding.webhooks?.onEvent?.[0]).toEqual(
-      expect.objectContaining({ transitionTo: "VEHICLE_DELIVERY" }),
-    );
+    expect(signingFunding.webhooks?.onEvent?.[0]).toBeUndefined();
 
     expect(template.transitions[0]).toEqual(
       expect.objectContaining({

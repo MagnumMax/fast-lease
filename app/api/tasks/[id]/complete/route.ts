@@ -144,6 +144,7 @@ export async function POST(request: Request, context: RouteContext) {
     slaDueAt: existing.data.sla_due_at,
     currentDealStatus: dealRow.status,
     dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
+    actorRoles: sessionUser.roles,
   };
 
   const result = await handleTaskCompletion(completionContext);

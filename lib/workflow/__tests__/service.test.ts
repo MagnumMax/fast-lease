@@ -213,6 +213,25 @@ describe("WorkflowService", () => {
     });
   });
 
+  it("allows supervisor roles to bypass transition role restrictions", async () => {
+    const output = await workflowService.transitionDeal({
+      dealId: "deal-1",
+      targetStatus: "RISK_REVIEW",
+      actorRole: "ADMIN",
+      guardContext: {
+        docs: {
+          seller: {
+            allUploaded: true,
+          },
+        },
+      },
+    });
+
+    expect(output.newStatus).toBe("RISK_REVIEW");
+    const updatedDeal = dealRepository.getCurrent("deal-1");
+    expect(updatedDeal.status).toBe("RISK_REVIEW");
+  });
+
   it("throws when guard conditions fail", async () => {
     const sleepSpy = vi
       .spyOn(WorkflowService.prototype as unknown as { sleep(ms: number): Promise<void> }, "sleep")
