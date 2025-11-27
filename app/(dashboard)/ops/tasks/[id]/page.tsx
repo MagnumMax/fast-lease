@@ -32,6 +32,7 @@ const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
 const INVESTOR_APPROVAL_TASK_TYPE = "INVESTOR_APPROVAL";
+const PREPARE_CONTRACT_TASK_TYPE = "PREPARE_CONTRACT";
 const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
 const SELLER_DOCS_GUARD_KEY = "docs.seller.allUploaded";
 
@@ -786,7 +787,11 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         }
       }
 
-      if (task.type === FINANCE_REVIEW_TASK_TYPE || task.type === INVESTOR_APPROVAL_TASK_TYPE) {
+      if (
+        task.type === FINANCE_REVIEW_TASK_TYPE ||
+        task.type === INVESTOR_APPROVAL_TASK_TYPE ||
+        task.type === PREPARE_CONTRACT_TASK_TYPE
+      ) {
         const workflowStageTitle = stageMeta?.title ?? null;
         const dealDataPoints: SummaryDataPoint[] = [
           { label: "Номер сделки", value: formatStringValue(dealRow.deal_number ?? dealSummary?.id ?? "—") },
