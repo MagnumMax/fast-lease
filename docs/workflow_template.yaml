@@ -76,36 +76,36 @@ schemas:
         type: text
         label: "Телефон покупателя/водителя"
       - id: doc_company_license
-        type: text
-        label: "Лицензия компании (файл)"
+        type: file
+        label: "Лицензия компании"
         document_type: company_license
       - id: doc_emirates_id_manager
-        type: text
-        label: "Emirates ID менеджера лицензии (файл)"
+        type: file
+        label: "Emirates ID менеджера лицензии"
         document_type: emirates_id
       - id: doc_visa_manager
-        type: text
-        label: "Виза менеджера лицензии (файл)"
+        type: file
+        label: "Виза менеджера лицензии"
         document_type: visa
       - id: doc_passport_manager
-        type: text
-        label: "Паспорт менеджера лицензии (файл)"
+        type: file
+        label: "Паспорт менеджера лицензии"
         document_type: passport
       - id: doc_emirates_id_driver
-        type: text
-        label: "Emirates ID водителя (файл)"
+        type: file
+        label: "Emirates ID водителя"
         document_type: emirates_id
       - id: doc_visa_driver
-        type: text
-        label: "Виза водителя (файл)"
+        type: file
+        label: "Виза водителя"
         document_type: visa
       - id: doc_passport_driver
-        type: text
-        label: "Паспорт водителя (файл)"
+        type: file
+        label: "Паспорт водителя"
         document_type: passport
       - id: doc_driving_license
-        type: text
-        label: "Права покупателя/водителя (файл)"
+        type: file
+        label: "Права покупателя/водителя"
         document_type: driving_license
 
   buyer_docs_individual: &buyer_docs_individual
@@ -124,24 +124,24 @@ schemas:
         type: text
         label: "Телефон покупателя/водителя"
       - id: doc_passport_buyer
-        type: text
-        label: "Паспорт покупателя (файл)"
+        type: file
+        label: "Паспорт покупателя"
         document_type: passport
       - id: doc_visa_buyer
-        type: text
-        label: "Виза покупателя (файл)"
+        type: file
+        label: "Виза покупателя"
         document_type: visa
       - id: doc_emirates_id_buyer
-        type: text
-        label: "Emirates ID покупателя (файл)"
+        type: file
+        label: "Emirates ID покупателя"
         document_type: emirates_id
       - id: doc_driving_license_buyer
-        type: text
-        label: "Права покупателя (файл)"
+        type: file
+        label: "Права покупателя"
         document_type: driving_license
       - id: doc_second_driver_bundle
-        type: text
-        label: "Комплект документов второго водителя (файл)"
+        type: file
+        label: "Комплект документов второго водителя"
         document_type: other
 
   seller_docs_company: &seller_docs_company
@@ -163,39 +163,39 @@ schemas:
         type: text
         label: "Банковские реквизиты продавца"
       - id: doc_company_license
-        type: text
-        label: "Лицензия компании (файл)"
+        type: file
+        label: "Лицензия компании"
         document_type: company_license
       - id: doc_quotation
-        type: text
-        label: "Quotation (файл)"
+        type: file
+        label: "Quotation"
         document_type: quotation
       - id: doc_tax_invoice
-        type: text
-        label: "Tax Invoice (файл)"
+        type: file
+        label: "Tax Invoice"
         document_type: tax_invoice
       - id: doc_passing_certificate
-        type: text
-        label: "Passing Certificate (файл)"
+        type: file
+        label: "Passing Certificate"
         document_type: passing_certificate
       - id: doc_mulkia_certificate
-        type: text
-        label: "Mulkia (файл)"
+        type: file
+        label: "Mulkia"
         document_type: mulkia_certificate
       - id: doc_hiyaza_certificate
-        type: text
-        label: "Hiyaza (файл)"
+        type: file
+        label: "Hiyaza"
         document_type: hiyaza_certificate
       - id: doc_noc_company_letter
-        type: text
+        type: file
         label: "NOC letter from company"
         document_type: noc_company_letter
       - id: doc_noc_gps_letter
-        type: text
+        type: file
         label: "NOC letter for GPS removal"
         document_type: noc_gps_letter
       - id: doc_trn_certificate
-        type: text
+        type: file
         label: "TRN certificate"
         document_type: trn_certificate
 
@@ -215,32 +215,32 @@ schemas:
         type: text
         label: "Телефон продавца"
       - id: doc_vcc_certificate
-        type: text
-        label: "VCC certificate (файл)"
+        type: file
+        label: "VCC certificate"
         document_type: vcc_certificate
       - id: doc_vehicle_possession_certificate
-        type: text
-        label: "Vehicle Possession Certificate (файл)"
+        type: file
+        label: "Vehicle Possession Certificate"
         document_type: vehicle_possession_certificate
       - id: doc_hiyaza_certificate
-        type: text
-        label: "Hiyaza (файл)"
+        type: file
+        label: "Hiyaza"
         document_type: hiyaza_certificate
       - id: doc_mulkia_certificate
-        type: text
-        label: "Mulkia (файл)"
+        type: file
+        label: "Mulkia"
         document_type: mulkia_certificate
       - id: doc_passing_certificate
-        type: text
-        label: "Passing Certificate (файл)"
+        type: file
+        label: "Passing Certificate"
         document_type: passing_certificate
       - id: doc_emirates_id_seller
-        type: text
-        label: "Emirates ID продавца (файл)"
+        type: file
+        label: "Emirates ID продавца"
         document_type: emirates_id
       - id: doc_spa_invoice
-        type: text
-        label: "SPA Invoice (файл)"
+        type: file
+        label: "SPA Invoice"
         document_type: spa_invoice
 
 statuses:
@@ -328,7 +328,7 @@ statuses:
                 label: "ID сделки"
               - id: doc_technical_report
                 type: file
-                label: "Технический отчёт (файл)"
+                label: "Технический отчёт"
                 document_type: technical_report
               - id: analog_market_url_1
                 type: text
@@ -589,16 +589,28 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: deliverables
-                type: checklist
-                label: "Файлы"
+              - id: doc_purchase_agreement
+                type: file
+                label: "Договор купли-продажи"
+                document_type: purchase_agreement
+                required: true
+              - id: doc_lease_agreement
+                type: file
+                label: "Договор лизинга"
+                document_type: lease_agreement
+                required: true
+              - id: doc_payment_schedule
+                type: file
+                label: "График платежей"
+                document_type: payment_schedule
+                required: true
+              - id: doc_delivery_act
+                type: file
+                label: "Акт приема-передачи"
+                document_type: delivery_act
+                required: true
           defaults:
             instruction_short: "Сформируйте договор и материалы для подписания."
-            deliverables:
-              - purchase_agreement
-              - lease_agreement
-              - payment_schedule
-              - delivery_act
     exit_requirements:
       - key: legal.contractReady
         rule: "== true"

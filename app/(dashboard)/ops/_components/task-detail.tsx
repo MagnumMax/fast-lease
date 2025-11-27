@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState, type JSX } from "react";
+import { useActionState, useEffect, useMemo, useState, type JSX } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -537,9 +537,22 @@ function renderFieldRow(opts: {
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
   const hasForm = task.status !== "DONE";
   const isCompletedWorkflow = !hasForm && task.isWorkflow;
-  const guardDocumentLinks = Array.isArray(guardDocuments) ? guardDocuments : [];
+  const guardDocumentLinks = useMemo(
+    () => (Array.isArray(guardDocuments) ? guardDocuments : []),
+    [guardDocuments],
+  );
   const hasGuardDocuments = guardDocumentLinks.length > 0;
   const hasGuardAttachmentLink = Boolean(guardState?.attachmentUrl);
+  const guardDocumentsByType = useMemo(() => {
+    const map: Record<string, GuardDocumentLink> = {};
+    guardDocumentLinks.forEach((doc) => {
+      const normalized = normalizeClientDocumentType(doc.documentType ?? undefined);
+      if (normalized && !map[normalized]) {
+        map[normalized] = doc;
+      }
+    });
+    return map;
+  }, [guardDocumentLinks]);
   const instructionShortRaw =
     payload?.defaults &&
     typeof payload.defaults === "object" &&
@@ -1016,6 +1029,12 @@ function renderFieldRow(opts: {
                   {confirmCarInstructions}
                 </div>
               ) : null}
+              {documentActionError ? (
+                <p className="text-xs text-destructive">{documentActionError}</p>
+              ) : null}
+              {documentActionMessage ? (
+                <p className="text-xs text-emerald-600">{documentActionMessage}</p>
+              ) : null}
 
               {visibleFields.length > 0 ? (
                 <div className="space-y-3">
@@ -1220,8 +1239,28 @@ function renderFieldRow(opts: {
 
                     if (isDocField) {
                       const currentFile = docFieldFiles[fieldId] ?? null;
-                      const currentValue = docFieldValues[fieldId] ?? value ?? "";
-                      const fileLabel = currentFile?.name || getFileNameFromPath(currentValue) || null;
+                      const attachedDoc =
+                        docFieldType && guardDocumentsByType[docFieldType]
+                          ? guardDocumentsByType[docFieldType]
+                          : null;
+                      const currentValue =
+                        docFieldValues[fieldId] ??
+                        value ??
+                        attachedDoc?.storagePath ??
+                        attachedDoc?.url ??
+                        "";
+                      const attachedFileName =
+                        attachedDoc?.storagePath
+                          ? getFileNameFromPath(attachedDoc.storagePath)
+                          : attachedDoc?.url
+                            ? getFileNameFromPath(attachedDoc.url)
+                            : null;
+                      const fileLabel =
+                        currentFile?.name ||
+                        getFileNameFromPath(currentValue) ||
+                        attachedFileName ||
+                        null;
+                      const deletingAttached = attachedDoc ? isDocumentDeleting(attachedDoc.id) : false;
                       const effectiveDocType = docFieldType ?? "";
 
                       const fileControl = (
@@ -1251,6 +1290,14 @@ function renderFieldRow(opts: {
                               <span className="text-xs text-muted-foreground">Файл не выбран</span>
                             )}
                             <div className="flex items-center gap-2">
+                              {attachedDoc?.url ? (
+                                <Button asChild type="button" variant="outline" size="icon" className="rounded-lg">
+                                  <Link href={attachedDoc.url} target="_blank">
+                                    <Paperclip className="h-4 w-4" />
+                                    <span className="sr-only">Открыть файл</span>
+                                  </Link>
+                                </Button>
+                              ) : null}
                               {fileLabel ? (
                                 <Button
                                   type="button"
@@ -1293,12 +1340,19 @@ function renderFieldRow(opts: {
                                   size="icon"
                                   className="rounded-lg text-destructive"
                                   onClick={() => {
+                                    if (attachedDoc && !currentFile) {
+                                      handleDeleteGuardDocument(attachedDoc.id);
+                                    }
                                     setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
                                     setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
                                   }}
-                                  disabled={pending}
+                                  disabled={pending || deletingAttached}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  {deletingAttached ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
                                   <span className="sr-only">Удалить файл</span>
                                 </Button>
                               ) : null}
@@ -1341,21 +1395,6 @@ function renderFieldRow(opts: {
                       {documentSectionDescription}
                     </p>
                   </div>
-
-                  {hasGuardDocuments ? (
-                    <div className="space-y-2">
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                        Уже загружено
-                      </span>
-                      {renderGuardDocumentList(true)}
-                    </div>
-                  ) : null}
-                  {documentActionMessage ? (
-                    <p className="text-xs text-emerald-600">{documentActionMessage}</p>
-                  ) : null}
-                  {documentActionError ? (
-                    <p className="text-xs text-destructive">{documentActionError}</p>
-                  ) : null}
 
                   <div className="space-y-3">
                     {documentDrafts.length === 0 ? (
