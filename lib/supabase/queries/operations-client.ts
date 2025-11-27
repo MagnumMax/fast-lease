@@ -23,6 +23,9 @@ import {
   type OpsBottleneckItem,
   type OpsAutomationMetric,
   type OpsDealStatusKey,
+  type OpsDashboardSnapshotSet,
+  type OpsDashboardPeriodOption,
+  type OpsDashboardPeriodKey,
 } from "./operations";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 
@@ -80,6 +83,51 @@ const currencyFormatter = new Intl.NumberFormat("en-CA", {
   maximumFractionDigits: 0,
 });
 
+const DEFAULT_DASHBOARD_PERIOD: OpsDashboardPeriodKey = "current-month";
+
+const DASHBOARD_PERIOD_OPTIONS: OpsDashboardPeriodOption[] = [
+  {
+    id: "current-month",
+    label: "Current month",
+    description: "Calendar month to date",
+    badgeLabel: "Current month",
+    comparisonLabel: "Previous month",
+  },
+  {
+    id: "previous-month",
+    label: "Previous month",
+    description: "Completed previous month",
+    badgeLabel: "Previous month",
+    comparisonLabel: "Month -2",
+  },
+  {
+    id: "last-30-days",
+    label: "Last 30 days",
+    description: "Rolling 30 days",
+    badgeLabel: "Last 30 days",
+    comparisonLabel: "Previous 30 days",
+  },
+  {
+    id: "last-90-days",
+    label: "Last 90 days",
+    description: "Rolling 90 days",
+    badgeLabel: "Last 90 days",
+    comparisonLabel: "Previous 90 days",
+  },
+];
+
+const DASHBOARD_PERIOD_OPTION_MAP = new Map(
+  DASHBOARD_PERIOD_OPTIONS.map((option) => [option.id, option]),
+);
+
+type DashboardPeriodRange = {
+  option: OpsDashboardPeriodOption;
+  start: Date;
+  end: Date;
+  comparisonStart: Date;
+  comparisonEnd: Date;
+};
+
 function hasOpsDashboardAccess(roles: AppRole[] | undefined | null): boolean {
   if (!roles?.length) {
     return false;
@@ -97,6 +145,87 @@ function createEmptyDashboardData(): DashboardDataSource {
     scheduleQueue: [],
     managerProfiles: new Map(),
   };
+}
+
+function getStartOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function resolveDashboardPeriodRange(periodId: OpsDashboardPeriodKey, now: Date): DashboardPeriodRange {
+  const option =
+    DASHBOARD_PERIOD_OPTION_MAP.get(periodId) ??
+    DASHBOARD_PERIOD_OPTION_MAP.get(DEFAULT_DASHBOARD_PERIOD) ??
+    DASHBOARD_PERIOD_OPTIONS[0];
+
+  const comparisonPadding = 1; // prevent overlap on equal timestamps
+
+  switch (option?.id ?? DEFAULT_DASHBOARD_PERIOD) {
+    case "previous-month": {
+      const currentMonthStart = getStartOfMonth(now);
+      const previousMonthStart = getStartOfMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+      const twoMonthsAgoStart = getStartOfMonth(new Date(now.getFullYear(), now.getMonth() - 2, 1));
+
+      return {
+        option: option ?? DASHBOARD_PERIOD_OPTION_MAP.get(DEFAULT_DASHBOARD_PERIOD)!,
+        start: previousMonthStart,
+        end: currentMonthStart,
+        comparisonStart: twoMonthsAgoStart,
+        comparisonEnd: previousMonthStart,
+      };
+    }
+    case "last-90-days": {
+      const end = new Date(now.getTime() + comparisonPadding);
+      const start = new Date(end.getTime() - 90 * DAY_IN_MS);
+      const comparisonEnd = start;
+      const comparisonStart = new Date(comparisonEnd.getTime() - 90 * DAY_IN_MS);
+
+      return {
+        option: option ?? DASHBOARD_PERIOD_OPTION_MAP.get(DEFAULT_DASHBOARD_PERIOD)!,
+        start,
+        end,
+        comparisonStart,
+        comparisonEnd,
+      };
+    }
+    case "last-30-days": {
+      const end = new Date(now.getTime() + comparisonPadding);
+      const start = new Date(end.getTime() - 30 * DAY_IN_MS);
+      const comparisonEnd = start;
+      const comparisonStart = new Date(comparisonEnd.getTime() - 30 * DAY_IN_MS);
+
+      return {
+        option: option ?? DASHBOARD_PERIOD_OPTION_MAP.get(DEFAULT_DASHBOARD_PERIOD)!,
+        start,
+        end,
+        comparisonStart,
+        comparisonEnd,
+      };
+    }
+    default: {
+      const start = getStartOfMonth(now);
+      const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+      const comparisonStart = getStartOfMonth(new Date(start.getFullYear(), start.getMonth() - 1, 1));
+      const comparisonEnd = start;
+
+      return {
+        option: option ?? DASHBOARD_PERIOD_OPTION_MAP.get(DEFAULT_DASHBOARD_PERIOD)!,
+        start,
+        end,
+        comparisonStart,
+        comparisonEnd,
+      };
+    }
+  }
+}
+
+function isWithinRange(date: Date | null, range: { start: Date; end: Date }): boolean {
+  if (!date) return false;
+  const value = date.getTime();
+  return value >= range.start.getTime() && value < range.end.getTime();
+}
+
+function resolvePeriodDate(deal: NormalizedDealRow): Date | null {
+  return deal.contractStartDate ?? deal.createdAt ?? null;
 }
 
 type NormalizedDealRow = SupabaseDealRow & {
@@ -255,41 +384,48 @@ function mapStatusToWorkflow(status: string | null | undefined): OpsDealSummary[
 
 function buildOperationsDashboardSnapshotFromData(
   dashboardData: DashboardDataSource,
-  now: Date
+  now: Date,
+  periodRange: DashboardPeriodRange,
+  normalizedDeals: NormalizedDealRow[],
 ): OpsDashboardSnapshot {
-  console.log("[DEBUG] Building dashboard snapshot from data");
+  console.log("[DEBUG] Building dashboard snapshot from data", { period: periodRange.option.id });
 
-  const { deals, invoices, payments, managerProfiles } = dashboardData;
-  const normalizedDeals = normalizeDeals(deals);
+  const { invoices, notificationQueue, webhookQueue, scheduleQueue, managerProfiles } = dashboardData;
+  const currentRange = { start: periodRange.start, end: periodRange.end };
+  const comparisonRange = { start: periodRange.comparisonStart, end: periodRange.comparisonEnd };
+
+  const dealsInRange = normalizedDeals.filter((deal) =>
+    isWithinRange(resolvePeriodDate(deal), currentRange),
+  );
+  const dealsInComparisonRange = normalizedDeals.filter((deal) =>
+    isWithinRange(resolvePeriodDate(deal), comparisonRange),
+  );
 
   const nowMs = now.getTime();
-  const last30Start = new Date(nowMs - 30 * DAY_IN_MS);
-  const prev30Start = new Date(last30Start.getTime() - 30 * DAY_IN_MS);
 
-  const dealsCreatedLast30 = normalizedDeals.filter((deal) => deal.createdAt && deal.createdAt >= last30Start);
-  const totalDeals = normalizedDeals.length;
-  const previousTotalDeals = Math.max(0, totalDeals - dealsCreatedLast30.length);
+  const totalDeals = dealsInRange.length;
+  const previousTotalDeals = dealsInComparisonRange.length;
   const totalDealsChange = calculateChangeSnapshot(totalDeals, previousTotalDeals);
 
-  const activeDeals = normalizedDeals.filter((deal) => deal.statusKey !== "CANCELLED").length;
-  const startedLast30 = normalizedDeals.filter(
-    (deal) => deal.contractStartDate && deal.contractStartDate >= last30Start,
-  ).length;
-  const previousActiveDeals = Math.max(0, activeDeals - startedLast30);
-  const activeDealsChange = calculateChangeSnapshot(activeDeals, previousActiveDeals);
+  const activeDealsCurrent = dealsInRange.filter((deal) => deal.statusKey !== "CANCELLED");
+  const activeDealsPrevious = dealsInComparisonRange.filter((deal) => deal.statusKey !== "CANCELLED");
+  const activeDealsChange = calculateChangeSnapshot(
+    activeDealsCurrent.length,
+    activeDealsPrevious.length,
+  );
 
-  const dealsStartedLast30 = normalizedDeals.filter(
-    (deal) => deal.contractStartDate && deal.contractStartDate >= last30Start,
+  const startedInCurrent = dealsInRange.filter((deal) =>
+    isWithinRange(resolvePeriodDate(deal), currentRange),
   );
-  const dealsStartedPrev30 = normalizedDeals.filter(
-    (deal) =>
-      deal.contractStartDate && deal.contractStartDate >= prev30Start && deal.contractStartDate < last30Start,
+  const startedInComparison = dealsInComparisonRange.filter((deal) =>
+    isWithinRange(resolvePeriodDate(deal), comparisonRange),
   );
-  const monthlyVolume = dealsStartedLast30.reduce(
+
+  const monthlyVolume = startedInCurrent.reduce(
     (sum, deal) => sum + (Number(deal.total_amount) || 0),
     0,
   );
-  const previousMonthlyVolume = dealsStartedPrev30.reduce(
+  const previousMonthlyVolume = startedInComparison.reduce(
     (sum, deal) => sum + (Number(deal.total_amount) || 0),
     0,
   );
@@ -300,20 +436,19 @@ function buildOperationsDashboardSnapshotFromData(
   const pendingInvoicesCurrent = invoices.filter((invoice) => {
     const created = parseDate(invoice.created_at);
     const status = normalizedInvoiceStatus(invoice);
-    return status === "pending" || status === "overdue" ? (!created || created >= last30Start) : false;
+    return (status === "pending" || status === "overdue") && isWithinRange(created, currentRange);
   });
   const pendingInvoicesPrev = invoices.filter((invoice) => {
     const created = parseDate(invoice.created_at);
     const status = normalizedInvoiceStatus(invoice);
-    return (
-      (status === "pending" || status === "overdue") &&
-      created &&
-      created >= prev30Start &&
-      created < last30Start
-    );
+    return (status === "pending" || status === "overdue") && isWithinRange(created, comparisonRange);
   });
-  const pendingInvoices = pendingInvoicesCurrent.length;
-  const pendingInvoicesChange = calculateChangeSnapshot(pendingInvoices, pendingInvoicesPrev.length);
+  const pendingInvoicesChange = calculateChangeSnapshot(
+    pendingInvoicesCurrent.length,
+    pendingInvoicesPrev.length,
+  );
+
+  const comparisonLabelLower = periodRange.option.comparisonLabel.toLowerCase();
 
   const kpis: OpsKpiMetric[] = [
     {
@@ -323,16 +458,16 @@ function buildOperationsDashboardSnapshotFromData(
       change: totalDealsChange.change,
       trend: totalDealsChange.trend,
       tone: "info",
-      helpText: `${totalDealsChange.diff > 0 ? "+" : totalDealsChange.diff < 0 ? "" : ""}${dealsCreatedLast30.length} new last 30d`,
+      helpText: `${previousTotalDeals} in ${comparisonLabelLower}`,
     },
     {
       id: "active-deals",
       label: "Активные сделки",
-      value: activeDeals.toString(),
+      value: activeDealsCurrent.length.toString(),
       change: activeDealsChange.change,
       trend: activeDealsChange.trend,
       tone: "success",
-      helpText: `${activeDealsChange.diff > 0 ? "+" : activeDealsChange.diff < 0 ? "" : ""}${startedLast30} contracts started last 30d`,
+      helpText: `${activeDealsPrevious.length} in ${comparisonLabelLower}`,
     },
     {
       id: "monthly-volume",
@@ -341,27 +476,26 @@ function buildOperationsDashboardSnapshotFromData(
       change: volumeChange.change,
       trend: volumeChange.trend,
       tone: "success",
-      helpText: `${volumeChange.diff >= 0 ? "+" : "-"}${formatCurrencyAED(Math.abs(volumeChange.diff))} vs previous 30d`,
+      helpText: `${formatCurrencyAED(previousMonthlyVolume)} in ${comparisonLabelLower}`,
     },
     {
       id: "pending-invoices",
       label: "Ждут оплаты",
-      value: pendingInvoices.toString(),
+      value: pendingInvoicesCurrent.length.toString(),
       change: pendingInvoicesChange.change,
       trend: pendingInvoicesChange.trend,
       tone: pendingInvoicesChange.trend === "down" ? "success" : "warning",
-      helpText: `${pendingInvoicesPrev.length} previous 30d`,
+      helpText: `${pendingInvoicesPrev.length} in ${comparisonLabelLower}`,
     },
   ];
 
-  // Данные для pipeline диаграммы
-  const pipelineStatus = OPS_WORKFLOW_STATUS_MAP;
-  const pipeline: OpsPipelineDataset = Object.entries(pipelineStatus).map(([key, status]) => ({
-    label: status.title,
-    value: normalizedDeals.filter((deal) => deal.statusKey === key).length,
-  }));
+  const pipeline: OpsPipelineDataset = Object.entries(OPS_WORKFLOW_STATUS_MAP).map(
+    ([key, status]) => ({
+      label: status.title,
+      value: dealsInRange.filter((deal) => deal.statusKey === key).length,
+    }),
+  );
 
-  // Данные для диаграммы спроса/мощности (за последние 6 месяцев)
   const demandCapacity: OpsDemandCapacitySeries = {
     labels: [],
     submitted: [],
@@ -369,32 +503,26 @@ function buildOperationsDashboardSnapshotFromData(
   };
 
   for (let i = 5; i >= 0; i--) {
-    const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const monthLabel = monthDate.toLocaleDateString("ru-RU", { month: "short", year: "numeric" });
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+    const monthLabel = monthStart.toLocaleDateString("ru-RU", { month: "short", year: "numeric" });
 
     demandCapacity.labels.push(monthLabel);
 
-    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+    demandCapacity.submitted.push(
+      dealsInRange.filter((deal) =>
+        isWithinRange(resolvePeriodDate(deal), { start: monthStart, end: monthEnd }),
+      ).length,
+    );
 
-    const submitted = normalizedDeals.filter((deal) => {
-      return deal.createdAt && deal.createdAt >= monthStart && deal.createdAt <= monthEnd;
-    }).length;
-
-    const started = normalizedDeals.filter((deal) => {
-      return (
-        deal.contractStartDate &&
-        deal.contractStartDate >= monthStart &&
-        deal.contractStartDate <= monthEnd
-      );
-    }).length;
-
-    demandCapacity.submitted.push(submitted);
-    demandCapacity.started.push(started);
+    demandCapacity.started.push(
+      dealsInRange.filter((deal) =>
+        isWithinRange(resolvePeriodDate(deal), { start: monthStart, end: monthEnd }),
+      ).length,
+    );
   }
 
-  // Загрузка команды
-  const overdueEntries = normalizedDeals
+  const overdueEntries = dealsInRange
     .map((deal) => {
       const statusMeta = OPS_WORKFLOW_STATUS_MAP[deal.statusKey];
       const slaHours = parseSlaHours(statusMeta?.slaLabel);
@@ -425,7 +553,7 @@ function buildOperationsDashboardSnapshotFromData(
     .sort((a, b) => b.overdueMs - a.overdueMs);
 
   const slaWatchlist: OpsWatchItem[] = overdueEntries.slice(0, MAX_WATCHLIST_ITEMS).map((entry) => {
-    const { deal, dueAt, overdueMs, overdueHours, severity, statusMeta } = entry;
+    const { deal, dueAt, overdueMs, severity, statusMeta } = entry;
     const assigneeProfile = deal.assigned_account_manager
       ? managerProfiles.get(deal.assigned_account_manager)
       : null;
@@ -467,7 +595,7 @@ function buildOperationsDashboardSnapshotFromData(
     return teamAggregates.get(key)!;
   };
 
-  normalizedDeals.forEach((deal) => {
+  dealsInRange.forEach((deal) => {
     const member = ensureMember(deal.assigned_account_manager ?? null);
     if (openStatuses.has(deal.statusKey)) {
       member.activeCount += 1;
@@ -481,9 +609,8 @@ function buildOperationsDashboardSnapshotFromData(
     .filter((member) => member.activeCount > 0 || member.overdueCount > 0)
     .sort((a, b) => b.activeCount - a.activeCount);
 
-  // Узкие места (упрощённо)
-  const docsBuyerCount = normalizedDeals.filter((deal) => deal.statusKey === "DOCS_COLLECT").length;
-  const docsSellerCount = normalizedDeals.filter(
+  const docsBuyerCount = dealsInRange.filter((deal) => deal.statusKey === "DOCS_COLLECT").length;
+  const docsSellerCount = dealsInRange.filter(
     (deal) => deal.statusKey === "DOCS_COLLECT_SELLER",
   ).length;
 
@@ -491,7 +618,7 @@ function buildOperationsDashboardSnapshotFromData(
     {
       id: "risk-review",
       stage: "Проверка риска",
-      count: normalizedDeals.filter((deal) => deal.statusKey === "RISK_REVIEW").length,
+      count: dealsInRange.filter((deal) => deal.statusKey === "RISK_REVIEW").length,
       avgTime: "32h",
       impact: "high",
     },
@@ -511,25 +638,38 @@ function buildOperationsDashboardSnapshotFromData(
     },
   ];
 
-  // Метрики автоматизации (упрощённо)
   const automationMetrics: OpsAutomationMetric[] = [
     {
       id: "notification-processing",
       process: "Обработка уведомлений",
       successRate: "98%",
       avgTime: "2.3s",
-      volume: dashboardData.notificationQueue.length,
+      volume: notificationQueue.filter((item) =>
+        isWithinRange(parseDate(item.created_at), currentRange),
+      ).length,
     },
     {
       id: "webhook-processing",
       process: "Обработка вебхуков",
       successRate: "95%",
       avgTime: "1.8s",
-      volume: dashboardData.webhookQueue.length,
+      volume: webhookQueue.filter((item) =>
+        isWithinRange(parseDate(item.created_at), currentRange),
+      ).length,
+    },
+    {
+      id: "schedule-processing",
+      process: "Работа расписания",
+      successRate: "96%",
+      avgTime: "2.0s",
+      volume: scheduleQueue.filter((item) =>
+        isWithinRange(parseDate(item.created_at), currentRange),
+      ).length,
     },
   ];
 
   const overdueInvoicesDetailed = invoices
+    .filter((invoice) => isWithinRange(parseDate(invoice.created_at), currentRange))
     .map((invoice) => {
       const status = (invoice.status ?? "").toLowerCase();
       if (status !== "overdue" && status !== "pending") {
@@ -583,18 +723,44 @@ function buildOperationsDashboardSnapshotFromData(
   };
 }
 
-export async function getOperationsDashboardSnapshotClient(): Promise<OpsDashboardSnapshot> {
+function buildDashboardSnapshotSet(
+  dashboardData: DashboardDataSource,
+  now: Date,
+): OpsDashboardSnapshotSet {
+  const normalizedDeals = normalizeDeals(dashboardData.deals);
+  const snapshots = DASHBOARD_PERIOD_OPTIONS.reduce(
+    (acc, option) => {
+      const range = resolveDashboardPeriodRange(option.id, now);
+      acc[option.id] = buildOperationsDashboardSnapshotFromData(
+        dashboardData,
+        now,
+        range,
+        normalizedDeals,
+      );
+      return acc;
+    },
+    {} as Record<OpsDashboardPeriodKey, OpsDashboardSnapshot>,
+  );
+
+  return {
+    defaultPeriod: DEFAULT_DASHBOARD_PERIOD,
+    periods: DASHBOARD_PERIOD_OPTIONS,
+    snapshots,
+  };
+}
+
+export async function getOperationsDashboardSnapshotClient(): Promise<OpsDashboardSnapshotSet> {
   const now = new Date();
   const sessionUser = await getSessionUser();
 
   if (!sessionUser) {
     console.warn("[operations] dashboard requested without active session; returning fallback snapshot");
-    return buildOperationsDashboardSnapshotFromData(createEmptyDashboardData(), now);
+    return buildDashboardSnapshotSet(createEmptyDashboardData(), now);
   }
 
   if (!hasOpsDashboardAccess(sessionUser.roles)) {
     console.warn("[operations] dashboard requested by user without operations role; returning fallback snapshot");
-    return buildOperationsDashboardSnapshotFromData(createEmptyDashboardData(), now);
+    return buildDashboardSnapshotSet(createEmptyDashboardData(), now);
   }
 
   const supabase = await createSupabaseServerClient();
@@ -734,7 +900,7 @@ export async function getOperationsDashboardSnapshotClient(): Promise<OpsDashboa
     managerProfiles,
   };
 
-  return buildOperationsDashboardSnapshotFromData(dashboardData, now);
+  return buildDashboardSnapshotSet(dashboardData, now);
 }
 
 export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {

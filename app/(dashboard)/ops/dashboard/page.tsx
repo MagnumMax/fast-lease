@@ -2,7 +2,7 @@ import { OpsDashboardScreen } from "@/app/(dashboard)/ops/_components/dashboard-
 import { getOperationsDashboardSnapshotClient } from "@/lib/supabase/queries/operations-client";
 
 export default async function OpsDashboardPage() {
-  const snapshot = await getOperationsDashboardSnapshotClient();
+  const snapshotSet = await getOperationsDashboardSnapshotClient();
 
-  return <OpsDashboardScreen snapshot={snapshot} />;
+  return <OpsDashboardScreen snapshotSet={snapshotSet} />;
 }

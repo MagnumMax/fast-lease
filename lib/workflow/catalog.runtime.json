@@ -425,6 +425,9 @@
                 }
               ]
             },
+            "defaults": {
+              "instruction_short": "Подтвердите наличие авто и условия у дилера/брокера."
+            },
             "bindings": {
               "deal_id": "{{deal.id}}",
               "current_status": "{{deal.status}}"

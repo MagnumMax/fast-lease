@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { ChartOptions } from "chart.js";
 import { useTheme } from "next-themes";
 import { Badge } from "@/components/ui/badge";
@@ -11,17 +11,37 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ChartCanvas } from "@/components/system/chart";
 import type {
   OpsDashboardSnapshot,
+  OpsDashboardSnapshotSet,
+  OpsDashboardPeriodKey,
   OpsDemandCapacitySeries,
   OpsPipelineDataset,
 } from "@/lib/supabase/queries/operations";
 import { readCssVariable } from "@/lib/utils/css";
 
+const EMPTY_DASHBOARD_SNAPSHOT: OpsDashboardSnapshot = {
+  kpis: [],
+  pipeline: [],
+  demandCapacity: { labels: [], submitted: [], started: [] },
+  exceptionWatchlist: [],
+  slaWatchlist: [],
+  teamLoad: [],
+  bottlenecks: [],
+  automationMetrics: [],
+};
+
 type OpsDashboardScreenProps = {
-  snapshot: OpsDashboardSnapshot;
+  snapshotSet: OpsDashboardSnapshotSet;
 };
 
 const toneToBadgeVariant: Record<string, React.ComponentProps<typeof Badge>["variant"]> = {
@@ -84,9 +104,26 @@ function buildDemandCapacityChartConfig(series: OpsDemandCapacitySeries) {
   };
 }
 
-export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
+export function OpsDashboardScreen({ snapshotSet }: OpsDashboardScreenProps) {
   const { resolvedTheme } = useTheme();
   const themeKey = resolvedTheme ?? "system";
+  const fallbackPeriod = snapshotSet.defaultPeriod;
+  const periodOptions = snapshotSet.periods;
+  const periodOptionsMap = useMemo(
+    () => new Map(periodOptions.map((option) => [option.id, option])),
+    [periodOptions],
+  );
+  const [activePeriod, setActivePeriod] = useState<OpsDashboardPeriodKey>(fallbackPeriod);
+
+  const selectedOption =
+    periodOptionsMap.get(activePeriod) ?? periodOptionsMap.get(fallbackPeriod) ?? periodOptions[0];
+  const resolvedPeriodId = selectedOption?.id ?? fallbackPeriod;
+  const snapshot =
+    snapshotSet.snapshots[resolvedPeriodId] ??
+    snapshotSet.snapshots[fallbackPeriod] ??
+    Object.values(snapshotSet.snapshots)[0] ??
+    EMPTY_DASHBOARD_SNAPSHOT;
+  const periodBadgeLabel = selectedOption?.badgeLabel ?? selectedOption?.label ?? "—";
 
   const baseChartOptions = useMemo<ChartOptions>(() => {
     void themeKey;
@@ -157,6 +194,24 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex justify-end">
+        <Select
+          value={resolvedPeriodId}
+          onValueChange={(value) => setActivePeriod(value as OpsDashboardPeriodKey)}
+        >
+          <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm sm:w-64">
+            <SelectValue placeholder="Select period" />
+          </SelectTrigger>
+          <SelectContent>
+            {periodOptions.map((option) => (
+              <SelectItem key={option.id} value={option.id} className="py-2">
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {snapshot.kpis.map((kpi) => (
           <Card key={kpi.id} className="bg-card/60 backdrop-blur">
@@ -179,7 +234,7 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
               <CardTitle>Deal Pipeline</CardTitle>
             </div>
             <Badge variant="outline" className="rounded-lg">
-              Last 30 days
+              {periodBadgeLabel}
             </Badge>
           </CardHeader>
           <CardContent className="h-[280px]">
@@ -204,11 +259,11 @@ export function OpsDashboardScreen({ snapshot }: OpsDashboardScreenProps) {
         <Card className="bg-card/60 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
-              <CardDescription>Seven-day view</CardDescription>
+              <CardDescription>Selected period</CardDescription>
               <CardTitle>Submitted vs Started</CardTitle>
             </div>
             <Badge variant="outline" className="rounded-lg">
-              Last 7 days
+              {periodBadgeLabel}
             </Badge>
           </CardHeader>
           <CardContent className="h-[280px]">

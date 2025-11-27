@@ -24,6 +24,11 @@ const imagesConfig: NextConfig["images"] = supabaseHostname
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["lightningcss", "@tailwindcss/node", "@tailwindcss/oxide"],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "25mb",
+    },
+  },
   ...(imagesConfig ? { images: imagesConfig } : {}),
   outputFileTracingIncludes: {
     // Ensure workflow template YAML ships with every serverless bundle so runtime fs access succeeds.

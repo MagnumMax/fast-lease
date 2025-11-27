@@ -57,12 +57,6 @@ schemas:
   buyer_docs_company: &buyer_docs_company
     version: "1.0"
     fields:
-      - id: buyer_type
-        type: select
-        label: "Тип покупателя"
-        options:
-          - value: company
-            label: "Юридическое лицо"
       - id: buyer_company_email
         type: text
         label: "Электронная почта компании"
@@ -111,12 +105,6 @@ schemas:
   buyer_docs_individual: &buyer_docs_individual
     version: "1.0"
     fields:
-      - id: buyer_type
-        type: select
-        label: "Тип покупателя"
-        options:
-          - value: individual
-            label: "Физическое лицо"
       - id: buyer_contact_email
         type: text
         label: "Электронная почта покупателя/водителя"
@@ -147,12 +135,6 @@ schemas:
   seller_docs_company: &seller_docs_company
     version: "1.0"
     fields:
-      - id: seller_type
-        type: select
-        label: "Тип продавца"
-        options:
-          - value: company
-            label: "Юридическое лицо"
       - id: seller_contact_email
         type: text
         label: "Электронная почта продавца"
@@ -202,12 +184,6 @@ schemas:
   seller_docs_individual: &seller_docs_individual
     version: "1.0"
     fields:
-      - id: seller_type
-        type: select
-        label: "Тип продавца"
-        options:
-          - value: individual
-            label: "Физическое лицо"
       - id: seller_contact_email
         type: text
         label: "Электронная почта продавца"
@@ -265,6 +241,8 @@ statuses:
               - id: current_status
                 type: badge
                 label: "Текущий этап"
+          defaults:
+            instruction_short: "Подтвердите наличие авто и условия у дилера/брокера."
           bindings:
             deal_id: "{{deal.id}}"
             current_status: "{{deal.status}}"
@@ -372,7 +350,6 @@ statuses:
           schema: *buyer_docs_company
           defaults:
             instruction_short: "Загрузите документы покупателя-юрлица и контакты ответственного."
-            buyer_type: "company"
             buyer_company_email: ""
             buyer_company_phone: ""
             buyer_contact_email: ""
@@ -385,8 +362,6 @@ statuses:
             doc_visa_driver: ""
             doc_passport_driver: ""
             doc_driving_license: ""
-          bindings:
-            buyer_type: "{{payload.buyer_type}}"
           conditions:
             - key: "payload.buyer_type"
               rule: "== company"
@@ -401,7 +376,6 @@ statuses:
           schema: *buyer_docs_individual
           defaults:
             instruction_short: "Прикрепите паспорт, визу, EID и права покупателя; добавьте второй комплект для второго водителя при необходимости."
-            buyer_type: "individual"
             buyer_contact_email: ""
             buyer_contact_phone: ""
             doc_passport_buyer: ""
@@ -409,8 +383,6 @@ statuses:
             doc_emirates_id_buyer: ""
             doc_driving_license_buyer: ""
             doc_second_driver_bundle: ""
-          bindings:
-            buyer_type: "{{payload.buyer_type}}"
           conditions:
             - key: "payload.buyer_type"
               rule: "== individual"
@@ -433,7 +405,6 @@ statuses:
           schema: *seller_docs_company
           defaults:
             instruction_short: "Загрузите документы продавца-юрлица и контакты."
-            seller_type: ""
             seller_contact_email: ""
             seller_contact_phone: ""
             seller_bank_details: ""
@@ -446,8 +417,6 @@ statuses:
             doc_noc_company_letter: ""
             doc_noc_gps_letter: ""
             doc_trn_certificate: ""
-          bindings:
-            seller_type: "{{payload.seller_type}}"
           conditions:
             - key: "payload.seller_type"
               rule: "== company"
@@ -462,7 +431,6 @@ statuses:
           schema: *seller_docs_individual
           defaults:
             instruction_short: "Загрузите документы продавца-физлица и контакты."
-            seller_type: "individual"
             seller_contact_email: ""
             seller_contact_phone: ""
             doc_vcc_certificate: ""
@@ -472,8 +440,6 @@ statuses:
             doc_passing_certificate: ""
             doc_emirates_id_seller: ""
             doc_spa_invoice: ""
-          bindings:
-            seller_type: "{{payload.seller_type}}"
           conditions:
             - key: "payload.seller_type"
               rule: "== individual"

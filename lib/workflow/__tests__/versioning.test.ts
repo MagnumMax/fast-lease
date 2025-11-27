@@ -158,8 +158,11 @@ describe("WorkflowVersionService", () => {
     expect(confirmCar).toBeDefined();
     expect(confirmCar).toMatchObject({
       taskType: "CONFIRM_CAR",
-      defaults: null,
+      defaults: {
+        instruction_short: "Подтвердите наличие авто и условия у дилера/брокера.",
+      },
     });
+    expect(confirmCar?.defaults).not.toHaveProperty("instructions");
     expect(confirmCar?.schema).toMatchObject({ version: "1.0" });
 
     const confirmCarFields =

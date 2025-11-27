@@ -157,8 +157,6 @@ const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
 const DOCUMENT_TYPE_EMPTY_VALUE = "__workflow-doc-none__";
 const CLIENT_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 const TASKS_LIST_ROUTE = "/ops/tasks";
-const CONFIRM_CAR_INSTRUCTIONS =
-  "Свяжитесь с дилером/брокером и подтвердите доступность выбранного авто.";
 const INDIVIDUAL_DOC_LABELS: Record<string, string> = {
   doc_passport_driver: "Паспорт покупателя",
   doc_visa_driver: "Виза покупателя",
@@ -339,8 +337,8 @@ export function TaskDetailView({
     task.type === "COLLECT_SELLER_DOCS_COMPANY" ||
     task.type === "COLLECT_SELLER_DOCS_INDIVIDUAL";
   const confirmCarInstructions =
-    isConfirmCarTask
-      ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
+    isConfirmCarTask && typeof payload?.defaults?.instruction_short === "string"
+      ? (payload.defaults.instruction_short as string)
       : null;
   const isVehicleVerificationTask =
     guardKeyResolved === VEHICLE_VERIFICATION_GUARD_KEY ||

@@ -1074,6 +1074,20 @@ export type OpsDemandCapacitySeries = {
   started: number[];
 };
 
+export type OpsDashboardPeriodKey =
+  | "current-month"
+  | "previous-month"
+  | "last-30-days"
+  | "last-90-days";
+
+export type OpsDashboardPeriodOption = {
+  id: OpsDashboardPeriodKey;
+  label: string;
+  description: string;
+  badgeLabel: string;
+  comparisonLabel: string;
+};
+
 export type OpsDashboardSnapshot = {
   kpis: OpsKpiMetric[];
   pipeline: OpsPipelineDataset;
@@ -1083,6 +1097,12 @@ export type OpsDashboardSnapshot = {
   teamLoad: OpsTeamLoadItem[];
   bottlenecks: OpsBottleneckItem[];
   automationMetrics: OpsAutomationMetric[];
+};
+
+export type OpsDashboardSnapshotSet = {
+  defaultPeriod: OpsDashboardPeriodKey;
+  periods: OpsDashboardPeriodOption[];
+  snapshots: Record<OpsDashboardPeriodKey, OpsDashboardSnapshot>;
 };
 
 export type OpsDealDetail = {
