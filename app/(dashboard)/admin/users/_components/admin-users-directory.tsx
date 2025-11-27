@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  KeyRound,
   History,
   Plus,
   Search,
@@ -131,6 +132,12 @@ type DeleteState = {
   error: string | null;
 };
 
+type ResetPasswordState = {
+  isResetting: boolean;
+  temporaryPassword: string | null;
+  error: string | null;
+};
+
 type DeleteApiResponse = {
   ok?: boolean;
   canDelete?: boolean;
@@ -145,6 +152,12 @@ const DEFAULT_DELETE_STATE: DeleteState = {
   isDialogOpen: false,
   isDeleting: false,
   blockers: [],
+  error: null,
+};
+
+const DEFAULT_RESET_PASSWORD_STATE: ResetPasswordState = {
+  isResetting: false,
+  temporaryPassword: null,
   error: null,
 };
 
@@ -372,6 +385,9 @@ export function AdminUsersDirectory({
     isSaving: false,
   });
   const [manageError, setManageError] = useState<string | null>(null);
+  const [resetPasswordState, setResetPasswordState] = useState<ResetPasswordState>(
+    DEFAULT_RESET_PASSWORD_STATE,
+  );
   const [deleteState, setDeleteState] = useState<DeleteState>(DEFAULT_DELETE_STATE);
   const [roleFilter, setRoleFilter] = useState<AppRole | null>(() =>
     isRolesMode ? ROLES_MODE_SCOPE[0] ?? null : null,
@@ -640,6 +656,7 @@ export function AdminUsersDirectory({
     if (!actorCanMutate) {
       return;
     }
+    setResetPasswordState(DEFAULT_RESET_PASSWORD_STATE);
     setManageState({
       isOpen: true,
       user,
@@ -832,6 +849,7 @@ export function AdminUsersDirectory({
         portals: initializePortalState(null),
         isSaving: false,
       });
+      setResetPasswordState(DEFAULT_RESET_PASSWORD_STATE);
       setManageError(null);
     } catch (error) {
       console.error("[admin] Failed to update user access", error);
@@ -839,6 +857,74 @@ export function AdminUsersDirectory({
         error instanceof Error ? error.message : "Не удалось сохранить изменения",
       );
       setManageState((prev) => ({ ...prev, isSaving: false }));
+    }
+  }
+
+  async function handlePasswordReset() {
+    const targetUser = manageState.user;
+    if (!targetUser || resetPasswordState.isResetting) {
+      return;
+    }
+
+    if (!actorCanMutate) {
+      setResetPasswordState((prev) => ({
+        ...prev,
+        error: "Your account is limited to read-only access.",
+      }));
+      return;
+    }
+
+    setResetPasswordState({
+      isResetting: true,
+      temporaryPassword: null,
+      error: null,
+    });
+
+    try {
+      const response = await fetch("/api/admin/users/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId: targetUser.id }),
+      });
+
+      let payload: { ok?: boolean; temporaryPassword?: string | null; error?: string } | null =
+        null;
+      try {
+        payload = (await response.json()) as {
+          ok?: boolean;
+          temporaryPassword?: string | null;
+          error?: string;
+        } | null;
+      } catch {
+        /* no-op */
+      }
+
+      if (!response.ok || !payload?.ok || !payload.temporaryPassword) {
+        throw new Error(payload?.error ?? "Не удалось сбросить пароль.");
+      }
+
+      setResetPasswordState({
+        isResetting: false,
+        temporaryPassword: payload.temporaryPassword,
+        error: null,
+      });
+
+      setAuditLog((prev) => [
+        makeAuditEntry(
+          actorName,
+          "Сброшен пароль",
+          targetUser.email ?? targetUser.fullName ?? targetUser.id,
+        ),
+        ...prev,
+      ]);
+    } catch (error) {
+      setResetPasswordState({
+        isResetting: false,
+        temporaryPassword: null,
+        error: error instanceof Error ? error.message : "Не удалось сбросить пароль.",
+      });
     }
   }
 
@@ -962,6 +1048,7 @@ export function AdminUsersDirectory({
         portals: initializePortalState(null),
         isSaving: false,
       });
+      setResetPasswordState(DEFAULT_RESET_PASSWORD_STATE);
     } catch (error) {
       setDeleteState((prev) => ({
         ...prev,
@@ -1683,7 +1770,8 @@ export function AdminUsersDirectory({
             }
 
             setManageError(null);
-             resetDeleteState();
+            resetDeleteState();
+            setResetPasswordState(DEFAULT_RESET_PASSWORD_STATE);
             return {
               isOpen: false,
               user: null,
@@ -1840,6 +1928,64 @@ export function AdminUsersDirectory({
                     })}
                   </div>
                 </div>
+                <div className="space-y-3 rounded-2xl border border-border bg-card/60 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Пароль доступа</p>
+                      <p className="text-xs text-muted-foreground">
+                        Сгенерируйте временный пароль и передайте его пользователю.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="rounded-xl"
+                      onClick={handlePasswordReset}
+                      disabled={
+                        !manageState.user ||
+                        resetPasswordState.isResetting ||
+                        actorIsReadOnly
+                      }
+                      title={actorIsReadOnly ? readOnlyTooltip : undefined}
+                    >
+                      {resetPasswordState.isResetting ? (
+                        <span className="flex items-center gap-2">
+                          <svg
+                            className="h-4 w-4 animate-spin"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                          >
+                            <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+                            <path d="M22 12a10 10 0 0 1-10 10" />
+                          </svg>
+                          Сбрасываем...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <KeyRound className="h-4 w-4" />
+                          Сбросить пароль
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                  {resetPasswordState.error ? (
+                    <p className="text-xs text-destructive">{resetPasswordState.error}</p>
+                  ) : null}
+                  {resetPasswordState.temporaryPassword ? (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-100">
+                      <p className="text-sm font-semibold">Временный пароль</p>
+                      <p className="mt-1 font-mono text-sm">
+                        {resetPasswordState.temporaryPassword}
+                      </p>
+                      <p className="mt-1 text-[11px] text-emerald-900/80 dark:text-emerald-100/80">
+                        Скопируйте и передайте пользователю. Пароль показывается один раз.
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
                 <div className="space-y-3 rounded-2xl border border-destructive/40 bg-destructive/5 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -1905,14 +2051,18 @@ export function AdminUsersDirectory({
                 variant="outline"
                 className="rounded-xl"
                 onClick={() =>
-                  setManageState({
-                    isOpen: false,
-                    user: null,
-                    status: "active",
-                    roles: initializeRoleSelections(null),
-                    portals: initializePortalState(null),
-                    isSaving: false,
-                  })
+                  {
+                    resetDeleteState();
+                    setResetPasswordState(DEFAULT_RESET_PASSWORD_STATE);
+                    setManageState({
+                      isOpen: false,
+                      user: null,
+                      status: "active",
+                      roles: initializeRoleSelections(null),
+                      portals: initializePortalState(null),
+                      isSaving: false,
+                    });
+                  }
                 }
               >
                 Cancel

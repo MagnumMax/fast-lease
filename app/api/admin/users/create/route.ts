@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
 
 import { getSessionUser } from "@/lib/auth/session";
 import { canMutateSessionUser } from "@/lib/auth/guards";
@@ -15,13 +14,10 @@ import {
   AdminCreateUserSchema,
   type AdminCreateUserInput,
 } from "@/lib/validation/admin-users";
+import { generateRandomPassword } from "@/lib/auth/passwords";
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
-}
-
-function generateRandomPassword() {
-  return randomBytes(18).toString("base64url");
 }
 
 function isValidRole(value: string): value is AppRole {
