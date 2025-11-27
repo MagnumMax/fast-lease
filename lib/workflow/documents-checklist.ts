@@ -32,6 +32,17 @@ export type ClientDocumentChecklist = {
   fulfilled: boolean;
 };
 
+export function isOptionalGuardDocument(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return false;
+  }
+  const flag = (metadata as Record<string, unknown>).guard_optional;
+  if (typeof flag === "string") {
+    return flag.toLowerCase() === "true";
+  }
+  return flag === true;
+}
+
 function extractChecklistArray(source: unknown): string[] | null {
   if (!source || typeof source !== "object" || Array.isArray(source)) {
     return null;

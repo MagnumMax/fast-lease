@@ -48,7 +48,7 @@ export const PORTAL_DEFINITIONS: Record<PortalCode, PortalDefinition> = {
   },
   client: {
     code: "client",
-    label: "Кабинет клиента",
+    label: "Кабинет покупателя",
     description: "Платежи, документы, поддержка и статус лизинга.",
     loginPath: "/login",
     homePath: "/client/dashboard",

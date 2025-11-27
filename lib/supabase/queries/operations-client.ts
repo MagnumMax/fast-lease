@@ -771,16 +771,16 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
     return [];
   }
 
-  // Загружаем уникальные client_id для запроса данных клиентов
+  // Загружаем уникальные client_id для запроса данных покупателей
   const uniqueClientIds = [...new Set(data.map(deal => deal.client_id).filter(Boolean))];
 
-  // Загружаем данные клиентов отдельным запросом
+  // Загружаем данные покупателей отдельным запросом
   const { data: clientsData } = await supabase
     .from("profiles")
     .select("user_id, full_name, phone, email, status, nationality, metadata")
     .in("user_id", uniqueClientIds);
 
-  // Создаем карту клиентов для быстрого поиска
+  // Создаем карту покупателей для быстрого поиска
   const clientsMap = new Map<string, SupabaseClientData>();
   (clientsData || []).forEach(client => {
     clientsMap.set(client.user_id, client as SupabaseClientData);
@@ -813,10 +813,10 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
     const vehicleDataRaw = Array.isArray(vehicleArray) && vehicleArray.length > 0 ? vehicleArray[0] : {};
     const vehicleData = vehicleDataRaw as SupabaseVehicleData;
 
-    // Получаем данные клиента из карты
+    // Получаем данные покупателя из карты
     const clientData = clientsMap.get(row.client_id as string);
 
-    // Формируем название клиента
+    // Формируем название покупателя
     const clientName = clientData?.full_name ||
       `Client ${(row.client_id as string)?.slice(-4) ?? "0000"}`;
 

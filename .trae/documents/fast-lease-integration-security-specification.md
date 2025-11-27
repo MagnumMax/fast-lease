@@ -210,7 +210,7 @@ CREATE POLICY "Ops can view assigned applications" ON applications
     assigned_to = auth.uid()
   );
 
--- Политика для клиентских данных
+-- Политика для покупательских данных
 CREATE POLICY "Clients access own data" ON client_documents
   FOR ALL USING (
     auth.uid() = client_id OR

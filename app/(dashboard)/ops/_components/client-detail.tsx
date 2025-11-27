@@ -170,7 +170,7 @@ export function ClientDetailView({
 
   const personalEmptyMessage = hasAnyDocuments
     ? "Документы идентификации не найдены. Загрузите документы через кнопку «Редактировать»."
-    : "Документы клиента отсутствуют. Нажмите «Редактировать» для загрузки документов идентификации.";
+    : "Документы покупателя отсутствуют. Нажмите «Редактировать» для загрузки документов идентификации.";
   const companyEmptyMessage = hasAnyDocuments
     ? "Документы компании не найдены. Загрузите документы через кнопку «Редактировать»."
     : "Документы компании отсутствуют. Нажмите «Редактировать» для загрузки документов.";
@@ -211,7 +211,7 @@ export function ClientDetailView({
         <Button variant="ghost" size="sm" asChild className="rounded-xl border border-border">
           <Link href="/ops/clients" className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
-            Назад к клиентам
+            Назад к покупателям
           </Link>
         </Button>
         <ClientEditDialog
@@ -236,7 +236,7 @@ export function ClientDetailView({
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <InfoCell label="Тип клиента">{clientTypeLabel}</InfoCell>
+            <InfoCell label="Тип покупателя">{clientTypeLabel}</InfoCell>
             <InfoCell label="Статус">{profile.status || "—"}</InfoCell>
             <InfoCell label="Телефон">
               {profile.phone ? (
@@ -286,7 +286,7 @@ export function ClientDetailView({
 
           <div className="space-y-4 border-t border-border/40 pt-4">
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Документы клиента</p>
+              <p className="text-sm font-semibold text-foreground">Документы покупателя</p>
             </div>
             <DocumentList
               documents={personalDocumentItems}
@@ -509,7 +509,7 @@ export function ClientDetailView({
             </InfoCell>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">У клиента нет реферальной активности.</p>
+          <p className="text-sm text-muted-foreground">У покупателя нет реферальной активности.</p>
         )}
       </SectionCard>
     </div>

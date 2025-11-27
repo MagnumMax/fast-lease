@@ -158,7 +158,7 @@ INSERT INTO profiles (
     '2025-10-29 17:30:00+04'
 );
 
--- Менеджер по клиентскому сервису
+-- Менеджер по покупательскому сервису
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -177,7 +177,7 @@ INSERT INTO profiles (
     'resident',
     '1990-12-03'::date,
     '{"street": "Dubai Marina", "city": "Dubai", "state": "Dubai", "country": "UAE", "postal_code": "00005"}',
-    '{"position": "Менеджер по клиентскому сервису", "department": "Customer Service", "company": "FastLease", "start_date": "2023-06-01"}',
+    '{"position": "Менеджер по покупательскому сервису", "department": "Customer Service", "company": "FastLease", "start_date": "2023-06-01"}',
     '{"department": "Customer Service", "level": "manager", "clients_managed": 45}',
     '{"department": "Customer Service", "specializations": ["Customer Retention", "Complaint Resolution", "Communication"], "languages": ["Arabic", "English", "Hindi"]}',
     'Asia/Dubai',
@@ -447,7 +447,7 @@ INSERT INTO profiles (
     '2025-10-30 08:30:00+04'
 );
 
--- Специалист клиентской поддержки
+-- Специалист покупательской поддержки
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -466,7 +466,7 @@ INSERT INTO profiles (
     'resident',
     '1990-07-17'::date,
     '{"street": "Discovery Gardens", "city": "Dubai", "state": "Dubai", "country": "UAE", "postal_code": "00014"}',
-    '{"position": "Специалист клиентской поддержки", "department": "Customer Support", "company": "FastLease", "start_date": "2023-09-01"}',
+    '{"position": "Специалист покупательской поддержки", "department": "Customer Support", "company": "FastLease", "start_date": "2023-09-01"}',
     '{"department": "Customer Support", "level": "specialist", "customer_satisfaction": 4.6}',
     '{"department": "Customer Support", "specializations": ["Customer Communication", "Issue Resolution", "Product Knowledge"], "languages": ["Arabic", "English", "Tagalog"]}',
     'Asia/Dubai',
@@ -782,7 +782,7 @@ SELECT user_id, 'LEGAL', (SELECT user_id FROM profiles WHERE full_name = 'Иса
        '{"department": "Legal", "level": "senior_associate"}' FROM profiles WHERE full_name = 'Лулай Аль-Фаласи';
 
 -- =====================================================================
--- 8. КЛИЕНТЫ (CLIENT) - 10 пользователей
+-- 8. ПОКУПАТЕЛИ (CLIENT) - 10 пользователей
 -- =====================================================================
 
 -- Частные лица (5)
@@ -791,7 +791,7 @@ INSERT INTO profiles (
     nationality, residency_status, date_of_birth, address, employment_info,
     financial_profile, metadata, timezone, avatar_url, last_login_at
 ) VALUES 
--- Клиент 1
+-- Покупатель 1
 (
     gen_random_uuid(),
     gen_random_uuid(),
@@ -812,7 +812,7 @@ INSERT INTO profiles (
     'https://avatar.fastlease.dev/clients/ahmed-alhatimi.jpg',
     '2025-10-30 10:00:00+04'
 ),
--- Клиент 2
+-- Покупатель 2
 (
     gen_random_uuid(),
     gen_random_uuid(),
@@ -833,7 +833,7 @@ INSERT INTO profiles (
     'https://avatar.fastlease.dev/clients/fatima-alsuwaidi.jpg',
     '2025-10-29 19:30:00+04'
 ),
--- Клиент 3
+-- Покупатель 3
 (
     gen_random_uuid(),
     gen_random_uuid(),
@@ -854,7 +854,7 @@ INSERT INTO profiles (
     'https://avatar.fastlease.dev/clients/khalid-alketbi.jpg',
     '2025-10-30 08:45:00+04'
 ),
--- Клиент 4
+-- Покупатель 4
 (
     gen_random_uuid(),
     gen_random_uuid(),
@@ -875,7 +875,7 @@ INSERT INTO profiles (
     'https://avatar.fastlease.dev/clients/aisha-almaktoum.jpg',
     '2025-10-29 20:15:00+04'
 ),
--- Клиент 5
+-- Покупатель 5
 (
     gen_random_uuid(),
     gen_random_uuid(),
@@ -1016,7 +1016,7 @@ INSERT INTO profiles (
     '2025-10-29 13:15:00+04'
 );
 
--- Привязка ролей всех клиентов
+-- Привязка ролей всех покупателей
 INSERT INTO user_roles (user_id, role, assigned_by, metadata) 
 SELECT user_id, 'CLIENT', (SELECT user_id FROM profiles WHERE full_name = 'Ахмед Аль-Мансури'), 
        '{"client_category": "individual"}' FROM profiles WHERE full_name IN (

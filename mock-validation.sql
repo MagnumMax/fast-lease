@@ -33,7 +33,7 @@ SELECT
     END as status
 FROM vehicles;
 
--- Проверка количества клиентов
+-- Проверка количества покупателей
 SELECT
     'Clients Validation' as validation_type,
     COUNT(*) as expected_count,
@@ -246,7 +246,7 @@ FROM applications a
 LEFT JOIN profiles p ON a.user_id = p.user_id
 LEFT JOIN vehicles v ON a.vehicle_id = v.id;
 
--- 2.3 Проверка связей сделок с заявками, клиентами и автомобилями
+-- 2.3 Проверка связей сделок с заявками, покупателями и автомобилями
 -- =====================================================================
 
 SELECT
@@ -490,7 +490,7 @@ SELECT
 FROM deals d
 JOIN vehicles v ON d.vehicle_id = v.id;
 
--- 4.3 Связь клиентов и сделок
+-- 4.3 Связь покупателей и сделок
 -- =====================================================================
 
 SELECT
@@ -514,7 +514,7 @@ WHERE p.metadata->>'client_category' IN ('individual', 'small_business', 'medium
 -- 5.1 Распределение данных
 -- =====================================================================
 
--- Баланс между категориями клиентов
+-- Баланс между категориями покупателей
 SELECT
     'Statistical Validation - Client Categories' as validation_type,
     client_category,

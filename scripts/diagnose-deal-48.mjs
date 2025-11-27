@@ -11,7 +11,7 @@ import { config } from 'dotenv';
 // Загружаем переменные окружения
 config({ path: '.env.local' });
 
-// Создаем Supabase клиент
+// Создаем Supabase покупатель
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

@@ -1,20 +1,20 @@
 -- =====================================================================
--- МОКОВЫЕ ДАННЫЕ КЛИЕНТОВ FASTLEASE
+-- МОКОВЫЕ ДАННЫЕ ПОКУПАТЕЛЕЙ FASTLEASE
 -- =====================================================================
 -- Создано: 2025-10-30
--- Описание: Реалистичные профили клиентов-заявителей на лизинг
--- Содержит: 85 клиентов разных типов с финансовыми профилями
+-- Описание: Реалистичные профили покупателей-заявителей на лизинг
+-- Содержит: 85 покупателей разных типов с финансовыми профилями
 -- =====================================================================
 
 -- =====================================================================
--- 1. ЧАСТНЫЕ ЛИЦА - 40 КЛИЕНТОВ
+-- 1. ЧАСТНЫЕ ЛИЦА - 40 ПОКУПАТЕЛЕЙ
 -- =====================================================================
 
 -- =====================================================================
--- 1.1 Граждане ОАЭ с высоким доходом - 15 клиентов
+-- 1.1 Граждане ОАЭ с высоким доходом - 15 покупателей
 -- =====================================================================
 
--- Клиент 1: Высокопоставленный государственный служащий
+-- Покупатель 1: Высокопоставленный государственный служащий
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -41,7 +41,7 @@ INSERT INTO profiles (
     '2025-10-30 11:45:00+04'
 );
 
--- Клиент 2: Банкир высшего звена
+-- Покупатель 2: Банкир высшего звена
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -68,7 +68,7 @@ INSERT INTO profiles (
     '2025-10-30 10:30:00+04'
 );
 
--- Клиент 3: Врач-консультант
+-- Покупатель 3: Врач-консультант
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -95,7 +95,7 @@ INSERT INTO profiles (
     '2025-10-30 09:15:00+04'
 );
 
--- Клиент 4: Нефтяной магнат
+-- Покупатель 4: Нефтяной магнат
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -122,7 +122,7 @@ INSERT INTO profiles (
     '2025-10-30 08:00:00+04'
 );
 
--- Клиент 5: Технологический предприниматель
+-- Покупатель 5: Технологический предприниматель
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -149,7 +149,7 @@ INSERT INTO profiles (
     '2025-10-29 22:30:00+04'
 );
 
--- Клиент 6: Недвижимость и девелопмент
+-- Покупатель 6: Недвижимость и девелопмент
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -176,7 +176,7 @@ INSERT INTO profiles (
     '2025-10-30 07:45:00+04'
 );
 
--- Клиент 7: Инвестиционный консультант
+-- Покупатель 7: Инвестиционный консультант
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -203,7 +203,7 @@ INSERT INTO profiles (
     '2025-10-30 08:20:00+04'
 );
 
--- Клиент 8: Автомобильный дилер
+-- Покупатель 8: Автомобильный дилер
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -230,7 +230,7 @@ INSERT INTO profiles (
     '2025-10-30 09:50:00+04'
 );
 
--- Клиент 9: Архитектор
+-- Покупатель 9: Архитектор
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -257,7 +257,7 @@ INSERT INTO profiles (
     '2025-10-30 06:30:00+04'
 );
 
--- Клиент 10: Пилот Emirates
+-- Покупатель 10: Пилот Emirates
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -284,7 +284,7 @@ INSERT INTO profiles (
     '2025-10-29 23:15:00+04'
 );
 
--- Клиент 11: IT-директор в Etisalat
+-- Покупатель 11: IT-директор в Etisalat
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -311,7 +311,7 @@ INSERT INTO profiles (
     '2025-10-30 08:45:00+04'
 );
 
--- Клиент 12: Юрист в международной фирме
+-- Покупатель 12: Юрист в международной фирме
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -338,7 +338,7 @@ INSERT INTO profiles (
     '2025-10-30 07:20:00+04'
 );
 
--- Клиент 13: Консультант McKinsey
+-- Покупатель 13: Консультант McKinsey
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -365,7 +365,7 @@ INSERT INTO profiles (
     '2025-10-30 09:30:00+04'
 );
 
--- Клиент 14: Дипломат
+-- Покупатель 14: Дипломат
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -392,7 +392,7 @@ INSERT INTO profiles (
     '2025-10-28 16:45:00+04'
 );
 
--- Клиент 15: Наследник бизнес-империи
+-- Покупатель 15: Наследник бизнес-империи
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -420,10 +420,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 1.2 Резиденты (экспаты) - 15 клиентов
+-- 1.2 Резиденты (экспаты) - 15 покупателей
 -- =====================================================================
 
--- Клиент 16: Британский банкир
+-- Покупатель 16: Британский банкир
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -450,7 +450,7 @@ INSERT INTO profiles (
     '2025-10-30 08:30:00+04'
 );
 
--- Клиент 17: Немецкий инженер
+-- Покупатель 17: Немецкий инженер
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -477,7 +477,7 @@ INSERT INTO profiles (
     '2025-10-30 07:45:00+04'
 );
 
--- Клиент 18: Американский врач
+-- Покупатель 18: Американский врач
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -504,7 +504,7 @@ INSERT INTO profiles (
     '2025-10-30 10:15:00+04'
 );
 
--- Клиент 19: Канадский IT-специалист
+-- Покупатель 19: Канадский IT-специалист
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -531,7 +531,7 @@ INSERT INTO profiles (
     '2025-10-30 09:45:00+04'
 );
 
--- Клиент 20: Австралийский финансовый консультант
+-- Покупатель 20: Австралийский финансовый консультант
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -558,7 +558,7 @@ INSERT INTO profiles (
     '2025-10-30 08:00:00+04'
 );
 
--- Клиент 21: Индийский бизнесмен
+-- Покупатель 21: Индийский бизнесмен
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -585,7 +585,7 @@ INSERT INTO profiles (
     '2025-10-30 11:30:00+04'
 );
 
--- Клиент 22: Южноафриканский пилот
+-- Покупатель 22: Южноафриканский пилот
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -612,7 +612,7 @@ INSERT INTO profiles (
     '2025-10-29 18:20:00+04'
 );
 
--- Клиент 23: Пакистанский врач
+-- Покупатель 23: Пакистанский врач
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -639,7 +639,7 @@ INSERT INTO profiles (
     '2025-10-30 07:15:00+04'
 );
 
--- Клиент 24: Итальянский архитектор
+-- Покупатель 24: Итальянский архитектор
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -666,7 +666,7 @@ INSERT INTO profiles (
     '2025-10-30 09:00:00+04'
 );
 
--- Клиент 25: Японский инженер
+-- Покупатель 25: Японский инженер
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -693,7 +693,7 @@ INSERT INTO profiles (
     '2025-10-30 08:45:00+04'
 );
 
--- Клиент 26: Российский бизнесмен
+-- Покупатель 26: Российский бизнесмен
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -720,7 +720,7 @@ INSERT INTO profiles (
     '2025-10-30 10:30:00+04'
 );
 
--- Клиент 27: Бразильский футболист
+-- Покупатель 27: Бразильский футболист
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -747,7 +747,7 @@ INSERT INTO profiles (
     '2025-10-30 12:00:00+04'
 );
 
--- Клиент 28: Китайский бизнесмен
+-- Покупатель 28: Китайский бизнесмен
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -774,7 +774,7 @@ INSERT INTO profiles (
     '2025-10-30 09:15:00+04'
 );
 
--- Клиент 29: Нигерийский банкир
+-- Покупатель 29: Нигерийский банкир
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -801,7 +801,7 @@ INSERT INTO profiles (
     '2025-10-30 07:30:00+04'
 );
 
--- Клиент 30: Лейборист из Великобритании
+-- Покупатель 30: Лейборист из Великобритании
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -829,10 +829,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 1.3 Молодые специалисты - 10 клиентов
+-- 1.3 Молодые специалисты - 10 покупателей
 -- =====================================================================
 
--- Клиент 31: Выпускник университета
+-- Покупатель 31: Выпускник университета
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -859,7 +859,7 @@ INSERT INTO profiles (
     '2025-10-30 10:20:00+04'
 );
 
--- Клиент 32: Молодой маркетолог
+-- Покупатель 32: Молодой маркетолог
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -886,7 +886,7 @@ INSERT INTO profiles (
     '2025-10-30 09:30:00+04'
 );
 
--- Клиент 33: Новая медсестра
+-- Покупатель 33: Новая медсестра
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -913,7 +913,7 @@ INSERT INTO profiles (
     '2025-10-30 07:45:00+04'
 );
 
--- Клиент 34: Молодой учитель
+-- Покупатель 34: Молодой учитель
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -940,7 +940,7 @@ INSERT INTO profiles (
     '2025-10-30 08:00:00+04'
 );
 
--- Клиент 35: Стажер в банке
+-- Покупатель 35: Стажер в банке
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -967,7 +967,7 @@ INSERT INTO profiles (
     '2025-10-30 09:15:00+04'
 );
 
--- Клиент 36: Начинающий архитектор
+-- Покупатель 36: Начинающий архитектор
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -994,7 +994,7 @@ INSERT INTO profiles (
     '2025-10-30 07:30:00+04'
 );
 
--- Клиент 37: Молодой HR-специалист
+-- Покупатель 37: Молодой HR-специалист
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1021,7 +1021,7 @@ INSERT INTO profiles (
     '2025-10-30 10:45:00+04'
 );
 
--- Клиент 38: Ассистент менеджера
+-- Покупатель 38: Ассистент менеджера
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1048,7 +1048,7 @@ INSERT INTO profiles (
     '2025-10-30 08:15:00+04'
 );
 
--- Клиент 39: Начинающий дизайнер
+-- Покупатель 39: Начинающий дизайнер
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1075,7 +1075,7 @@ INSERT INTO profiles (
     '2025-10-30 09:00:00+04'
 );
 
--- Клиент 40: Ассистент в рекламном агентстве
+-- Покупатель 40: Ассистент в рекламном агентстве
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1106,14 +1106,14 @@ INSERT INTO profiles (
 -- ПРОДОЛЖЕНИЕ В СЛЕДУЮЩЕМ СООБЩЕНИИ
 -- =====================================================================
 -- =====================================================================
--- 2. МАЛЫЙ БИЗНЕС - 20 КЛИЕНТОВ
+-- 2. МАЛЫЙ БИЗНЕС - 20 ПОКУПАТЕЛЕЙ
 -- =====================================================================
 
 -- =====================================================================
--- 2.1 Торговые компании - 8 клиентов
+-- 2.1 Торговые компании - 8 покупателей
 -- =====================================================================
 
--- Клиент 41: Торговля продуктами питания
+-- Покупатель 41: Торговля продуктами питания
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1140,7 +1140,7 @@ INSERT INTO profiles (
     '2025-10-30 10:15:00+04'
 );
 
--- Клиент 42: Торговля электроникой
+-- Покупатель 42: Торговля электроникой
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1167,7 +1167,7 @@ INSERT INTO profiles (
     '2025-10-30 09:45:00+04'
 );
 
--- Клиент 43: Торговля автозапчастями
+-- Покупатель 43: Торговля автозапчастями
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1194,7 +1194,7 @@ INSERT INTO profiles (
     '2025-10-30 08:30:00+04'
 );
 
--- Клиент 44: Торговля текстилем
+-- Покупатель 44: Торговля текстилем
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1221,7 +1221,7 @@ INSERT INTO profiles (
     '2025-10-30 11:00:00+04'
 );
 
--- Клиент 45: Торговля косметикой
+-- Покупатель 45: Торговля косметикой
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1248,7 +1248,7 @@ INSERT INTO profiles (
     '2025-10-30 09:30:00+04'
 );
 
--- Клиент 46: Торговля спорттоварами
+-- Покупатель 46: Торговля спорттоварами
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1275,7 +1275,7 @@ INSERT INTO profiles (
     '2025-10-30 07:45:00+04'
 );
 
--- Клиент 47: Торговля игрушками
+-- Покупатель 47: Торговля игрушками
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1302,7 +1302,7 @@ INSERT INTO profiles (
     '2025-10-30 10:45:00+04'
 );
 
--- Клиент 48: Торговля канцелярскими товарами
+-- Покупатель 48: Торговля канцелярскими товарами
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1330,10 +1330,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 2.2 Сервисные компании - 7 клиентов
+-- 2.2 Сервисные компании - 7 покупателей
 -- =====================================================================
 
--- Клиент 49: Автосервис
+-- Покупатель 49: Автосервис
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1360,7 +1360,7 @@ INSERT INTO profiles (
     '2025-10-30 09:00:00+04'
 );
 
--- Клиент 50: Салон красоты
+-- Покупатель 50: Салон красоты
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1387,7 +1387,7 @@ INSERT INTO profiles (
     '2025-10-30 11:20:00+04'
 );
 
--- Клиент 51: Клининговая служба
+-- Покупатель 51: Клининговая служба
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1414,7 +1414,7 @@ INSERT INTO profiles (
     '2025-10-30 08:45:00+04'
 );
 
--- Клиент 52: IT-услуги
+-- Покупатель 52: IT-услуги
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1441,7 +1441,7 @@ INSERT INTO profiles (
     '2025-10-30 10:30:00+04'
 );
 
--- Клиент 53: Логистические услуги
+-- Покупатель 53: Логистические услуги
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1468,7 +1468,7 @@ INSERT INTO profiles (
     '2025-10-30 07:20:00+04'
 );
 
--- Клиент 54: Образовательные услуги
+-- Покупатель 54: Образовательные услуги
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1495,7 +1495,7 @@ INSERT INTO profiles (
     '2025-10-30 09:15:00+04'
 );
 
--- Клиент 55: Ветеринарные услуги
+-- Покупатель 55: Ветеринарные услуги
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1523,10 +1523,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 2.3 Производственные - 5 клиентов
+-- 2.3 Производственные - 5 покупателей
 -- =====================================================================
 
--- Клиент 56: Пекарня
+-- Покупатель 56: Пекарня
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1553,7 +1553,7 @@ INSERT INTO profiles (
     '2025-10-30 06:30:00+04'
 );
 
--- Клиент 57: Производство строительных материалов
+-- Покупатель 57: Производство строительных материалов
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1580,7 +1580,7 @@ INSERT INTO profiles (
     '2025-10-30 07:15:00+04'
 );
 
--- Клиент 58: Мебельная фабрика
+-- Покупатель 58: Мебельная фабрика
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1607,7 +1607,7 @@ INSERT INTO profiles (
     '2025-10-30 08:00:00+04'
 );
 
--- Клиент 59: Упаковка
+-- Покупатель 59: Упаковка
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1634,7 +1634,7 @@ INSERT INTO profiles (
     '2025-10-30 09:45:00+04'
 );
 
--- Клиент 60: Химическое производство
+-- Покупатель 60: Химическое производство
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1665,14 +1665,14 @@ INSERT INTO profiles (
 -- ПРОДОЛЖЕНИЕ В СЛЕДУЮЩЕМ СООБЩЕНИИ
 -- =====================================================================
 -- =====================================================================
--- 3. СРЕДНИЙ БИЗНЕС - 15 КЛИЕНТОВ
+-- 3. СРЕДНИЙ БИЗНЕС - 15 ПОКУПАТЕЛЕЙ
 -- =====================================================================
 
 -- =====================================================================
--- 3.1 Технологические компании - 5 клиентов
+-- 3.1 Технологические компании - 5 покупателей
 -- =====================================================================
 
--- Клиент 61: IT-решения для бизнеса
+-- Покупатель 61: IT-решения для бизнеса
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1699,7 +1699,7 @@ INSERT INTO profiles (
     '2025-10-30 09:30:00+04'
 );
 
--- Клиент 62: Кибербезопасность
+-- Покупатель 62: Кибербезопасность
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1726,7 +1726,7 @@ INSERT INTO profiles (
     '2025-10-30 08:45:00+04'
 );
 
--- Клиент 63: Мобильные приложения
+-- Покупатель 63: Мобильные приложения
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1753,7 +1753,7 @@ INSERT INTO profiles (
     '2025-10-30 11:15:00+04'
 );
 
--- Клиент 64: Data Science и AI
+-- Покупатель 64: Data Science и AI
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1780,7 +1780,7 @@ INSERT INTO profiles (
     '2025-10-30 10:00:00+04'
 );
 
--- Клиент 65: E-commerce платформа
+-- Покупатель 65: E-commerce платформа
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1808,10 +1808,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 3.2 Консалтинговые услуги - 4 клиента
+-- 3.2 Консалтинговые услуги - 4 покупателя
 -- =====================================================================
 
--- Клиент 66: Управленческий консалтинг
+-- Покупатель 66: Управленческий консалтинг
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1838,7 +1838,7 @@ INSERT INTO profiles (
     '2025-10-30 09:45:00+04'
 );
 
--- Клиент 67: Финансовый консалтинг
+-- Покупатель 67: Финансовый консалтинг
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1865,7 +1865,7 @@ INSERT INTO profiles (
     '2025-10-30 08:20:00+04'
 );
 
--- Клиент 68: HR-консалтинг
+-- Покупатель 68: HR-консалтинг
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1892,7 +1892,7 @@ INSERT INTO profiles (
     '2025-10-30 10:30:00+04'
 );
 
--- Клиент 69: Маркетинговый консалтинг
+-- Покупатель 69: Маркетинговый консалтинг
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1920,10 +1920,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 3.3 Логистика и транспорт - 3 клиента
+-- 3.3 Логистика и транспорт - 3 покупателя
 -- =====================================================================
 
--- Клиент 70: Международная логистика
+-- Покупатель 70: Международная логистика
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1950,7 +1950,7 @@ INSERT INTO profiles (
     '2025-10-30 07:45:00+04'
 );
 
--- Клиент 71: Авиаперевозки
+-- Покупатель 71: Авиаперевозки
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -1977,7 +1977,7 @@ INSERT INTO profiles (
     '2025-10-30 09:15:00+04'
 );
 
--- Клиент 72: Транспортная компания
+-- Покупатель 72: Транспортная компания
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2005,10 +2005,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 3.4 Строительство - 3 клиента
+-- 3.4 Строительство - 3 покупателя
 -- =====================================================================
 
--- Клиент 73: Генеральный подрядчик
+-- Покупатель 73: Генеральный подрядчик
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2035,7 +2035,7 @@ INSERT INTO profiles (
     '2025-10-30 07:00:00+04'
 );
 
--- Клиент 74: Специализированное строительство
+-- Покупатель 74: Специализированное строительство
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2062,7 +2062,7 @@ INSERT INTO profiles (
     '2025-10-30 08:45:00+04'
 );
 
--- Клиент 75: Архитектурно-строительная компания
+-- Покупатель 75: Архитектурно-строительная компания
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2090,14 +2090,14 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 4. КРУПНЫЕ КОРПОРАЦИИ - 10 КЛИЕНТОВ
+-- 4. КРУПНЫЕ КОРПОРАЦИИ - 10 ПОКУПАТЕЛЕЙ
 -- =====================================================================
 
 -- =====================================================================
--- 4.1 Международные компании - 4 клиента
+-- 4.1 Международные компании - 4 покупателя
 -- =====================================================================
 
--- Клиент 76: Многонациональная технологическая корпорация
+-- Покупатель 76: Многонациональная технологическая корпорация
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2124,7 +2124,7 @@ INSERT INTO profiles (
     '2025-10-30 09:00:00+04'
 );
 
--- Клиент 77: Международная консалтинговая компания
+-- Покупатель 77: Международная консалтинговая компания
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2151,7 +2151,7 @@ INSERT INTO profiles (
     '2025-10-30 08:30:00+04'
 );
 
--- Клиент 78: Глобальная производственная корпорация
+-- Покупатель 78: Глобальная производственная корпорация
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2178,7 +2178,7 @@ INSERT INTO profiles (
     '2025-10-30 07:15:00+04'
 );
 
--- Клиент 79: Международная финансовая группа
+-- Покупатель 79: Международная финансовая группа
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2206,10 +2206,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 4.2 Крупные местные корпорации - 3 клиента
+-- 4.2 Крупные местные корпорации - 3 покупателя
 -- =====================================================================
 
--- Клиент 80: Крупная местная инвестиционная группа
+-- Покупатель 80: Крупная местная инвестиционная группа
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2236,7 +2236,7 @@ INSERT INTO profiles (
     '2025-10-30 11:30:00+04'
 );
 
--- Клиент 81: Крупная местная строительная корпорация
+-- Покупатель 81: Крупная местная строительная корпорация
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2263,7 +2263,7 @@ INSERT INTO profiles (
     '2025-10-30 08:00:00+04'
 );
 
--- Клиент 82: Крупная местная торговая группа
+-- Покупатель 82: Крупная местная торговая группа
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2291,10 +2291,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- 4.3 Государственные структуры - 3 клиента
+-- 4.3 Государственные структуры - 3 покупателя
 -- =====================================================================
 
--- Клиент 83: Министерство энергетики
+-- Покупатель 83: Министерство энергетики
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2321,7 +2321,7 @@ INSERT INTO profiles (
     '2025-10-30 10:20:00+04'
 );
 
--- Клиент 84: Агентство по развитию инфраструктуры
+-- Покупатель 84: Агентство по развитию инфраструктуры
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2348,7 +2348,7 @@ INSERT INTO profiles (
     '2025-10-30 08:45:00+04'
 );
 
--- Клиент 85: Образовательное агентство
+-- Покупатель 85: Образовательное агентство
 INSERT INTO profiles (
     id, user_id, status, full_name, first_name, last_name, phone, emirates_id,
     nationality, residency_status, date_of_birth, address, employment_info,
@@ -2376,10 +2376,10 @@ INSERT INTO profiles (
 );
 
 -- =====================================================================
--- ПРИВЯЗКА РОЛЕЙ КЛИЕНТОВ
+-- ПРИВЯЗКА РОЛЕЙ ПОКУПАТЕЛЕЙ
 -- =====================================================================
 
--- Привязка всех клиентов к роли CLIENT
+-- Привязка всех покупателей к роли CLIENT
 INSERT INTO user_roles (user_id, role, assigned_by, metadata)
 SELECT 
     p.user_id,

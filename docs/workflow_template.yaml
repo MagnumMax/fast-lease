@@ -34,7 +34,7 @@ roles:
     name: Бухгалтерия (опционально для пост-учёта)
     categories: [workflow]
   - code: CLIENT
-    name: Клиент
+    name: Покупатель
     categories: [auth]
 
 kanban_order:
@@ -71,34 +71,42 @@ schemas:
         label: "Телефон компании"
       - id: buyer_contact_email
         type: text
-        label: "Электронная почта клиента/водителя"
+        label: "Электронная почта покупателя/водителя"
       - id: buyer_contact_phone
         type: text
-        label: "Телефон клиента/водителя"
+        label: "Телефон покупателя/водителя"
       - id: doc_company_license
         type: text
         label: "Лицензия компании (файл)"
+        document_type: company_license
       - id: doc_emirates_id_manager
         type: text
         label: "Emirates ID менеджера лицензии (файл)"
+        document_type: emirates_id
       - id: doc_visa_manager
         type: text
         label: "Виза менеджера лицензии (файл)"
+        document_type: visa
       - id: doc_passport_manager
         type: text
         label: "Паспорт менеджера лицензии (файл)"
+        document_type: passport
       - id: doc_emirates_id_driver
         type: text
         label: "Emirates ID водителя (файл)"
+        document_type: emirates_id
       - id: doc_visa_driver
         type: text
         label: "Виза водителя (файл)"
+        document_type: visa
       - id: doc_passport_driver
         type: text
         label: "Паспорт водителя (файл)"
+        document_type: passport
       - id: doc_driving_license
         type: text
-        label: "Права клиента/водителя (файл)"
+        label: "Права покупателя/водителя (файл)"
+        document_type: driving_license
 
   buyer_docs_individual: &buyer_docs_individual
     version: "1.0"
@@ -111,25 +119,30 @@ schemas:
             label: "Физическое лицо"
       - id: buyer_contact_email
         type: text
-        label: "Электронная почта клиента/водителя"
+        label: "Электронная почта покупателя/водителя"
       - id: buyer_contact_phone
         type: text
-        label: "Телефон клиента/водителя"
+        label: "Телефон покупателя/водителя"
       - id: doc_passport_buyer
         type: text
         label: "Паспорт покупателя (файл)"
+        document_type: passport
       - id: doc_visa_buyer
         type: text
         label: "Виза покупателя (файл)"
+        document_type: visa
       - id: doc_emirates_id_buyer
         type: text
         label: "Emirates ID покупателя (файл)"
+        document_type: emirates_id
       - id: doc_driving_license_buyer
         type: text
         label: "Права покупателя (файл)"
+        document_type: driving_license
       - id: doc_second_driver_bundle
         type: text
         label: "Комплект документов второго водителя (файл)"
+        document_type: other
 
   seller_docs_company: &seller_docs_company
     version: "1.0"
@@ -152,30 +165,39 @@ schemas:
       - id: doc_company_license
         type: text
         label: "Лицензия компании (файл)"
+        document_type: company_license
       - id: doc_quotation
         type: text
         label: "Quotation (файл)"
+        document_type: quotation
       - id: doc_tax_invoice
         type: text
         label: "Tax Invoice (файл)"
+        document_type: tax_invoice
       - id: doc_passing_certificate
         type: text
         label: "Passing Certificate (файл)"
+        document_type: passing_certificate
       - id: doc_mulkia_certificate
         type: text
         label: "Mulkia (файл)"
+        document_type: mulkia_certificate
       - id: doc_hiyaza_certificate
         type: text
         label: "Hiyaza (файл)"
+        document_type: hiyaza_certificate
       - id: doc_noc_company_letter
         type: text
         label: "NOC letter from company"
+        document_type: noc_company_letter
       - id: doc_noc_gps_letter
         type: text
         label: "NOC letter for GPS removal"
+        document_type: noc_gps_letter
       - id: doc_trn_certificate
         type: text
         label: "TRN certificate"
+        document_type: trn_certificate
 
   seller_docs_individual: &seller_docs_individual
     version: "1.0"
@@ -195,24 +217,31 @@ schemas:
       - id: doc_vcc_certificate
         type: text
         label: "VCC certificate (файл)"
+        document_type: vcc_certificate
       - id: doc_vehicle_possession_certificate
         type: text
         label: "Vehicle Possession Certificate (файл)"
+        document_type: vehicle_possession_certificate
       - id: doc_hiyaza_certificate
         type: text
         label: "Hiyaza (файл)"
+        document_type: hiyaza_certificate
       - id: doc_mulkia_certificate
         type: text
         label: "Mulkia (файл)"
+        document_type: mulkia_certificate
       - id: doc_passing_certificate
         type: text
         label: "Passing Certificate (файл)"
+        document_type: passing_certificate
       - id: doc_emirates_id_seller
         type: text
         label: "Emirates ID продавца (файл)"
+        document_type: emirates_id
       - id: doc_spa_invoice
         type: text
         label: "SPA Invoice (файл)"
+        document_type: spa_invoice
 
 statuses:
   NEW:
@@ -254,13 +283,25 @@ statuses:
         task:
           template_id: prepare_quote_v1
           type: PREPARE_QUOTE
-          title: "Подписание клиентом коммерческого предложения"
+          title: "Подписание покупателем коммерческого предложения"
           assignee_role: OP_MANAGER
           guard_key: "quotationPrepared"
           sla: { hours: 8 }
+          schema:
+            version: "1.0"
+            fields:
+              - id: instructions
+                type: textarea
+                label: "Инструкции"
+              - id: doc_signed_commercial_offer
+                type: text
+                label: "Коммерческое предложение (подписанное)"
+                required: true
+                document_type: signed_commercial_offer
           defaults:
-            instructions: "Загрузите подписанное КП клиента через задачу. Сам документ формируйте в карточке сделки."
-            checklist: ["signed_commercial_offer"]
+            instruction_short: "Загрузите подписанное КП покупателя через задачу. Сам документ формируйте в карточке сделки."
+            instructions: "Загрузите подписанное КП покупателя через задачу. Сам документ формируйте в карточке сделки."
+            doc_signed_commercial_offer: ""
           bindings:
             deal_id: "{{deal.id}}"
     exit_requirements:
@@ -285,6 +326,10 @@ statuses:
               - id: deal_id
                 type: badge
                 label: "ID сделки"
+              - id: doc_technical_report
+                type: file
+                label: "Технический отчёт (файл)"
+                document_type: technical_report
               - id: analog_market_url_1
                 type: text
                 label: "Аналоги на площадках #1"
@@ -304,8 +349,10 @@ statuses:
                 type: text
                 label: "Аналоги на площадках +1 год #3"
           defaults:
+            instruction_short: "Проверьте техсостояние авто, оценку стоимости и приложите отчёт."
             checklist:
               - technical_report
+            doc_technical_report: ""
           bindings:
             deal_id: "{{deal.id}}"
     exit_requirements:
@@ -326,6 +373,7 @@ statuses:
           sla: { hours: 48 }
           schema: *buyer_docs_company
           defaults:
+            instruction_short: "Загрузите документы покупателя-юрлица и контакты ответственного."
             buyer_type: "company"
             buyer_company_email: ""
             buyer_company_phone: ""
@@ -339,6 +387,11 @@ statuses:
             doc_visa_driver: ""
             doc_passport_driver: ""
             doc_driving_license: ""
+          bindings:
+            buyer_type: "{{payload.buyer_type}}"
+          conditions:
+            - key: "payload.buyer_type"
+              rule: "== company"
       - type: TASK_CREATE
         task:
           template_id: collect_buyer_docs_individual_v1
@@ -349,6 +402,7 @@ statuses:
           sla: { hours: 48 }
           schema: *buyer_docs_individual
           defaults:
+            instruction_short: "Прикрепите паспорт, визу, EID и права покупателя; добавьте второй комплект для второго водителя при необходимости."
             buyer_type: "individual"
             buyer_contact_email: ""
             buyer_contact_phone: ""
@@ -357,6 +411,11 @@ statuses:
             doc_emirates_id_buyer: ""
             doc_driving_license_buyer: ""
             doc_second_driver_bundle: ""
+          bindings:
+            buyer_type: "{{payload.buyer_type}}"
+          conditions:
+            - key: "payload.buyer_type"
+              rule: "== individual"
     exit_requirements:
       - key: docs.required.allUploaded
         rule: "== true"
@@ -375,6 +434,7 @@ statuses:
           sla: { hours: 48 }
           schema: *seller_docs_company
           defaults:
+            instruction_short: "Загрузите документы продавца-юрлица и контакты."
             seller_type: ""
             seller_contact_email: ""
             seller_contact_phone: ""
@@ -388,6 +448,11 @@ statuses:
             doc_noc_company_letter: ""
             doc_noc_gps_letter: ""
             doc_trn_certificate: ""
+          bindings:
+            seller_type: "{{payload.seller_type}}"
+          conditions:
+            - key: "payload.seller_type"
+              rule: "== company"
       - type: TASK_CREATE
         task:
           template_id: collect_seller_docs_individual_v1
@@ -398,6 +463,7 @@ statuses:
           sla: { hours: 48 }
           schema: *seller_docs_individual
           defaults:
+            instruction_short: "Загрузите документы продавца-физлица и контакты."
             seller_type: "individual"
             seller_contact_email: ""
             seller_contact_phone: ""
@@ -408,6 +474,11 @@ statuses:
             doc_passing_certificate: ""
             doc_emirates_id_seller: ""
             doc_spa_invoice: ""
+          bindings:
+            seller_type: "{{payload.seller_type}}"
+          conditions:
+            - key: "payload.seller_type"
+              rule: "== individual"
     exit_requirements:
       - key: docs.seller.allUploaded
         rule: "== true"
@@ -418,6 +489,9 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          defaults:
+            instruction_short: "Проведите AECB скоринг/проверку; при наличии загрузите AECB Credit Report."
+            doc_aecb_credit_report: ""
           template_id: aecb_check_v1
           type: AECB_CHECK
           title: "Провести проверку и внутренний скоринг"
@@ -427,9 +501,10 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: notes
-                type: textarea
-                label: "Комментарии"
+              - id: doc_aecb_credit_report
+                type: file
+                label: "AECB Credit Report"
+                document_type: aecb_credit_report
       - type: WEBHOOK
         endpoint: "aecb.request"
         payload: { dealId: "{{deal.id}}", clientId: "{{deal.client_id}}" }
@@ -450,6 +525,8 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          defaults:
+            instruction_short: "Проверьте финансовую модель сделки и утвердите или верните."
           template_id: finance_review_v1
           type: FIN_CALC
           title: "Проверка и утверждение финансовой структуры сделки"
@@ -474,6 +551,8 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          defaults:
+            instruction_short: "Проверьте финансовую модель сделки и утвердите или верните."
           template_id: investor_approval_v1
           type: INVESTOR_APPROVAL
           title: "Согласование сделки инвестором"
@@ -483,18 +562,11 @@ statuses:
           schema:
             version: "1.0"
             fields:
-              - id: decision
-                type: select
-                label: "Решение инвестора"
-                required: true
-                options:
-                  - value: approved
-                    label: "Одобрено"
-                  - value: rejected
-                    label: "Отклонено"
-              - id: notes
-                type: textarea
-                label: "Комментарий"
+              - id: deal_id
+                type: badge
+                label: "Сделка"
+          bindings:
+            deal_id: "{{deal.id}}"
       - type: NOTIFY
         to_roles: [INVESTOR]
         template: "need_investor_approval"
@@ -521,6 +593,7 @@ statuses:
                 type: checklist
                 label: "Файлы"
           defaults:
+            instruction_short: "Сформируйте договор и материалы для подписания."
             deliverables:
               - purchase_agreement
               - lease_agreement
@@ -549,6 +622,7 @@ statuses:
                 type: checklist
                 label: "Подписанные файлы"
           defaults:
+            instruction_short: "Приложите подписанные документы сделки."
             checklist:
               - signed_purchase_agreement
               - signed_lease_agreement
@@ -585,6 +659,7 @@ statuses:
                 label: "Документы"
                 required: true
           defaults:
+            instruction_short: "Проверьте получение аванса и приложите подтверждение."
             checklist:
               - tax_invoice
       - type: TASK_CREATE
@@ -600,8 +675,9 @@ statuses:
             fields:
               - id: optional_docs
                 type: checklist
-                label: "Документы (опционально)"
+                label: "Документы"
           defaults:
+            instruction_short: "Проверьте данные и приложите платёжку поставщику."
             optional_docs:
               - quotation
               - payment_receipt
@@ -630,9 +706,11 @@ statuses:
     entry_actions:
       - type: TASK_CREATE
         task:
+          defaults:
+            instruction_short: "Проверьте данные и приложите платёжку поставщику."
           template_id: arrange_delivery_v1
           type: ARRANGE_DELIVERY
-          title: "Организовать выдачу авто клиенту"
+          title: "Организовать выдачу авто покупателю"
           assignee_role: TECH_SPECIALIST
           guard_key: "delivery.confirmed"
           sla: { hours: 24 }

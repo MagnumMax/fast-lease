@@ -46,6 +46,8 @@ const rawTaskFieldSchema = z.object({
   type: z.string().min(1),
   label: z.string().optional(),
   description: z.string().optional(),
+  document_type: z.string().min(1).optional(),
+  documentType: z.string().min(1).optional(),
   required: z.boolean().optional(),
   options: z
     .array(
@@ -80,27 +82,36 @@ const rawTaskDefinitionSchema = z.object({
   guard_key: z.string().min(1).optional(),
 });
 
+const actionConditionsSchema = {
+  conditions: z.array(conditionSchema).optional(),
+  when: conditionSchema.optional(),
+};
+
 const rawTaskCreateActionSchema = z.object({
   type: z.literal("TASK_CREATE"),
   task: rawTaskDefinitionSchema,
+  ...actionConditionsSchema,
 });
 
 const rawNotifyActionSchema = z.object({
   type: z.literal("NOTIFY"),
   to_roles: z.array(appRoleEnum).min(1),
   template: z.string().min(1),
+  ...actionConditionsSchema,
 });
 
 const rawEscalateActionSchema = z.object({
   type: z.literal("ESCALATE"),
   to_roles: z.array(appRoleEnum).min(1),
   template: z.string().min(1),
+  ...actionConditionsSchema,
 });
 
 const rawWebhookActionSchema = z.object({
   type: z.literal("WEBHOOK"),
   endpoint: z.string().min(1),
   payload: z.record(z.string(), z.any()).optional(),
+  ...actionConditionsSchema,
 });
 
 const rawScheduleActionSchema = z.object({
@@ -109,6 +120,7 @@ const rawScheduleActionSchema = z.object({
     type: z.string().min(1),
     cron: z.string().min(1),
   }),
+  ...actionConditionsSchema,
 });
 
 const rawActionSchema = z.discriminatedUnion("type", [
@@ -142,34 +154,42 @@ const mapTaskDefinition = (task: RawTaskDefinition): WorkflowTaskDefinition => (
 });
 
 const mapAction = (action: RawAction): WorkflowAction => {
+  const normalizedConditions =
+    action.conditions ?? (action.when ? [action.when] : undefined);
+
   switch (action.type) {
     case "TASK_CREATE":
       return {
         type: "TASK_CREATE",
         task: mapTaskDefinition(action.task),
+        conditions: normalizedConditions,
       };
     case "NOTIFY":
       return {
         type: "NOTIFY",
         toRoles: action.to_roles,
         template: action.template,
+        conditions: normalizedConditions,
       };
     case "ESCALATE":
       return {
         type: "ESCALATE",
         toRoles: action.to_roles,
         template: action.template,
+        conditions: normalizedConditions,
       };
     case "WEBHOOK":
       return {
         type: "WEBHOOK",
         endpoint: action.endpoint,
         payload: action.payload,
+        conditions: normalizedConditions,
       };
     case "SCHEDULE":
       return {
         type: "SCHEDULE",
         job: action.job,
+        conditions: normalizedConditions,
       };
     default: {
       const exhaustiveCheck: never = action;

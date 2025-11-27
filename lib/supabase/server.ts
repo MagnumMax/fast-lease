@@ -6,7 +6,7 @@ type SupabaseServerClientOptions = {
   cookieStore?: Awaited<ReturnType<typeof cookies>>;
 };
 
-// Лог для диагностики проблемы с клиентским/серверным контекстом
+// Лог для диагностики проблемы с покупательским/серверным контекстом
 const LOG_PREFIX = "[SERVER-CLIENT]";
 
 type ResolvedEnvVar = {

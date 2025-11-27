@@ -324,7 +324,7 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
                 <TableHeader>
                   <TableRow>
                     <TableHead>Сделка</TableHead>
-                    <TableHead>Клиент</TableHead>
+                    <TableHead>Покупатель</TableHead>
                     <TableHead>Статус</TableHead>
                     <TableHead>Платёж/мес</TableHead>
                     <TableHead>Сумма</TableHead>

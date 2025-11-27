@@ -4,6 +4,7 @@ import { Buffer } from "node:buffer";
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
@@ -13,7 +14,6 @@ import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 import { isFileLike, type FileLike, getFileName, sanitizeFileName } from "@/lib/documents/upload";
 import {
-  CLIENT_DOCUMENT_TYPES,
   CLIENT_DOCUMENT_TYPE_LABEL_MAP,
   type ClientDocumentTypeValue,
   normalizeClientDocumentType,
@@ -22,6 +22,7 @@ import {
 import {
   evaluateClientDocumentChecklist,
   extractChecklistFromTaskPayload,
+  isOptionalGuardDocument,
   type ClientDocumentChecklist,
   type ClientDocumentSummary,
 } from "@/lib/workflow/documents-checklist";
@@ -52,33 +53,6 @@ const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
 const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
 const SELLER_DOCS_GUARD_KEY = "docs.seller.allUploaded";
-const DOC_FIELD_TYPE_MAP: Record<string, ClientDocumentTypeValue> = {
-  doc_company_license: "company_license",
-  doc_emirates_id_manager: "emirates_id",
-  doc_visa_manager: "visa",
-  doc_passport_manager: "passport",
-  doc_emirates_id_driver: "emirates_id",
-  doc_visa_driver: "visa",
-  doc_passport_driver: "passport",
-  doc_driving_license: "driving_license",
-  doc_passport_buyer: "passport",
-  doc_visa_buyer: "visa",
-  doc_emirates_id_buyer: "emirates_id",
-  doc_driving_license_buyer: "driving_license",
-  doc_vcc_certificate: "vcc_certificate",
-  doc_vehicle_possession_certificate: "vehicle_possession_certificate",
-  doc_hiyaza_certificate: "hiyaza_certificate",
-  doc_mulkia_certificate: "mulkia_certificate",
-  doc_passing_certificate: "passing_certificate",
-  doc_quotation: "quotation",
-  doc_tax_invoice: "tax_invoice",
-  doc_noc_company_letter: "noc_company_letter",
-  doc_noc_gps_letter: "noc_gps_letter",
-  doc_trn_certificate: "trn_certificate",
-  doc_emirates_id_seller: "emirates_id",
-  doc_spa_invoice: "spa_invoice",
-  doc_second_driver_bundle: "other",
-};
 const DEAL_DOCUMENT_CATEGORY_MAP: Record<string, string> = DEAL_DOCUMENT_TYPES.reduce((acc, entry) => {
   acc[entry.value] = entry.category;
   return acc;
@@ -157,11 +131,10 @@ type FieldDocumentUpload = {
   file: FileLike;
 };
 
-function mapDocFieldIdToDocType(fieldId: string): ClientDocumentTypeValue | null {
-  return DOC_FIELD_TYPE_MAP[fieldId] ?? null;
-}
-
-function extractFieldDocumentUploads(formData: FormData): FieldDocumentUpload[] {
+function extractFieldDocumentUploads(
+  formData: FormData,
+  docFieldTypeMap: Record<string, ClientDocumentTypeValue>,
+): FieldDocumentUpload[] {
   const entries = new Map<string, { type?: string; file?: FileLike }>();
 
   for (const [key, value] of formData.entries()) {
@@ -180,12 +153,56 @@ function extractFieldDocumentUploads(formData: FormData): FieldDocumentUpload[] 
   const uploads: FieldDocumentUpload[] = [];
   for (const [fieldId, entry] of entries.entries()) {
     if (!entry.file) continue;
-    const docType = mapDocFieldIdToDocType(fieldId);
-    const normalizedType = entry.type ? normalizeClientDocumentType(entry.type) : docType;
+    const docTypeFromSchema = docFieldTypeMap[fieldId];
+    const normalizedType =
+      docTypeFromSchema ??
+      (entry.type
+        ? normalizeClientDocumentType(entry.type) ??
+          (entry.type as ClientDocumentTypeValue)
+        : null);
     if (!normalizedType) continue;
     uploads.push({ fieldId, type: normalizedType, file: entry.file });
   }
   return uploads;
+}
+
+function buildDocumentTypeMapFromSchema(
+  payload: Record<string, unknown> | null,
+): Record<string, ClientDocumentTypeValue> {
+  const map: Record<string, ClientDocumentTypeValue> = {};
+  if (!payload) return map;
+  const schemaBranch =
+    payload.schema && typeof payload.schema === "object" && !Array.isArray(payload.schema)
+      ? (payload.schema as Record<string, unknown>)
+      : null;
+  const fields =
+    schemaBranch &&
+    Array.isArray((schemaBranch as { fields?: unknown }).fields)
+      ? ((schemaBranch as { fields: unknown[] }).fields as Array<Record<string, unknown>>)
+      : [];
+
+  for (const field of fields) {
+    const rawId = field.id;
+    if (typeof rawId !== "string" || rawId.length === 0) continue;
+    const rawDocType =
+      typeof field.document_type === "string"
+        ? field.document_type
+        : typeof (field as { documentType?: unknown }).documentType === "string"
+          ? (field as { documentType?: string }).documentType
+          : null;
+    const normalized =
+      normalizeClientDocumentType(rawDocType ?? undefined) ??
+      (typeof rawDocType === "string" && rawDocType.length > 0
+        ? (rawDocType as ClientDocumentTypeValue)
+        : null) ??
+      normalizeClientDocumentType(rawId) ??
+      (rawId as ClientDocumentTypeValue);
+    if (normalized) {
+      map[rawId] = normalized;
+    }
+  }
+
+  return map;
 }
 
 async function uploadAttachment(options: {
@@ -196,8 +213,18 @@ async function uploadAttachment(options: {
   file: FileLike;
   documentType: ClientDocumentTypeValue;
   uploadedBy: string | null;
+  isAdditional?: boolean;
 }): Promise<{ path: string } | { error: string }> {
-  const { supabase, dealId, guardKey, guardLabel, file, documentType, uploadedBy } = options;
+  const {
+    supabase,
+    dealId,
+    guardKey,
+    guardLabel,
+    file,
+    documentType,
+    uploadedBy,
+    isAdditional = false,
+  } = options;
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
@@ -206,13 +233,17 @@ async function uploadAttachment(options: {
   const path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
   const documentCategory = resolveDealDocumentCategory(documentType);
   const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? null;
-  const metadata = {
+  const metadata: Record<string, unknown> = {
     upload_context: "workflow_task",
     guard_key: guardKey,
     guard_label: guardLabel,
     guard_document_type: documentType,
     guard_deal_id: dealId,
   };
+
+  if (isAdditional) {
+    metadata.guard_optional = true;
+  }
 
   const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).upload(path, buffer, {
     contentType: file.type || "application/octet-stream",
@@ -380,6 +411,7 @@ async function evaluateAndSyncDocsGuard(options: {
       doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
         ? (doc.metadata as Record<string, unknown>)
         : null;
+    if (isOptionalGuardDocument(metadata)) return false;
     const metadataGuardKey =
       metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
     const metadataDealId =
@@ -557,12 +589,9 @@ export async function completeTaskFormAction(
   const isBuyerDocsGuard = guardKey === BUYER_DOCS_GUARD_KEY;
   const isSellerDocsGuard = guardKey === SELLER_DOCS_GUARD_KEY;
   const requiresDoc =
-    !isBuyerDocsGuard &&
-    !isSellerDocsGuard &&
-    (requiresDocument === "true" || guardKey === VEHICLE_VERIFICATION_GUARD_KEY);
+    !isBuyerDocsGuard && !isSellerDocsGuard && (requiresDocument === "true" || guardKey === VEHICLE_VERIFICATION_GUARD_KEY);
   const fields = parseFieldEntries(formData);
-  const documentUploads = extractDocumentUploads(formData);
-  const fieldDocumentUploads = extractFieldDocumentUploads(formData);
+  const additionalDocumentUploads = extractDocumentUploads(formData);
   const noteRaw = (formData.get("note") as string | null) ?? "";
   const noteTrimmed = noteRaw.trim();
   const noteChanged = noteTrimmed !== (initialNote ?? "");
@@ -609,6 +638,10 @@ export async function completeTaskFormAction(
   }
 
   let effectiveAssignee = existing.assignee_user_id ?? null;
+  const docFieldTypeMap = buildDocumentTypeMapFromSchema(
+    (existing.payload as Record<string, unknown> | null) ?? null,
+  );
+  const fieldDocumentUploads = extractFieldDocumentUploads(formData, docFieldTypeMap);
 
   if (!existing.assignee_user_id) {
     const claimResult = await supabase
@@ -656,17 +689,41 @@ export async function completeTaskFormAction(
 
   const dealPayload = (dealRow.payload as Record<string, unknown> | null) ?? null;
   let existingGuardAttachmentPath: string | null = null;
-  if (guardKey && dealPayload && typeof dealPayload === "object" && !Array.isArray(dealPayload)) {
-    const guardTasksBranch = dealPayload.guard_tasks;
-    if (guardTasksBranch && typeof guardTasksBranch === "object" && !Array.isArray(guardTasksBranch)) {
-      const guardEntry = (guardTasksBranch as Record<string, unknown>)[guardKey];
-      if (guardEntry && typeof guardEntry === "object" && !Array.isArray(guardEntry)) {
-        const maybePath = (guardEntry as Record<string, unknown>).attachment_path;
-        if (typeof maybePath === "string" && maybePath.length > 0) {
-          existingGuardAttachmentPath = maybePath;
-        }
+  async function loadGuardDocumentPath(): Promise<string | null> {
+    if (!guardKey) return null;
+    const { data, error } = await supabase
+      .from("deal_documents")
+      .select("storage_path, metadata")
+      .eq("deal_id", dealId)
+      .eq("metadata->>guard_key", guardKey)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("[workflow] failed to load existing guard document", error);
+      return null;
+    }
+    const records = Array.isArray(data) ? data : [];
+    for (const record of records) {
+      const metadata =
+        record.metadata && typeof record.metadata === "object" && !Array.isArray(record.metadata)
+          ? (record.metadata as Record<string, unknown>)
+          : null;
+      if (isOptionalGuardDocument(metadata)) {
+        continue;
+      }
+      const path =
+        record && typeof record.storage_path === "string" && record.storage_path.length > 0
+          ? record.storage_path
+          : null;
+      if (path) {
+        return path;
       }
     }
+    return null;
+  }
+  if (guardKey) {
+    existingGuardAttachmentPath = await loadGuardDocumentPath();
   }
 
   const enforcedChecklist = guardKey === VEHICLE_VERIFICATION_GUARD_KEY ? [TECHNICAL_REPORT_TYPE] : [];
@@ -675,12 +732,12 @@ export async function completeTaskFormAction(
   const requiredChecklist = Array.from(new Set([...baseChecklist, ...enforcedChecklist]));
   let syncedChecklist: ClientDocumentChecklist | null = null;
 
-  if (guardKey && requiredChecklist.length > 0 && documentUploads.length === 0) {
+  if (guardKey && requiredChecklist.length > 0 && fieldDocumentUploads.length === 0) {
     syncedChecklist = await evaluateAndSyncDocsGuard({
       supabase,
       dealId,
       guardKey,
-      dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
+      dealPayload,
       requiredChecklist,
     });
     if (!existingGuardAttachmentPath) {
@@ -691,19 +748,21 @@ export async function completeTaskFormAction(
   const mustUploadDocuments =
     intent === "complete" &&
     requiresDoc &&
-    documentUploads.length === 0 &&
+    fieldDocumentUploads.length === 0 &&
     requiredChecklist.length === 0 &&
     !existingGuardAttachmentPath;
   if (mustUploadDocuments) {
     return { status: "error", message: "Необходимо приложить документ" };
   }
 
-  if (documentUploads.length > 0) {
+  const hasAnyUploads = additionalDocumentUploads.length > 0 || fieldDocumentUploads.length > 0;
+
+  if (hasAnyUploads) {
     if (!guardKey) {
       return { status: "error", message: "Вложение доступно только для задач с guard" };
     }
 
-    for (const upload of documentUploads) {
+    for (const upload of additionalDocumentUploads) {
       const uploadResult = await uploadAttachment({
         supabase,
         dealId,
@@ -712,32 +771,33 @@ export async function completeTaskFormAction(
         file: upload.file,
         documentType: upload.type,
         uploadedBy: sessionUser.user.id,
+        isAdditional: true,
       });
 
       if ("error" in uploadResult) {
         return { status: "error", message: uploadResult.error };
       }
     }
-  }
 
-  if (fieldDocumentUploads.length > 0) {
-    const guardKeyForFields = guardKey ?? "task-field-docs";
-    for (const upload of fieldDocumentUploads) {
-      const uploadResult = await uploadAttachment({
-        supabase,
-        dealId,
-        guardKey: guardKeyForFields,
-        guardLabel: guardLabel ?? upload.fieldId,
-        file: upload.file,
-        documentType: upload.type,
-        uploadedBy: sessionUser.user.id,
-      });
+    if (fieldDocumentUploads.length > 0) {
+      const guardKeyForFields = guardKey ?? "task-field-docs";
+      for (const upload of fieldDocumentUploads) {
+        const uploadResult = await uploadAttachment({
+          supabase,
+          dealId,
+          guardKey: guardKeyForFields,
+          guardLabel: guardLabel ?? upload.fieldId,
+          file: upload.file,
+          documentType: upload.type,
+          uploadedBy: sessionUser.user.id,
+        });
 
-      if ("error" in uploadResult) {
-        return { status: "error", message: uploadResult.error };
+        if ("error" in uploadResult) {
+          return { status: "error", message: uploadResult.error };
+        }
+
+        fields[upload.fieldId] = uploadResult.path;
       }
-
-      fields[upload.fieldId] = uploadResult.path;
     }
   }
 
@@ -750,12 +810,16 @@ export async function completeTaskFormAction(
     documentType: null,
   });
 
-  if (guardKey && requiredChecklist.length > 0 && (documentUploads.length > 0 || !syncedChecklist)) {
+  if (
+    guardKey &&
+    requiredChecklist.length > 0 &&
+    (fieldDocumentUploads.length > 0 || !syncedChecklist)
+  ) {
     syncedChecklist = await evaluateAndSyncDocsGuard({
       supabase,
       dealId,
       guardKey,
-      dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
+      dealPayload,
       requiredChecklist,
     });
     if (!existingGuardAttachmentPath) {
@@ -764,6 +828,20 @@ export async function completeTaskFormAction(
   }
 
   const dealSlug = typeof dealRow.deal_number === "string" ? (dealRow.deal_number as string) : null;
+  const taskRedirectPath = dealSlug ? `/ops/deals/${dealSlug}` : `/ops/deals/${dealId}`;
+  const revalidateRelatedPaths = () => {
+    for (const path of buildPathsToRevalidate(taskId, dealId, dealSlug)) {
+      revalidatePath(path);
+    }
+
+    if (clientId) {
+      for (const path of getWorkspacePaths("clients")) {
+        revalidatePath(path);
+      }
+      revalidatePath("/ops/clients");
+      revalidatePath(`/ops/clients/${clientId}`);
+    }
+  };
 
   if (intent === "save") {
     const updatePayload: Record<string, unknown> = {
@@ -785,17 +863,7 @@ export async function completeTaskFormAction(
       return { status: "error", message: "Не удалось сохранить черновик" };
     }
 
-    for (const path of buildPathsToRevalidate(taskId, dealId, dealSlug)) {
-      revalidatePath(path);
-    }
-
-    if (clientId) {
-      for (const path of getWorkspacePaths("clients")) {
-        revalidatePath(path);
-      }
-      revalidatePath("/ops/clients");
-      revalidatePath(`/ops/clients/${clientId}`);
-    }
+    revalidateRelatedPaths();
 
     return { status: "success", message: "Черновик сохранён" };
   }
@@ -846,7 +914,7 @@ export async function completeTaskFormAction(
     taskPayload: mergedPayload,
     slaDueAt: existing.sla_due_at,
     currentDealStatus: dealRow.status,
-    dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
+    dealPayload,
   };
 
   const completionResult = await handleTaskCompletion(completionContext);
@@ -862,15 +930,15 @@ export async function completeTaskFormAction(
     const message =
       completionResult.transitionSkippedReason ??
       "Задача закрыта, но не связана с автоматическим переходом. Проверьте, что тип задачи соответствует guard'у этапа.";
+
+    if (completionResult.transitionSkippedReason) {
+      revalidateRelatedPaths();
+      return redirect(taskRedirectPath);
+    }
+
     return {
-      status: completionResult.transitionSkippedReason ? "success" : "error",
+      status: "error",
       message,
-      redirectTo:
-        completionResult.transitionSkippedReason && (dealSlug || dealId)
-          ? dealSlug
-            ? `/ops/deals/${dealSlug}`
-            : `/ops/deals/${dealId}`
-          : undefined,
     };
   }
 
@@ -892,23 +960,7 @@ export async function completeTaskFormAction(
     origin: originHeader,
   });
 
-  for (const path of buildPathsToRevalidate(taskId, dealId, dealSlug)) {
-    revalidatePath(path);
-  }
+  revalidateRelatedPaths();
 
-  if (clientId) {
-    for (const path of getWorkspacePaths("clients")) {
-      revalidatePath(path);
-    }
-    revalidatePath("/ops/clients");
-    revalidatePath(`/ops/clients/${clientId}`);
-  }
-
-  return {
-    status: "success",
-    message: completionResult.transitionSuccess
-      ? `Задача завершена, статус сделки: ${completionResult.newStatus}`
-      : "Задача завершена",
-    redirectTo: dealSlug ? `/ops/deals/${dealSlug}` : `/ops/deals/${dealId}`,
-  };
+  return redirect(taskRedirectPath);
 }

@@ -16,6 +16,8 @@ const inputSchema = z.object({
   reference: z.string().optional(),
   opManagerId: z.string().uuid().optional(),
   companyCode: z.enum(DEAL_COMPANY_CODES).default(DEFAULT_DEAL_COMPANY_CODE),
+  buyerType: z.enum(["individual", "company"]),
+  sellerType: z.enum(["individual", "company"]),
   customer: z.object({
     full_name: z.string().min(1),
     email: z.string().email().optional(),
@@ -58,6 +60,19 @@ export async function createOperationsDeal(
 
   console.log(`[DEBUG] parsed input:`, parsed.data);
 
+  const partyPayload = {
+    buyer_type: parsed.data.buyerType,
+    seller_type: parsed.data.sellerType,
+  } satisfies Record<string, unknown>;
+
+  const metadataPayload = parsed.data.reference
+    ? {
+        metadata: {
+          reference: parsed.data.reference,
+        },
+      }
+    : {};
+
   const payload: CreateDealWithEntitiesRequest = {
     source: parsed.data.source,
     company_code: parsed.data.companyCode ?? DEFAULT_DEAL_COMPANY_CODE,
@@ -76,13 +91,10 @@ export async function createOperationsDeal(
       price: parsed.data.asset.price ?? undefined,
       meta: parsed.data.asset.meta,
     },
-    payload: parsed.data.reference
-      ? {
-          metadata: {
-            reference: parsed.data.reference,
-          },
-        }
-      : undefined,
+    payload: {
+      ...partyPayload,
+      ...metadataPayload,
+    },
   };
 
   console.log(`[DEBUG] calling createDealWithWorkflow with payload:`, payload);

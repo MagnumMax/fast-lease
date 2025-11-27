@@ -278,7 +278,7 @@ INSERT INTO roles (code, name) VALUES
   ('INVESTOR',     'Инвестор / ЛПР'),
   ('LEGAL',        'Юридический отдел'),
   ('ACCOUNTING',   'Бухгалтерия'),
-  ('CLIENT',       'Клиент')
+  ('CLIENT',       'Покупатель')
 ON CONFLICT (code) DO NOTHING;
 
 -- ---------- Сиды: статусы (канбан-порядок) ----------

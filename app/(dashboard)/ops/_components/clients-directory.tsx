@@ -179,14 +179,14 @@ function handleCreateClient() {
       <DialogTrigger asChild>
         <Button variant="outline" className="rounded-xl">
           <Plus className="mr-2 h-4 w-4" />
-          Новый клиент
+          Новый покупатель
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg rounded-3xl p-0">
         <div className="flex max-h-[90vh] flex-col">
           <DialogHeader className="px-6 pt-6">
-            <DialogTitle>Создать клиента</DialogTitle>
-            <DialogDescription>Заполните контактную информацию клиента.</DialogDescription>
+            <DialogTitle>Создать покупателя</DialogTitle>
+            <DialogDescription>Заполните контактную информацию покупателя.</DialogDescription>
           </DialogHeader>
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
@@ -249,7 +249,7 @@ function handleCreateClient() {
   return (
     <div className="space-y-6">
       <WorkspaceListHeader
-        title="Клиенты"
+        title="Покупатели"
         stats={[
           { label: "Всего", value: summary.total },
           { label: "Активных", value: summary.active },
@@ -375,7 +375,7 @@ function handleCreateClient() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
-                    Подходящих клиентов не найдено. Измените фильтры или создайте нового клиента.
+                    Подходящих покупателей не найдено. Измените фильтры или создайте нового покупателя.
                   </TableCell>
                 </TableRow>
               )}

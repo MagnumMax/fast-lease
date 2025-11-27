@@ -30,7 +30,7 @@ const metrics = [
 const highlights = [
   {
     title: "WhatsApp очередь",
-    description: "14 клиентов ждут подтверждение статус \"Vehicle ready\". Нужно синкнуть с ops.",
+    description: "14 покупателей ждут подтверждение статус \"Vehicle ready\". Нужно синкнуть с ops.",
     status: "ETA 1h",
     tone: "warning" as const,
   },

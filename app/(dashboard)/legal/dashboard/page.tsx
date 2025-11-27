@@ -4,7 +4,7 @@ const metrics = [
   {
     label: "Контракты в работе",
     value: "19",
-    trend: "6 ждут подписи клиента",
+    trend: "6 ждут подписи покупателя",
     tone: "info" as const,
   },
   {
@@ -30,7 +30,7 @@ const metrics = [
 const highlights = [
   {
     title: "KYC документы",
-    description: "Клиент #LTR-081125-3421 загрузил просроченный Emirates ID. Нужен запрос обновления.",
+    description: "Покупатель #LTR-081125-3421 загрузил просроченный Emirates ID. Нужен запрос обновления.",
     status: "Due 4h",
     tone: "warning" as const,
   },

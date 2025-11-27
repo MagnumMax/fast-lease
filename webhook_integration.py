@@ -47,7 +47,7 @@ class WebhookPayload:
 
 
 class WebhookClient:
-    """Клиент для отправки webhook."""
+    """Покупатель для отправки webhook."""
 
     def __init__(self, endpoints: List[str], headers: Optional[Dict[str, str]] = None,
                  timeout: int = 10, max_retries: int = 3):

@@ -55,7 +55,7 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
   {
     role: "SUPPORT",
     label: "Support",
-    description: "Поддержка клиентов и сопровождение сделок.",
+    description: "Поддержка покупателей и сопровождение сделок.",
     homePath: "/support/dashboard",
     priority: 3,
     defaultIdentity: "support@fastlease.ae",
@@ -91,20 +91,20 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
   {
     role: "CLIENT",
     label: "Client",
-    description: "Клиентский кабинет, платежи и документы по лизингу.",
+    description: "Покупательский кабинет, платежи и документы по лизингу.",
     homePath: "/client/dashboard",
     priority: 6,
     defaultIdentity: "client@fastlease.ae",
     defaultPhone: "+971500000000",
     loginPreset: {
-      label: "Клиент",
+      label: "Покупатель",
       identity: "client@fastlease.ae",
     },
   },
   {
     role: "RISK_MANAGER",
     label: "Risk Manager",
-    description: "Оценка кредитного риска и скоринг клиентов.",
+    description: "Оценка кредитного риска и скоринг покупателей.",
     homePath: "/risk/dashboard",
     priority: 7,
   },

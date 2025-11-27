@@ -5,7 +5,7 @@ WITH buyer_tasks AS (
     jsonb_set(
       jsonb_set(
         jsonb_set(payload, '{schema,fields}',
-          '{"fields":[{"id":"buyer_type","type":"select","label":"Тип покупателя","hint":"","options":[{"value":"company","label":"Юридическое лицо"},{"value":"individual","label":"Физическое лицо"}]},{"id":"buyer_company_email","type":"text","label":"Электронная почта компании"},{"id":"buyer_company_phone","type":"text","label":"Телефон компании"},{"id":"buyer_contact_email","type":"text","label":"Электронная почта клиента"},{"id":"buyer_contact_phone","type":"text","label":"Телефон клиента"}],"version":"1.0"}'::jsonb,
+          '{"fields":[{"id":"buyer_type","type":"select","label":"Тип покупателя","hint":"","options":[{"value":"company","label":"Юридическое лицо"},{"value":"individual","label":"Физическое лицо"}]},{"id":"buyer_company_email","type":"text","label":"Электронная почта компании"},{"id":"buyer_company_phone","type":"text","label":"Телефон компании"},{"id":"buyer_contact_email","type":"text","label":"Электронная почта покупателя"},{"id":"buyer_contact_phone","type":"text","label":"Телефон покупателя"}],"version":"1.0"}'::jsonb,
           true
         ),
         '{defaults}',

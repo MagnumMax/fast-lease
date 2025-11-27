@@ -261,7 +261,7 @@ export async function createOperationsClient(
 ): Promise<CreateOperationsClientResult> {
   const parsed = inputSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: "Введите корректные данные клиента." };
+    return { error: "Введите корректные данные покупателя." };
   }
 
   const sessionUser = await getMutationSessionUser();
@@ -282,7 +282,7 @@ const { name, email, phone } = parsed.data;
 
     if (!normalizedEmail && !sanitizedPhone) {
       return {
-        error: "Укажите email или телефон клиента.",
+        error: "Укажите email или телефон покупателя.",
       };
     }
 
@@ -337,7 +337,7 @@ const { name, email, phone } = parsed.data;
 
     if (!userId) {
       return {
-        error: "Не удалось определить учетную запись клиента.",
+        error: "Не удалось определить учетную запись покупателя.",
       };
     }
 
@@ -438,7 +438,7 @@ const { name, email, phone } = parsed.data;
     if (profileError) {
       console.error("[operations] failed to upsert profile", profileError);
       return {
-        error: "Не удалось сохранить профиль клиента.",
+        error: "Не удалось сохранить профиль покупателя.",
       };
     }
 
@@ -464,7 +464,7 @@ const { name, email, phone } = parsed.data;
     if (!typedProfile) {
       console.error("[operations] upsert profile returned empty data", { userId });
       return {
-        error: "Не удалось сохранить профиль клиента.",
+        error: "Не удалось сохранить профиль покупателя.",
       };
     }
 
@@ -483,7 +483,7 @@ const { name, email, phone } = parsed.data;
   } catch (error) {
     console.error("[operations] unexpected error while creating client", error);
     return {
-      error: "Произошла ошибка при создании клиента.",
+      error: "Произошла ошибка при создании покупателя.",
     };
   }
 }
@@ -611,7 +611,7 @@ export async function updateOperationsClient(
 
     if (profileLookupError) {
       console.error("[operations] failed to load profile metadata before update", profileLookupError);
-      return { success: false, error: "Не удалось загрузить профиль клиента." };
+      return { success: false, error: "Не удалось загрузить профиль покупателя." };
     }
 
     const metadata: ProfileMetadata = {
@@ -698,7 +698,7 @@ export async function updateOperationsClient(
 
     if (updateError) {
       console.error("[operations] failed to update client profile", updateError);
-      return { success: false, error: "Не удалось обновить профиль клиента." };
+      return { success: false, error: "Не удалось обновить профиль покупателя." };
     }
 
     try {
@@ -739,7 +739,7 @@ export async function updateOperationsClient(
     return { success: true };
   } catch (error) {
     console.error("[operations] unexpected error while updating client", error);
-    return { success: false, error: "Произошла ошибка при обновлении клиента." };
+    return { success: false, error: "Произошла ошибка при обновлении покупателя." };
   }
 }
 
@@ -909,11 +909,11 @@ export async function deleteClientDocument(
 
     if (lookupError) {
       console.error("[operations] failed to load client document before deletion", lookupError);
-      return { success: false, error: "Не удалось найти документ клиента." };
+      return { success: false, error: "Не удалось найти документ покупателя." };
     }
 
     if (!documentRecord || String(documentRecord.client_id) !== clientId) {
-      return { success: false, error: "Документ не найден или принадлежит другому клиенту." };
+      return { success: false, error: "Документ не найден или принадлежит другому покупателю." };
     }
 
     const storagePath =
@@ -1000,7 +1000,7 @@ export async function verifyClientDeletion(
       return {
         canDelete: false,
         dealsCount: activeDeals.length,
-        reason: `Удаление невозможно: у клиента есть активные сделки (${activeDeals.length}).`,
+        reason: `Удаление невозможно: у покупателя есть активные сделки (${activeDeals.length}).`,
       };
     }
 
@@ -1009,7 +1009,7 @@ export async function verifyClientDeletion(
     console.error("[operations] unexpected error while checking client deletion", error);
     return {
       canDelete: false,
-      reason: "Произошла ошибка при проверке возможности удаления клиента.",
+      reason: "Произошла ошибка при проверке возможности удаления покупателя.",
     };
   }
 }
@@ -1021,7 +1021,7 @@ export async function deleteOperationsClient(
 
   if (!parsed.success) {
     console.warn("[operations] invalid client delete payload", parsed.error.flatten());
-    return { success: false, error: "Некорректные данные для удаления клиента." };
+    return { success: false, error: "Некорректные данные для удаления покупателя." };
   }
 
   const sessionUser = await getMutationSessionUser();
@@ -1036,7 +1036,7 @@ export async function deleteOperationsClient(
   if (!verification.canDelete) {
     return {
       success: false,
-      error: verification.reason ?? "Нельзя удалить клиента.",
+      error: verification.reason ?? "Нельзя удалить покупателя.",
       dealsCount: verification.dealsCount,
     };
   }
@@ -1045,7 +1045,7 @@ export async function deleteOperationsClient(
     const supabase = await createSupabaseServerClient();
     const serviceClient = await createSupabaseServiceClient();
 
-    // Проверяем, есть ли активные сделки у клиента
+    // Проверяем, есть ли активные сделки у покупателя
     const { data: dealsData, error: dealsError } = await supabase
       .from("deals")
       .select("id, status")
@@ -1066,12 +1066,12 @@ export async function deleteOperationsClient(
     if (activeDeals.length > 0) {
       return {
         success: false,
-        error: `Нельзя удалить клиента с активными сделками. Найдено ${activeDeals.length} активных сделок.`,
+        error: `Нельзя удалить покупателя с активными сделками. Найдено ${activeDeals.length} активных сделок.`,
         dealsCount: activeDeals.length,
       };
     }
 
-    // Удаляем документы клиента (сначала документы, потом профиль)
+    // Удаляем документы покупателя (сначала документы, потом профиль)
     const { error: documentsError } = await supabase
       .from("deal_documents")
       .delete()
@@ -1082,7 +1082,7 @@ export async function deleteOperationsClient(
       // Продолжаем удаление, даже если не удалось удалить документы
     }
 
-    // Удаляем сделки клиента (если есть завершенные или отмененные)
+    // Удаляем сделки покупателя (если есть завершенные или отмененные)
     const { error: dealsDeleteError } = await supabase
       .from("deals")
       .delete()
@@ -1093,7 +1093,7 @@ export async function deleteOperationsClient(
       // Продолжаем удаление профиля
     }
 
-    // Удаляем профиль клиента
+    // Удаляем профиль покупателя
     const { error: profileDeleteError } = await supabase
       .from("profiles")
       .delete()
@@ -1101,7 +1101,7 @@ export async function deleteOperationsClient(
 
     if (profileDeleteError) {
       console.error("[operations] failed to delete client profile", profileDeleteError);
-      return { success: false, error: "Не удалось удалить профиль клиента." };
+      return { success: false, error: "Не удалось удалить профиль покупателя." };
     }
 
     // Удаляем роль пользователя
@@ -1134,6 +1134,6 @@ export async function deleteOperationsClient(
     return { success: true };
   } catch (error) {
     console.error("[operations] unexpected error while deleting client", error);
-    return { success: false, error: "Произошла ошибка при удалении клиента." };
+    return { success: false, error: "Произошла ошибка при удалении покупателя." };
   }
 }

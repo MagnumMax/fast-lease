@@ -4,7 +4,17 @@ import Link from "next/link";
 import { useActionState, useEffect, useState, type JSX } from "react";
 import { useRouter } from "next/navigation";
 
-import { ArrowLeft, CalendarClock, CheckCircle2, Clock3, Loader2, Paperclip, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  Paperclip,
+  Plus,
+  RefreshCcw,
+  Trash2,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,6 +31,7 @@ import {
   WORKFLOW_ROLE_LABELS,
   getClientDocumentLabel,
   type ClientDocumentTypeValue,
+  normalizeClientDocumentType,
 } from "@/lib/supabase/queries/operations";
 import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
 
@@ -28,6 +39,7 @@ import { deleteTaskGuardDocumentAction, type FormStatus } from "@/app/(dashboard
 
 type TaskDetailViewProps = {
   task: WorkspaceTask;
+  guardKey: string | null;
   guardMeta: { key: string; label: string; requiresDocument: boolean } | null;
   guardState: {
     note: string | null;
@@ -47,6 +59,8 @@ type TaskFieldDefinition = {
   id: string;
   type?: string;
   label?: string;
+  document_type?: string;
+  documentType?: string;
   required?: boolean;
   hint?: string;
   options?: { value: string; label: string }[];
@@ -63,6 +77,7 @@ type TaskPayload = {
   guard_note?: string | null;
   guard_attachment_path?: string | null;
   guard_document_type?: string | null;
+  requires_document?: boolean;
 };
 
 type GuardDocumentLink = {
@@ -84,10 +99,19 @@ type PartyTypeValue = "company" | "individual";
 
 type SummaryDataPoint = { label: string; value: string };
 type SummaryDocumentEntry = { label: string; value: string; status?: string | null; url?: string | null };
+type WorkflowDocumentGroupEntry = {
+  stageKey: string;
+  stageTitle: string;
+  taskTitle: string;
+  taskTemplateId: string;
+  documents: SummaryDocumentEntry[];
+};
 type FinanceEntitySnapshot = {
   title: string;
   data: SummaryDataPoint[];
   documents: SummaryDocumentEntry[];
+  workflowDocuments?: WorkflowDocumentGroupEntry[];
+  additionalDocuments?: SummaryDocumentEntry[];
 };
 type FinanceReviewSnapshot = {
   deal: FinanceEntitySnapshot;
@@ -96,7 +120,7 @@ type FinanceReviewSnapshot = {
 const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
-const AECB_TASK_TYPE = "AECB_CHECK";
+const AECB_GUARD_KEY = "risk.approved";
 const AECB_CREDIT_REPORT_TYPE: ClientDocumentTypeValue = "aecb_credit_report";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
 const INVESTOR_APPROVAL_TASK_TYPE = "INVESTOR_APPROVAL";
@@ -199,36 +223,10 @@ const INDIVIDUAL_ONLY_FIELDS = new Set([
   "doc_driving_license_buyer",
   "doc_second_driver_bundle",
 ]);
-const DOC_FIELD_TYPE_MAP: Record<string, ClientDocumentTypeValue> = {
-  doc_company_license: "company_license",
-  doc_emirates_id_manager: "emirates_id",
-  doc_visa_manager: "visa",
-  doc_passport_manager: "passport",
-  doc_emirates_id_driver: "emirates_id",
-  doc_visa_driver: "visa",
-  doc_passport_driver: "passport",
-  doc_driving_license: "driving_license",
-  doc_passport_buyer: "passport",
-  doc_visa_buyer: "visa",
-  doc_emirates_id_buyer: "emirates_id",
-  doc_driving_license_buyer: "driving_license",
-  doc_vcc_certificate: "vcc_certificate",
-  doc_vehicle_possession_certificate: "vehicle_possession_certificate",
-  doc_hiyaza_certificate: "hiyaza_certificate",
-  doc_mulkia_certificate: "mulkia_certificate",
-  doc_passing_certificate: "passing_certificate",
-  doc_quotation: "quotation",
-  doc_tax_invoice: "tax_invoice",
-  doc_noc_company_letter: "noc_company_letter",
-  doc_noc_gps_letter: "noc_gps_letter",
-  doc_trn_certificate: "trn_certificate",
-  doc_emirates_id_seller: "emirates_id",
-  doc_spa_invoice: "spa_invoice",
-  doc_second_driver_bundle: "other",
-};
-
-function mapDocFieldIdToDocType(fieldId: string): ClientDocumentTypeValue | null {
-  return DOC_FIELD_TYPE_MAP[fieldId] ?? null;
+function getFieldDocumentType(field: TaskFieldDefinition): ClientDocumentTypeValue | null {
+  const docTypeRaw = field.document_type ?? (field as { documentType?: string }).documentType;
+  const normalized = normalizeClientDocumentType(docTypeRaw ?? undefined);
+  return normalized ?? null;
 }
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
@@ -315,6 +313,7 @@ function isEditableField(field: TaskFieldDefinition): boolean {
 
 export function TaskDetailView({
   task,
+  guardKey,
   guardMeta,
   guardState,
   checklist,
@@ -353,209 +352,187 @@ export function TaskDetailView({
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
-  const isAecbTask = task.type === AECB_TASK_TYPE;
+  const guardKeyResolved = guardKey ?? guardMeta?.key ?? null;
+  const isConfirmCarTask = guardKeyResolved === "tasks.confirmCar.completed";
+  const isAecbTask = guardKeyResolved === AECB_GUARD_KEY;
   const isFinanceReviewTask = task.type === FINANCE_REVIEW_TASK_TYPE;
   const isInvestorApprovalTask = task.type === INVESTOR_APPROVAL_TASK_TYPE;
   const isApprovalTask = isFinanceReviewTask || isInvestorApprovalTask;
-  const isPaySupplierTask = task.type === "PAY_SUPPLIER";
+  const isPaySupplierTask = guardKeyResolved === "payments.supplierPaid";
   const isBuyerDocsTask =
+    guardKeyResolved === BUYER_DOCS_GUARD_KEY ||
     task.type === "COLLECT_DOCS" ||
     task.type === "COLLECT_BUYER_DOCS" ||
     task.type === "COLLECT_BUYER_DOCS_COMPANY" ||
-    task.type === "COLLECT_BUYER_DOCS_INDIVIDUAL" ||
-    guardMeta?.key === BUYER_DOCS_GUARD_KEY;
+    task.type === "COLLECT_BUYER_DOCS_INDIVIDUAL";
   const isSellerDocsTask =
+    guardKeyResolved === SELLER_DOCS_GUARD_KEY ||
     task.type === "COLLECT_SELLER_DOCS" ||
     task.type === "COLLECT_SELLER_DOCS_COMPANY" ||
-    task.type === "COLLECT_SELLER_DOCS_INDIVIDUAL" ||
-    guardMeta?.key === SELLER_DOCS_GUARD_KEY;
+    task.type === "COLLECT_SELLER_DOCS_INDIVIDUAL";
   const confirmCarInstructions =
-    task.type === "CONFIRM_CAR"
+    isConfirmCarTask
       ? resolveFieldValue("instructions", payload) || CONFIRM_CAR_INSTRUCTIONS
       : null;
   const isVehicleVerificationTask =
-    task.type === VEHICLE_VERIFICATION_TASK_TYPE || guardMeta?.key === VEHICLE_VERIFICATION_GUARD_KEY;
+    guardKeyResolved === VEHICLE_VERIFICATION_GUARD_KEY ||
+    task.type === VEHICLE_VERIFICATION_TASK_TYPE;
   const initialBuyerType = normalizePartyType(resolveFieldValue("buyer_type", payload));
   const [buyerType, setBuyerType] = useState<PartyTypeValue | "">(() => initialBuyerType);
   const initialSellerType = normalizePartyType(resolveFieldValue("seller_type", payload));
   const [sellerType, setSellerType] = useState<PartyTypeValue | "">(() => initialSellerType);
   const buyerChecklist: string[] = [];
   const sellerChecklist: string[] = [];
-  const hideFields = new Set<string>();
-  if (isBuyerDocsTask && buyerType === "individual") {
-    HIDE_FOR_INDIVIDUAL.forEach((id) => hideFields.add(id));
-  }
-  if (isBuyerDocsTask && buyerType === "company") {
-    HIDE_FOR_COMPANY.forEach((id) => hideFields.add(id));
-  }
   const hasPendingBuyerChange = pendingBuyerType !== "" && pendingBuyerType !== buyerType;
 
   const schemaFieldsRaw = payload?.schema?.fields;
-  const schemaFields = Array.isArray(schemaFieldsRaw)
+  const rawFields = Array.isArray(schemaFieldsRaw)
     ? schemaFieldsRaw
     : schemaFieldsRaw && typeof schemaFieldsRaw === "object" && !Array.isArray(schemaFieldsRaw)
       ? (Array.isArray((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields)
           ? ((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields as TaskFieldDefinition[])
           : [])
       : [];
-  const filteredSchemaFields =
-    isAecbTask ? schemaFields.filter((field) => field.id !== "notes") : schemaFields;
-  let effectiveSchemaFields = isPrepareQuoteTask || isInvestorApprovalTask ? [] : filteredSchemaFields;
-  const fieldsToSkip = new Set<string>();
-  if (task.type === "CONFIRM_CAR") {
-    fieldsToSkip.add("instructions");
-  }
-  if (isBuyerDocsTask || isSellerDocsTask) {
-    fieldsToSkip.add("checklist");
-  }
-  if (isFinanceReviewTask) {
-    fieldsToSkip.add("monthly_payment");
-  }
-  if (isVehicleVerificationTask) {
-    fieldsToSkip.add("vin");
-    fieldsToSkip.add("supplier");
-    const existingIds = new Set(effectiveSchemaFields.map((field) => field.id));
-    const missingAnalogs = ANALOG_FIELD_DEFS.filter((field) => !existingIds.has(field.id));
-    if (missingAnalogs.length > 0) {
-      effectiveSchemaFields = [...effectiveSchemaFields, ...missingAnalogs];
-    }
-  }
-  let editableFields = effectiveSchemaFields.filter(
-    (field) => isEditableField(field) && !fieldsToSkip.has(field.id),
-  );
-  if (hideFields.size > 0) {
-    editableFields = editableFields.filter((field) => !hideFields.has(field.id));
-  }
-  // Add individual-only fields if not present and buyer is individual
-  if (isBuyerDocsTask && buyerType === "individual") {
-    const existingIds = new Set(editableFields.map((f) => f.id));
-    const individualFields: TaskFieldDefinition[] = [
-      { id: "doc_passport_buyer", type: "text", label: "Паспорт покупателя (файл)" },
-      { id: "doc_visa_buyer", type: "text", label: "Виза покупателя (файл)" },
-      { id: "doc_emirates_id_buyer", type: "text", label: "Emirates ID покупателя (файл)" },
-      { id: "doc_driving_license_buyer", type: "text", label: "Права покупателя (файл)" },
-      { id: "doc_second_driver_bundle", type: "text", label: "Документы второго водителя (файл)" },
-    ];
-    const toAdd = individualFields.filter((field) => !existingIds.has(field.id));
-    editableFields = [...editableFields, ...toAdd];
-  }
-  // Ensure contact/company fields exist when needed
-  if (isBuyerDocsTask && buyerType === "company") {
-    const existingIds = new Set(editableFields.map((f) => f.id));
-    const requiredCompanyFields: TaskFieldDefinition[] = [
-      { id: "buyer_company_email", type: "text", label: "Электронная почта компании" },
-      { id: "buyer_company_phone", type: "text", label: "Телефон компании" },
-      { id: "buyer_contact_email", type: "text", label: "Электронная почта клиента/водителя" },
-      { id: "buyer_contact_phone", type: "text", label: "Телефон клиента/водителя" },
-    ];
-    const companyDocs: TaskFieldDefinition[] = [
-      { id: "doc_company_license", type: "text", label: "Лицензия компании (файл)" },
-      { id: "doc_emirates_id_manager", type: "text", label: "Emirates ID менеджера лицензии (файл)" },
-      { id: "doc_visa_manager", type: "text", label: "Виза менеджера лицензии (файл)" },
-      { id: "doc_passport_manager", type: "text", label: "Паспорт менеджера лицензии (файл)" },
-      { id: "doc_emirates_id_driver", type: "text", label: "Emirates ID водителя (файл)" },
-      { id: "doc_visa_driver", type: "text", label: "Виза водителя (файл)" },
-      { id: "doc_passport_driver", type: "text", label: "Паспорт водителя (файл)" },
-      { id: "doc_driving_license", type: "text", label: "Права клиента/водителя (файл)" },
-    ];
-    const toAdd = [...requiredCompanyFields, ...companyDocs].filter((field) => !existingIds.has(field.id));
-    editableFields = [...editableFields, ...toAdd];
-  }
-  if (isBuyerDocsTask && buyerType === "individual") {
-    const existingIds = new Set(editableFields.map((f) => f.id));
-    const requiredContactFields: TaskFieldDefinition[] = [
-      { id: "buyer_contact_email", type: "text", label: "Электронная почта покупателя" },
-      { id: "buyer_contact_phone", type: "text", label: "Телефон покупателя" },
-    ];
-    const toAdd = requiredContactFields.filter((field) => !existingIds.has(field.id));
-    editableFields = [...editableFields, ...toAdd];
-  }
-  // Ensure selector for buyer type exists
-  if (isBuyerDocsTask) {
-    const hasBuyerType = editableFields.some((field) => field.id === "buyer_type");
-    if (!hasBuyerType) {
-      editableFields = [
-        {
-          id: "buyer_type",
-          type: "select",
-          label: "Тип покупателя",
-          options: [
-            { value: "company", label: "Юридическое лицо" },
-            { value: "individual", label: "Физическое лицо" },
-          ],
-        },
-        ...editableFields,
-      ];
-    }
-  }
-
-  // Reorder buyer contact fields to be right after buyer type
-  if (isBuyerDocsTask) {
-    const priorityOrder = new Map<string, number>([
-      ["buyer_type", 0],
-      ["buyer_contact_email", 1],
-      ["buyer_contact_phone", 2],
-    ]);
-    editableFields = [...editableFields].sort((a, b) => {
-      const aP = priorityOrder.has(a.id) ? priorityOrder.get(a.id)! : Number.POSITIVE_INFINITY;
-      const bP = priorityOrder.has(b.id) ? priorityOrder.get(b.id)! : Number.POSITIVE_INFINITY;
-      if (aP === bP) return 0;
-      return aP - bP;
-    });
-  }
+  const editableFields = rawFields.filter((field) => isEditableField(field) && field.id !== "instructions");
+  let visibleFields = editableFields;
   const statusMeta = getTaskStatusMeta(task.status);
   const deadlineInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
   const buyerDefaultDocType = "";
   const sellerDefaultDocType = "";
+  const requiresDocumentFlag =
+    typeof payload?.requires_document === "boolean" ? payload.requires_document : null;
   const requiresDocument = isBuyerDocsTask || isSellerDocsTask
     ? false
     : (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
-  const documentsEnabled = isBuyerDocsTask || isSellerDocsTask || requiresDocument || isAecbTask || isPaySupplierTask;
-  const defaultDocumentType: ClientDocumentTypeValue | "" =
-    enforcedDocumentType ??
-    (isAecbTask
-      ? AECB_CREDIT_REPORT_TYPE
-      : isPrepareQuoteTask
-        ? "signed_commercial_offer"
-        : buyerDefaultDocType || sellerDefaultDocType);
-  const useTwoColumnFieldLayout = isBuyerDocsTask;
-  const requiredDocumentLabel = enforcedDocumentType
-    ? getClientDocumentLabel(enforcedDocumentType) ?? "Технический отчёт"
-    : null;
-  const documentSectionDescription = isBuyerDocsTask
-    ? buyerType
-      ? "Документы необязательны — используйте список ниже и добавьте файлы, которые есть. Для двух водителей добавьте второй комплект через «Добавить документ»."
-      : "Выберите тип покупателя, чтобы показать рекомендуемые документы. Все пункты необязательны."
-    : isSellerDocsTask
-      ? sellerType
-        ? "Документы необязательны — используйте список ниже и добавьте файлы, которые есть."
-        : "Выберите тип продавца, чтобы показать рекомендуемые документы. Все пункты необязательны."
-      : requiresDocument
-        ? "Приложите файлы из чек-листа, чтобы закрыть guard этапа. Поддерживаются PDF, JPG и PNG."
-        : isAecbTask
-          ? "При необходимости загрузите AECB credit report для внутренней проверки. Поддерживаются PDF, JPG и PNG."
-          : "Добавьте связанные документы при необходимости. Поддерживаются PDF, JPG и PNG.";
-  const documentEmptyStateText = isBuyerDocsTask
-    ? "Документы пока не выбраны. Используйте список рекомендаций выше, добавьте нужные файлы или сохраните без вложений."
-    : isSellerDocsTask
-      ? "Документы пока не выбраны. Используйте список рекомендаций выше, добавьте нужные файлы или сохраните без вложений."
-      : requiresDocument
-        ? "Документы для загрузки не выбраны. Добавьте хотя бы один файл."
-        : isAecbTask
-          ? "Документы не выбраны. Этот шаг можно пропустить или приложить AECB credit report."
-          : "Документы для загрузки не выбраны.";
+  const documentsEnabled =
+    isBuyerDocsTask || isSellerDocsTask || requiresDocument || isAecbTask || isPaySupplierTask;
+  const enableDocsSection = documentsEnabled || isPrepareQuoteTask;
+  const defaultDocumentType: ClientDocumentTypeValue | "" = "";
+  const useTwoColumnFieldLayout = true;
+  const workflowDocumentFields = visibleFields.filter((field) => getFieldDocumentType(field));
+  const hasWorkflowDocumentFields = workflowDocumentFields.length > 0;
+  const hasWorkflowChecklist = Boolean(checklist && checklist.items.length > 0);
+  const hasWorkflowDocuments = hasWorkflowDocumentFields || hasWorkflowChecklist;
+  const workflowDocumentsRequired = Boolean(
+    guardMeta?.requiresDocument ||
+      requiresDocumentFlag ||
+      enforcedDocumentType ||
+      workflowDocumentFields.some((field) => field.required) ||
+      visibleFields.some((field) => field.type?.toLowerCase() === "checklist" && field.required),
+  );
+  const hasMandatoryWorkflowDocs = workflowDocumentsRequired || Boolean(requiresDocumentFlag || enforcedDocumentType);
+  const workflowDocumentItems =
+    checklist && checklist.items.length > 0
+      ? checklist.items.map((item) => ({
+          key: item.key,
+          label:
+            getClientDocumentLabel((item.normalizedType as ClientDocumentTypeValue | null) ?? null) ??
+            getClientDocumentLabel(item.key as ClientDocumentTypeValue) ??
+            item.label,
+          fulfilled: item.fulfilled,
+          matchesCount: item.matches.length,
+          required: workflowDocumentsRequired,
+        }))
+      : workflowDocumentFields.map((field) => {
+          const mappedType = getFieldDocumentType(field);
+          const label =
+            (mappedType ? getClientDocumentLabel(mappedType) : null) ??
+            (field.label && /(файл)/i.test(field.label) ? field.label.replace(/\s*\(файл\)/gi, "").trim() : field.label) ??
+            field.id;
+          const itemRequired = Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired);
+          return {
+            key: field.id,
+            label,
+            fulfilled: null as boolean | null,
+            matchesCount: null as number | null,
+            required: itemRequired,
+          };
+        });
+
+function renderFieldRow(opts: {
+  id: string;
+  label: string;
+  required?: boolean;
+  control: JSX.Element;
+  useTwoColumn: boolean;
+  rowClass: string;
+}) {
+  const { id, label, required, control, useTwoColumn, rowClass } = opts;
+  const labelNode = (
+    <Label
+      htmlFor={`field-${id}`}
+      className="text-sm font-semibold leading-tight text-foreground normal-case tracking-normal"
+    >
+      {label}
+      {required ? (
+        <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+          *
+        </span>
+      ) : null}
+    </Label>
+  );
+  if (useTwoColumn) {
+    return (
+      <div key={id} className={rowClass}>
+        <div className="flex flex-col gap-1">{labelNode}</div>
+        <div className="space-y-2">{control}</div>
+      </div>
+    );
+  }
+  return (
+    <div key={id} className={rowClass}>
+      {labelNode}
+      {control}
+    </div>
+  );
+}
+
+  const documentSectionDescription =
+    "Загрузите дополнительные файлы по сделке. Поддерживаются PDF, JPG и PNG.";
+  const documentEmptyStateText = "Дополнительные документы пока не выбраны.";
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      // Debug output to verify required doc flags in UI
+      console.debug("[task-detail] workflow docs debug", {
+        taskId: task.id,
+        taskType: task.type,
+        workflowDocumentsRequired,
+        requiresDocumentFlag,
+        enforcedDocumentType,
+        guardMetaRequiresDocument: guardMeta?.requiresDocument ?? null,
+        workflowDocumentFields: workflowDocumentFields.map((field) => ({
+          id: field.id,
+          required: field.required ?? false,
+        })),
+        workflowDocumentItems: workflowDocumentItems.map((item) => ({
+          key: item.key,
+          required: item.required,
+          label: item.label,
+        })),
+      });
+    }
+  }, [
+    enforcedDocumentType,
+    guardMeta?.requiresDocument,
+    requiresDocumentFlag,
+    task.id,
+    task.type,
+    workflowDocumentFields,
+    workflowDocumentItems,
+    workflowDocumentsRequired,
+  ]);
 
   useEffect(() => {
-    if (!documentsEnabled) {
+    if (!enableDocsSection) {
       setDocumentDrafts([]);
       return;
     }
     setDocumentDrafts((prev) =>
       prev.length > 0 ? prev : [createDocumentDraft(defaultDocumentType)],
     );
-  }, [defaultDocumentType, documentsEnabled]);
+  }, [defaultDocumentType, enableDocsSection]);
 
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
   const hasForm = task.status !== "DONE";
@@ -563,6 +540,26 @@ export function TaskDetailView({
   const guardDocumentLinks = Array.isArray(guardDocuments) ? guardDocuments : [];
   const hasGuardDocuments = guardDocumentLinks.length > 0;
   const hasGuardAttachmentLink = Boolean(guardState?.attachmentUrl);
+  const instructionShortRaw =
+    payload?.defaults &&
+    typeof payload.defaults === "object" &&
+    !Array.isArray(payload.defaults) &&
+    typeof (payload.defaults as Record<string, unknown>).instruction_short === "string"
+      ? ((payload.defaults as Record<string, unknown>).instruction_short as string)
+      : null;
+  const instructionsDefaults =
+    payload?.defaults &&
+    typeof payload.defaults === "object" &&
+    !Array.isArray(payload.defaults) &&
+    typeof (payload.defaults as Record<string, unknown>).instructions === "string"
+      ? ((payload.defaults as Record<string, unknown>).instructions as string)
+      : null;
+  const instructionsValue = resolveFieldValue("instructions", payload);
+  const instructionShort =
+    (instructionsValue && instructionsValue.trim().length > 0 ? instructionsValue.trim() : null) ||
+    (instructionsDefaults && instructionsDefaults.trim().length > 0 ? instructionsDefaults.trim() : null) ||
+    instructionShortRaw ||
+    null;
   const dealSlug = deal ? buildSlugWithId(deal.dealNumber ?? null, deal.id) || deal.id : null;
   const clientSlug = deal?.clientId
     ? buildSlugWithId(task.dealClientName ?? null, deal.clientId) || deal.clientId
@@ -577,11 +574,11 @@ export function TaskDetailView({
   const taskTitle = isVehicleVerificationTask
     ? "Проверка тех состояния и оценочной стоимости авто"
     : isPrepareQuoteTask
-      ? "Подписание клиентом коммерческого предложения"
+      ? "Подписание покупателем коммерческого предложения"
       : isFinanceReviewTask
         ? FINANCE_REVIEW_TITLE
         : task.title;
-  const taskInstruction = hasForm
+  const defaultInstruction = hasForm
     ? isApprovalTask
       ? deadlineInfo
         ? `Проверьте данные и утвердите решение до ${deadlineInfo}.`
@@ -590,6 +587,7 @@ export function TaskDetailView({
         ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
         : "Проверьте детали, заполните форму ниже и завершите задачу."
     : "Задача завершена — просмотрите ответы и вложения или вернитесь к списку.";
+  const taskInstruction = instructionShort && instructionShort.trim().length > 0 ? instructionShort : defaultInstruction;
 
   function handleBackNavigation() {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -721,7 +719,7 @@ export function TaskDetailView({
                       disabled={pending || deleting || !allowDocumentDeletion}
                     >
                       {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      <span className="ml-1 text-xs">{deleting ? "Удаляем..." : "Удалить"}</span>
+                      <span className="sr-only">{deleting ? "Удаляем" : "Удалить"}</span>
                     </Button>
                   ) : null}
                 </div>
@@ -740,6 +738,23 @@ export function TaskDetailView({
     if (!snapshot) return null;
     const entities = [snapshot.deal].filter(Boolean) as FinanceEntitySnapshot[];
     if (!entities.length) return null;
+    const dealEntity = snapshot.deal;
+    const workflowDocs = dealEntity.workflowDocuments ?? [];
+    const effectiveWorkflowDocs =
+      workflowDocs.length > 0
+        ? workflowDocs
+        : dealEntity.documents.length > 0
+          ? [
+              {
+                stageKey: "deal",
+                stageTitle: dealEntity.title,
+                taskTitle: "Документы сделки",
+                taskTemplateId: "deal-documents",
+                documents: dealEntity.documents,
+              } satisfies WorkflowDocumentGroupEntry,
+            ]
+          : [];
+    const additionalDocs = dealEntity.additionalDocuments ?? [];
 
     return (
       <Card className="border-border/80 bg-card/80 backdrop-blur">
@@ -770,46 +785,100 @@ export function TaskDetailView({
                     </div>
                   ))}
                 </div>
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Документы
-                  </p>
-                  {entity.documents.length ? (
-                    <div className="flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">
-                      {entity.documents.map((doc) => (
-                        <div
-                          key={`${entity.title}-doc-${doc.label}`}
-                          className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/80 px-3 py-2 text-xs"
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-medium text-foreground">{doc.label}</span>
-                            <span className="text-muted-foreground">
-                              {doc.value}
-                              {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
-                            </span>
-                          </div>
-                          {doc.url ? (
-                            <Button asChild size="sm" variant="outline" className="rounded-lg">
-                              <Link href={doc.url} target="_blank">
-                                Открыть
-                              </Link>
-                            </Button>
-                          ) : (
-                            <Badge variant="outline" className="rounded-lg text-[11px] text-muted-foreground">
-                              {doc.value === "—" ? "—" : doc.status ?? "Нет ссылки"}
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                      —
-                    </p>
-                  )}
-                </div>
               </div>
             ))}
+
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Документы сделки
+                </p>
+                {effectiveWorkflowDocs.length ? (
+                  <div className="space-y-3">
+                    {effectiveWorkflowDocs.map((group) => (
+                      <div
+                        key={`${group.stageKey}-${group.taskTemplateId}`}
+                        className="rounded-lg border border-border/60 bg-background/80"
+                      >
+                        <div className="flex items-center justify-between border-b border-border/60 px-4 py-2 text-xs font-semibold text-foreground">
+                          <span>{group.taskTitle}</span>
+                        </div>
+                        <div className="divide-y divide-border/60">
+                          {group.documents.map((doc, idx) => (
+                            <div
+                              key={`${group.taskTemplateId}-doc-${idx}-${doc.label}`}
+                              className="flex items-start justify-between gap-3 px-4 py-3 text-xs"
+                            >
+                              <div className="flex flex-col gap-1">
+                                <span className="text-sm font-semibold text-foreground">{doc.label}</span>
+                                <span className="text-muted-foreground">
+                                  {doc.value}
+                                  {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
+                                </span>
+                              </div>
+                              {doc.url ? (
+                                <Button asChild size="sm" variant="outline" className="rounded-lg">
+                                  <Link href={doc.url} target="_blank">
+                                    Открыть
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <Badge variant="outline" className="rounded-lg text-[11px] text-muted-foreground">
+                                  {doc.value === "—" ? "—" : doc.status ?? "Нет ссылки"}
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                    —
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Дополнительные документы
+                </p>
+                {additionalDocs.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {additionalDocs.map((doc) => (
+                      <div
+                        key={`${dealEntity.title}-extra-${doc.label}`}
+                        className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/80 px-3 py-2 text-xs"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground">{doc.label}</span>
+                          <span className="text-muted-foreground">
+                            {doc.value}
+                            {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
+                          </span>
+                        </div>
+                        {doc.url ? (
+                          <Button asChild size="sm" variant="outline" className="rounded-lg">
+                            <Link href={doc.url} target="_blank">
+                              Открыть
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Badge variant="outline" className="rounded-lg text-[11px] text-muted-foreground">
+                            {doc.value === "—" ? "—" : doc.status ?? "Нет ссылки"}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
+                    —
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -856,7 +925,7 @@ export function TaskDetailView({
             <div className="flex flex-col gap-2">
               {deal?.clientId ? (
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-foreground/80">Клиент:</span>
+                  <span className="font-medium text-foreground/80">Покупатель:</span>
                   <Link
                     href={
                       clientSlug ? `/ops/clients/${clientSlug}` : `/ops/clients/${deal.clientId}`
@@ -907,47 +976,11 @@ export function TaskDetailView({
           {guardDocumentTypeLabel ? (
             <p className="text-xs text-muted-foreground">Тип документа: {guardDocumentTypeLabel}</p>
           ) : null}
-          {checklist && checklist.items.length > 0 ? (
-            <div className="mt-4 space-y-3 rounded-lg border border-border/70 bg-muted/30 p-4">
-              <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                <span>Чек-лист документов</span>
-                <Badge variant={checklist.fulfilled ? "success" : "secondary"} className="rounded-lg text-[11px]">
-                  {checklist.fulfilled ? "Готово" : "Ожидает"}
-                </Badge>
-              </div>
-              <ul className="space-y-2 text-xs text-muted-foreground">
-                {checklist.items.map((item) => (
-                  <li
-                    key={item.key}
-                    className="flex items-center justify-between gap-3 rounded-md bg-background/40 px-3 py-2 text-foreground"
-                  >
-                    {(() => {
-                      const itemLabel =
-                        getClientDocumentLabel((item.normalizedType as ClientDocumentTypeValue | null) ?? null) ??
-                        getClientDocumentLabel(item.key as ClientDocumentTypeValue) ??
-                        item.label;
-                      return (
-                    <div className="flex flex-col">
-                        <span className="text-sm font-medium">{itemLabel}</span>
-                      <span>
-                        {item.fulfilled
-                          ? `Загружено файлов: ${item.matches.length}`
-                          : "Документ отсутствует"}
-                      </span>
-                    </div>
-                      );
-                    })()}
-                    <Badge variant={item.fulfilled ? "success" : "secondary"} className="rounded-lg text-[11px]">
-                      {item.fulfilled ? "OK" : "Нет"}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
           <div className="mt-2 rounded-lg border border-dashed border-border/70 bg-muted/25 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Что сделать</p>
-            <p className="mt-1 text-sm text-foreground/80">{taskInstruction}</p>
+            <p className="mt-1 text-sm text-foreground/80">
+              {instructionShort && instructionShort.trim().length > 0 ? instructionShort : taskInstruction}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -984,9 +1017,9 @@ export function TaskDetailView({
                 </div>
               ) : null}
 
-              {editableFields.length > 0 ? (
+              {visibleFields.length > 0 ? (
                 <div className="space-y-3">
-      {editableFields.map((field, index) => {
+      {visibleFields.map((field, index) => {
         const fieldId = field.id;
         const value = resolveFieldValue(fieldId, payload);
         const baseLabel = field.label ?? fieldId;
@@ -1001,45 +1034,32 @@ export function TaskDetailView({
                     if (buyerType === "individual" && INDIVIDUAL_DOC_LABELS[fieldId]) {
                       label = INDIVIDUAL_DOC_LABELS[fieldId];
                     }
-                    const docFieldType = mapDocFieldIdToDocType(fieldId);
+                    const docFieldType = getFieldDocumentType(field);
                     if (docFieldType && /(файл)/i.test(label)) {
                       label = label.replace(/\s*\(файл\)/gi, "").trim();
                     }
                     const type = field.type?.toLowerCase();
-                    const isRequired = field.required ?? false;
-                    const isLastRow = index === editableFields.length - 1;
+                    const isDocField = Boolean(docFieldType || type === "file");
+                    const isRequired = isDocField
+                      ? Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired)
+                      : field.required ?? false;
+                    const isLastRow = index === visibleFields.length - 1;
                     const rowClass = useTwoColumnFieldLayout
                       ? `grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,260px)_1fr] sm:items-center px-4 py-3 ${
                           isLastRow ? "" : "border-b border-border/60"
                         }`
                       : "space-y-2 py-2";
-                    const labelNode = (
-                      <Label
-                        htmlFor={`field-${fieldId}`}
-                        className="text-sm font-semibold leading-tight text-foreground normal-case tracking-normal"
-                      >
-                        {label}
-                        {isRequired ? (
-                          <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-                            *
-                          </span>
-                        ) : null}
-                      </Label>
-                    );
         const renderRow = (control: JSX.Element) =>
-          useTwoColumnFieldLayout ? (
-            <div key={`${fieldId}-${buyerType}-${formResetToken}`} className={rowClass}>
-              <div className="flex flex-col gap-1">
-                {labelNode}
-              </div>
-              <div className="space-y-2">{control}</div>
-            </div>
-          ) : (
-            <div key={`${fieldId}-${buyerType}-${formResetToken}`} className={rowClass}>
-              {labelNode}
-              {control}
-            </div>
-          );
+                      renderFieldRow({
+                        id: `${fieldId}-${buyerType}-${formResetToken}`
+                          .replace(/\s+/g, '-')
+                          .toLowerCase(),
+                        label,
+                        required: isRequired,
+                        control,
+                        useTwoColumn: useTwoColumnFieldLayout,
+                        rowClass,
+                      });
 
                     // Hide company contact fields for individuals
                     if (
@@ -1198,20 +1218,22 @@ export function TaskDetailView({
                       return renderRow(checklistControl);
                     }
 
-                    if (docFieldType) {
+                    if (isDocField) {
                       const currentFile = docFieldFiles[fieldId] ?? null;
                       const currentValue = docFieldValues[fieldId] ?? value ?? "";
                       const fileLabel = currentFile?.name || getFileNameFromPath(currentValue) || null;
+                      const effectiveDocType = docFieldType ?? "";
 
                       const fileControl = (
                         <div className="space-y-2">
-                          <input type="hidden" name={`documentFields[${fieldId}][type]`} value={docFieldType} />
+                          <input type="hidden" name={`documentFields[${fieldId}][type]`} value={effectiveDocType} />
                           <input
                             id={`document-field-${fieldId}`}
                             type="file"
                             name={`documentFields[${fieldId}][file]`}
                             accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
                             className="sr-only"
+                            required={isRequired}
                             onChange={(event) => {
                               const file = event.currentTarget.files?.[0] ?? null;
                               setDocFieldFiles((prev) => ({ ...prev, [fieldId]: file }));
@@ -1222,42 +1244,65 @@ export function TaskDetailView({
                             disabled={pending}
                           />
                           <input type="hidden" name={`field:${fieldId}`} value={currentValue} />
-                          <div className="flex flex-wrap items-center gap-3">
-                            <Button
-                              type="button"
-                              variant="default"
-                              className="rounded-lg"
-                              onClick={() => {
-                                const input = document.getElementById(`document-field-${fieldId}`) as
-                                  | HTMLInputElement
-                                  | null;
-                                input?.click();
-                              }}
-                              disabled={pending}
-                            >
-                              <Paperclip className="mr-2 h-4 w-4" />
-                              {fileLabel ? "Заменить файл" : "Загрузить файл"}
-                            </Button>
+                          <div className="flex flex-wrap items-center gap-2 justify-end">
                             {fileLabel ? (
                               <span className="text-xs font-medium text-foreground">{fileLabel}</span>
                             ) : (
                               <span className="text-xs text-muted-foreground">Файл не выбран</span>
                             )}
+                            <div className="flex items-center gap-2">
                               {fileLabel ? (
                                 <Button
                                   type="button"
                                   variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg"
+                                  onClick={() => {
+                                    const input = document.getElementById(`document-field-${fieldId}`) as
+                                      | HTMLInputElement
+                                      | null;
+                                    input?.click();
+                                  }}
+                                  disabled={pending}
+                                >
+                                  <RefreshCcw className="h-4 w-4" />
+                                  <span className="sr-only">Заменить файл</span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="default"
                                   size="sm"
-                                className="rounded-lg text-destructive"
-                                onClick={() => {
-                                  setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
-                                  setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
-                                }}
-                                disabled={pending}
-                              >
-                                  Удалить
+                                  className="rounded-lg"
+                                  onClick={() => {
+                                    const input = document.getElementById(`document-field-${fieldId}`) as
+                                      | HTMLInputElement
+                                      | null;
+                                    input?.click();
+                                  }}
+                                  disabled={pending}
+                                >
+                                  <Paperclip className="mr-2 h-4 w-4" />
+                                  Загрузить
+                                </Button>
+                              )}
+                              {fileLabel ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg text-destructive"
+                                  onClick={() => {
+                                    setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
+                                    setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
+                                  }}
+                                  disabled={pending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Удалить файл</span>
                                 </Button>
                               ) : null}
+                            </div>
                           </div>
                         </div>
                       );
@@ -1288,18 +1333,13 @@ export function TaskDetailView({
                 <input type="hidden" name="field:checklist" value={JSON.stringify(sellerChecklist)} />
               ) : null}
 
-              {documentsEnabled ? (
+              {enableDocsSection ? (
                 <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
                   <div className="space-y-1">
-                    <span className="text-sm font-semibold text-foreground">Загрузка документов</span>
+                    <span className="text-sm font-semibold text-foreground">Загрузка дополнительных документов</span>
                     <p className="text-xs text-muted-foreground">
                       {documentSectionDescription}
                     </p>
-                    {requiredDocumentLabel ? (
-                      <p className="text-xs font-semibold text-foreground">
-                        Обязателен документ: {requiredDocumentLabel}
-                      </p>
-                    ) : null}
                   </div>
 
                   {hasGuardDocuments ? (
@@ -1344,14 +1384,7 @@ export function TaskDetailView({
                           </div>
                           <div className="flex flex-col gap-3 md:flex-row">
                             <div className="flex-1 space-y-2">
-                              <Label>
-                                Тип документа
-                                {requiresDocument ? (
-                                  <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-                                    *
-                                  </span>
-                                ) : null}
-                              </Label>
+                              <Label>Тип документа</Label>
                               <Select
                                 value={draft.type || DOCUMENT_TYPE_EMPTY_VALUE}
                                 onValueChange={(nextValue) => {
@@ -1380,11 +1413,6 @@ export function TaskDetailView({
                             <div className="flex-1 space-y-2">
                               <Label htmlFor={`document-file-${draft.id}`}>
                                 Файл
-                                {requiresDocument ? (
-                                  <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-                                    *
-                                  </span>
-                                ) : null}
                               </Label>
                               <input
                                 id={`document-file-${draft.id}`}
@@ -1397,27 +1425,61 @@ export function TaskDetailView({
                                 className="sr-only"
                                 disabled={pending}
                               />
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className="rounded-lg"
-                                  onClick={() => {
-                                    const input = document.getElementById(`document-file-${draft.id}`) as
-                                      | HTMLInputElement
-                                      | null;
-                                    input?.click();
-                                  }}
-                                  disabled={pending}
-                                >
-                                  <Paperclip className="mr-2 h-4 w-4" />
-                                  {draft.file?.name ? "Заменить файл" : "Выбрать файл"}
-                                </Button>
+                              <div className="flex flex-wrap items-center gap-2 justify-end">
                                 <span className="text-xs text-muted-foreground">
-                                  {draft.file?.name
-                                    ? `Выбран файл: ${draft.file.name}`
-                                    : "Максимальный размер — 10 МБ для каждого файла."}
+                                  {draft.file?.name ? `Выбран файл: ${draft.file.name}` : "Файл не выбран"}
                                 </span>
+                                <div className="flex items-center gap-2">
+                                  {draft.file?.name ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="rounded-lg"
+                                      onClick={() => {
+                                        const input = document.getElementById(`document-file-${draft.id}`) as
+                                          | HTMLInputElement
+                                          | null;
+                                        input?.click();
+                                      }}
+                                      disabled={pending}
+                                    >
+                                      <RefreshCcw className="h-4 w-4" />
+                                      <span className="sr-only">Заменить файл</span>
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="rounded-lg"
+                                      onClick={() => {
+                                        const input = document.getElementById(`document-file-${draft.id}`) as
+                                          | HTMLInputElement
+                                          | null;
+                                        input?.click();
+                                      }}
+                                      disabled={pending}
+                                    >
+                                      <Paperclip className="mr-2 h-4 w-4" />
+                                      Выбрать файл
+                                    </Button>
+                                  )}
+                                  {draft.file?.name ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="rounded-lg text-destructive"
+                                      onClick={() => {
+                                        handleDocumentDraftFileChange(draft.id, null);
+                                      }}
+                                      disabled={pending}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Удалить файл</span>
+                                    </Button>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1439,7 +1501,7 @@ export function TaskDetailView({
                       Добавить документ
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                      После отправки файлы автоматически попадут в карточку клиента и сделки.
+                      После отправки файлы автоматически попадут в карточку сделки.
                     </p>
                   </div>
                 </div>

@@ -80,6 +80,8 @@ async function generateFormattedDealNumber(
 }
 
 const DEFAULT_GUARD_PAYLOAD: Record<string, unknown> = {
+  buyer_type: null,
+  seller_type: null,
   quotationPrepared: false,
   vehicle: { verified: false },
   docs: { required: { allUploaded: false } },
@@ -568,7 +570,7 @@ export async function createDealWithWorkflow(
         return {
           success: false,
           statusCode: 400,
-          message: "Клиент не найден. Сначала создайте клиента, затем повторите попытку.",
+          message: "Покупатель не найден. Сначала создайте покупателя, затем повторите попытку.",
         };
       }
 
@@ -577,7 +579,7 @@ export async function createDealWithWorkflow(
         return {
           success: false,
           statusCode: 404,
-          message: "Профиль клиента не найден",
+          message: "Профиль покупателя не найден",
         };
       }
 
@@ -672,7 +674,7 @@ export async function createDealWithWorkflow(
       return {
         success: false,
         statusCode: 400,
-        message: "Не удалось определить клиента для сделки",
+        message: "Не удалось определить покупателя для сделки",
       };
     }
 

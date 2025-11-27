@@ -15,7 +15,7 @@ function getSupabaseConfig() {
   return { supabaseUrl, serviceRoleKey };
 }
 
-// Создание Supabase клиента
+// Создание Supabase покупателя
 function createSupabaseClient() {
   const { supabaseUrl, serviceRoleKey } = getSupabaseConfig();
   return createClient(supabaseUrl, serviceRoleKey, {

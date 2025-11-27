@@ -30,8 +30,8 @@ WITH buyer_stage AS (
               { "id": "checklist", "type": "checklist", "label": "Рекомендуемые документы (необязательно)" },
               { "id": "buyer_company_email", "type": "text", "label": "Электронная почта компании", "hint": "Необязательно. Укажите, если есть." },
               { "id": "buyer_company_phone", "type": "text", "label": "Телефон компании", "hint": "Необязательно. Укажите, если есть." },
-              { "id": "buyer_contact_email", "type": "text", "label": "Электронная почта клиента/водителя", "hint": "Необязательно. Укажите, если есть." },
-              { "id": "buyer_contact_phone", "type": "text", "label": "Телефон клиента/водителя", "hint": "Необязательно. Укажите, если есть." }
+              { "id": "buyer_contact_email", "type": "text", "label": "Электронная почта покупателя/водителя", "hint": "Необязательно. Укажите, если есть." },
+              { "id": "buyer_contact_phone", "type": "text", "label": "Телефон покупателя/водителя", "hint": "Необязательно. Укажите, если есть." }
             ]
           },
           "defaults": {
@@ -122,7 +122,7 @@ INSERT INTO workflow_task_templates (workflow_version_id, template_id, task_type
 SELECT w.id,
        'collect_docs_v1',
        'COLLECT_DOCS',
-       '{\"version\":\"1.0\",\"fields\":[{\"id\":\"buyer_type\",\"type\":\"select\",\"label\":\"Тип покупателя\",\"hint\":\"Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны.\",\"options\":[{\"value\":\"company\",\"label\":\"Юридическое лицо\"},{\"value\":\"individual\",\"label\":\"Физическое лицо\"}]},{\"id\":\"checklist\",\"type\":\"checklist\",\"label\":\"Рекомендуемые документы (необязательно)\"},{\"id\":\"buyer_company_email\",\"type\":\"text\",\"label\":\"Электронная почта компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_company_phone\",\"type\":\"text\",\"label\":\"Телефон компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_email\",\"type\":\"text\",\"label\":\"Электронная почта клиента/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_phone\",\"type\":\"text\",\"label\":\"Телефон клиента/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"}]}'::jsonb,
+       '{\"version\":\"1.0\",\"fields\":[{\"id\":\"buyer_type\",\"type\":\"select\",\"label\":\"Тип покупателя\",\"hint\":\"Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны.\",\"options\":[{\"value\":\"company\",\"label\":\"Юридическое лицо\"},{\"value\":\"individual\",\"label\":\"Физическое лицо\"}]},{\"id\":\"checklist\",\"type\":\"checklist\",\"label\":\"Рекомендуемые документы (необязательно)\"},{\"id\":\"buyer_company_email\",\"type\":\"text\",\"label\":\"Электронная почта компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_company_phone\",\"type\":\"text\",\"label\":\"Телефон компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_email\",\"type\":\"text\",\"label\":\"Электронная почта покупателя/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_phone\",\"type\":\"text\",\"label\":\"Телефон покупателя/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"}]}'::jsonb,
        '{\"buyer_type\":\"\",\"checklist\":[],\"buyer_company_email\":\"\",\"buyer_company_phone\":\"\",\"buyer_contact_email\":\"\",\"buyer_contact_phone\":\"\"}'::jsonb
 FROM workflow_versions w
 WHERE w.template IS NOT NULL
@@ -148,7 +148,7 @@ WITH updated_tasks AS (
     jsonb_set(
       jsonb_set(
         jsonb_set(payload, '{schema,fields}',
-          '{\"fields\":[{\"id\":\"buyer_type\",\"type\":\"select\",\"label\":\"Тип покупателя\",\"hint\":\"Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны.\",\"options\":[{\"value\":\"company\",\"label\":\"Юридическое лицо\"},{\"value\":\"individual\",\"label\":\"Физическое лицо\"}]},{\"id\":\"checklist\",\"type\":\"checklist\",\"label\":\"Рекомендуемые документы (необязательно)\"},{\"id\":\"buyer_company_email\",\"type\":\"text\",\"label\":\"Электронная почта компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_company_phone\",\"type\":\"text\",\"label\":\"Телефон компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_email\",\"type\":\"text\",\"label\":\"Электронная почта клиента/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_phone\",\"type\":\"text\",\"label\":\"Телефон клиента/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"}],\"version\":\"1.0\"}'::jsonb,
+          '{\"fields\":[{\"id\":\"buyer_type\",\"type\":\"select\",\"label\":\"Тип покупателя\",\"hint\":\"Выберите тип, чтобы увидеть рекомендуемый набор документов. Все поля необязательны.\",\"options\":[{\"value\":\"company\",\"label\":\"Юридическое лицо\"},{\"value\":\"individual\",\"label\":\"Физическое лицо\"}]},{\"id\":\"checklist\",\"type\":\"checklist\",\"label\":\"Рекомендуемые документы (необязательно)\"},{\"id\":\"buyer_company_email\",\"type\":\"text\",\"label\":\"Электронная почта компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_company_phone\",\"type\":\"text\",\"label\":\"Телефон компании\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_email\",\"type\":\"text\",\"label\":\"Электронная почта покупателя/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"},{\"id\":\"buyer_contact_phone\",\"type\":\"text\",\"label\":\"Телефон покупателя/водителя\",\"hint\":\"Необязательно. Укажите, если есть.\"}],\"version\":\"1.0\"}'::jsonb,
           true
         ),
         '{defaults}',

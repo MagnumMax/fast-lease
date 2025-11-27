@@ -578,6 +578,8 @@ const updateDealSchema = z.object({
   slug: z.string().min(1),
   dealNumber: z.string().optional(),
   companyCode: z.enum(DEAL_COMPANY_CODES).optional(),
+  buyerType: z.enum(["individual", "company"]).optional(),
+  sellerType: z.enum(["individual", "company"]).optional(),
   principalAmount: z.string().optional(),
   totalAmount: z.string().optional(),
   monthlyPayment: z.string().optional(),
@@ -973,6 +975,8 @@ export async function updateOperationsDeal(
     contractEndDate,
     firstPaymentDate,
     completedAt,
+    buyerType,
+    sellerType,
     insuranceProvider,
     insurancePolicyNumber,
     insurancePolicyType,
@@ -1028,6 +1032,12 @@ export async function updateOperationsDeal(
 
     const nextPayload = isPlainRecord(dealRow.payload) ? structuredClone(dealRow.payload) : {};
     nextPayload.seller_documents = sanitizeSellerDocuments(sellerDocuments);
+    if (buyerType) {
+      nextPayload.buyer_type = buyerType;
+    }
+    if (sellerType) {
+      nextPayload.seller_type = sellerType;
+    }
 
     const insuranceDetails = sanitizeInsuranceDetails(
       (dealRow as { insurance_details?: Record<string, unknown> | null }).insurance_details,

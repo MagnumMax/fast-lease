@@ -11,7 +11,7 @@ DECLARE
   investor_user_id UUID;
   finance_user_id UUID;
 BEGIN
-  -- Создаем пользователей auth.users и профили для клиентов (50 человек)
+  -- Создаем пользователей auth.users и профили для покупателей (50 человек)
   FOR i IN 1..50 LOOP
     INSERT INTO auth.users (id, instance_id, email, encrypted_password, email_confirmed_at, confirmation_token, phone, raw_user_meta_data, aud, role, created_at, updated_at)
     VALUES (
@@ -22,7 +22,7 @@ BEGIN
       now() - (random() * interval '365 days'),
       null,
       '+97150' || LPAD((1000000 + (random() * 999999)::int)::text, 7, '0'),
-      jsonb_build_object('full_name', 'Клиент ' || i),
+      jsonb_build_object('full_name', 'Покупатель ' || i),
       'authenticated',
       'authenticated',
       now() - (random() * interval '365 days'),
@@ -37,7 +37,7 @@ BEGIN
     ) VALUES (
       client_user_id,
       CASE WHEN random() > 0.1 THEN 'active' ELSE 'pending' END,
-      'Клиент ' || i,
+      'Покупатель ' || i,
       'Имя' || i,
       'Фамилия' || i,
       '+97150' || LPAD((1000000 + (random() * 999999)::int)::text, 7, '0'),
@@ -69,7 +69,7 @@ BEGIN
     VALUES (client_user_id, 'CLIENT', now() - (random() * interval '365 days'));
   END LOOP;
 
-  RAISE NOTICE 'Клиенты созданы: 50 пользователей';
+  RAISE NOTICE 'Покупатели созданы: 50 пользователей';
 
   -- Создаем операционных менеджеров (5 человек)
   FOR i IN 1..5 LOOP

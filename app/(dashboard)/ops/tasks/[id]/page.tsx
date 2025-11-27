@@ -23,6 +23,7 @@ import { completeTaskFormAction } from "./actions";
 import {
   evaluateClientDocumentChecklist,
   extractChecklistFromTaskPayload,
+  isOptionalGuardDocument,
   type ClientDocumentChecklist,
   type ClientDocumentSummary,
 } from "@/lib/workflow/documents-checklist";
@@ -50,13 +51,25 @@ type TaskPageParams = {
 const DEAL_STORAGE_BUCKET = "deal-documents";
 const CLIENT_STORAGE_BUCKET = "client-documents";
 const VEHICLE_STORAGE_BUCKET = "vehicle-documents";
-
 type SummaryDataPoint = { label: string; value: string };
 type SummaryDocumentEntry = { label: string; value: string; status?: string | null; url?: string | null };
+type WorkflowDocumentDefinition = {
+  documentType: string;
+  label: string;
+};
+type WorkflowDocumentGroupEntry = {
+  stageKey: string;
+  stageTitle: string;
+  taskTitle: string;
+  taskTemplateId: string;
+  documents: SummaryDocumentEntry[];
+};
 type FinanceEntitySnapshot = {
   title: string;
   data: SummaryDataPoint[];
   documents: SummaryDocumentEntry[];
+  workflowDocuments?: WorkflowDocumentGroupEntry[];
+  additionalDocuments?: SummaryDocumentEntry[];
 };
 type FinanceReviewSnapshot = {
   deal: FinanceEntitySnapshot;
@@ -82,6 +95,7 @@ type DealDocumentWithUrl = {
   title: string | null;
   status: string | null;
   storage_path: string | null;
+  created_at?: string | null;
   metadata?: unknown;
   signedUrl: string | null;
 };
@@ -173,6 +187,188 @@ function parseQuoteNumber(value: unknown): number | null {
   if (!normalized) return null;
   const parsed = Number.parseFloat(normalized);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeDocumentTypeValue(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.toLowerCase() : null;
+}
+
+function stripFileSuffix(label?: string | null): string {
+  if (!label) return "";
+  return label.replace(/\s*\(файл\)/gi, "").trim();
+}
+
+function extractDocumentDefinitionsFromPayload(payload: Record<string, unknown> | null): WorkflowDocumentDefinition[] {
+  const schemaBranch =
+    payload && typeof payload.schema === "object" && !Array.isArray(payload.schema)
+      ? (payload.schema as Record<string, unknown>)
+      : null;
+  const fieldsRaw = Array.isArray(schemaBranch?.fields) ? schemaBranch?.fields : [];
+  const definitions: WorkflowDocumentDefinition[] = [];
+
+  fieldsRaw.forEach((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const branch = raw as Record<string, unknown>;
+    const docType =
+      typeof branch.document_type === "string"
+        ? (branch.document_type as string)
+        : typeof branch.documentType === "string"
+          ? (branch.documentType as string)
+          : null;
+    if (!docType) return;
+    const labelRaw = typeof branch.label === "string" ? (branch.label as string) : docType;
+    const label = stripFileSuffix(labelRaw);
+    definitions.push({ documentType: docType, label: label.length > 0 ? label : docType });
+  });
+
+  return definitions;
+}
+
+function resolveDocumentLabelFromType(documentType: string | null, fallbackLabel?: string | null): string {
+  const candidates = [
+    fallbackLabel,
+    documentType ? getDealDocumentLabel(documentType) : null,
+    documentType ? getClientDocumentLabel(documentType as ClientDocumentTypeValue) : null,
+    documentType,
+  ];
+  const match = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
+  return match ? match.trim() : "Документ";
+}
+
+type DealTaskSnapshot = {
+  id: string;
+  title: string;
+  guardKey: string | null;
+  stageKey: string | null;
+  stageTitle: string | null;
+  createdAt: string | null;
+  documents: WorkflowDocumentDefinition[];
+};
+
+function buildTaskDocumentGroups(
+  tasks: DealTaskSnapshot[],
+  dealDocuments: DealDocumentWithUrl[],
+): WorkflowDocumentGroupEntry[] {
+  const taskByGuard = new Map<string | null, DealTaskSnapshot>();
+  tasks.forEach((task) => {
+    const guardKey = task.guardKey ?? null;
+    if (!taskByGuard.has(guardKey)) {
+      taskByGuard.set(guardKey, task);
+    }
+  });
+
+  const defaultGuardlessTask = tasks.find((t) => !t.guardKey) ?? null;
+  const groups = new Map<string, WorkflowDocumentGroupEntry>();
+  const groupDocTypeMap = new Map<string, Map<string, SummaryDocumentEntry>>();
+
+  // инициализируем группы по задачам, чтобы показать даже не загруженные документы
+  tasks.forEach((task) => {
+    const groupKey = task.id;
+    const groupDocs = task.documents.map<SummaryDocumentEntry>((def) => ({
+      label: resolveDocumentLabelFromType(def.documentType, def.label),
+      value: "—",
+      status: null,
+      url: null,
+    }));
+    groups.set(groupKey, {
+      stageKey: task.stageKey ?? "deal",
+      stageTitle: task.stageTitle ?? task.stageKey ?? "Сделка",
+      taskTitle: task.title,
+      taskTemplateId: task.id,
+      documents: groupDocs,
+    });
+    const docMap = new Map<string, SummaryDocumentEntry>();
+    task.documents.forEach((def, index) => {
+      const normalized = normalizeDocumentTypeValue(def.documentType);
+      if (normalized) {
+        docMap.set(normalized, groupDocs[index]);
+      }
+    });
+    groupDocTypeMap.set(groupKey, docMap);
+  });
+
+  const requiredDocs = dealDocuments.filter((doc) => !isOptionalGuardDocument(doc.metadata));
+  const docsByType = new Map<string, DealDocumentWithUrl[]>();
+  for (const doc of requiredDocs) {
+    const normalized = normalizeDocumentTypeValue(doc.document_type);
+    if (!normalized) continue;
+    const list = docsByType.get(normalized) ?? [];
+    list.push(doc);
+    docsByType.set(normalized, list);
+  }
+
+  requiredDocs.forEach((doc) => {
+    const metadata =
+      doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+        ? (doc.metadata as Record<string, unknown>)
+        : null;
+    const docGuard = metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
+    const targetTask =
+      (docGuard ? taskByGuard.get(docGuard) : null) ?? defaultGuardlessTask ?? tasks[0] ?? null;
+    const groupKey = targetTask ? targetTask.id : `doc-${docGuard ?? "unassigned"}`;
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, {
+        stageKey: targetTask?.stageKey ?? "deal",
+        stageTitle: targetTask?.stageTitle ?? targetTask?.stageKey ?? "Сделка",
+        taskTitle: targetTask?.title ?? "Документы",
+        taskTemplateId: groupKey,
+        documents: [],
+      });
+      groupDocTypeMap.set(groupKey, new Map());
+    }
+    const entryMap = groupDocTypeMap.get(groupKey) ?? new Map<string, SummaryDocumentEntry>();
+    const normalizedType = normalizeDocumentTypeValue(doc.document_type);
+    const existing = normalizedType ? entryMap.get(normalizedType) : null;
+
+    const label = resolveDocumentLabelFromType(doc.document_type, doc.title ?? null);
+    const value = formatDateValue(doc.created_at ?? null);
+    const status = doc.status ?? null;
+    const url = doc.signedUrl ?? null;
+
+    if (existing) {
+      existing.value = value;
+      existing.status = status;
+      existing.url = url;
+    } else {
+      const entry: SummaryDocumentEntry = { label, value, status, url };
+      groups.get(groupKey)!.documents.push(entry);
+      if (normalizedType) {
+        entryMap.set(normalizedType, entry);
+      }
+    }
+    groupDocTypeMap.set(groupKey, entryMap);
+  });
+
+  return Array.from(groups.values()).map((group) => ({
+    ...group,
+    documents: group.documents,
+  }));
+}
+
+function buildAdditionalDocumentEntries(dealDocuments: DealDocumentWithUrl[]): SummaryDocumentEntry[] {
+  const optionalDocs = dealDocuments.filter((doc) => isOptionalGuardDocument(doc.metadata));
+  return optionalDocs.map((doc) => {
+    const metadata =
+      doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+        ? (doc.metadata as Record<string, unknown>)
+        : null;
+    const guardLabel =
+      metadata && typeof metadata.guard_label === "string" && metadata.guard_label.trim().length > 0
+        ? (metadata.guard_label as string)
+        : null;
+
+    const label = resolveDocumentLabelFromType(doc.document_type, guardLabel ?? doc.title ?? null);
+    const value = formatDateValue(doc.created_at ?? null);
+
+    return {
+      label,
+      value,
+      status: doc.status ?? null,
+      url: doc.signedUrl ?? null,
+    };
+  });
 }
 
 function extractCommercialOfferFromPayload(payload: unknown): CommercialOfferExtract | null {
@@ -271,6 +467,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
   let guardDocuments: GuardDocumentLink[] = [];
   let financeSnapshot: FinanceReviewSnapshot | null = null;
   let dealDocuments: DealDocumentWithUrl[] = [];
+  let relatedTasks: DealTaskSnapshot[] = [];
 
   if (task.dealId) {
     const supabase = await createSupabaseServerClient();
@@ -300,6 +497,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             storage_path,
             title,
             status,
+            created_at,
             metadata
           )
         `,
@@ -319,6 +517,43 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         clientId: effectiveClientId,
         vehicleId: dealRow.vehicle_id ?? null,
       };
+      const { data: tasksData, error: tasksError } = await supabase
+        .from("tasks")
+        .select("id, title, payload, created_at")
+        .eq("deal_id", task.dealId)
+        .order("created_at", { ascending: true });
+
+      if (tasksError) {
+        console.error("[workflow] failed to load related tasks for finance snapshot", tasksError);
+      } else if (Array.isArray(tasksData)) {
+        relatedTasks = tasksData.map((row) => {
+          const payload =
+            row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
+              ? (row.payload as Record<string, unknown>)
+              : {};
+          const guardKey = resolveTaskGuardKey({
+            guardKey: typeof payload.guard_key === "string" ? (payload.guard_key as string) : null,
+            payload,
+          });
+          const stageKey =
+            typeof payload.status_key === "string"
+              ? (payload.status_key as string)
+              : typeof (payload.status as Record<string, unknown> | undefined)?.key === "string"
+                ? ((payload.status as Record<string, unknown>).key as string)
+                : null;
+          const stageTitle = stageKey && OPS_WORKFLOW_STATUS_MAP[stageKey] ? OPS_WORKFLOW_STATUS_MAP[stageKey].title : stageKey;
+
+          return {
+            id: row.id,
+            title: typeof row.title === "string" && row.title.trim().length > 0 ? row.title : "Задача",
+            guardKey,
+            stageKey,
+            stageTitle: stageTitle ?? null,
+            createdAt: row.created_at ?? null,
+            documents: extractDocumentDefinitionsFromPayload(payload),
+          };
+        });
+      }
 
       const dealDocumentsRaw = Array.isArray(dealRow.deal_documents)
         ? (dealRow.deal_documents as Array<{
@@ -342,6 +577,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           storage_path: (doc.storage_path as string | null | undefined) ?? null,
           title: (doc.title as string | null | undefined) ?? null,
           status: (doc.status as string | null | undefined) ?? null,
+          created_at: (doc as { created_at?: string }).created_at ?? null,
           metadata: doc.metadata ?? null,
           signedUrl: doc.storage_path
             ? await createSignedStorageUrl({ bucket: DEAL_STORAGE_BUCKET, path: doc.storage_path as string })
@@ -522,17 +758,19 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             : extractChecklistFromTaskPayload(task.payload ?? null);
         const requiredChecklist = Array.from(new Set([...baseChecklist, ...enforcedChecklist]));
         if (requiredChecklist.length > 0 && dealDocuments.length > 0) {
-          const checklistDocs = dealDocuments.map<ClientDocumentSummary>((doc) => ({
-            id: doc.id,
-            document_type: doc.document_type,
-            status: doc.status,
-            title: doc.title,
-            storage_path: doc.storage_path,
-            metadata:
-              doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
-                ? (doc.metadata as Record<string, unknown>)
-                : null,
-          }));
+          const checklistDocs = dealDocuments
+            .filter((doc) => !isOptionalGuardDocument(doc.metadata))
+            .map<ClientDocumentSummary>((doc) => ({
+              id: doc.id,
+              document_type: doc.document_type,
+              status: doc.status,
+              title: doc.title,
+              storage_path: doc.storage_path,
+              metadata:
+                doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+                  ? (doc.metadata as Record<string, unknown>)
+                  : null,
+            }));
           clientChecklist = evaluateClientDocumentChecklist(requiredChecklist, checklistDocs);
         } else if (requiredChecklist.length > 0) {
           clientChecklist = {
@@ -639,7 +877,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             { label: "Ежемесячный платёж", value: formatCurrencyValue(monthlyLeasePayment) },
             { label: "Доход по процентам", value: formatCurrencyValue(totalInterestAmount) },
             { label: "Страховые платежи", value: formatCurrencyValue(insuranceTotal) },
-            { label: "Итого для клиента (страх. + аванс)", value: formatCurrencyValue(totalForClient) },
+            { label: "Итого для покупателя (страх. + аванс)", value: formatCurrencyValue(totalForClient) },
           ];
 
           dealDataPoints.push(...calculationEntries);
@@ -651,6 +889,8 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           getDealDocumentLabel,
           dealDocuments,
         );
+        const workflowDocuments = buildTaskDocumentGroups(relatedTasks, dealDocuments);
+        const additionalDocuments = buildAdditionalDocumentEntries(dealDocuments);
 
         let vehicleSnapshot: FinanceEntitySnapshot | null = null;
         const vehicleId = dealSummary?.vehicleId ?? null;
@@ -795,7 +1035,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             );
 
             clientSnapshot = {
-              title: "Клиент",
+              title: "Покупатель",
               data: clientDataPoints,
               documents: clientDocumentEntries,
             };
@@ -807,6 +1047,8 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             title: "Сделка",
             data: dealDataPoints,
             documents: dealDocumentEntries,
+            workflowDocuments,
+            additionalDocuments,
           },
         };
       }
@@ -816,6 +1058,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
   return (
     <TaskDetailView
       task={task}
+      guardKey={guardKey}
       guardMeta={
         guardMeta
           ? {

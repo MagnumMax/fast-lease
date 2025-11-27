@@ -81,6 +81,8 @@ type FormState = {
   insuranceLastPaymentStatus: string;
   insuranceLastPaymentDate: string;
   insuranceNotes: string;
+  buyerType: "individual" | "company" | "";
+  sellerType: "individual" | "company" | "";
 };
 
 type FormSectionProps = {
@@ -247,6 +249,8 @@ export function DealEditDialog({
     return {
       dealNumber: defaults.dealNumber ?? "",
       companyCode: defaults.companyCode ?? DEFAULT_DEAL_COMPANY_CODE,
+      buyerType: defaults.buyerType ?? "",
+      sellerType: defaults.sellerType ?? "",
       principalAmount: formatNumberInput(defaults.principalAmount, 2),
       totalAmount: formatNumberInput(defaults.totalAmount, 2),
       monthlyPayment: formatNumberInput(defaults.monthlyPayment, 2),
@@ -517,6 +521,11 @@ export function DealEditDialog({
     event.preventDefault();
     setErrorMessage(null);
 
+    if (!form.buyerType || !form.sellerType) {
+      setErrorMessage("Укажите тип покупателя и продавца.");
+      return;
+    }
+
     startTransition(async () => {
       const sellerDocumentsNeedingUpload = sellerDocumentDrafts.filter(
         (doc) => doc.file instanceof File && doc.file.size > 0,
@@ -584,6 +593,8 @@ export function DealEditDialog({
         slug: detail.slug,
         dealNumber: form.dealNumber,
         companyCode: form.companyCode,
+        buyerType: form.buyerType || undefined,
+        sellerType: form.sellerType || undefined,
         principalAmount: form.principalAmount,
         totalAmount: form.totalAmount,
         monthlyPayment: form.monthlyPayment,
@@ -691,6 +702,50 @@ export function DealEditDialog({
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип покупателя</Label>
+                  <Select
+                    value={form.buyerType || EMPTY_SELECT_VALUE}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        buyerType: value === EMPTY_SELECT_VALUE ? "" : (value as "individual" | "company"),
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background text-sm">
+                      <SelectValue placeholder="Выберите тип" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EMPTY_SELECT_VALUE}>Не выбрано</SelectItem>
+                      <SelectItem value="individual">Физлицо</SelectItem>
+                      <SelectItem value="company">Юрлицо</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип продавца</Label>
+                  <Select
+                    value={form.sellerType || EMPTY_SELECT_VALUE}
+                    onValueChange={(value) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        sellerType: value === EMPTY_SELECT_VALUE ? "" : (value as "individual" | "company"),
+                      }))
+                    }
+                  >
+                    <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background text-sm">
+                      <SelectValue placeholder="Выберите тип" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={EMPTY_SELECT_VALUE}>Не выбрано</SelectItem>
+                      <SelectItem value="individual">Физлицо</SelectItem>
+                      <SelectItem value="company">Юрлицо</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </FormSection>
 

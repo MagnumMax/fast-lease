@@ -87,6 +87,66 @@ function resolvePath(context: Record<string, unknown>, path: string): unknown {
   }, context);
 }
 
+function parseConditionExpectedValue(raw: string): unknown {
+  const value = raw.trim();
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (value === "null") return null;
+  if (!Number.isNaN(Number(value)) && value !== "") {
+    return Number(value);
+  }
+  return value;
+}
+
+function evaluateActionConditions(
+  conditions: WorkflowAction["conditions"],
+  context: Record<string, unknown>,
+): boolean {
+  if (!conditions || conditions.length === 0) {
+    return true;
+  }
+
+  return conditions.every((condition) => {
+    const actual = resolvePath(context, condition.key);
+    const rule = condition.rule.trim();
+
+    if (rule === "truthy") {
+      return Boolean(actual);
+    }
+    if (rule === "falsy") {
+      return !actual;
+    }
+    if (rule.startsWith("==")) {
+      const expected = parseConditionExpectedValue(rule.slice(2));
+      return actual === expected;
+    }
+    if (rule.startsWith("!=")) {
+      const expected = parseConditionExpectedValue(rule.slice(2));
+      return actual !== expected;
+    }
+
+    console.warn("[workflow] unsupported action condition rule", { rule, condition });
+    return false;
+  });
+}
+
+function buildActionConditionContext(options: {
+  deal: DealSnapshot | null;
+  contextPayload: Record<string, unknown>;
+  status: { key: string; title: string };
+  workflow: { id: string; title: string };
+}): Record<string, unknown> {
+  const payload = (options.deal?.payload as Record<string, unknown> | null) ?? {};
+  return {
+    deal: options.deal,
+    payload,
+    context: options.contextPayload,
+    status: options.status,
+    workflow: options.workflow,
+    now: new Date().toISOString(),
+  };
+}
+
 function evaluateBindings(
   bindings: Record<string, string> | undefined,
   bindingContext: Record<string, unknown>,
@@ -181,6 +241,28 @@ async function handleTaskCreate(
     return;
   }
   console.log("[workflow] deal snapshot loaded");
+
+  const conditionContext = buildActionConditionContext({
+    deal: dealSnapshot,
+    contextPayload: context.payload ?? {},
+    status: {
+      key: context.transition.to,
+      title: statusMeta?.title ?? context.transition.to,
+    },
+    workflow: {
+      id: context.template.workflow.id,
+      title: context.template.workflow.title,
+    },
+  });
+
+  if (!evaluateActionConditions(action.conditions, conditionContext)) {
+    console.log("[workflow] task create skipped — conditions not met", {
+      dealId: context.dealId,
+      taskType: action.task.type,
+      conditions: action.conditions,
+    });
+    return;
+  }
 
   const dealPayload =
     (dealSnapshot.payload as Record<string, unknown> | null | undefined) ?? null;

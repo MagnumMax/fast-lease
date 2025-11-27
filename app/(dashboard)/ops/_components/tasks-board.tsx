@@ -990,7 +990,7 @@ export function OpsTasksBoard({
                           </Link>
                           {clientName || vehicleName ? (
                             <div className="space-y-1 text-xs text-muted-foreground">
-                              {clientName ? <div>Клиент: {clientName}</div> : null}
+                              {clientName ? <div>Покупатель: {clientName}</div> : null}
                               {vehicleName ? <div>Авто: {vehicleName}</div> : null}
                             </div>
                           ) : null}

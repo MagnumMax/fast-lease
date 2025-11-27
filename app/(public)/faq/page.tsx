@@ -143,7 +143,7 @@ export default function FaqPage() {
             href="/pricing"
           />
           <ResourceLink
-            label="Кабинет клиента"
+            label="Кабинет покупателя"
             description="Отслеживайте платежи, документы и сервисные заявки."
             href="/login"
           />

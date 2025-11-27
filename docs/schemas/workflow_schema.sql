@@ -95,6 +95,7 @@ CREATE TABLE deals (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   payload JSONB                             -- любые доп. поля/фичфлаги
 );
+-- payload сделки должен содержать buyer_type / seller_type (company | individual) для условного создания задач сбора документов.
 
 CREATE INDEX deals_status_idx ON deals(status);
 CREATE INDEX deals_opmgr_idx  ON deals(op_manager_id);

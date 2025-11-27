@@ -30,7 +30,7 @@ const metrics = [
 const highlights = [
   {
     title: "Отсутствуют фото панели",
-    description: "LTR-081125-7813 не загрузил 6 фото после сервиса. Нужен повторный вызов клиента.",
+    description: "LTR-081125-7813 не загрузил 6 фото после сервиса. Нужен повторный вызов покупателя.",
     status: "Follow-up",
     tone: "warning" as const,
   },

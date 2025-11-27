@@ -311,7 +311,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   );
 
   const personalValidationMessage = personalHasIncomplete
-    ? "Укажите тип и файл для каждого документа клиента."
+    ? "Укажите тип и файл для каждого документа покупателя."
     : null;
   const companyValidationMessage = companyHasIncomplete
     ? "Укажите тип и файл для каждого документа компании."
@@ -724,7 +724,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
 
       if (!checkResult.canDelete) {
         setDeleteErrorMessage(
-          checkResult.reason ?? "Клиента нельзя удалить, пока у него есть активные сделки.",
+          checkResult.reason ?? "Покупателя нельзя удалить, пока у него есть активные сделки.",
         );
         setDeleteOpen(true);
         return;
@@ -734,7 +734,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
       setDeleteOpen(true);
     } catch (error) {
       console.error("[operations] unexpected error during client deletion check", error);
-      setDeleteErrorMessage("Не удалось проверить возможность удаления клиента.");
+      setDeleteErrorMessage("Не удалось проверить возможность удаления покупателя.");
     } finally {
       setIsCheckingDelete(false);
     }
@@ -771,7 +771,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
       router.refresh();
     } catch (error) {
       console.error("[operations] unexpected error during client deletion", error);
-      setDeleteErrorMessage("Произошла ошибка при удалении клиента.");
+      setDeleteErrorMessage("Произошла ошибка при удалении покупателя.");
     } finally {
       setIsDeleting(false);
     }
@@ -793,7 +793,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
         </DialogTrigger>
         <DialogContent className="max-h-[85vh] overflow-y-auto rounded-3xl sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Редактирование клиента</DialogTitle>
+            <DialogTitle>Редактирование покупателя</DialogTitle>
             <DialogDescription>
               Обновите контактные данные, идентификационные сведения и финансовый профиль.
             </DialogDescription>
@@ -812,7 +812,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                 />
               </div>
               <div>
-                <Label htmlFor="client-type">Тип клиента</Label>
+                <Label htmlFor="client-type">Тип покупателя</Label>
                 <Select
                   value={form.clientType}
                   onValueChange={(value) =>
@@ -931,9 +931,9 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                 onRemoveDraft: removePersonalDocumentDraft,
                 onDeleteExisting: handleDeleteExistingDocument,
                 isDeleting: isDocumentDeleting,
-                title: "Документы клиента",
+                title: "Документы покупателя",
                 description: "Загрузка документов для идентификации.",
-                emptyMessage: "Документы клиента пока не загружены.",
+                emptyMessage: "Документы покупателя пока не загружены.",
                 options: PERSON_DOCUMENT_OPTIONS,
                 actionError: documentActionError,
                 actionMessage: documentActionMessage,
@@ -1008,7 +1008,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
 
             <FormSection
               title="Финансовая информация"
-              description="Данные о занятости и финансовом профиле клиента"
+              description="Данные о занятости и финансовом профиле покупателя"
               columns={2}
             >
               <div>
@@ -1091,7 +1091,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                   onClick={handleDeleteClick}
                   disabled={isPending || isCheckingDelete || isDeleting}
                 >
-                  {isCheckingDelete ? "Проверяем..." : "Удалить клиента"}
+                  {isCheckingDelete ? "Проверяем..." : "Удалить покупателя"}
                 </Button>
               </div>
               <div className="order-1 flex gap-2 sm:order-2">
@@ -1120,18 +1120,18 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
       <Dialog open={deleteOpen} onOpenChange={(next) => (next ? setDeleteOpen(true) : closeDeleteDialog())}>
         <DialogContent className="rounded-3xl sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-destructive">Удалить клиента</DialogTitle>
+            <DialogTitle className="text-destructive">Удалить покупателя</DialogTitle>
             <DialogDescription asChild>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  Вы уверены, что хотите удалить клиента <strong>{profile.fullName}</strong>? Это действие
+                  Вы уверены, что хотите удалить покупателя <strong>{profile.fullName}</strong>? Это действие
                   необратимо.
                 </p>
                 <div className="space-y-1">
                   <p className="text-xs">Будут удалены:</p>
                   <ul className="text-xs mt-1 list-disc list-inside">
-                    <li>Профиль клиента</li>
-                    <li>Все документы клиента</li>
+                    <li>Профиль покупателя</li>
+                    <li>Все документы покупателя</li>
                     <li>Связанные завершённые сделки</li>
                     <li>Запись пользователя</li>
                   </ul>
@@ -1161,7 +1161,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
               onClick={confirmDelete}
               disabled={isDeleting || !canConfirmDelete}
             >
-              {isDeleting ? "Удаляем..." : "Удалить клиента"}
+              {isDeleting ? "Удаляем..." : "Удалить покупателя"}
             </Button>
           </DialogFooter>
         </DialogContent>

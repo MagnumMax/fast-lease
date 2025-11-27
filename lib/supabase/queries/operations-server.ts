@@ -92,7 +92,7 @@ export const WORKFLOW_ROLES = [
   { code: "LEGAL", name: "Юридический отдел" },
   { code: "ACCOUNTING", name: "Бухгалтерия" },
   { code: "ADMIN", name: "Администратор процесса" },
-  { code: "CLIENT", name: "Клиент" },
+  { code: "CLIENT", name: "Покупатель" },
 ] as const;
 
 export const WORKFLOW_ROLE_LABELS = WORKFLOW_ROLES.reduce(
@@ -142,7 +142,7 @@ export const OPS_WORKFLOW_STATUSES = [
     description: "Формирование коммерческого предложения и расчётов.",
     ownerRole: "OP_MANAGER",
     slaLabel: "SLA 8h",
-    entryActions: ["Подписание клиентом коммерческого предложения"],
+    entryActions: ["Подписание покупателем коммерческого предложения"],
     exitGuards: [
       {
         key: "quotationPrepared",
@@ -292,7 +292,7 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "VEHICLE_DELIVERY",
     title: "Выдача автомобиля",
-    description: "Подготовка и фактическая выдача авто клиенту.",
+    description: "Подготовка и фактическая выдача авто покупателю.",
     ownerRole: "TECH_SPECIALIST",
     entryActions: ["Подготовить акт выдачи и слот доставки"],
     exitGuards: [
@@ -306,7 +306,7 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "ACTIVE",
     title: "Активный лизинг",
-    description: "Договор активирован, обслуживание клиента.",
+    description: "Договор активирован, обслуживание покупателя.",
     ownerRole: "ACCOUNTING",
     entryActions: ["Передать в пост-учёт и биллинг"],
     exitGuards: [],
@@ -314,7 +314,7 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "CANCELLED",
     title: "Отменена",
-    description: "Заявка закрыта до активации — клиент или менеджер отменили процесс.",
+    description: "Заявка закрыта до активации — покупатель или менеджер отменили процесс.",
     ownerRole: "OP_MANAGER",
     entryActions: ["Зафиксировать причину отмены", "Уведомить команду"],
     exitGuards: [],
@@ -1457,10 +1457,10 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
     return [];
   }
 
-  // Загружаем уникальные client_id для запроса данных клиентов
+  // Загружаем уникальные client_id для запроса данных покупателей
   const uniqueClientIds = [...new Set(data.map(deal => deal.client_id).filter(Boolean))];
 
-  // Загружаем данные клиентов отдельным запросом
+  // Загружаем данные покупателей отдельным запросом
   console.log(`[DEBUG] Loading clients for IDs:`, uniqueClientIds.slice(0, 5), `... (total: ${uniqueClientIds.length})`);
   const { data: clientsData, error: clientsError } = await supabase
     .from("profiles")
@@ -1473,7 +1473,7 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
     first_client: clientsData?.[0]
   });
 
-  // Создаем карту клиентов для быстрого поиска
+  // Создаем карту покупателей для быстрого поиска
   type ClientData = {
     user_id: string;
     full_name: string | null;
@@ -1619,10 +1619,10 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
       : Array.isArray(vehicleRaw) && vehicleRaw.length > 0 ? vehicleRaw[0] : {};
     const vehicleData = vehicleDataRaw as SupabaseVehicleData;
 
-    // Получаем данные клиента из карты
+    // Получаем данные покупателя из карты
     const clientData = clientsMap.get(row.client_id as string);
 
-    // Формируем название клиента
+    // Формируем название покупателя
     const resolvedClientId =
       typeof row.client_id === "string" && row.client_id.trim().length > 0
         ? (row.client_id as string)
@@ -2942,7 +2942,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     prefix: dealCompany.prefix,
   });
 
-  // Загружаем данные клиента отдельным запросом
+  // Загружаем данные покупателя отдельным запросом
   const clientIdRaw = typeof dealRow.client_id === "string" ? dealRow.client_id.trim() : "";
   const clientId = clientIdRaw.length > 0 ? clientIdRaw : null;
   let clientData: {
@@ -2989,7 +2989,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   }
 
 
-  // Загружаем email из auth.users (если есть клиент)
+  // Загружаем email из auth.users (если есть покупатель)
   let authUser: Awaited<ReturnType<typeof supabaseService.auth.admin.getUserById>>["data"] | null = null;
   if (clientId) {
     try {
@@ -3606,7 +3606,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     notes: clientProfile.notes,
   });
 
-  const profileDescription = resolvedClientName ? `Клиент: ${resolvedClientName}` : "Клиент не указан";
+  const profileDescription = resolvedClientName ? `Покупатель: ${resolvedClientName}` : "Покупатель не указан";
   const vehicleId = vehicleData?.id ?? null;
   const vehicleDetailSlug = vehicleId ? buildSlugWithId(vehicleName, vehicleId) || vehicleId : null;
 
@@ -3992,10 +3992,20 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     isEmpty: clientMetadataData.isEmpty,
   });
 
+  const dealPayload = (dealRow.payload as Record<string, unknown> | null) ?? null;
+  const rawBuyerType = typeof dealPayload?.buyer_type === "string" ? dealPayload.buyer_type : null;
+  const rawSellerType = typeof dealPayload?.seller_type === "string" ? dealPayload.seller_type : null;
+  const normalizedBuyerType =
+    rawBuyerType === "company" || rawBuyerType === "individual" ? rawBuyerType : null;
+  const normalizedSellerType =
+    rawSellerType === "company" || rawSellerType === "individual" ? rawSellerType : null;
+
   const editDefaults: OpsDealEditDefaults = {
     dealNumber: dealRow.deal_number ?? fallbackDealNumber,
     statusKey,
     companyCode: dealCompany.code,
+    buyerType: normalizedBuyerType,
+    sellerType: normalizedSellerType,
     principalAmount: getNumber(dealRow.principal_amount),
     totalAmount: getNumber(dealRow.total_amount),
     monthlyPayment: getNumber(dealRow.monthly_payment),

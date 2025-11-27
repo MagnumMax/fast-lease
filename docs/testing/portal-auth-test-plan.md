@@ -27,7 +27,7 @@
 1. Client portal happy path:
    - Visit `/login`, введите `client@fastlease.ae` + пароль `123456` → ожидать мгновенный вход и переход на `/client/dashboard` (без промежуточных экранов).
 2. Investor portal unauthorized:
-   - Аутентифицируйтесь как клиент, попробуйте `/investor/dashboard`, ожидайте redirect на `/login` с сохранением `next=/investor/dashboard`.
+   - Аутентифицируйтесь как покупатель, попробуйте `/investor/dashboard`, ожидайте redirect на `/login` с сохранением `next=/investor/dashboard`.
 3. Middleware cross-portal block:
    - С активной `app`-сессией откройте `/client/...` → ожидать запрос повторного входа/403.
 4. Forgot/reset flow:

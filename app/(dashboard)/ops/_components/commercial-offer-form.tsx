@@ -245,7 +245,7 @@ export function CommercialOfferForm({
       { label: "Ежемесячный платёж", value: formatCurrencyAED(monthlyLeasePayment) },
       { label: "Доход по процентам", value: formatCurrencyAED(totalInterestAmount) },
       { label: "Страховые платежи", value: formatCurrencyAED(insuranceTotal) },
-      { label: "Итого для клиента (страх. + аванс)", value: formatCurrencyAED(totalForClient) },
+      { label: "Итого для покупателя (страх. + аванс)", value: formatCurrencyAED(totalForClient) },
     ];
   }, [form.downPayment, form.insuranceRateAnnual, form.interestRateAnnual, form.priceVat, form.termMonths]);
 

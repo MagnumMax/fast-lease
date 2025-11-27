@@ -99,7 +99,7 @@ graph TD
 | /apply/documents     | Загрузка документов                      |
 | /apply/summary       | Подтверждение и подписание заявки        |
 | /apply/status        | Статус обработки заявки                  |
-| /client/dashboard    | Дашборд клиента                          |
+| /client/dashboard    | Дашборд покупателя                          |
 | /client/invoices     | Управление платежами                     |
 | /client/vehicle      | Информация об автомобиле                 |
 | /client/support      | Система поддержки                        |
@@ -107,7 +107,7 @@ graph TD
 | /ops/dashboard       | Операционный дашборд                     |
 | /ops/tasks           | Управление задачами                      |
 | /ops/deals           | Канбан сделок                            |
-| /ops/clients         | Управление клиентами                     |
+| /ops/clients         | Управление покупателями                     |
 | /ops/cars            | Управление автопарком                    |
 | /admin/bpm           | Управление бизнес-процессами             |
 | /admin/users         | Управление пользователями                |

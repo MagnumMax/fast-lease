@@ -548,7 +548,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
           <Card className="bg-card/60 backdrop-blur">
             <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
               <div>
-                <CardTitle>Клиент</CardTitle>
+                <CardTitle>Покупатель</CardTitle>
               </div>
               <Button variant="outline" size="sm" asChild className="rounded-lg">
                 <Link href={clientHref}>Открыть карточку</Link>

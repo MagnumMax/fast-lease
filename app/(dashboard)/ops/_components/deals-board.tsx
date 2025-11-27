@@ -112,7 +112,7 @@ function ComboboxField({ label, placeholder, value, onChange, options, disabled 
         <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-left text-sm font-medium">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        {/* Scrollable directories for клиентов и автомобилей (PRD §6.4) */}
+        {/* Scrollable directories for покупателей и автомобилей (PRD §6.4) */}
         <SelectContent className="max-h-80 overflow-y-auto rounded-xl border border-border bg-card shadow-xl">
           {options.map((option) => (
             <SelectItem key={option.value} value={option.value} className="py-2 text-left">
@@ -258,6 +258,8 @@ type DealFormState = {
   vehicleVin: string;
   source: string;
   companyCode: DealCompanyCode;
+  buyerType: "individual" | "company";
+  sellerType: "individual" | "company";
 };
 
 function getPayloadValue(
@@ -535,6 +537,8 @@ export function OpsDealsBoard({
     vehicleVin: vehicleOptions[0]?.optionValue ?? "",
     source: defaultSource,
     companyCode: DEFAULT_DEAL_COMPANY_CODE,
+    buyerType: "individual",
+    sellerType: "individual",
   }));
   const [showCustomSource, setShowCustomSource] = useState(false);
 
@@ -744,10 +748,13 @@ export function OpsDealsBoard({
       return;
     }
 
+    const buyerType = formState.buyerType;
+    const sellerType = formState.sellerType;
+
     if (!selectedClient) {
       setFeedback({
         type: "error",
-        message: "Выберите клиента из справочника.",
+        message: "Выберите покупателя из справочника.",
       });
       return;
     }
@@ -756,6 +763,14 @@ export function OpsDealsBoard({
       setFeedback({
         type: "error",
         message: "Выберите автомобиль из каталога.",
+      });
+      return;
+    }
+
+    if (!buyerType || !sellerType) {
+      setFeedback({
+        type: "error",
+        message: "Укажите тип покупателя и тип продавца.",
       });
       return;
     }
@@ -777,6 +792,8 @@ export function OpsDealsBoard({
       console.log(`[DEBUG] calling createOperationsDeal with:`, {
         source: normalizedSource,
         reference,
+        buyerType,
+        sellerType,
         customer: {
           full_name: selectedClient.name,
           email: selectedClient.email || undefined,
@@ -803,6 +820,8 @@ export function OpsDealsBoard({
         source: normalizedSource,
         companyCode: selectedCompanyCode,
         reference,
+        buyerType,
+        sellerType,
         customer: {
           full_name: selectedClient.name,
           email: selectedClient.email || undefined,
@@ -858,6 +877,8 @@ export function OpsDealsBoard({
         vehicleVin: vehicleOptions[0]?.optionValue ?? "",
         source: resetSource,
         companyCode: DEFAULT_DEAL_COMPANY_CODE,
+        buyerType,
+        sellerType,
       });
       setIsCreateOpen(false);
       router.refresh();
@@ -928,10 +949,47 @@ export function OpsDealsBoard({
             </Select>
           </div>
 
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80">Тип покупателя</label>
+              <Select
+                value={formState.buyerType}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({ ...prev, buyerType: value as "individual" | "company" }))
+                }
+              >
+                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
+                  <SelectValue placeholder="Выберите тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Физлицо</SelectItem>
+                  <SelectItem value="company">Юрлицо</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80">Тип продавца</label>
+              <Select
+                value={formState.sellerType}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({ ...prev, sellerType: value as "individual" | "company" }))
+                }
+              >
+                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
+                  <SelectValue placeholder="Выберите тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Физлицо</SelectItem>
+                  <SelectItem value="company">Юрлицо</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <ComboboxField
-              label="Клиент"
-              placeholder="Выберите клиента"
+              label="Покупатель"
+              placeholder="Выберите покупателя"
               value={formState.clientId}
               onChange={(value) =>
                 setFormState((prev) => ({ ...prev, clientId: value }))
@@ -1045,7 +1103,7 @@ export function OpsDealsBoard({
               <Input
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Поиск (клиент, авто, VIN, ID)"
+                placeholder="Поиск (покупатель, авто, VIN, ID)"
                 className="h-10 w-full rounded-xl pl-9"
               />
             </div>

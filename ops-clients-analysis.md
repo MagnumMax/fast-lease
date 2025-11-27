@@ -16,15 +16,15 @@
 - **Реальная реализация**: `app/(shared)/workspace/cars/page.tsx`
 - **Компонент таблицы**: `app/(dashboard)/ops/_components/cars-catalogue.tsx`
 
-## Анализ страницы клиентов (/ops/clients)
+## Анализ страницы покупателей (/ops/clients)
 
-### Структура таблицы клиентов
+### Структура таблицы покупателей
 
 Компонент `OpsClientsDirectory` реализует таблицу со следующими колонками:
 
 #### Колонки таблицы:
 1. **Полное имя** (min-width: 200px)
-   - Ссылка на детальную страницу клиента
+   - Ссылка на детальную страницу покупателя
    - Бейджи статуса и сегмента
    - Стили: `text-sm font-semibold text-brand-600`
 
@@ -34,7 +34,7 @@
    - Стили: `text-sm text-muted-foreground`
 
 3. **Скоринг** (min-width: 120px)
-   - Отображение кредитного скоринга клиента
+   - Отображение кредитного скоринга покупателя
    - Стили: `text-sm font-medium text-foreground`
 
 4. **Просрочки** (min-width: 140px)
@@ -46,7 +46,7 @@
    - Автомобиль, сумма, дата начала
    - Иконка CarFront для визуального разделения
 
-### Компоненты для модификации таблицы клиентов
+### Компоненты для модификации таблицы покупателей
 
 #### Основные файлы:
 - **`app/(dashboard)/ops/_components/clients-directory.tsx`** - основной компонент таблицы
@@ -56,12 +56,12 @@
 #### Ключевые функции для изменения:
 - Фильтрация: `searchQuery`, `statusFilter`, `overdueFilter`
 - Пагинация: `page`, `pageSize`, `currentClients`
-- Создание клиентов: `handleCreateClient()`
+- Создание покупателей: `handleCreateClient()`
 
-### Стили бейджей статуса клиентов
+### Стили бейджей статуса покупателей
 
 ```tsx
-// Статус клиента
+// Статус покупателя
 <Badge variant={client.status === "Blocked" ? "danger" : "success"} className="rounded-lg">
   {client.statusLabel}
 </Badge>
@@ -175,7 +175,7 @@ export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsT
 
 ## Адаптивность и мобильные версии
 
-### Клиенты
+### Покупатели
 - Использует только десктопную таблицу
 - Нет отдельной мобильной версии
 
@@ -186,7 +186,7 @@ export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsT
 
 ## Рекомендации по модификации
 
-### Для таблицы клиентов:
+### Для таблицы покупателей:
 1. **Добавление колонок**: Модифицировать `TableHeader` и `TableRow` в `clients-directory.tsx`
 2. **Изменение стилей**: Обновить Tailwind классы в компонентах Badge
 3. **Фильтрация**: Добавить новые фильтры в секцию `CardContent`

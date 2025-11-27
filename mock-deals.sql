@@ -25,7 +25,7 @@ INSERT INTO applications (
     personal_info, financial_info, employment_info, references_info,
     scoring_results, risk_assessment, assigned_to, submitted_at, approved_at
 ) VALUES 
--- Заявка 1: BMW X7 для корпоративного клиента
+-- Заявка 1: BMW X7 для корпоративного покупателя
 (
     gen_random_uuid(),
     'APP-2025-0001',
@@ -261,7 +261,7 @@ SELECT
 FROM generate_series(116, 140) as applications;
 
 -- =====================================================================
--- 1.4 ОТМЕНЕННЫЕ КЛИЕНТАМИ - 10 заявок (7%)
+-- 1.4 ОТМЕНЕННЫЕ ПОКУПАТЕЛЯМИ - 10 заявок (7%)
 -- =====================================================================
 
 INSERT INTO applications (
@@ -630,8 +630,8 @@ SELECT
     END,
     CASE 
         WHEN RANDOM() > 0.8 THEN 'Сбор платежа по договору'
-        WHEN RANDOM() > 0.6 THEN 'Проверка документов клиента'
-        WHEN RANDOM() > 0.4 THEN 'Follow-up с клиентом'
+        WHEN RANDOM() > 0.6 THEN 'Проверка документов покупателя'
+        WHEN RANDOM() > 0.4 THEN 'Follow-up с покупателем'
         WHEN RANDOM() > 0.2 THEN 'Обработка страхового полиса'
         ELSE 'Изменение условий договора'
     END,
@@ -663,7 +663,7 @@ CROSS JOIN generate_series(1, 3);  -- 3 задачи на сделку
 -- 5. ТИКЕТЫ ПОДДЕРЖКИ (support_tickets)
 -- =====================================================================
 
--- Создаем тикеты для клиентов со сделками
+-- Создаем тикеты для покупателей со сделками
 INSERT INTO support_tickets (
     id, ticket_number, client_id, deal_id, topic, priority, status,
     description, attachments, last_message_at, last_message_preview, created_at, updated_at
@@ -691,7 +691,7 @@ SELECT
         ELSE 'open'
     END,
     CASE 
-        WHEN RANDOM() > 0.8 THEN 'У клиента вопрос по предстоящему платежу'
+        WHEN RANDOM() > 0.8 THEN 'У покупателя вопрос по предстоящему платежу'
         WHEN RANDOM() > 0.6 THEN 'Необходимо обновить контактную информацию'
         WHEN RANDOM() > 0.4 THEN 'Проблема с мобильным приложением'
         WHEN RANDOM() > 0.2 THEN 'Произошел страховой случай'
@@ -712,10 +712,10 @@ FROM deals d
 CROSS JOIN generate_series(1, 2);  -- 2 тикета на сделку
 
 -- =====================================================================
--- 6. УВЕДОМЛЕНИЯ КЛИЕНТОВ (client_notifications)
+-- 6. УВЕДОМЛЕНИЯ ПОКУПАТЕЛЕЙ (client_notifications)
 -- =====================================================================
 
--- Создаем уведомления для клиентов
+-- Создаем уведомления для покупателей
 INSERT INTO client_notifications (
     id, client_id, title, message, icon, severity, read_at, created_at
 ) 
@@ -825,7 +825,7 @@ SELECT
     ROUND(AVG(interest_rate * 100), 2) as avg_interest_rate_percent
 FROM deals;
 
--- 4. Распределение сделок по типам клиентов
+-- 4. Распределение сделок по типам покупателей
 SELECT 
     p.metadata->>'client_category' as client_type,
     COUNT(*) as deal_count,

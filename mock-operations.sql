@@ -15,7 +15,7 @@
 -- 1.1 ЗАДАЧИ ПО СДЕЛКАМ - 210 задач
 -- =====================================================================
 
--- Задачи по проверке документов клиентов - 85 задач
+-- Задачи по проверке документов покупателей - 85 задач
 INSERT INTO tasks (
     id, deal_id, type, title, status, assignee_role, assignee_user_id,
     sla_due_at, completed_at, sla_status, payload, action_hash, created_at, updated_at
@@ -24,7 +24,7 @@ SELECT
     gen_random_uuid(),
     d.id,
     'document_verification',
-    'Проверка документов клиента по договору ' || d.deal_number,
+    'Проверка документов покупателя по договору ' || d.deal_number,
     CASE 
         WHEN ROW_NUMBER() OVER(PARTITION BY d.id) <= 60 THEN 'OPEN'
         WHEN ROW_NUMBER() OVER(PARTITION BY d.id) <= 75 THEN 'IN_PROGRESS'  
@@ -141,7 +141,7 @@ SELECT
     gen_random_uuid(),
     d.id,
     'vehicle_handover',
-    'Передача автомобиля клиенту по договору ' || d.deal_number,
+    'Передача автомобиля покупателю по договору ' || d.deal_number,
     CASE 
         WHEN ROW_NUMBER() OVER(PARTITION BY d.id) <= 25 THEN 'COMPLETED'
         WHEN ROW_NUMBER() OVER(PARTITION BY d.id) <= 35 THEN 'IN_PROGRESS'  
@@ -275,7 +275,7 @@ CROSS JOIN generate_series(1, 2) -- 2 задачи страховых случа
 WHERE d.status = 'active'
 LIMIT 28;
 
--- Задачи по обновлению клиентских данных - 22 задачи
+-- Задачи по обновлению покупательских данных - 22 задачи
 INSERT INTO tasks (
     id, deal_id, type, title, status, assignee_role, assignee_user_id,
     sla_due_at, completed_at, sla_status, payload, action_hash, created_at, updated_at
@@ -284,7 +284,7 @@ SELECT
     gen_random_uuid(),
     d.id,
     'client_data_update',
-    'Обновление контактных данных клиента по договору ' || d.deal_number,
+    'Обновление контактных данных покупателя по договору ' || d.deal_number,
     CASE 
         WHEN RANDOM() > 0.8 THEN 'COMPLETED'
         WHEN RANDOM() > 0.5 THEN 'IN_PROGRESS'  
@@ -347,7 +347,7 @@ LIMIT 15;
 -- =====================================================================
 
 -- =====================================================================
--- 2.1 УВЕДОМЛЕНИЯ КЛИЕНТАМ - 285 уведомлений
+-- 2.1 УВЕДОМЛЕНИЯ ПОКУПАТЕЛЯМ - 285 уведомлений
 -- =====================================================================
 
 -- Уведомления о статусах заявок - 95 уведомлений
@@ -429,7 +429,7 @@ CROSS JOIN generate_series(1, 2) -- 2 уведомления об обслужи
 WHERE d.status = 'active'
 LIMIT 65;
 
--- Общие сообщения клиентам - 50 уведомлений
+-- Общие сообщения покупателям - 50 уведомлений
 INSERT INTO client_notifications (
     id, client_id, title, message, icon, severity, read_at, created_at
 ) 
@@ -443,7 +443,7 @@ SELECT
         ELSE 'Обновление в системе'
     END,
     CASE 
-        WHEN RANDOM() > 0.8 THEN 'Команда FastLease поздравляет вас с днем рождения! Желаем безопасных поездок и благополучия. Как постоянному клиенту мы предоставляем скидку 15% на следующее обслуживание автомобиля.'
+        WHEN RANDOM() > 0.8 THEN 'Команда FastLease поздравляет вас с днем рождения! Желаем безопасных поездок и благополучия. Как постоянному покупателю мы предоставляем скидку 15% на следующее обслуживание автомобиля.'
         WHEN RANDOM() > 0.6 THEN 'Мы обновили программу лояльности FastLease Premium. Теперь вы можете получать больше бонусов, скидки на обслуживание и приоритетную поддержку 24/7.'
         WHEN RANDOM() > 0.4 THEN 'В связи с обновлением законодательства ОАЭ внесены изменения в условия лизинговых договоров. Подробная информация доступна в личном кабинете.'
         ELSE 'Система FastLease обновлена до новой версии. Доступны улучшенные функции мобильного приложения и расширенная аналитика по вашему договору.'
@@ -471,15 +471,15 @@ SELECT
     CASE 
         WHEN RANDOM() > 0.7 THEN 'Новая задача по сделке'
         WHEN RANDOM() > 0.5 THEN 'Напоминание о дедлайне'
-        WHEN RANDOM() > 0.3 THEN 'Клиент ожидает ответа'
+        WHEN RANDOM() > 0.3 THEN 'Покупатель ожидает ответа'
         ELSE 'Требуется эскалация'
     END,
     CASE 
         WHEN RANDOM() > 0.7 THEN 'Назначена новая задача по договору '
             || format('LTR-%s-%s', to_char(current_date, 'DDMMYY'), LPAD((ROW_NUMBER() OVER())::text, 4, '0'))
-            || '. Требуется проверка документов клиента в течение 24 часов.'
+            || '. Требуется проверка документов покупателя в течение 24 часов.'
         WHEN RANDOM() > 0.5 THEN 'Напоминание: срок выполнения задачи истекает завтра. Количество просроченных задач: ' || (RANDOM() * 5 + 1)::integer || '.'
-        WHEN RANDOM() > 0.3 THEN 'Клиент оставил сообщение в тикете поддержки #SUP-' || LPAD((ROW_NUMBER() OVER())::text, 4, '0') || '. Ожидается ответ в течение 4 часов.'
+        WHEN RANDOM() > 0.3 THEN 'Покупатель оставил сообщение в тикете поддержки #SUP-' || LPAD((ROW_NUMBER() OVER())::text, 4, '0') || '. Ожидается ответ в течение 4 часов.'
         ELSE 'Сделка '
             || format('LTR-%s-%s', to_char(current_date, 'DDMMYY'), LPAD((ROW_NUMBER() OVER())::text, 4, '0'))
             || ' требует внимания руководства. Обратитесь к операционному менеджеру.'
@@ -508,8 +508,8 @@ SELECT
     CASE 
         WHEN RANDOM() > 0.6 THEN 'Выявлен просроченный платеж по договору '
             || format('LTR-%s-%s', to_char(current_date, 'DDMMYY'), LPAD((ROW_NUMBER() OVER())::text, 4, '0'))
-            || '. Сумма: ' || (RANDOM() * 50000 + 10000)::numeric(16,2) || ' AED. Требуется уведомление клиента.'
-        WHEN RANDOM() > 0.4 THEN 'Поступил запрос на изменение условий лизинга от клиента. Необходимо рассмотреть возможность реструктуризации платежей.'
+            || '. Сумма: ' || (RANDOM() * 50000 + 10000)::numeric(16,2) || ' AED. Требуется уведомление покупателя.'
+        WHEN RANDOM() > 0.4 THEN 'Поступил запрос на изменение условий лизинга от покупателя. Необходимо рассмотреть возможность реструктуризации платежей.'
         ELSE 'Ежедневный отчет по финансовым операциям готов. Всего платежей обработано: ' || (RANDOM() * 50 + 20)::integer || ', на сумму ' || (RANDOM() * 500000 + 100000)::numeric(16,2) || ' AED.'
     END,
     'finance',
@@ -538,7 +538,7 @@ SELECT
         WHEN RANDOM() > 0.3 THEN 'Завершено техническое обслуживание автомобиля по договору '
             || format('LTR-%s-%s', to_char(current_date, 'DDMMYY'), LPAD((ROW_NUMBER() OVER())::text, 4, '0'))
             || '. Все работы выполнены в срок. Автомобиль готов к выдаче.'
-        ELSE 'Требуется внеплановая диагностика автомобиля. Клиент сообщил о необычных звуках при торможении. VIN: ' || LPAD((ROW_NUMBER() OVER())::text, 17, '0') || '.'
+        ELSE 'Требуется внеплановая диагностика автомобиля. Покупатель сообщил о необычных звуках при торможении. VIN: ' || LPAD((ROW_NUMBER() OVER())::text, 17, '0') || '.'
     END,
     'technical',
     'info',
@@ -641,10 +641,10 @@ SELECT
     '[]'::jsonb,
     (CURRENT_TIMESTAMP - (RANDOM() * INTERVAL '6 hours'))::timestamptz,
     SUBSTRING(CASE 
-        WHEN RANDOM() > 0.8 THEN 'Информация предоставлена клиенту.'
+        WHEN RANDOM() > 0.8 THEN 'Информация предоставлена покупателю.'
         WHEN RANDOM() > 0.5 THEN 'Передан в финансовый отдел.'
         WHEN RANDOM() > 0.3 THEN 'Выставлен новый счет.'
-        ELSE 'Клиент ожидает ответа.'
+        ELSE 'Покупатель ожидает ответа.'
     END, 1, 50),
     (CURRENT_TIMESTAMP - (RANDOM() * INTERVAL '48 hours'))::timestamptz,
     (CURRENT_TIMESTAMP - (RANDOM() * INTERVAL '6 hours'))::timestamptz
@@ -734,7 +734,7 @@ SELECT
         WHEN RANDOM() > 0.8 THEN 'Данные успешно обновлены.'
         WHEN RANDOM() > 0.5 THEN 'Процедура расторжения объяснена.'
         WHEN RANDOM() > 0.3 THEN 'Информация по страховке предоставлена.'
-        ELSE 'Ответ отправлен клиенту.'
+        ELSE 'Ответ отправлен покупателю.'
     END, 1, 50),
     (CURRENT_TIMESTAMP - (RANDOM() * INTERVAL '60 hours'))::timestamptz,
     (CURRENT_TIMESTAMP - (RANDOM() * INTERVAL '12 hours'))::timestamptz

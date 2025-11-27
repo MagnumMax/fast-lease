@@ -15,7 +15,7 @@ export const WORKFLOW_ROLES = [
   { code: "LEGAL", name: "Юридический отдел" },
   { code: "ACCOUNTING", name: "Бухгалтерия" },
   { code: "ADMIN", name: "Администратор процесса" },
-  { code: "CLIENT", name: "Клиент" },
+  { code: "CLIENT", name: "Покупатель" },
 ] as const;
 
 export const WORKFLOW_ROLE_LABELS = WORKFLOW_ROLES.reduce(
@@ -65,7 +65,7 @@ export const OPS_WORKFLOW_STATUSES = [
     description: "Формирование коммерческого предложения и расчётов.",
     ownerRole: "OP_MANAGER",
     slaLabel: "SLA 8h",
-    entryActions: ["Подписание клиентом коммерческого предложения"],
+    entryActions: ["Подписание покупателем коммерческого предложения"],
     exitGuards: [
       {
         key: "quotationPrepared",
@@ -215,7 +215,7 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "VEHICLE_DELIVERY",
     title: "Выдача автомобиля",
-    description: "Подготовка и фактическая выдача авто клиенту.",
+    description: "Подготовка и фактическая выдача авто покупателю.",
     ownerRole: "TECH_SPECIALIST",
     entryActions: ["Подготовить акт выдачи и слот доставки"],
     exitGuards: [
@@ -229,7 +229,7 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "ACTIVE",
     title: "Активный лизинг",
-    description: "Договор активирован, обслуживание клиента.",
+    description: "Договор активирован, обслуживание покупателя.",
     ownerRole: "ACCOUNTING",
     entryActions: ["Передать в пост-учёт и биллинг"],
     exitGuards: [],
@@ -237,7 +237,7 @@ export const OPS_WORKFLOW_STATUSES = [
   {
     key: "CANCELLED",
     title: "Отменена",
-    description: "Заявка закрыта до активации — клиент или менеджер отменили процесс.",
+    description: "Заявка закрыта до активации — покупатель или менеджер отменили процесс.",
     ownerRole: "OP_MANAGER",
     entryActions: ["Зафиксировать причину отмены", "Уведомить команду"],
     exitGuards: [],
@@ -640,6 +640,8 @@ export type OpsDealEditDefaults = {
   dealNumber: string;
   statusKey: OpsDealStatusKey;
   companyCode: DealCompanyCode | null;
+  buyerType: "individual" | "company" | null;
+  sellerType: "individual" | "company" | null;
   principalAmount: number | null;
   totalAmount: number | null;
   monthlyPayment: number | null;

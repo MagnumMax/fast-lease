@@ -31,6 +31,8 @@ export type WorkflowTaskFieldSchema = {
   type: string;
   label?: string;
   description?: string;
+  document_type?: string;
+  documentType?: string;
   required?: boolean;
   options?: WorkflowTaskFieldOption[];
   ui?: Record<string, unknown>;
@@ -53,30 +55,34 @@ export type WorkflowTaskDefinition = {
   guardKey?: string;
 };
 
-export type WorkflowNotifyAction = {
+export type WorkflowActionBase = {
+  conditions?: WorkflowCondition[];
+};
+
+export type WorkflowNotifyAction = WorkflowActionBase & {
   type: "NOTIFY";
   toRoles: AppRole[];
   template: string;
 };
 
-export type WorkflowEscalateAction = {
+export type WorkflowEscalateAction = WorkflowActionBase & {
   type: "ESCALATE";
   toRoles: AppRole[];
   template: string;
 };
 
-export type WorkflowTaskCreateAction = {
+export type WorkflowTaskCreateAction = WorkflowActionBase & {
   type: "TASK_CREATE";
   task: WorkflowTaskDefinition;
 };
 
-export type WorkflowWebhookAction = {
+export type WorkflowWebhookAction = WorkflowActionBase & {
   type: "WEBHOOK";
   endpoint: string;
   payload?: Record<string, unknown>;
 };
 
-export type WorkflowScheduleAction = {
+export type WorkflowScheduleAction = WorkflowActionBase & {
   type: "SCHEDULE";
   job: {
     type: string;

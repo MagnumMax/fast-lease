@@ -163,12 +163,12 @@ async function collectBlockers(
     },
     {
       type: "client_docs_uploaded",
-      label: "Документы клиентов, загруженные пользователем",
+      label: "Документы покупателей, загруженные пользователем",
       count: checks[4].count,
     },
     {
       type: "client_docs_verified",
-      label: "Документы клиентов, подтверждённые пользователем",
+      label: "Документы покупателей, подтверждённые пользователем",
       count: checks[5].count,
     },
     { type: "vehicle_docs", label: "Документы по авто", count: checks[6].count },

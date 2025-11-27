@@ -5,10 +5,10 @@ import { cleanupE2EArtifacts } from "./utils/cleanup";
 
 test.skip(
   true,
-  "Временно отключено тестирование создания клиента/авто/сделки (см. задачу).",
+  "Временно отключено тестирование создания покупателя/авто/сделки (см. задачу).",
 );
 
-test("оперменеджер создаёт клиента, авто и сделку между ними", async ({ page }) => {
+test("оперменеджер создаёт покупателя, авто и сделку между ними", async ({ page }) => {
   if (process.env.E2E_BYPASS_AUTH === "true") {
     test.skip(true, "E2E_BYPASS_AUTH включен: Supabase auth недоступен в тестовой среде");
   }
@@ -32,9 +32,9 @@ test("оперменеджер создаёт клиента, авто и сде
     // 1) Логин
     await loginViaUi(page, opsCreds);
 
-    // 2) Создать клиента
+    // 2) Создать покупателя
     await page.goto("/ops/clients");
-    await page.getByRole("button", { name: "Новый клиент" }).click();
+    await page.getByRole("button", { name: "Новый покупатель" }).click();
     await page.getByLabel("Полное имя").fill(clientName);
     await page.getByLabel("Email").fill(clientEmail);
     await page.getByLabel("Телефон").fill(clientPhone);
@@ -52,12 +52,12 @@ test("оперменеджер создаёт клиента, авто и сде
     await page.getByRole("button", { name: "Сохранить" }).click();
     await expect(page.getByText(carModel)).toBeVisible({ timeout: 10_000 });
 
-    // 4) Создать сделку, связав клиента и авто
+    // 4) Создать сделку, связав покупателя и авто
     await page.goto("/ops/deals");
     await page.getByRole("button", { name: "Добавить сделку" }).click();
     await page.getByLabel(/Reference/).fill(dealReference);
 
-    // первый комбобокс — клиент
+    // первый комбобокс — покупатель
     await page.getByRole("combobox").nth(0).click();
     await page.getByRole("option", { name: clientName }).click();
 

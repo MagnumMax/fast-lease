@@ -9,7 +9,7 @@
 #### 1. Роли пользователей
 ```typescript
 type AppRole =
-  | "CLIENT"        // Клиент
+  | "CLIENT"        // Покупатель
   | "INVESTOR"      // Инвестор
   | "OP_MANAGER"    // Операционный менеджер
   | "TECH_SPECIALIST" // Технический специалист
@@ -99,7 +99,7 @@ ADMIN > OP_MANAGER > FINANCE > SUPPORT > TECH_SPECIALIST > RISK_MANAGER > LEGAL 
 ### Proxy контроль доступа
 
 #### Защищенные префиксы:
-- `/client` - только для клиентов
+- `/client` - только для покупателей
 - `/ops` - для операционных ролей (OP_MANAGER, SUPPORT, FINANCE, TECH_SPECIALIST)
 - `/admin` - только для администраторов
 - `/investor` - для инвесторов и администраторов

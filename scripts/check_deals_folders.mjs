@@ -29,7 +29,7 @@ async function loadEnv(filePath = ".env.local") {
   }
 }
 
-// Создание Supabase клиента
+// Создание Supabase покупателя
 async function createSupabaseClient() {
   await loadEnv();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
