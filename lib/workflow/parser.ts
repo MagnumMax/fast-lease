@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 import { APP_ROLE_CODES } from "../data/app-roles";
 import { z } from "zod";
 import { parse as parseYaml } from "yaml";
@@ -470,20 +468,4 @@ export const parseWorkflowTemplate = (source: string): WorkflowTemplate => {
   ensureStatusCoverage(parsed.data);
 
   return normalizeTemplate(parsed.data);
-};
-
-export const loadWorkflowTemplate = (filePath: string): WorkflowTemplate => {
-  try {
-    const fileContents = readFileSync(filePath, "utf-8");
-    return parseWorkflowTemplate(fileContents);
-  } catch (error) {
-    if (error instanceof WorkflowTemplateParseError) {
-      throw error;
-    }
-
-    throw new WorkflowTemplateParseError(
-      `Failed to load workflow template from ${filePath}`,
-      error,
-    );
-  }
 };

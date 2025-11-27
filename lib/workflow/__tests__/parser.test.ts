@@ -4,11 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  loadWorkflowTemplate,
-  parseWorkflowTemplate,
-  WorkflowTemplateParseError,
-} from "../parser";
+import { parseWorkflowTemplate, WorkflowTemplateParseError } from "../parser";
+import { loadWorkflowTemplate } from "../template-loader";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_PATH = resolve(

@@ -29,6 +29,7 @@ import { buildSlugWithId } from "@/lib/utils/slugs";
 import {
   CLIENT_DOCUMENT_TYPES,
   WORKFLOW_ROLE_LABELS,
+  WORKFLOW_TASK_TEMPLATES_BY_TYPE,
   getClientDocumentLabel,
   type ClientDocumentTypeValue,
   normalizeClientDocumentType,
@@ -128,39 +129,6 @@ const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
 const SELLER_DOCS_GUARD_KEY = "docs.seller.allUploaded";
 const PARTY_TYPE_EMPTY_VALUE = "__party-type-none__";
 const FINANCE_REVIEW_TITLE = "Проверка и утверждение финансовой структуры сделки";
-const ANALOG_FIELD_DEFS: TaskFieldDefinition[] = [
-  {
-    id: "analog_market_url_1",
-    type: "text",
-    label: "Аналоги на площадках #1",
-  },
-  {
-    id: "analog_market_url_2",
-    type: "text",
-    label: "Аналоги на площадках #2",
-  },
-  {
-    id: "analog_market_url_3",
-    type: "text",
-    label: "Аналоги на площадках #3",
-  },
-  {
-    id: "analog_market_plus1_url_1",
-    type: "text",
-    label: "Аналоги на площадках +1 год #1",
-  },
-  {
-    id: "analog_market_plus1_url_2",
-    type: "text",
-    label: "Аналоги на площадках +1 год #2",
-  },
-  {
-    id: "analog_market_plus1_url_3",
-    type: "text",
-    label: "Аналоги на площадках +1 год #3",
-  },
-];
-
 const PARTY_TYPE_OPTIONS: ReadonlyArray<{ value: PartyTypeValue; label: string }> = [
   { value: "company", label: "Юридическое лицо" },
   { value: "individual", label: "Физическое лицо" },
@@ -386,13 +354,18 @@ export function TaskDetailView({
   const hasPendingBuyerChange = pendingBuyerType !== "" && pendingBuyerType !== buyerType;
 
   const schemaFieldsRaw = payload?.schema?.fields;
-  const rawFields = Array.isArray(schemaFieldsRaw)
+  const rawFieldsFromPayload = Array.isArray(schemaFieldsRaw)
     ? schemaFieldsRaw
     : schemaFieldsRaw && typeof schemaFieldsRaw === "object" && !Array.isArray(schemaFieldsRaw)
       ? (Array.isArray((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields)
           ? ((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields as TaskFieldDefinition[])
           : [])
       : [];
+  const fallbackTemplate = WORKFLOW_TASK_TEMPLATES_BY_TYPE[task.type]?.[0];
+  const rawFields =
+    rawFieldsFromPayload.length > 0
+      ? rawFieldsFromPayload
+      : (fallbackTemplate?.schema?.fields as TaskFieldDefinition[] | undefined) ?? [];
   const editableFields = rawFields.filter((field) => isEditableField(field) && field.id !== "instructions");
   let visibleFields = editableFields;
   const statusMeta = getTaskStatusMeta(task.status);

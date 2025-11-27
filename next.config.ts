@@ -36,6 +36,10 @@ const nextConfig: NextConfig = {
         browser: "./configs/browser-fs-shim.ts",
       },
     },
+    rules: {
+      "*.yaml": ["yaml-loader"],
+      "*.yml": ["yaml-loader"],
+    },
   },
   async headers() {
     return [
@@ -52,6 +56,12 @@ const nextConfig: NextConfig = {
   },
   // Add beta directory to static file serving
   webpack: (config, { isServer }) => {
+    config.module.rules.push({
+      test: /\.ya?ml$/,
+      type: "json",
+      use: "yaml-loader",
+    });
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,

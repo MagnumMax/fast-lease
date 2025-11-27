@@ -28,7 +28,9 @@
     "migrate:storage:flat": "node scripts/migrate_to_flat_structure.mjs",
     "ingest:deals:root": "node scripts/ingest_local_deals.mjs --root",
     "ingest:check": "node scripts/check_deals_folders.mjs",
-    "ingest:report": "node scripts/final_deals_report.mjs"
+    "ingest:report": "node scripts/final_deals_report.mjs",
+    "workflow:sync-catalog": "node scripts/sync-workflow-catalog.js",
+    "workflow:check-catalog": "node scripts/check-workflow-catalog.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -85,6 +87,7 @@
     "tailwindcss": "^4.1.17",
     "ts-node": "^10.9.2",
     "typescript": "^5",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "yaml-loader": "^0.8.1"
   }
 }

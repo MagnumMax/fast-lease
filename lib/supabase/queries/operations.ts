@@ -1,248 +1,24 @@
 import type { DealCompanyCode } from "@/lib/data/deal-companies";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
+import workflowTemplateSource from "@/lib/workflow/catalog.runtime.json";
+import { parseWorkflowTemplate } from "@/lib/workflow/parser";
+import { buildWorkflowCatalog } from "@/lib/workflow/catalog-builder";
+import { stringify as stringifyYaml } from "yaml";
 
 // Типы и константы для операций
 // Серверные функции перемещены в operations-server.ts
 
-// Константы workflow ролей и статусов
-export const WORKFLOW_ROLES = [
-  { code: "OP_MANAGER", name: "Операционный менеджер" },
-  { code: "SUPPORT", name: "Поддержка операций" },
-  { code: "TECH_SPECIALIST", name: "Технический специалист" },
-  { code: "RISK_MANAGER", name: "Менеджер по управлению рисками" },
-  { code: "FINANCE", name: "Финансовый отдел" },
-  { code: "INVESTOR", name: "Инвестор / ЛПР" },
-  { code: "LEGAL", name: "Юридический отдел" },
-  { code: "ACCOUNTING", name: "Бухгалтерия" },
-  { code: "ADMIN", name: "Администратор процесса" },
-  { code: "CLIENT", name: "Покупатель" },
-] as const;
+const workflowTemplate = parseWorkflowTemplate(stringifyYaml(workflowTemplateSource as unknown));
+const workflowCatalog = buildWorkflowCatalog(workflowTemplate);
 
-export const WORKFLOW_ROLE_LABELS = WORKFLOW_ROLES.reduce(
-  (acc, role) => {
-    acc[role.code] = role.name;
-    return acc;
-  },
-  {} as Record<string, string>,
-);
+// Константы workflow ролей и статусов из YAML
+export const WORKFLOW_ROLES = workflowCatalog.template.roles;
+
+export const WORKFLOW_ROLE_LABELS = workflowCatalog.roleLabels;
 
 export type WorkflowRole = typeof WORKFLOW_ROLES[number]["code"];
 
-export type OpsDealStatusKey =
-  | "NEW"
-  | "OFFER_PREP"
-  | "VEHICLE_CHECK"
-  | "DOCS_COLLECT"
-  | "DOCS_COLLECT_SELLER"
-  | "RISK_REVIEW"
-  | "FINANCE_REVIEW"
-  | "INVESTOR_PENDING"
-  | "CONTRACT_PREP"
-  | "DOC_SIGNING"
-  | "SIGNING_FUNDING"
-  | "VEHICLE_DELIVERY"
-  | "ACTIVE"
-  | "CANCELLED";
-
-export const OPS_WORKFLOW_STATUSES = [
-  {
-    key: "NEW",
-    title: "Новая заявка",
-    description: "Лид создан (сайт/брокер).",
-    ownerRole: "OP_MANAGER",
-    slaLabel: "SLA 8h",
-    entryActions: ["Подтвердить авто у дилера/брокера"],
-    exitGuards: [
-      {
-        key: "tasks.confirmCar.completed",
-        label: "Авто подтверждено у дилера/брокера",
-      },
-    ],
-  },
-  {
-    key: "OFFER_PREP",
-    title: "Подготовка предложения",
-    description: "Формирование коммерческого предложения и расчётов.",
-    ownerRole: "OP_MANAGER",
-    slaLabel: "SLA 8h",
-    entryActions: ["Подписание покупателем коммерческого предложения"],
-    exitGuards: [
-      {
-        key: "quotationPrepared",
-        label: "Подписанное КП загружено",
-        requiresDocument: true,
-      },
-    ],
-  },
-  {
-    key: "VEHICLE_CHECK",
-    title: "Проверка авто",
-    description: "Проверка технического состояния и рыночной стоимости автомобиля.",
-    ownerRole: "TECH_SPECIALIST",
-    slaLabel: "SLA 8h",
-    entryActions: ["Проверка тех состояния и оценочной стоимости авто"],
-    exitGuards: [
-      {
-        key: "vehicle.verified",
-        label: "Проверка тех состояния и оценочной стоимости авто",
-        requiresDocument: true,
-      },
-    ],
-  },
-  {
-    key: "DOCS_COLLECT",
-    title: "Сбор документов покупателя",
-    description: "Комплектование KYC/финансовых документов покупателя.",
-    ownerRole: "OP_MANAGER",
-    slaLabel: "SLA 48h",
-    entryActions: ["Собрать пакет документов покупателя"],
-    exitGuards: [
-      {
-        key: "docs.required.allUploaded",
-        label: "Документы покупателя загружены",
-        requiresDocument: false,
-        hint: "Документы загружаются по необходимости — выберите тип покупателя, чтобы показать список.",
-      },
-    ],
-  },
-  {
-    key: "DOCS_COLLECT_SELLER",
-    title: "Сбор документов продавца",
-    description: "Комплектование пакета документов от продавца/дилера.",
-    ownerRole: "OP_MANAGER",
-    slaLabel: "SLA 48h",
-    entryActions: ["Собрать пакет документов продавца"],
-    exitGuards: [
-      {
-        key: "docs.seller.allUploaded",
-        label: "Документы продавца загружены",
-        requiresDocument: false,
-        hint: "Документы загружаются по необходимости — выберите тип продавца, чтобы показать список.",
-      },
-    ],
-  },
-  {
-    key: "RISK_REVIEW",
-    title: "Проверка риска",
-    description: "AECB скоринг и внутреннее одобрение риска.",
-    ownerRole: "RISK_MANAGER",
-    slaLabel: "SLA 24h",
-    entryActions: ["Провести проверку и внутренний скоринг", "Отправить запрос AECB"],
-    exitGuards: [
-      {
-        key: "risk.approved",
-        label: "Одобрение отдела рисков",
-      },
-    ],
-  },
-  {
-    key: "FINANCE_REVIEW",
-    title: "Финансовое утверждение",
-    description: "Проверка финансирования и условий сделки.",
-    ownerRole: "FINANCE",
-    entryActions: ["Финансовый анализ и подтверждение бюджета"],
-    exitGuards: [
-      {
-        key: "finance.approved",
-        label: "Финансовое одобрение получено",
-      },
-    ],
-  },
-  {
-    key: "INVESTOR_PENDING",
-    title: "Одобрение инвестора",
-    description: "Передача сделки инвестору/ЛПР на подтверждение.",
-    ownerRole: "INVESTOR",
-    entryActions: ["Отправить пакет инвестору"],
-    exitGuards: [
-      {
-        key: "investor.approved",
-        label: "Одобрение инвестора получено",
-      },
-    ],
-  },
-  {
-    key: "CONTRACT_PREP",
-    title: "Подготовка договора",
-    description: "Юридическая проверка и подготовка договора.",
-    ownerRole: "LEGAL",
-    entryActions: ["Сформировать договор и пакеты документов"],
-    exitGuards: [
-      {
-        key: "legal.contractReady",
-        label: "Договор готов к подписанию",
-        requiresDocument: true,
-      },
-    ],
-  },
-  {
-    key: "DOC_SIGNING",
-    title: "Подписание документов",
-    description: "Загрузка подписанных договоров, графиков и актов.",
-    ownerRole: "OP_MANAGER",
-    slaLabel: "SLA 24h",
-    entryActions: ["Подписание документов"],
-    exitGuards: [
-      {
-        key: "contracts.signedUploaded",
-        label: "Подписанные документы загружены",
-        requiresDocument: true,
-      },
-    ],
-  },
-  {
-    key: "SIGNING_FUNDING",
-    title: "Подписание и финансирование",
-    description: "Организация подписания и платежей поставщику.",
-    ownerRole: "FINANCE",
-    entryActions: ["Создать конверт для e-sign", "Контроль оплаты аванса"],
-    exitGuards: [
-      {
-        key: "esign.allSigned",
-        label: "Все подписи собраны",
-      },
-      {
-        key: "payments.advanceReceived",
-        label: "Аванс получен",
-        requiresDocument: true,
-      },
-      {
-        key: "payments.supplierPaid",
-        label: "Поставщику оплачено",
-      },
-    ],
-  },
-  {
-    key: "VEHICLE_DELIVERY",
-    title: "Выдача автомобиля",
-    description: "Подготовка и фактическая выдача авто покупателю.",
-    ownerRole: "TECH_SPECIALIST",
-    entryActions: ["Подготовить акт выдачи и слот доставки"],
-    exitGuards: [
-      {
-        key: "delivery.confirmed",
-        label: "Акт выдачи подтверждён",
-        requiresDocument: false,
-      },
-    ],
-  },
-  {
-    key: "ACTIVE",
-    title: "Активный лизинг",
-    description: "Договор активирован, обслуживание покупателя.",
-    ownerRole: "ACCOUNTING",
-    entryActions: ["Передать в пост-учёт и биллинг"],
-    exitGuards: [],
-  },
-  {
-    key: "CANCELLED",
-    title: "Отменена",
-    description: "Заявка закрыта до активации — покупатель или менеджер отменили процесс.",
-    ownerRole: "OP_MANAGER",
-    entryActions: ["Зафиксировать причину отмены", "Уведомить команду"],
-    exitGuards: [],
-  },
-] as const;
+export type OpsDealStatusKey = string;
 
 export type WorkflowStatusItem = {
   readonly key: OpsDealStatusKey;
@@ -258,6 +34,34 @@ export type WorkflowStatusItem = {
     readonly requiresDocument?: boolean;
   }[];
 };
+
+const deriveStatusItems = (): WorkflowStatusItem[] => {
+  return workflowCatalog.kanbanOrder.map((key) => {
+    const status = workflowCatalog.statusByKey[key];
+    const taskActions = status?.entryActions?.filter((action) => action.type === "TASK_CREATE") ?? [];
+    const ownerRole =
+      (taskActions[0]?.type === "TASK_CREATE" ? taskActions[0].task.assigneeRole : undefined) ??
+      workflowCatalog.template.workflow.ownerRole;
+    const slaHours = taskActions[0]?.type === "TASK_CREATE" ? taskActions[0].task.sla?.hours : undefined;
+    const exitGuards =
+      status?.exitRequirements?.map((req) => ({
+        key: req.key,
+        label: req.message ?? req.key,
+      })) ?? [];
+
+    return {
+      key,
+      title: status?.title ?? key,
+      description: status?.description ?? "",
+      ownerRole: ownerRole as WorkflowRole,
+      slaLabel: slaHours ? `SLA ${slaHours}h` : undefined,
+      entryActions: taskActions.map((action) => action.task.title),
+      exitGuards,
+    };
+  });
+};
+
+export const OPS_WORKFLOW_STATUSES = deriveStatusItems();
 
 export const OPS_WORKFLOW_STATUS_MAP: Record<string, WorkflowStatusItem> = OPS_WORKFLOW_STATUSES.reduce(
   (acc, status) => {
@@ -298,22 +102,14 @@ export const OPS_DEAL_STATUS_LABELS = OPS_WORKFLOW_STATUSES.reduce(
   {} as Record<OpsDealStatusKey, string>,
 );
 
-export const OPS_WORKFLOW_STATUS_EXIT_ROLE: Record<OpsDealStatusKey, WorkflowRole | null> = {
-  NEW: "OP_MANAGER",
-  OFFER_PREP: "OP_MANAGER",
-  VEHICLE_CHECK: "OP_MANAGER",
-  DOCS_COLLECT: "OP_MANAGER",
-  DOCS_COLLECT_SELLER: "OP_MANAGER",
-  RISK_REVIEW: "RISK_MANAGER",
-  FINANCE_REVIEW: "FINANCE",
-  INVESTOR_PENDING: "INVESTOR",
-  CONTRACT_PREP: "LEGAL",
-  DOC_SIGNING: "OP_MANAGER",
-  SIGNING_FUNDING: "FINANCE",
-  VEHICLE_DELIVERY: "OP_MANAGER",
-  ACTIVE: null,
-  CANCELLED: null,
-};
+export const OPS_WORKFLOW_STATUS_EXIT_ROLE: Record<OpsDealStatusKey, WorkflowRole | null> =
+  OPS_WORKFLOW_STATUSES.reduce<Record<OpsDealStatusKey, WorkflowRole | null>>((acc, status) => {
+    acc[status.key] = status.ownerRole ?? null;
+    return acc;
+  }, {});
+
+export const WORKFLOW_TASK_TEMPLATES_BY_TYPE = workflowCatalog.taskTemplatesByType;
+export const WORKFLOW_TASK_TEMPLATES = workflowCatalog.taskTemplates;
 
 // Типы для данных из Supabase
 export type SupabaseClientData = {
