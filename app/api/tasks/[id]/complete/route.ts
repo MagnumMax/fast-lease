@@ -11,10 +11,33 @@ type RouteContext = {
   }>;
 };
 
+type TraceContext = Record<string, unknown>;
+
+function createTracer(scope: string, baseContext: TraceContext) {
+  const startedAt = Date.now();
+  let lastMark = startedAt;
+
+  return (step: string, extra: TraceContext = {}) => {
+    const now = Date.now();
+    const entry = {
+      tag: "trace",
+      scope,
+      step,
+      elapsedMs: now - startedAt,
+      deltaMs: now - lastMark,
+      ...baseContext,
+      ...extra,
+    };
+    console.log(JSON.stringify(entry));
+    lastMark = now;
+  };
+}
+
 
 export async function POST(request: Request, context: RouteContext) {
   const { id } = await context.params;
-  console.log("[workflow] Task completion API called", { taskId: id });
+  const trace = createTracer("task-complete-api", { taskId: id });
+  trace("start");
   const payload = await request.json().catch(() => null);
   const parsed = completeTaskRequestSchema.safeParse(payload ?? {});
 
@@ -54,6 +77,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   if (!existing.data) {
+    trace("task-not-found");
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
@@ -68,7 +92,14 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
+  trace("task-loaded", {
+    status: existing.data.status,
+    hasAssignee: Boolean(existing.data.assignee_user_id),
+    assigneeRole: existing.data.assignee_role,
+  });
+
   if (existing.data.status === "DONE") {
+    trace("task-already-done");
     return NextResponse.json(existing.data);
   }
 
@@ -96,6 +127,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     if (!claimResult.data) {
+      trace("task-claim-conflict");
       return NextResponse.json(
         { error: "Task has been claimed or updated by another user" },
         { status: 409 },
@@ -130,8 +162,10 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   if (!dealRow) {
+    trace("deal-not-found", { taskId: id });
     return NextResponse.json({ error: "Associated deal not found" }, { status: 404 });
   }
+  trace("deal-loaded", { dealId, status: dealRow.status });
 
   // Используем новую функцию handleTaskCompletion
   const completionContext: TaskCompletionContext = {
@@ -147,7 +181,14 @@ export async function POST(request: Request, context: RouteContext) {
     actorRoles: sessionUser.roles,
   };
 
+  trace("handler-start");
   const result = await handleTaskCompletion(completionContext);
+  trace("handler-finish", {
+    transitionAttempted: result.transitionAttempted,
+    transitionSuccess: result.transitionSuccess ?? null,
+    transitionError: result.error ?? null,
+    newStatus: result.newStatus ?? null,
+  });
 
   if (!result.taskUpdated) {
     return NextResponse.json(
@@ -164,6 +205,7 @@ export async function POST(request: Request, context: RouteContext) {
     )
     .eq("id", id)
     .single();
+  trace("response-ready", { updatedStatus: updatedTask?.status, dealId });
 
   // Логируем результат перехода
   if (result.transitionAttempted) {

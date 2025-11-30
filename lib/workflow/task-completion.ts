@@ -4,6 +4,28 @@ import { createWorkflowService } from "@/lib/workflow";
 import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 
+type TraceContext = Record<string, unknown>;
+
+function createTracer(scope: string, baseContext: TraceContext) {
+  const startedAt = Date.now();
+  let lastMark = startedAt;
+
+  return (step: string, extra: TraceContext = {}) => {
+    const now = Date.now();
+    const entry = {
+      tag: "trace",
+      scope,
+      step,
+      elapsedMs: now - startedAt,
+      deltaMs: now - lastMark,
+      ...baseContext,
+      ...extra,
+    };
+    console.log(JSON.stringify(entry));
+    lastMark = now;
+  };
+}
+
 type WorkflowStageMeta = {
   exitRequirements?: Array<{ key?: string | null; rule?: string | null }>;
 };
@@ -180,8 +202,14 @@ export async function handleTaskCompletion(
   const supabase = await createSupabaseServiceClient();
   const completedAt = new Date().toISOString();
   const slaStatus = deriveCompletionSlaStatus(context.slaDueAt, completedAt);
+  const trace = createTracer("task-completion", {
+    taskId: context.taskId,
+    dealId: context.dealId,
+    currentStatus: context.currentDealStatus ?? null,
+  });
 
   try {
+    trace("start");
     // Обновляем статус задачи на DONE
     const { data: updatedTask, error: taskUpdateError } = await supabase
       .from("tasks")
@@ -199,6 +227,7 @@ export async function handleTaskCompletion(
 
     if (taskUpdateError) {
       console.error("[workflow] failed to complete task", taskUpdateError);
+      trace("task-update-error", { error: taskUpdateError.message });
       return {
         taskUpdated: false,
         transitionAttempted: false,
@@ -213,17 +242,20 @@ export async function handleTaskCompletion(
         error: "Task not found after update",
       };
     }
+    trace("task-updated", { status: updatedTask.status, slaStatus: updatedTask.sla_status ?? null });
 
     // Получаем guard key для задачи
     const guardKey = resolveGuardKey(context.taskType, context.taskPayload);
 
     if (!guardKey) {
       console.log("[workflow] no guard key found for task type:", context.taskType);
+      trace("guard-missing", { taskType: context.taskType });
       return {
         taskUpdated: true,
         transitionAttempted: false,
       };
     }
+    trace("guard-resolved", { guardKey });
 
     // Строим guard context
     const dealPayload = ensureWorkflowPayloadBranches(context.dealPayload);
@@ -293,12 +325,14 @@ export async function handleTaskCompletion(
 
     if (payloadUpdateError) {
       console.error("[workflow] failed to persist task completion flag", payloadUpdateError);
+      trace("payload-update-error", { error: payloadUpdateError.message });
       return {
         taskUpdated: true,
         transitionAttempted: false,
         error: `Failed to update deal payload: ${payloadUpdateError.message}`,
       };
     }
+    trace("payload-updated");
 
     // Пытаемся выполнить автоматический переход
     console.log("[workflow] Starting workflow transition attempt", {
@@ -307,6 +341,7 @@ export async function handleTaskCompletion(
       guardKey,
       taskType: context.taskType,
     });
+    trace("transition-attempt", { guardKey, assigneeRole: context.assigneeRole });
     const transitionResult = await attemptWorkflowTransition({
       dealId: context.dealId,
       currentStatus: context.currentDealStatus,
@@ -315,6 +350,12 @@ export async function handleTaskCompletion(
       assigneeRole: context.assigneeRole,
       assigneeUserId: context.assigneeUserId,
       actorRoles: context.actorRoles ?? undefined,
+    });
+    trace("transition-result", {
+      success: transitionResult.success,
+      skipped: transitionResult.skipped ?? false,
+      newStatus: transitionResult.newStatus ?? null,
+      error: transitionResult.error ?? null,
     });
     console.log("[workflow] Workflow transition result", {
       dealId: context.dealId,
@@ -344,6 +385,7 @@ export async function handleTaskCompletion(
 
   } catch (error) {
     console.error("[workflow] unexpected error in handleTaskCompletion:", error);
+    trace("unexpected-error", { error: error instanceof Error ? error.message : String(error) });
     return {
       taskUpdated: false,
       transitionAttempted: false,
@@ -371,19 +413,28 @@ async function attemptWorkflowTransition(params: {
   expectedGuards?: string[];
 }> {
   const guardContext = params.guardContext ?? {};
+  const trace = createTracer("workflow-transition", {
+    dealId: params.dealId,
+    guardKey: params.guardKey,
+    currentStatus: params.currentStatus ?? null,
+  });
 
   try {
+    trace("start");
     // Нормализуем статус
     const statusKey = normalizeStatusKey(params.currentStatus);
     if (!statusKey) {
+      trace("invalid-status");
       return { success: false, error: "Invalid current status" };
     }
 
     // Получаем метаданные статуса из workflow конфигурации
     const statusMeta = await getWorkflowStatusMeta(statusKey, params.dealId);
     if (!statusMeta) {
+      trace("status-meta-missing");
       return { success: false, error: "Status metadata not found" };
     }
+    trace("status-meta-loaded", { exitGuards: (statusMeta.exitRequirements ?? []).length });
 
     // Проверяем, соответствует ли guard key выходным guard'ам статуса
     const exitGuards = statusMeta.exitRequirements ?? [];
@@ -399,6 +450,7 @@ async function attemptWorkflowTransition(params: {
         guardKey: params.guardKey,
         expected: exitGuardKeys,
       });
+      trace("guard-mismatch", { expected: exitGuardKeys });
       return { success: false, error: reason, skipped: true, expectedGuards: exitGuardKeys };
     }
 
@@ -434,6 +486,7 @@ async function attemptWorkflowTransition(params: {
         guardKey: params.guardKey,
         missingKeys,
       });
+      trace("guards-unsatisfied", { missingKeys });
 
       return {
         success: false,
@@ -446,8 +499,10 @@ async function attemptWorkflowTransition(params: {
     // Определяем следующий статус
     const targetStatus = await determineNextStatus(statusKey, params.guardKey, params.dealId);
     if (!targetStatus) {
+      trace("next-status-missing");
       return { success: false, error: "No next status available" };
     }
+    trace("next-status-resolved", { targetStatus });
 
     // Определяем роль актора для перехода; для контрактного этапа принудительно OP_MANAGER во избежание ROLE_NOT_ALLOWED
     const actorRole = resolveTransitionActorRole({
@@ -465,6 +520,7 @@ async function attemptWorkflowTransition(params: {
       guardContext: params.guardContext,
       actorRole,
     });
+    trace("workflow-service-call", { targetStatus, actorRole });
     const workflowService = await createWorkflowService();
     await workflowService.transitionDeal({
       dealId: params.dealId,
@@ -477,6 +533,7 @@ async function attemptWorkflowTransition(params: {
       dealId: params.dealId,
       targetStatus,
     });
+    trace("workflow-service-success", { targetStatus });
 
     return { success: true, newStatus: targetStatus };
 
@@ -487,6 +544,9 @@ async function attemptWorkflowTransition(params: {
           dealId: params.dealId,
           failedGuards: error.validation.failedGuards,
         });
+        trace("workflow-service-guard-failed", {
+          failedGuards: error.validation.failedGuards?.map((guard) => guard.key),
+        });
         return { success: false, error: "Guard conditions not met" };
       } else if (error.validation.reason === "UNKNOWN_TRANSITION") {
         console.warn("[workflow] no transition available for auto step", {
@@ -494,12 +554,15 @@ async function attemptWorkflowTransition(params: {
           from: params.currentStatus,
           to: "targetStatus",
         });
+        trace("workflow-service-unknown-transition");
         return { success: false, error: "No transition available" };
       } else {
+        trace("workflow-service-rejected", { reason: error.validation.reason });
         return { success: false, error: `Transition rejected: ${error.validation.reason}` };
       }
     } else {
       console.error("[workflow] failed to auto transition", error);
+      trace("workflow-service-error", { error: error instanceof Error ? error.message : String(error) });
       return { success: false, error: `Transition failed: ${error instanceof Error ? error.message : String(error)}` };
     }
   }

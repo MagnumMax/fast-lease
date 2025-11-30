@@ -72,6 +72,10 @@ export type WorkflowServiceDependencies = {
   actionExecutor?: WorkflowActionExecutor;
 };
 
+function logTrace(entry: Record<string, unknown>): void {
+  console.log(JSON.stringify({ tag: "trace", scope: "workflow-service", ...entry }));
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -121,12 +125,21 @@ export class WorkflowService {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const attemptStartedAt = Date.now();
       try {
         // Получаем deal для текущей попытки
         const deal = await this.dealRepository.getDealById(input.dealId);
         if (!deal) {
           throw new Error(`Deal '${input.dealId}' not found`);
         }
+        logTrace({
+          step: "attempt-start",
+          attempt: attempt + 1,
+          maxAttempts: maxRetries + 1,
+          dealId: input.dealId,
+          currentStatus: deal.status,
+          targetStatus: input.targetStatus,
+        });
         console.log(`[WorkflowService] Attempt ${attempt + 1}/${maxRetries + 1} for deal ${input.dealId} transition from ${deal.status} to ${input.targetStatus}`);
 
         const version = await this.resolveWorkflowVersion(deal);
@@ -179,6 +192,14 @@ export class WorkflowService {
         });
 
         console.log(`[WorkflowService] Successfully completed transition for deal ${input.dealId} on attempt ${attempt + 1}`);
+        logTrace({
+          step: "attempt-success",
+          attempt: attempt + 1,
+          dealId: deal.id,
+          targetStatus: input.targetStatus,
+          newStatus: transitionResult.newStatus.code,
+          elapsedMs: Date.now() - attemptStartedAt,
+        });
 
         return {
           dealId: deal.id,
@@ -195,6 +216,15 @@ export class WorkflowService {
 
         // Проверяем, является ли ошибка временной и стоит ли делать retry
         const isRetryableError = this.isRetryableError(error);
+        logTrace({
+          step: "attempt-failed",
+          attempt: attempt + 1,
+          dealId: input.dealId,
+          targetStatus: input.targetStatus,
+          retryable: isRetryableError,
+          elapsedMs: Date.now() - attemptStartedAt,
+          error: error instanceof Error ? error.message : String(error),
+        });
 
         if (!isRetryableError || attempt === maxRetries) {
           console.error(`[WorkflowService] Final failure for deal ${input.dealId} after ${attempt + 1} attempts:`, error);
