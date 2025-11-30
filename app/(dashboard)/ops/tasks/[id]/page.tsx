@@ -19,7 +19,7 @@ import { getWorkspaceTaskById } from "@/lib/supabase/queries/tasks";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
-import { completeTaskFormAction } from "./actions";
+import { completeTaskFormAction, reopenTaskAction } from "./actions";
 import {
   evaluateClientDocumentChecklist,
   extractChecklistFromTaskPayload,
@@ -1080,6 +1080,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       guardDocuments={guardDocuments}
       financeSnapshot={financeSnapshot}
       completeAction={completeTaskFormAction}
+      reopenAction={reopenTaskAction}
     />
   );
 }

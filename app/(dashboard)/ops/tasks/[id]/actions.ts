@@ -48,6 +48,12 @@ const DELETE_GUARD_DOCUMENT_SCHEMA = z.object({
   dealSlug: z.string().min(1).optional(),
 });
 
+const REOPEN_TASK_SCHEMA = z.object({
+  taskId: z.string().uuid(),
+  reason: z.string().trim().min(1, "Укажите причину"),
+  comment: z.string().trim().min(1, "Добавьте комментарий"),
+});
+
 const DEAL_DOCUMENT_BUCKET = "deal-documents";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
@@ -1073,4 +1079,103 @@ export async function completeTaskFormAction(
   revalidateRelatedPaths();
 
   return redirect(taskRedirectPath);
+}
+
+export async function reopenTaskAction(prevState: FormStatus, formData: FormData): Promise<FormStatus> {
+  const parsed = REOPEN_TASK_SCHEMA.safeParse({
+    taskId: formData.get("taskId"),
+    reason: formData.get("reason"),
+    comment: formData.get("comment"),
+  });
+
+  if (!parsed.success) {
+    return {
+      status: "error",
+      message: parsed.error.errors[0]?.message ?? "Некорректные данные формы",
+    };
+  }
+
+  const { taskId, reason, comment } = parsed.data;
+  const supabase = await createSupabaseServiceClient();
+  const sessionUser = await getMutationSessionUser();
+
+  if (!sessionUser) {
+    return { status: "error", message: READ_ONLY_ACCESS_MESSAGE };
+  }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from("tasks")
+    .select("id, status, deal_id, reopen_count")
+    .eq("id", taskId)
+    .maybeSingle();
+
+  if (fetchError || !existing) {
+    console.error("[workflow] failed to load task for reopen", fetchError);
+    return { status: "error", message: "Задача не найдена" };
+  }
+
+  const normalizedStatus = typeof existing.status === "string" ? existing.status.toUpperCase() : "";
+  if (normalizedStatus !== "DONE") {
+    return { status: "error", message: "Переоткрыть можно только завершённую задачу" };
+  }
+
+  const nextReopenCount = (existing.reopen_count ?? 0) + 1;
+  const nowIso = new Date().toISOString();
+
+  const { error: updateError } = await supabase
+    .from("tasks")
+    .update({
+      status: "IN_PROGRESS",
+      completed_at: null,
+      reopened_at: nowIso,
+      reopen_count: nextReopenCount,
+      reopen_reason: reason,
+      reopen_comment: comment,
+    })
+    .eq("id", taskId);
+
+  if (updateError) {
+    console.error("[workflow] failed to reopen task", updateError);
+    return { status: "error", message: "Не удалось переоткрыть задачу" };
+  }
+
+  const dealId = existing.deal_id ?? null;
+
+  const [{ error: eventError }] = await Promise.all([
+    supabase.from("task_reopen_events").insert({
+      task_id: taskId,
+      deal_id: dealId,
+      actor_user_id: sessionUser.user.id,
+      reason,
+      comment,
+    }),
+    supabase.from("audit_log").insert({
+      deal_id: dealId,
+      actor_user_id: sessionUser.user.id,
+      action: "TASK_REOPEN",
+      from_status: existing.status,
+      to_status: "IN_PROGRESS",
+      metadata: { reason, comment },
+    }),
+  ]);
+
+  if (eventError) {
+    console.error("[workflow] failed to log reopen event", eventError);
+  }
+
+  let dealSlug: string | null = null;
+  if (dealId) {
+    const { data: dealRow } = await supabase
+      .from("deals")
+      .select("deal_number")
+      .eq("id", dealId)
+      .maybeSingle();
+    dealSlug = (dealRow?.deal_number as string | null) ?? null;
+  }
+
+  for (const path of buildPathsToRevalidate(taskId, dealId ?? undefined, dealSlug ?? undefined)) {
+    revalidatePath(path);
+  }
+
+  return { status: "success", message: "Задача переоткрыта" };
 }

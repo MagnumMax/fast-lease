@@ -16,6 +16,10 @@ export type WorkspaceTask = {
   slaDueAt: string | null;
   completedAt: string | null;
   slaStatus: "ON_TRACK" | "WARNING" | "BREACHED" | null;
+  reopenCount: number;
+  reopenedAt: string | null;
+  reopenReason: string | null;
+  reopenComment: string | null;
   dealId: string | null;
   dealNumber: string | null;
   dealClientName: string | null;
@@ -46,6 +50,10 @@ type TaskRow = {
   sla_due_at: string | null;
   completed_at: string | null;
   sla_status: "ON_TRACK" | "WARNING" | "BREACHED" | null;
+  reopen_count: number | null;
+  reopened_at: string | null;
+  reopen_reason: string | null;
+  reopen_comment: string | null;
   payload: Record<string, unknown> | null;
   action_hash: string | null;
   created_at: string;
@@ -54,7 +62,7 @@ type TaskRow = {
 };
 
 export const TASK_SELECT =
-  "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, sla_status, payload, action_hash, created_at, updated_at, deals:deal_id (id, deal_number, payload)";
+  "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, reopened_at, reopen_count, reopen_reason, reopen_comment, sla_status, payload, action_hash, created_at, updated_at, deals:deal_id (id, deal_number, payload)";
 
 function resolveDealCustomerName(payload: Record<string, unknown> | null | undefined): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -145,6 +153,10 @@ export function mapTaskRow(row: TaskRow): WorkspaceTask {
     slaDueAt: row.sla_due_at,
     completedAt: row.completed_at,
     slaStatus: row.sla_status,
+    reopenCount: typeof row.reopen_count === "number" ? row.reopen_count : 0,
+    reopenedAt: row.reopened_at,
+    reopenReason: row.reopen_reason,
+    reopenComment: row.reopen_comment,
     dealId: row.deal_id,
     dealNumber: dealRef?.deal_number ?? null,
     dealClientName: resolveDealCustomerName(dealPayload),

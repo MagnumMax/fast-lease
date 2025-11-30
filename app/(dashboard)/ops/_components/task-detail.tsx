@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { sortDocumentOptions } from "@/lib/documents/options";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { buildSlugWithId } from "@/lib/utils/slugs";
@@ -55,6 +56,7 @@ type TaskDetailViewProps = {
   guardDocuments: GuardDocumentLink[];
   financeSnapshot?: FinanceReviewSnapshot | null;
   completeAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
+  reopenAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
 };
 
 type TaskFieldDefinition = {
@@ -152,6 +154,16 @@ function normalizePartyType(value: string | null | undefined): PartyTypeValue | 
     return value;
   }
   return "";
+}
+
+function normalizeBooleanValue(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized === "true" || normalized === "1" || normalized === "yes";
+  }
+  if (typeof value === "number") return value !== 0;
+  return false;
 }
 
 const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
@@ -288,8 +300,10 @@ export function TaskDetailView({
   guardDocuments,
   financeSnapshot,
   completeAction,
+  reopenAction,
 }: TaskDetailViewProps) {
   const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
+  const [reopenState, reopenFormAction, reopenPending] = useActionState(reopenAction, INITIAL_STATE);
   const [, setDraftRequiredValues] = useState<Record<string, string>>({});
   const router = useRouter();
   const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
@@ -300,6 +314,7 @@ export function TaskDetailView({
   const [docFieldValues, setDocFieldValues] = useState<Record<string, string>>({});
   const [formResetToken, setFormResetToken] = useState(0);
   const [pendingBuyerType, setPendingBuyerType] = useState<PartyTypeValue | "">("");
+  const [reopenReason, setReopenReason] = useState<string>("quality");
 
   function setDocumentDeleting(id: string, deleting: boolean) {
     setDeletingDocumentIds((prev) => {
@@ -316,6 +331,12 @@ export function TaskDetailView({
   function isDocumentDeleting(id: string): boolean {
     return deletingDocumentIds.has(id);
   }
+
+  useEffect(() => {
+    if (reopenState.status === "success") {
+      router.refresh();
+    }
+  }, [reopenState.status, router]);
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
@@ -351,6 +372,7 @@ export function TaskDetailView({
   const buyerChecklist: string[] = [];
   const sellerChecklist: string[] = [];
   const hasPendingBuyerChange = pendingBuyerType !== "" && pendingBuyerType !== buyerType;
+  const [booleanFieldValues, setBooleanFieldValues] = useState<Record<string, boolean>>({});
 
   const schemaFieldsRaw = payload?.schema?.fields;
   const rawFieldsFromPayload = Array.isArray(schemaFieldsRaw)
@@ -368,6 +390,11 @@ export function TaskDetailView({
   const editableFields = rawFields.filter((field) => isEditableField(field) && field.id !== "instructions");
   let visibleFields = editableFields;
   const statusMeta = getTaskStatusMeta(task.status);
+  const canReopen = task.status.toUpperCase() === "DONE";
+  const reopenBadge =
+    task.reopenCount > 0
+      ? `Переоткрыта ${task.reopenCount} ${task.reopenCount === 1 ? "раз" : "раз"}`
+      : null;
   const deadlineInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
   const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
@@ -507,8 +534,8 @@ export function TaskDetailView({
   }, [defaultDocumentType, enableDocsSection]);
 
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
-  const hasForm = task.status !== "DONE";
-  const isCompletedWorkflow = !hasForm && task.isWorkflow;
+  const isCompleted = task.status === "DONE";
+  const isReadOnly = isCompleted;
   const guardDocumentLinks = useMemo(
     () => (Array.isArray(guardDocuments) ? guardDocuments : []),
     [guardDocuments],
@@ -563,15 +590,15 @@ export function TaskDetailView({
       : isFinanceReviewTask
         ? FINANCE_REVIEW_TITLE
         : task.title;
-  const defaultInstruction = hasForm
-    ? isApprovalTask
+  const defaultInstruction = isCompleted
+    ? "Задача завершена — просмотрите ответы и вложения или вернитесь к списку."
+    : isApprovalTask
       ? deadlineInfo
         ? `Проверьте данные и утвердите решение до ${deadlineInfo}.`
         : "Проверьте данные и утвердите решение."
       : deadlineInfo
         ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
-        : "Проверьте детали, заполните форму ниже и завершите задачу."
-    : "Задача завершена — просмотрите ответы и вложения или вернитесь к списку.";
+        : "Проверьте детали, заполните форму ниже и завершите задачу.";
   const taskInstruction = instructionShort && instructionShort.trim().length > 0 ? instructionShort : defaultInstruction;
 
   function handleBackNavigation() {
@@ -798,10 +825,17 @@ export function TaskDetailView({
         <CardHeader className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-xl font-semibold">{taskTitle}</CardTitle>
-            <Badge variant={statusMeta.variant} className="flex items-center gap-1 rounded-lg">
-              {statusMeta.icon}
-              {statusMeta.label}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={statusMeta.variant} className="flex items-center gap-1 rounded-lg">
+                {statusMeta.icon}
+                {statusMeta.label}
+              </Badge>
+              {reopenBadge ? (
+                <Badge variant="outline" className="rounded-lg bg-amber-50 text-amber-800">
+                  {reopenBadge}
+                </Badge>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
@@ -846,6 +880,18 @@ export function TaskDetailView({
               ) : null}
             </div>
           ) : null}
+          {task.reopenCount > 0 ? (
+            <div className="flex flex-col gap-1 rounded-lg border border-amber-200/80 bg-amber-50/60 p-3 text-xs text-amber-900">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-amber-900">Переоткрытий: {task.reopenCount}</span>
+                {task.reopenedAt ? (
+                  <span className="text-[11px] text-amber-800/80">Последнее: {formatDate(task.reopenedAt)}</span>
+                ) : null}
+              </div>
+              {task.reopenReason ? <div>Причина: {task.reopenReason}</div> : null}
+              {task.reopenComment ? <div className="text-amber-900/90">Комментарий: {task.reopenComment}</div> : null}
+            </div>
+          ) : null}
           {deadlineInfo ? (
             <div className="flex items-center gap-2">
               <CalendarClock className="h-3.5 w-3.5 text-muted-foreground" />
@@ -886,6 +932,66 @@ export function TaskDetailView({
         </div>
       ) : null}
 
+      {canReopen ? (
+        <Card className="border-border/80 bg-card/80 backdrop-blur">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-lg font-semibold">Переоткрытие задачи</CardTitle>
+            <CardDescription>Добавьте причину и комментарий — задача вернётся в работу.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {reopenState.status === "success" ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {reopenState.message ?? "Задача переоткрыта"}
+              </div>
+            ) : null}
+            {reopenState.status === "error" ? (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {reopenState.message ?? "Не удалось переоткрыть задачу"}
+              </div>
+            ) : null}
+            <form action={reopenFormAction} className="space-y-3">
+              <input type="hidden" name="taskId" value={task.id} />
+              <input type="hidden" name="reason" value={reopenReason} />
+              <div className="grid gap-2">
+                <Label htmlFor="reopen-reason">Причина</Label>
+                <Select value={reopenReason} onValueChange={setReopenReason} disabled={reopenPending}>
+                  <SelectTrigger id="reopen-reason" className="rounded-lg">
+                    <SelectValue placeholder="Выберите причину" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="quality">Качество / ошибка выполнения</SelectItem>
+                    <SelectItem value="requirements">Уточнены требования</SelectItem>
+                    <SelectItem value="infrastructure">Инфраструктура / внешние блокеры</SelectItem>
+                    <SelectItem value="other">Другое</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="reopen-comment">Комментарий</Label>
+                <Textarea
+                  id="reopen-comment"
+                  name="comment"
+                  required
+                  minLength={3}
+                  placeholder="Коротко опишите, что нужно исправить или уточнить"
+                  disabled={reopenPending}
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="flex items-center gap-3">
+                <Button type="submit" disabled={reopenPending} className="rounded-lg">
+                  {reopenPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Переоткрыть
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Статус станет <span className="font-semibold text-foreground">IN_PROGRESS</span>, дедлайн и документы сохранятся.
+                </p>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card className="border-border/80 bg-card/80 backdrop-blur">
         <CardHeader className="space-y-2">
           <CardTitle className="text-lg font-semibold">Выполнение задачи</CardTitle>
@@ -897,553 +1003,610 @@ export function TaskDetailView({
             </div>
           ) : null}
 
-          {hasForm ? (
-            <form action={formAction} className="space-y-5">
-              <input type="hidden" name="taskId" value={task.id} />
-              <input type="hidden" name="requiresDocument" value={requiresDocument ? "true" : "false"} />
-              <input type="hidden" name="initialNote" value={guardState?.note ?? ""} />
-              {task.dealId ? <input type="hidden" name="dealId" value={task.dealId} /> : null}
-              {guardMeta ? <input type="hidden" name="guardKey" value={guardMeta.key} /> : null}
-              {guardMeta ? <input type="hidden" name="guardLabel" value={guardMeta.label} /> : null}
+          {isCompleted ? (
+            <div className="mb-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground">
+              Задача завершена. Данные и документы доступны только для просмотра.
+            </div>
+          ) : null}
 
-              {confirmCarInstructions ? (
-                <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground">
-                  {confirmCarInstructions}
-                </div>
-              ) : null}
+          {hasGuardDocuments ? (
+            <div className="mb-4 rounded-lg border border-border/60 bg-muted/15 p-4 shadow-sm">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <Paperclip className="h-3 w-3" />
+                <span>Загруженные документы</span>
+              </div>
+              {renderGuardDocumentList(!isReadOnly && allowDocumentDeletion)}
               {documentActionError ? (
-                <p className="text-xs text-destructive">{documentActionError}</p>
+                <p className="mt-2 text-xs text-destructive">{documentActionError}</p>
               ) : null}
               {documentActionMessage ? (
-                <p className="text-xs text-emerald-600">{documentActionMessage}</p>
+                <p className="mt-1 text-xs text-emerald-600">{documentActionMessage}</p>
               ) : null}
+            </div>
+          ) : null}
 
-              {visibleFields.length > 0 ? (
-                <div className="space-y-3">
-                  {visibleFields.map((field, index) => {
-                    const fieldId = field.id;
-                    const value = resolveFieldValue(fieldId, payload);
-                    const baseLabel = field.label ?? fieldId;
-                    const rawHint = field.hint ?? "";
-                    const hint = ""; // хинты скрываем для компактности
-                    let label = baseLabel;
-                    if (fieldId === "buyer_contact_email" && buyerType === "individual") {
-                      label = "Электронная почта покупателя";
-                    } else if (fieldId === "buyer_contact_phone" && buyerType === "individual") {
-                      label = "Телефон покупателя";
-                    }
-                    if (buyerType === "individual" && INDIVIDUAL_DOC_LABELS[fieldId]) {
-                      label = INDIVIDUAL_DOC_LABELS[fieldId];
-                    }
-                    const docFieldType = getFieldDocumentType(field);
-                    if (docFieldType && /(файл)/i.test(label)) {
-                      label = label.replace(/\s*\(файл\)/gi, "").trim();
-                    }
-                    const type = field.type?.toLowerCase();
-                    const isDocField = Boolean(docFieldType || type === "file");
-                    const isRequired = isDocField
-                      ? Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired)
-                      : field.required ?? false;
-                    const isLastRow = index === visibleFields.length - 1;
-                    const rowClass = useTwoColumnFieldLayout
-                      ? `grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,260px)_1fr] sm:items-center px-4 py-3 ${isLastRow ? "" : "border-b border-border/60"
-                      }`
-                      : "space-y-2 py-2";
-                    const renderRow = (control: JSX.Element) =>
-                      renderFieldRow({
-                        id: `${fieldId}-${buyerType}-${formResetToken}`
-                          .replace(/\s+/g, '-')
-                          .toLowerCase(),
-                        label,
-                        required: isRequired,
-                        control,
-                        useTwoColumn: useTwoColumnFieldLayout,
-                        rowClass,
-                      });
+          <form action={isReadOnly ? undefined : formAction} className="space-y-5">
+            <input type="hidden" name="taskId" value={task.id} />
+            <input type="hidden" name="requiresDocument" value={requiresDocument ? "true" : "false"} />
+            <input type="hidden" name="initialNote" value={guardState?.note ?? ""} />
+            {task.dealId ? <input type="hidden" name="dealId" value={task.dealId} /> : null}
+            {guardMeta ? <input type="hidden" name="guardKey" value={guardMeta.key} /> : null}
+            {guardMeta ? <input type="hidden" name="guardLabel" value={guardMeta.label} /> : null}
 
-                    // Hide company contact fields for individuals
-                    if (
-                      (fieldId === "buyer_company_email" || fieldId === "buyer_company_phone") &&
-                      buyerType !== "company"
-                    ) {
-                      return (
-                        <input
-                          key={fieldId}
-                          type="hidden"
-                          name={`field:${fieldId}`}
-                          value=""
-                        />
-                      );
-                    }
+            {confirmCarInstructions ? (
+              <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground">
+                {confirmCarInstructions}
+              </div>
+            ) : null}
+            {documentActionError ? (
+              <p className="text-xs text-destructive">{documentActionError}</p>
+            ) : null}
+            {documentActionMessage ? (
+              <p className="text-xs text-emerald-600">{documentActionMessage}</p>
+            ) : null}
 
-                    if (fieldId === "buyer_type" || fieldId === "seller_type") {
-                      const effectiveOptions =
-                        Array.isArray(field.options) && field.options.length > 0
-                          ? field.options
-                          : PARTY_TYPE_OPTIONS;
-                      const options = effectiveOptions;
-                      const currentValue =
-                        fieldId === "buyer_type" ? pendingBuyerType || buyerType : sellerType;
-                      const hiddenValue = fieldId === "buyer_type" ? buyerType : sellerType;
-                      const setValue = fieldId === "buyer_type" ? setPendingBuyerType : setSellerType;
-                      const handleChange = (value: string) => {
-                        const normalized =
-                          value === PARTY_TYPE_EMPTY_VALUE ? "" : (value as PartyTypeValue);
-                        if (fieldId === "buyer_type") {
-                          setValue(normalized);
-                          return;
-                        }
+            {visibleFields.length > 0 ? (
+              <div className="space-y-3">
+                {visibleFields.map((field, index) => {
+                  const fieldId = field.id;
+                  const value = resolveFieldValue(fieldId, payload);
+                  const rawValue =
+                    payload?.fields && fieldId in (payload.fields as Record<string, unknown>)
+                      ? (payload.fields as Record<string, unknown>)[fieldId]
+                      : payload?.defaults && fieldId in (payload.defaults as Record<string, unknown>)
+                        ? (payload.defaults as Record<string, unknown>)[fieldId]
+                        : undefined;
+                  const baseLabel = field.label ?? fieldId;
+                  const rawHint = field.hint ?? "";
+                  const hint = ""; // хинты скрываем для компактности
+                  let label = baseLabel;
+                  if (fieldId === "buyer_contact_email" && buyerType === "individual") {
+                    label = "Электронная почта покупателя";
+                  } else if (fieldId === "buyer_contact_phone" && buyerType === "individual") {
+                    label = "Телефон покупателя";
+                  }
+                  if (buyerType === "individual" && INDIVIDUAL_DOC_LABELS[fieldId]) {
+                    label = INDIVIDUAL_DOC_LABELS[fieldId];
+                  }
+                  const docFieldType = getFieldDocumentType(field);
+                  if (docFieldType && /(файл)/i.test(label)) {
+                    label = label.replace(/\s*\(файл\)/gi, "").trim();
+                  }
+                  const type = field.type?.toLowerCase();
+                  const isDocField = Boolean(docFieldType || type === "file");
+                  const isRequired = isDocField
+                    ? Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired)
+                    : field.required ?? false;
+                  const isLastRow = index === visibleFields.length - 1;
+                  const rowClass = useTwoColumnFieldLayout
+                    ? `grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,260px)_1fr] sm:items-center px-4 py-3 ${isLastRow ? "" : "border-b border-border/60"
+                    }`
+                    : "space-y-2 py-2";
+                  const renderRow = (control: JSX.Element) =>
+                    renderFieldRow({
+                      id: `${fieldId}-${buyerType}-${formResetToken}`
+                        .replace(/\s+/g, '-')
+                        .toLowerCase(),
+                      label,
+                      required: isRequired,
+                      control,
+                      useTwoColumn: useTwoColumnFieldLayout,
+                      rowClass,
+                    });
+
+                  // Hide company contact fields for individuals
+                  if (
+                    (fieldId === "buyer_company_email" || fieldId === "buyer_company_phone") &&
+                    buyerType !== "company"
+                  ) {
+                    return (
+                      <input
+                        key={fieldId}
+                        type="hidden"
+                        name={`field:${fieldId}`}
+                        value=""
+                      />
+                    );
+                  }
+
+                  if (fieldId === "buyer_type" || fieldId === "seller_type") {
+                    const effectiveOptions =
+                      Array.isArray(field.options) && field.options.length > 0
+                        ? field.options
+                        : PARTY_TYPE_OPTIONS;
+                    const options = effectiveOptions;
+                    const currentValue =
+                      fieldId === "buyer_type" ? pendingBuyerType || buyerType : sellerType;
+                    const hiddenValue = fieldId === "buyer_type" ? buyerType : sellerType;
+                    const setValue = fieldId === "buyer_type" ? setPendingBuyerType : setSellerType;
+                    const handleChange = (value: string) => {
+                      const normalized =
+                        value === PARTY_TYPE_EMPTY_VALUE ? "" : (value as PartyTypeValue);
+                      if (fieldId === "buyer_type") {
                         setValue(normalized);
-                      };
-                      const placeholder =
-                        fieldId === "buyer_type" ? "Выберите тип покупателя" : "Выберите тип продавца";
-                      const selectControl = (
-                        <>
-                          <Select
-                            value={currentValue || PARTY_TYPE_EMPTY_VALUE}
-                            onValueChange={handleChange}
-                            disabled={pending}
-                          >
-                            <SelectTrigger id={`field-${fieldId}`} className="rounded-lg">
-                              <SelectValue placeholder={placeholder} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={PARTY_TYPE_EMPTY_VALUE}>Не выбрано</SelectItem>
-                              {options.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <input type="hidden" name={`field:${fieldId}`} value={hiddenValue} />
-                          {fieldId === "buyer_type" && pendingBuyerType && pendingBuyerType !== buyerType ? (
-                            <div className="mt-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                              <div>
-                                Тип покупателя будет изменён на
-                                {pendingBuyerType === "company" ? " «Юр. лицо»" : " «Физ. лицо»"}. Поля и файлы
-                                для другого типа будут очищены.
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className="rounded-lg"
-                                  onClick={() => {
-                                    const normalized = pendingBuyerType;
-                                    if (!normalized || normalized === buyerType) {
-                                      setPendingBuyerType("");
-                                      return;
-                                    }
-                                    setDocFieldFiles({});
-                                    setDocFieldValues({});
-                                    setFormResetToken((prev) => prev + 1);
-                                    setBuyerType(normalized as PartyTypeValue);
+                        return;
+                      }
+                      setValue(normalized);
+                    };
+                    const placeholder =
+                      fieldId === "buyer_type" ? "Выберите тип покупателя" : "Выберите тип продавца";
+                    const selectControl = (
+                      <>
+                        <Select
+                          value={currentValue || PARTY_TYPE_EMPTY_VALUE}
+                          onValueChange={handleChange}
+                          disabled={pending || isReadOnly}
+                        >
+                          <SelectTrigger id={`field-${fieldId}`} className="rounded-lg">
+                            <SelectValue placeholder={placeholder} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={PARTY_TYPE_EMPTY_VALUE}>Не выбрано</SelectItem>
+                            {options.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <input type="hidden" name={`field:${fieldId}`} value={hiddenValue} />
+                        {fieldId === "buyer_type" && pendingBuyerType && pendingBuyerType !== buyerType ? (
+                          <div className="mt-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                            <div>
+                              Тип покупателя будет изменён на
+                              {pendingBuyerType === "company" ? " «Юр. лицо»" : " «Физ. лицо»"}. Поля и файлы
+                              для другого типа будут очищены.
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => {
+                                  const normalized = pendingBuyerType;
+                                  if (!normalized || normalized === buyerType) {
                                     setPendingBuyerType("");
-                                  }}
-                                  disabled={pending}
-                                >
-                                  Применить
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className="rounded-lg"
-                                  onClick={() => setPendingBuyerType("")}
-                                  disabled={pending}
-                                >
-                                  Отмена
-                                </Button>
-                              </div>
-                            </div>
-                          ) : null}
-                        </>
-                      );
-                      return renderRow(selectControl);
-                    }
-
-                    if (type === "textarea") {
-                      const textareaControl = (
-                        <Textarea
-                          id={`field-${fieldId}`}
-                          name={`field:${fieldId}`}
-                          defaultValue={value}
-                          required={isRequired}
-                          placeholder={hint}
-                          className="min-h-[120px] rounded-lg"
-                          onChange={(event) => {
-                            if (isRequired) {
-                              const next = event.target.value.trim();
-                              setDraftRequiredValues((prev) =>
-                                next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
-                                  const clone = { ...prev };
-                                  delete clone[fieldId];
-                                  return clone;
-                                })(),
-                              );
-                            }
-                          }}
-                        />
-                      );
-                      return renderRow(textareaControl);
-                    }
-
-                    if (type === "checklist") {
-                      const parsedChecklist = normalizeChecklistCandidate(value);
-                      const checklist = parsedChecklist ? filterChecklistTypes(parsedChecklist) : [];
-                      const checklistControl = (
-                        <>
-                          <input
-                            type="hidden"
-                            id={`field-${fieldId}`}
-                            name={`field:${fieldId}`}
-                            value={JSON.stringify(checklist)}
-                          />
-                          {checklist.length > 0 ? (
-                            <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
-                              {checklist.map((item) => (
-                                <Badge key={item} variant="secondary" className="rounded-lg text-xs">
-                                  {getClientDocumentLabel(item) ?? item}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-xs text-muted-foreground">
-                              Чек-лист пуст.
-                            </p>
-                          )}
-                        </>
-                      );
-                      return renderRow(checklistControl);
-                    }
-
-                    if (isDocField) {
-                      const currentFile = docFieldFiles[fieldId] ?? null;
-                      const attachedDoc =
-                        docFieldType && guardDocumentsByType[docFieldType]
-                          ? guardDocumentsByType[docFieldType]
-                          : null;
-                      const currentValue =
-                        docFieldValues[fieldId] ??
-                        value ??
-                        attachedDoc?.storagePath ??
-                        attachedDoc?.url ??
-                        "";
-                      const attachedFileName =
-                        attachedDoc?.storagePath
-                          ? getFileNameFromPath(attachedDoc.storagePath)
-                          : attachedDoc?.url
-                            ? getFileNameFromPath(attachedDoc.url)
-                            : null;
-                      const fileLabel =
-                        currentFile?.name ||
-                        getFileNameFromPath(currentValue) ||
-                        attachedFileName ||
-                        null;
-                      const deletingAttached = attachedDoc ? isDocumentDeleting(attachedDoc.id) : false;
-                      const effectiveDocType = docFieldType ?? "";
-
-                      const fileControl = (
-                        <div className="space-y-2">
-                          <input type="hidden" name={`documentFields[${fieldId}][type]`} value={effectiveDocType} />
-                          <input
-                            id={`document-field-${fieldId}`}
-                            type="file"
-                            name={`documentFields[${fieldId}][file]`}
-                            accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                            className="sr-only"
-                            required={isRequired}
-                            onChange={(event) => {
-                              const file = event.currentTarget.files?.[0] ?? null;
-                              setDocFieldFiles((prev) => ({ ...prev, [fieldId]: file }));
-                              if (file) {
-                                setDocFieldValues((prev) => ({ ...prev, [fieldId]: currentValue }));
-                              }
-                            }}
-                            disabled={pending}
-                          />
-                          <input type="hidden" name={`field:${fieldId}`} value={currentValue} />
-                          <div className="flex flex-wrap items-center gap-2 justify-end">
-                            {fileLabel ? (
-                              <span className="text-xs font-medium text-foreground">{fileLabel}</span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Файл не выбран</span>
-                            )}
-                            <div className="flex items-center gap-2">
-                              {attachedDoc?.url ? (
-                                <Button asChild type="button" variant="outline" size="icon" className="rounded-lg">
-                                  <Link href={attachedDoc.url} target="_blank">
-                                    <Paperclip className="h-4 w-4" />
-                                    <span className="sr-only">Открыть файл</span>
-                                  </Link>
-                                </Button>
-                              ) : null}
-                              {fileLabel ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg"
-                                  onClick={() => {
-                                    const input = document.getElementById(`document-field-${fieldId}`) as
-                                      | HTMLInputElement
-                                      | null;
-                                    input?.click();
-                                  }}
-                                  disabled={pending}
-                                >
-                                  <RefreshCcw className="h-4 w-4" />
-                                  <span className="sr-only">Заменить файл</span>
-                                </Button>
-                              ) : (
-                                <Button
-                                  type="button"
-                                  variant="default"
-                                  size="sm"
-                                  className="rounded-lg"
-                                  onClick={() => {
-                                    const input = document.getElementById(`document-field-${fieldId}`) as
-                                      | HTMLInputElement
-                                      | null;
-                                    input?.click();
-                                  }}
-                                  disabled={pending}
-                                >
-                                  <Paperclip className="mr-2 h-4 w-4" />
-                                  Загрузить
-                                </Button>
-                              )}
-                              {fileLabel ? (
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg text-destructive"
-                                  onClick={() => {
-                                    if (attachedDoc && !currentFile) {
-                                      handleDeleteGuardDocument(attachedDoc.id);
-                                    }
-                                    setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
-                                    setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
-                                  }}
-                                  disabled={pending || deletingAttached}
-                                >
-                                  {deletingAttached ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                  <span className="sr-only">Удалить файл</span>
-                                </Button>
-                              ) : null}
+                                    return;
+                                  }
+                                  setDocFieldFiles({});
+                                  setDocFieldValues({});
+                                  setFormResetToken((prev) => prev + 1);
+                                  setBuyerType(normalized as PartyTypeValue);
+                                  setPendingBuyerType("");
+                                }}
+                                disabled={pending || isReadOnly}
+                              >
+                                Применить
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="rounded-lg"
+                                onClick={() => setPendingBuyerType("")}
+                                disabled={pending || isReadOnly}
+                              >
+                                Отмена
+                              </Button>
                             </div>
                           </div>
-                        </div>
-                      );
+                        ) : null}
+                      </>
+                    );
+                    return renderRow(selectControl);
+                  }
 
-                      return renderRow(fileControl);
-                    }
-
-                    const inputControl = (
-                      <Input
+                  if (type === "textarea") {
+                    const textareaControl = (
+                      <Textarea
                         id={`field-${fieldId}`}
                         name={`field:${fieldId}`}
                         defaultValue={value}
                         required={isRequired}
                         placeholder={hint}
-                        className="rounded-lg"
+                        className="min-h-[120px] rounded-lg"
+                        onChange={(event) => {
+                          if (isRequired) {
+                            const next = event.target.value.trim();
+                            setDraftRequiredValues((prev) =>
+                              next.length > 0 ? { ...prev, [fieldId]: next } : (() => {
+                                const clone = { ...prev };
+                                delete clone[fieldId];
+                                return clone;
+                              })(),
+                            );
+                          }
+                        }}
+                        readOnly={isReadOnly}
+                        disabled={pending || isReadOnly}
                       />
                     );
-                    return renderRow(inputControl);
-                  })}
-                </div>
-              ) : null}
+                    return renderRow(textareaControl);
+                  }
 
-              {isBuyerDocsTask ? (
-                <input type="hidden" name="field:checklist" value={JSON.stringify(buyerChecklist)} />
-              ) : null}
-
-              {isSellerDocsTask ? (
-                <input type="hidden" name="field:checklist" value={JSON.stringify(sellerChecklist)} />
-              ) : null}
-
-              {enableDocsSection ? (
-                <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
-                  <div className="space-y-1">
-                    <span className="text-sm font-semibold text-foreground">Загрузка дополнительных документов</span>
-                    <p className="text-xs text-muted-foreground">
-                      {documentSectionDescription}
-                    </p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {documentDrafts.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">{documentEmptyStateText}</p>
-                    ) : (
-                      documentDrafts.map((draft, index) => (
-                        <div
-                          key={draft.id}
-                          className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                              Документ {index + 1}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-lg text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemoveDocumentDraft(draft.id)}
-                              disabled={pending}
-                            >
-                              <Trash2 className="h-4 w-4" aria-hidden="true" />
-                              <span className="sr-only">Удалить файл</span>
-                            </Button>
+                  if (type === "checklist") {
+                    const parsedChecklist = normalizeChecklistCandidate(value);
+                    const checklist = parsedChecklist ? filterChecklistTypes(parsedChecklist) : [];
+                    const checklistControl = (
+                      <>
+                        <input
+                          type="hidden"
+                          id={`field-${fieldId}`}
+                          name={`field:${fieldId}`}
+                          value={JSON.stringify(checklist)}
+                        />
+                        {checklist.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+                            {checklist.map((item) => (
+                              <Badge key={item} variant="secondary" className="rounded-lg text-xs">
+                                {getClientDocumentLabel(item) ?? item}
+                              </Badge>
+                            ))}
                           </div>
-                          <div className="flex flex-col gap-3 md:flex-row">
-                            <div className="flex-1 space-y-2">
-                              <Label>Тип документа</Label>
-                              <Select
-                                value={draft.type || DOCUMENT_TYPE_EMPTY_VALUE}
-                                onValueChange={(nextValue) => {
-                                  const normalized =
-                                    nextValue === DOCUMENT_TYPE_EMPTY_VALUE
-                                      ? ""
-                                      : (nextValue as ClientDocumentTypeValue);
-                                  handleDocumentDraftTypeChange(draft.id, normalized);
+                        ) : (
+                          <p className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-xs text-muted-foreground">
+                            Чек-лист пуст.
+                          </p>
+                        )}
+                      </>
+                    );
+                    return renderRow(checklistControl);
+                  }
+
+                  if (type === "boolean") {
+                    const normalizedBoolean =
+                      booleanFieldValues[fieldId] ?? normalizeBooleanValue(rawValue ?? value);
+                    const booleanControl = (
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          id={`field-${fieldId}`}
+                          checked={normalizedBoolean}
+                          onCheckedChange={(checked) => {
+                            setBooleanFieldValues((prev) => ({ ...prev, [fieldId]: checked }));
+                          }}
+                          disabled={pending || isReadOnly}
+                        />
+                        <input
+                          type="hidden"
+                          name={`field:${fieldId}`}
+                          value={normalizedBoolean ? "true" : "false"}
+                        />
+                      </div>
+                    );
+                    return renderRow(booleanControl);
+                  }
+
+                  if (isDocField) {
+                    const currentFile = docFieldFiles[fieldId] ?? null;
+                    const attachedDoc =
+                      docFieldType && guardDocumentsByType[docFieldType]
+                        ? guardDocumentsByType[docFieldType]
+                        : null;
+                    const currentValue =
+                      docFieldValues[fieldId] ??
+                      value ??
+                      attachedDoc?.storagePath ??
+                      attachedDoc?.url ??
+                      "";
+                    const attachedFileName =
+                      attachedDoc?.storagePath
+                        ? getFileNameFromPath(attachedDoc.storagePath)
+                        : attachedDoc?.url
+                          ? getFileNameFromPath(attachedDoc.url)
+                          : null;
+                    const fileLabel =
+                      currentFile?.name ||
+                      getFileNameFromPath(currentValue) ||
+                      attachedFileName ||
+                      null;
+                    const deletingAttached = attachedDoc ? isDocumentDeleting(attachedDoc.id) : false;
+                    const effectiveDocType = docFieldType ?? "";
+
+                    const fileControl = (
+                      <div className="space-y-2">
+                        <input type="hidden" name={`documentFields[${fieldId}][type]`} value={effectiveDocType} />
+                        <input
+                          id={`document-field-${fieldId}`}
+                          type="file"
+                          name={`documentFields[${fieldId}][file]`}
+                          accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                          className="sr-only"
+                          required={isRequired && !isReadOnly}
+                          onChange={(event) => {
+                            const file = event.currentTarget.files?.[0] ?? null;
+                            setDocFieldFiles((prev) => ({ ...prev, [fieldId]: file }));
+                            if (file) {
+                              setDocFieldValues((prev) => ({ ...prev, [fieldId]: currentValue }));
+                            }
+                          }}
+                          disabled={pending || isReadOnly}
+                        />
+                        <input type="hidden" name={`field:${fieldId}`} value={currentValue} />
+                        <div className="flex flex-wrap items-center gap-2 justify-end">
+                          {fileLabel ? (
+                            <span className="text-xs font-medium text-foreground">{fileLabel}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Файл не выбран</span>
+                          )}
+                          <div className="flex items-center gap-2">
+                            {attachedDoc?.url ? (
+                              <Button asChild type="button" variant="outline" size="icon" className="rounded-lg">
+                                <Link href={attachedDoc.url} target="_blank">
+                                  <Paperclip className="h-4 w-4" />
+                                  <span className="sr-only">Открыть файл</span>
+                                </Link>
+                              </Button>
+                            ) : null}
+                            {fileLabel ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg"
+                                onClick={() => {
+                                  const input = document.getElementById(`document-field-${fieldId}`) as
+                                    | HTMLInputElement
+                                    | null;
+                                  input?.click();
                                 }}
-                                disabled={pending}
+                                disabled={pending || isReadOnly}
                               >
-                                <SelectTrigger className="rounded-lg">
-                                  <SelectValue placeholder="Выберите тип документа" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-72 overflow-y-auto">
-                                  <SelectItem value={DOCUMENT_TYPE_EMPTY_VALUE}>Не выбран</SelectItem>
-                                  {CLIENT_DOCUMENT_OPTIONS.map((option) => (
-                                    <SelectItem key={option.value} value={option.value}>
-                                      {option.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <input type="hidden" name={`documents[${draft.id}][type]`} value={draft.type} />
-                            </div>
-                            <div className="flex-1 space-y-2">
-                              <Label htmlFor={`document-file-${draft.id}`}>
-                                Файл
-                              </Label>
-                              <input
-                                id={`document-file-${draft.id}`}
-                                type="file"
-                                name={`documents[${draft.id}][file]`}
-                                accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                                onChange={(event) =>
-                                  handleDocumentDraftFileChange(draft.id, event.currentTarget.files?.[0] ?? null)
-                                }
-                                className="sr-only"
-                                disabled={pending}
-                              />
-                              <div className="flex flex-wrap items-center gap-2 justify-end">
-                                <span className="text-xs text-muted-foreground">
-                                  {draft.file?.name ? `Выбран файл: ${draft.file.name}` : "Файл не выбран"}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  {draft.file?.name ? (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="rounded-lg"
-                                      onClick={() => {
-                                        const input = document.getElementById(`document-file-${draft.id}`) as
-                                          | HTMLInputElement
-                                          | null;
-                                        input?.click();
-                                      }}
-                                      disabled={pending}
-                                    >
-                                      <RefreshCcw className="h-4 w-4" />
-                                      <span className="sr-only">Заменить файл</span>
-                                    </Button>
-                                  ) : (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className="rounded-lg"
-                                      onClick={() => {
-                                        const input = document.getElementById(`document-file-${draft.id}`) as
-                                          | HTMLInputElement
-                                          | null;
-                                        input?.click();
-                                      }}
-                                      disabled={pending}
-                                    >
-                                      <Paperclip className="mr-2 h-4 w-4" />
-                                      Выбрать файл
-                                    </Button>
-                                  )}
-                                  {draft.file?.name ? (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="rounded-lg text-destructive"
-                                      onClick={() => {
-                                        handleDocumentDraftFileChange(draft.id, null);
-                                      }}
-                                      disabled={pending}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span className="sr-only">Удалить файл</span>
-                                    </Button>
-                                  ) : null}
-                                </div>
+                                <RefreshCcw className="h-4 w-4" />
+                                <span className="sr-only">Заменить файл</span>
+                              </Button>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => {
+                                  const input = document.getElementById(`document-field-${fieldId}`) as
+                                    | HTMLInputElement
+                                    | null;
+                                  input?.click();
+                                }}
+                                disabled={pending || isReadOnly}
+                              >
+                                <Paperclip className="mr-2 h-4 w-4" />
+                                Загрузить
+                              </Button>
+                            )}
+                            {fileLabel ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg text-destructive"
+                                onClick={() => {
+                                  if (attachedDoc && !currentFile) {
+                                    handleDeleteGuardDocument(attachedDoc.id);
+                                  }
+                                  setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
+                                  setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
+                                }}
+                                disabled={pending || deletingAttached || isReadOnly}
+                              >
+                                {deletingAttached ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                                <span className="sr-only">Удалить файл</span>
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+
+                    return renderRow(fileControl);
+                  }
+
+                  const inputControl = (
+                    <Input
+                      id={`field-${fieldId}`}
+                      name={`field:${fieldId}`}
+                      defaultValue={value}
+                      required={isRequired}
+                      placeholder={hint}
+                      className="rounded-lg"
+                      readOnly={isReadOnly}
+                      disabled={pending || isReadOnly}
+                    />
+                  );
+                  return renderRow(inputControl);
+                })}
+              </div>
+            ) : null}
+
+            {isBuyerDocsTask ? (
+              <input type="hidden" name="field:checklist" value={JSON.stringify(buyerChecklist)} />
+            ) : null}
+
+            {isSellerDocsTask ? (
+              <input type="hidden" name="field:checklist" value={JSON.stringify(sellerChecklist)} />
+            ) : null}
+
+            {enableDocsSection ? (
+              <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
+                <div className="space-y-1">
+                  <span className="text-sm font-semibold text-foreground">Загрузка дополнительных документов</span>
+                  <p className="text-xs text-muted-foreground">
+                    {documentSectionDescription}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {documentDrafts.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">{documentEmptyStateText}</p>
+                  ) : (
+                    documentDrafts.map((draft, index) => (
+                      <div
+                        key={draft.id}
+                        className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                            Документ {index + 1}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-lg text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveDocumentDraft(draft.id)}
+                            disabled={pending || isReadOnly}
+                          >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            <span className="sr-only">Удалить файл</span>
+                          </Button>
+                        </div>
+                        <div className="flex flex-col gap-3 md:flex-row">
+                          <div className="flex-1 space-y-2">
+                            <Label>Тип документа</Label>
+                            <Select
+                              value={draft.type || DOCUMENT_TYPE_EMPTY_VALUE}
+                              onValueChange={(nextValue) => {
+                                const normalized =
+                                  nextValue === DOCUMENT_TYPE_EMPTY_VALUE
+                                    ? ""
+                                    : (nextValue as ClientDocumentTypeValue);
+                                handleDocumentDraftTypeChange(draft.id, normalized);
+                              }}
+                              disabled={pending || isReadOnly}
+                            >
+                              <SelectTrigger className="rounded-lg">
+                                <SelectValue placeholder="Выберите тип документа" />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-72 overflow-y-auto">
+                                <SelectItem value={DOCUMENT_TYPE_EMPTY_VALUE}>Не выбран</SelectItem>
+                                {CLIENT_DOCUMENT_OPTIONS.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <input type="hidden" name={`documents[${draft.id}][type]`} value={draft.type} />
+                          </div>
+                          <div className="flex-1 space-y-2">
+                            <Label htmlFor={`document-file-${draft.id}`}>
+                              Файл
+                            </Label>
+                            <input
+                              id={`document-file-${draft.id}`}
+                              type="file"
+                              name={`documents[${draft.id}][file]`}
+                              accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                              onChange={(event) =>
+                                handleDocumentDraftFileChange(draft.id, event.currentTarget.files?.[0] ?? null)
+                              }
+                              className="sr-only"
+                              disabled={pending || isReadOnly}
+                            />
+                            <div className="flex flex-wrap items-center gap-2 justify-end">
+                              <span className="text-xs text-muted-foreground">
+                                {draft.file?.name ? `Выбран файл: ${draft.file.name}` : "Файл не выбран"}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                {draft.file?.name ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-lg"
+                                    onClick={() => {
+                                      const input = document.getElementById(`document-file-${draft.id}`) as
+                                        | HTMLInputElement
+                                        | null;
+                                      input?.click();
+                                    }}
+                                    disabled={pending || isReadOnly}
+                                  >
+                                    <RefreshCcw className="h-4 w-4" />
+                                    <span className="sr-only">Заменить файл</span>
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="rounded-lg"
+                                    onClick={() => {
+                                      const input = document.getElementById(`document-file-${draft.id}`) as
+                                        | HTMLInputElement
+                                        | null;
+                                      input?.click();
+                                    }}
+                                    disabled={pending || isReadOnly}
+                                  >
+                                    <Paperclip className="mr-2 h-4 w-4" />
+                                    Выбрать файл
+                                  </Button>
+                                )}
+                                {draft.file?.name ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-lg text-destructive"
+                                    onClick={() => {
+                                      handleDocumentDraftFileChange(draft.id, null);
+                                    }}
+                                    disabled={pending || isReadOnly}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Удалить файл</span>
+                                  </Button>
+                                ) : null}
                               </div>
                             </div>
                           </div>
                         </div>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2 rounded-lg"
-                      onClick={handleAddDocumentDraft}
-                      disabled={pending}
-                    >
-                      <Plus className="h-4 w-4" />
-                      Добавить документ
-                    </Button>
-                    <p className="text-xs text-muted-foreground">
-                      После отправки файлы автоматически попадут в карточку сделки.
-                    </p>
-                  </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="task-note">Комментарий</Label>
-                <Textarea
-                  id="task-note"
-                  name="note"
-                  defaultValue={guardState?.note ?? ""}
-                  placeholder="Добавьте детали выполнения или важные замечания"
-                  className="min-h-[120px] rounded-lg"
-                />
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-2 rounded-lg"
+                    onClick={handleAddDocumentDraft}
+                    disabled={pending || isReadOnly}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Добавить документ
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    После отправки файлы автоматически попадут в карточку сделки.
+                  </p>
+                </div>
               </div>
+            ) : null}
 
-              {formState.status === "error" ? (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  {formState.message ?? "Не удалось завершить задачу. Попробуйте снова."}
-                </div>
-              ) : null}
+            <div className="space-y-2">
+              <Label htmlFor="task-note">Комментарий</Label>
+              <Textarea
+                id="task-note"
+                name="note"
+                defaultValue={guardState?.note ?? ""}
+                placeholder="Добавьте детали выполнения или важные замечания"
+                className="min-h-[120px] rounded-lg"
+                readOnly={isReadOnly}
+                disabled={pending || isReadOnly}
+              />
+            </div>
 
+            {formState.status === "error" ? (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {formState.message ?? "Не удалось завершить задачу. Попробуйте снова."}
+              </div>
+            ) : null}
+
+            {!isReadOnly ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 {isApprovalTask ? (
                   <Button
@@ -1473,29 +1636,12 @@ export function TaskDetailView({
                       : "Завершить задачу"}
                 </Button>
               </div>
-            </form>
-          ) : (
-            <>
-              {hasGuardDocuments ? (
-                <div className="rounded-lg border border-border/60 bg-muted/15 p-4 shadow-sm">
-                  <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    <Paperclip className="h-3 w-3" />
-                    <span>Загруженные документы</span>
-                  </div>
-                  {renderGuardDocumentList(true)}
-                  {documentActionError ? (
-                    <p className="mt-2 text-xs text-destructive">{documentActionError}</p>
-                  ) : null}
-                  {documentActionMessage ? (
-                    <p className="mt-1 text-xs text-emerald-600">{documentActionMessage}</p>
-                  ) : null}
-                </div>
-              ) : null}
+            ) : (
               <p className="text-sm text-muted-foreground">
-                Задача завершена. Обновите страницу при необходимости.
+                Поля заблокированы — для изменений переоткройте задачу.
               </p>
-            </>
-          )}
+            )}
+          </form>
         </CardContent>
       </Card>
     </div>

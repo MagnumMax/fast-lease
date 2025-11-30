@@ -113,6 +113,10 @@ CREATE TABLE tasks (
   assignee_user_id UUID REFERENCES auth.users(id),
   sla_due_at TIMESTAMPTZ,
   completed_at TIMESTAMPTZ,
+  reopened_at TIMESTAMPTZ,
+  reopen_count INT NOT NULL DEFAULT 0,
+  reopen_reason TEXT,
+  reopen_comment TEXT,
   sla_status task_sla_status,
   payload JSONB NOT NULL DEFAULT '{}'::JSONB,
   action_hash TEXT,                        -- идемпотентность entry actions (уникальный хэш)
@@ -128,6 +132,19 @@ CREATE INDEX tasks_deal_idx ON tasks(deal_id);
 CREATE INDEX tasks_status_idx ON tasks(status);
 CREATE INDEX tasks_assignee_idx ON tasks(assignee_user_id);
 CREATE INDEX tasks_sla_idx ON tasks(sla_due_at);
+
+-- История переоткрытий задач
+CREATE TABLE task_reopen_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  deal_id UUID REFERENCES deals(id) ON DELETE CASCADE,
+  actor_user_id UUID REFERENCES auth.users(id),
+  reason TEXT,
+  comment TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX task_reopen_events_task_idx ON task_reopen_events(task_id);
 
 -- Кэш шаблонов задач для UI
 CREATE TABLE workflow_task_templates (
