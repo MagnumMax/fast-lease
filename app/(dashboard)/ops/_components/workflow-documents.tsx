@@ -9,6 +9,7 @@ export type WorkflowDocumentEntry = {
   value: string;
   status?: string | null;
   url?: string | null;
+  kind?: "document" | "parameter";
 };
 
 export type WorkflowDocumentGroupEntry = {
@@ -42,23 +43,33 @@ export function WorkflowDocuments({ groups, additional, className }: WorkflowDoc
                 key={`${group.stageKey}-${group.taskTemplateId}`}
                 className="rounded-lg border border-border/60 bg-background/80"
               >
-                <div className="flex items-center justify-between border-b border-border/60 px-4 py-2 text-xs font-semibold text-foreground">
+                <div className="flex items-center justify-between border-b border-border/60 px-4 py-2 text-sm font-semibold text-foreground">
                   <span>{group.taskTitle}</span>
                 </div>
-                <div className="divide-y divide-border/60">
+                <div className="flex flex-col px-4 py-2">
                   {group.documents.map((doc, idx) => (
                     <div
                       key={`${group.taskTemplateId}-doc-${idx}-${doc.label}`}
-                      className="flex items-start justify-between gap-3 px-4 py-3 text-xs"
+                      className="flex items-start justify-between gap-3 py-2 text-[11px]"
                     >
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm font-semibold text-foreground">{doc.label}</span>
-                        <span className="text-muted-foreground">
-                          {doc.value}
-                          {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
-                        </span>
+                        <span className="text-xs font-semibold text-foreground">{doc.label}</span>
+                        {doc.kind === "parameter" ? (
+                          doc.status ? (
+                            <span className="text-muted-foreground">{doc.status}</span>
+                          ) : null
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {doc.value}
+                            {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
+                          </span>
+                        )}
                       </div>
-                      {doc.url ? (
+                      {doc.kind === "parameter" ? (
+                        <span className="text-right text-xs font-medium text-foreground">
+                          {doc.value || "—"}
+                        </span>
+                      ) : doc.url ? (
                         <Button asChild size="sm" variant="outline" className="rounded-lg">
                           <Link href={doc.url} target="_blank">
                             Открыть

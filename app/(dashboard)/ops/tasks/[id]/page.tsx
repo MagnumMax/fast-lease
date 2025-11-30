@@ -53,7 +53,13 @@ const DEAL_STORAGE_BUCKET = "deal-documents";
 const CLIENT_STORAGE_BUCKET = "client-documents";
 const VEHICLE_STORAGE_BUCKET = "vehicle-documents";
 type SummaryDataPoint = { label: string; value: string };
-type SummaryDocumentEntry = { label: string; value: string; status?: string | null; url?: string | null };
+type SummaryDocumentEntry = {
+  label: string;
+  value: string;
+  status?: string | null;
+  url?: string | null;
+  kind?: "document" | "parameter";
+};
 type WorkflowDocumentDefinition = {
   documentType: string;
   label: string;
@@ -238,6 +244,87 @@ function resolveDocumentLabelFromType(documentType: string | null, fallbackLabel
   return match ? match.trim() : "Документ";
 }
 
+function extractFieldDefinitionsFromPayload(payload: Record<string, unknown> | null): Array<{ id: string; label: string }> {
+  const schemaBranch =
+    payload && typeof payload.schema === "object" && !Array.isArray(payload.schema)
+      ? (payload.schema as Record<string, unknown>)
+      : null;
+  const fieldsRaw = Array.isArray(schemaBranch?.fields) ? schemaBranch.fields : [];
+  const excludedLabels = new Set([
+    "id сделки",
+    "текущий этап",
+    "номер сделки",
+    "этап workflow",
+    "статус сделки",
+  ]);
+
+  const definitions: Array<{ id: string; label: string }> = [];
+
+  fieldsRaw.forEach((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const branch = raw as Record<string, unknown>;
+    const id = typeof branch.id === "string" ? branch.id : null;
+    if (!id) return;
+    const type = typeof branch.type === "string" ? branch.type.toLowerCase() : "";
+    const hasDocumentType =
+      typeof branch.document_type === "string" ||
+      typeof (branch as { documentType?: unknown }).documentType === "string";
+    if (type === "file" || hasDocumentType) return;
+    const label = typeof branch.label === "string" ? branch.label : id;
+    const normalizedLabel = label.trim().toLowerCase();
+    if (excludedLabels.has(normalizedLabel)) return;
+    definitions.push({ id, label: label.trim().length > 0 ? label : id });
+  });
+
+  return definitions;
+}
+
+function resolveTaskFieldValue(fieldId: string, payload: Record<string, unknown> | null): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const fieldsBranch =
+    payload.fields && typeof payload.fields === "object" && !Array.isArray(payload.fields)
+      ? (payload.fields as Record<string, unknown>)
+      : {};
+  const defaultsBranch =
+    payload.defaults && typeof payload.defaults === "object" && !Array.isArray(payload.defaults)
+      ? (payload.defaults as Record<string, unknown>)
+      : {};
+  if (fieldId in fieldsBranch) return fieldsBranch[fieldId];
+  if (fieldId in defaultsBranch) return defaultsBranch[fieldId];
+  return null;
+}
+
+function formatTaskFieldValue(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : "—";
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value.toLocaleString("ru-RU") : "—";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Да" : "Нет";
+  }
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((entry) => formatTaskFieldValue(entry))
+      .filter((entry) => entry && entry !== "—");
+    return parts.length > 0 ? parts.join(", ") : "—";
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? "—" : value.toLocaleDateString("ru-RU");
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "—";
+    }
+  }
+  return String(value);
+}
+
 type DealTaskSnapshot = {
   id: string;
   title: string;
@@ -246,6 +333,7 @@ type DealTaskSnapshot = {
   stageTitle: string | null;
   createdAt: string | null;
   documents: WorkflowDocumentDefinition[];
+  parameters: Array<{ id: string; label: string; value: string }>;
 };
 
 function buildTaskDocumentGroups(
@@ -273,12 +361,19 @@ function buildTaskDocumentGroups(
       status: null,
       url: null,
     }));
+    const parameterEntries = task.parameters.map<SummaryDocumentEntry>((param) => ({
+      label: param.label ?? param.id,
+      value: param.value ?? "—",
+      status: null,
+      url: null,
+      kind: "parameter",
+    }));
     groups.set(groupKey, {
       stageKey: task.stageKey ?? "deal",
       stageTitle: task.stageTitle ?? task.stageKey ?? "Сделка",
       taskTitle: task.title,
       taskTemplateId: task.id,
-      documents: groupDocs,
+      documents: [...groupDocs, ...parameterEntries],
     });
     const docMap = new Map<string, SummaryDocumentEntry>();
     task.documents.forEach((def, index) => {
@@ -543,6 +638,11 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
                 ? ((payload.status as Record<string, unknown>).key as string)
                 : null;
           const stageTitle = stageKey && OPS_WORKFLOW_STATUS_MAP[stageKey] ? OPS_WORKFLOW_STATUS_MAP[stageKey].title : stageKey;
+          const parameters = extractFieldDefinitionsFromPayload(payload).map((field) => ({
+            id: field.id,
+            label: field.label,
+            value: formatTaskFieldValue(resolveTaskFieldValue(field.id, payload)),
+          }));
 
           return {
             id: row.id,
@@ -552,6 +652,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             stageTitle: stageTitle ?? null,
             createdAt: row.created_at ?? null,
             documents: extractDocumentDefinitionsFromPayload(payload),
+            parameters,
           };
         });
       }
@@ -793,11 +894,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         task.type === PREPARE_CONTRACT_TASK_TYPE
       ) {
         const workflowStageTitle = stageMeta?.title ?? null;
-        const dealDataPoints: SummaryDataPoint[] = [
-          { label: "Номер сделки", value: formatStringValue(dealRow.deal_number ?? dealSummary?.id ?? "—") },
-          { label: "Этап workflow", value: workflowStageTitle ?? "—" },
-          { label: "Статус сделки", value: formatStringValue(dealRow.status ?? null) },
-        ];
+        const dealDataPoints: SummaryDataPoint[] = [];
         const commercialOffer = extractCommercialOfferFromPayload(dealRow.payload ?? null);
         if (commercialOffer) {
           const commercialOfferEntries: SummaryDataPoint[] = [];

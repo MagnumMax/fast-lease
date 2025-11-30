@@ -1091,7 +1091,7 @@ export async function reopenTaskAction(prevState: FormStatus, formData: FormData
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.errors[0]?.message ?? "Некорректные данные формы",
+      message: parsed.error.issues[0]?.message ?? "Некорректные данные формы",
     };
   }
 

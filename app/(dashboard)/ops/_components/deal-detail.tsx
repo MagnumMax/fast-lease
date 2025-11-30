@@ -61,6 +61,104 @@ function extractDocumentDefinitionsFromPayload(payload: Record<string, unknown> 
   return definitions;
 }
 
+type TaskFieldDefinition = {
+  id: string;
+  type?: string;
+  label?: string;
+  document_type?: string;
+  documentType?: string;
+  required?: boolean;
+  options?: { value: string; label: string }[];
+};
+
+function extractFieldDefinitionsFromPayload(payload: Record<string, unknown> | null): TaskFieldDefinition[] {
+  const schemaBranch =
+    payload && typeof payload.schema === "object" && !Array.isArray(payload.schema)
+      ? (payload.schema as Record<string, unknown>)
+      : null;
+  const fieldsRaw = Array.isArray(schemaBranch?.fields) ? schemaBranch.fields : [];
+
+  const definitions: TaskFieldDefinition[] = [];
+
+  fieldsRaw.forEach((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const field = raw as Record<string, unknown>;
+    const id = typeof field.id === "string" ? field.id : null;
+    if (!id) return;
+    const type = typeof field.type === "string" ? field.type.toLowerCase() : "";
+    const hasDocumentType =
+      typeof field.document_type === "string" ||
+      typeof (field as { documentType?: unknown }).documentType === "string";
+    if (type === "file" || hasDocumentType) return;
+    const label = typeof field.label === "string" ? field.label : id;
+    const normalizedLabel = (label ?? "").trim().toLowerCase();
+    const excludedLabels = new Set([
+      "id сделки",
+      "текущий этап",
+      "номер сделки",
+      "этап workflow",
+      "статус сделки",
+    ]);
+    if (excludedLabels.has(normalizedLabel)) {
+      return;
+    }
+    definitions.push({
+      id,
+      type: type || undefined,
+      label: label.trim().length > 0 ? label : id,
+    });
+  });
+
+  return definitions;
+}
+
+function resolveTaskFieldValue(fieldId: string, payload: Record<string, unknown> | null): unknown {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const fieldsBranch =
+    payload.fields && typeof payload.fields === "object" && !Array.isArray(payload.fields)
+      ? (payload.fields as Record<string, unknown>)
+      : {};
+  const defaultsBranch =
+    payload.defaults && typeof payload.defaults === "object" && !Array.isArray(payload.defaults)
+      ? (payload.defaults as Record<string, unknown>)
+      : {};
+
+  if (fieldId in fieldsBranch) return fieldsBranch[fieldId];
+  if (fieldId in defaultsBranch) return defaultsBranch[fieldId];
+  return null;
+}
+
+function formatTaskFieldValue(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : "—";
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value.toLocaleString("ru-RU") : "—";
+  }
+  if (typeof value === "boolean") {
+    return value ? "Да" : "Нет";
+  }
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((entry) => formatTaskFieldValue(entry))
+      .filter((entry) => entry && entry !== "—");
+    return parts.length > 0 ? parts.join(", ") : "—";
+  }
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? "—" : value.toLocaleDateString("ru-RU");
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "—";
+    }
+  }
+  return String(value);
+}
+
 function resolveDocumentLabelFromType(documentType: string | null, fallbackLabel?: string | null): string {
   const candidates = [fallbackLabel, documentType ? getDealDocumentLabel(documentType) : null, documentType];
   const match = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
@@ -297,6 +395,11 @@ export function DealDetailView({ detail }: DealDetailProps) {
         task.payload && typeof task.payload === "object" && !Array.isArray(task.payload)
           ? (task.payload as Record<string, unknown>)
           : null;
+      const parameters = extractFieldDefinitionsFromPayload(payload).map((field) => ({
+        id: field.id,
+        label: field.label ?? field.id,
+        value: formatTaskFieldValue(resolveTaskFieldValue(field.id, payload)),
+      }));
       return {
         id: task.id,
         title: task.title?.trim().length ? task.title : "Задача",
@@ -308,6 +411,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
               : null,
         stageKey: task.workflowStageKey ?? "deal",
         stageTitle: task.workflowStageTitle ?? task.workflowStageKey ?? "Сделка",
+        parameters,
         documents: extractDocumentDefinitionsFromPayload(payload),
       };
     });
@@ -318,7 +422,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
       stageTitle: string;
       taskTitle: string;
       taskTemplateId: string;
-      documents: Array<{ label: string; value: string; status?: string | null; url?: string | null; type?: string | null }>;
+      documents: Array<{ label: string; value: string; status?: string | null; url?: string | null; type?: string | null; kind?: "document" | "parameter" }>;
     }> = [];
     const groupDocTypeMap = new Map<
       string,
@@ -341,13 +445,20 @@ export function DealDetailView({ detail }: DealDetailProps) {
         url: null,
         type: normalizeDocumentTypeValue(def.documentType),
       }));
+      const parameterEntries = task.parameters.map((param) => ({
+        label: param.label ?? param.id,
+        value: param.value ?? "—",
+        status: null,
+        url: null,
+        kind: "parameter" as const,
+      }));
       groups.push({
         id: task.id,
         stageKey: task.stageKey ?? "deal",
         stageTitle: task.stageTitle ?? "Сделка",
         taskTitle: task.title,
         taskTemplateId: task.id,
-        documents: groupDocs,
+        documents: [...groupDocs, ...parameterEntries],
       });
       const docMap = new Map<string, { label: string; value: string; status?: string | null; url?: string | null }>();
       groupDocs.forEach((def) => {
