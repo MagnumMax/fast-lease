@@ -485,8 +485,27 @@ statuses:
               - id: current_status
                 type: badge
                 label: "Текущий этап"
+              - id: seller_vehicle_price
+                type: text
+                label: "Цена авто продавца"
+              - id: insurance_amount
+                type: text
+                label: "Страховка на сумму"
+              - id: registration_amount
+                type: text
+                label: "Сумма регистрации"
+              - id: renty_manager_fee
+                type: text
+                label: "Комиссия менеджера ренти"
+              - id: showroom_manager_fee
+                type: text
+                label: "Комиссия менеджера салона"
+              - id: seller_vat_payer
+                type: boolean
+                label: "Продавец плательщик VAT"
           defaults:
             instruction_short: "Подтвердите наличие авто и условия у дилера/брокера."
+            seller_vat_payer: false
           bindings:
             deal_id: "{{deal.id}}"
             current_status: "{{deal.status}}"
