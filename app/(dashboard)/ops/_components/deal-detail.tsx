@@ -1,28 +1,77 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-
-import { Mail, Phone } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ChevronDown } from "lucide-react";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import type { OpsDealDetail } from "@/lib/supabase/queries/operations";
-import { WORKFLOW_ROLE_LABELS } from "@/lib/supabase/queries/operations";
+import { WORKFLOW_ROLE_LABELS, getDealDocumentLabel } from "@/lib/supabase/queries/operations";
 import { DealStageTasks } from "@/app/(dashboard)/ops/_components/deal-stage-tasks";
 import { DealEditDialog } from "@/app/(dashboard)/ops/_components/deal-edit-dialog";
-import { DocumentList } from "./document-list";
 import { VehicleGallery } from "./vehicle-gallery";
 import { CommercialOfferForm } from "./commercial-offer-form";
+import { WorkflowDocuments } from "./workflow-documents";
+import { isOptionalGuardDocument } from "@/lib/workflow/documents-checklist";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { getDealStatusBadgeMeta } from "@/app/(dashboard)/ops/_components/deal-status-badge-meta";
 
 type DealDetailProps = {
   detail: OpsDealDetail;
 };
+
+function normalizeDocumentTypeValue(value?: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.toLowerCase() : null;
+}
+
+function stripFileSuffix(label?: string | null): string {
+  if (!label) return "";
+  return label.replace(/\s*\(файл\)/gi, "").trim();
+}
+
+function extractDocumentDefinitionsFromPayload(payload: Record<string, unknown> | null): Array<{ documentType: string; label: string }> {
+  const schemaBranch =
+    payload && typeof payload.schema === "object" && !Array.isArray(payload.schema)
+      ? (payload.schema as Record<string, unknown>)
+      : null;
+  const fieldsRaw = Array.isArray(schemaBranch?.fields) ? schemaBranch.fields : [];
+  const definitions: Array<{ documentType: string; label: string }> = [];
+
+  fieldsRaw.forEach((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const branch = raw as Record<string, unknown>;
+    const docType =
+      typeof branch.document_type === "string"
+        ? (branch.document_type as string)
+        : typeof branch.documentType === "string"
+          ? (branch.documentType as string)
+          : null;
+    if (!docType) return;
+    const labelRaw = typeof branch.label === "string" ? (branch.label as string) : docType;
+    const label = stripFileSuffix(labelRaw);
+    definitions.push({ documentType: docType, label: label.length > 0 ? label : docType });
+  });
+
+  return definitions;
+}
+
+function resolveDocumentLabelFromType(documentType: string | null, fallbackLabel?: string | null): string {
+  const candidates = [fallbackLabel, documentType ? getDealDocumentLabel(documentType) : null, documentType];
+  const match = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
+  return match ? match.trim() : "Документ";
+}
+
+function formatDateValue(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("ru-RU");
+}
 
 function slugifyRouteSegment(value: string): string {
   return value
@@ -85,14 +134,6 @@ function formatDateTime(value: string | null): string {
       });
 }
 
-function resolveAssignee(task: WorkspaceTask): string {
-  if (task.assigneeUserId) return `User: ${task.assigneeUserId}`;
-  if (task.assigneeRole && WORKFLOW_ROLE_LABELS[task.assigneeRole]) {
-    return WORKFLOW_ROLE_LABELS[task.assigneeRole];
-  }
-  return "—";
-}
-
 type DealTasksListProps = {
   tasks: WorkspaceTask[];
 };
@@ -110,8 +151,7 @@ function DealTasksList({ tasks }: DealTasksListProps) {
             <TableHead>Задача</TableHead>
             <TableHead>Этап</TableHead>
             <TableHead>Статус</TableHead>
-            <TableHead>Назначено</TableHead>
-            <TableHead>SLA / дедлайн</TableHead>
+            <TableHead>Выполнено</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -129,22 +169,21 @@ function DealTasksList({ tasks }: DealTasksListProps) {
                     </Link>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="text-sm text-foreground">
-                    {task.workflowStageTitle ?? "—"}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusMeta.variant} className="rounded-lg">
-                    {statusMeta.label}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-sm text-foreground">{resolveAssignee(task)}</TableCell>
-                <TableCell className="text-sm text-foreground">
-                  {formatDateTime(task.slaDueAt)}
-                </TableCell>
-              </TableRow>
-            );
+              <TableCell>
+                <div className="text-sm text-foreground">
+                  {task.workflowStageTitle ?? "—"}
+                </div>
+              </TableCell>
+              <TableCell>
+                <Badge variant={statusMeta.variant} className="rounded-lg">
+                  {statusMeta.label}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-sm text-foreground">
+                {formatDateTime(task.completedAt)}
+              </TableCell>
+            </TableRow>
+          );
           })}
         </TableBody>
       </Table>
@@ -153,22 +192,23 @@ function DealTasksList({ tasks }: DealTasksListProps) {
 }
 
 export function DealDetailView({ detail }: DealDetailProps) {
+  const [isDocsCollapsed, setIsDocsCollapsed] = useState(true);
+  const [isAllTasksCollapsed, setIsAllTasksCollapsed] = useState(true);
+  const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(true);
   const {
     profile,
     company,
     client,
+    documents,
     clientDocuments,
     keyInformation,
     overview = [],
-    documents,
-    sellerDocuments,
     invoices,
     timeline,
-    workflowTasks,
+  workflowTasks,
   guardStatuses,
   tasks,
   slug,
-  insurance,
   commercialOffer,
 } = detail;
 
@@ -198,20 +238,12 @@ export function DealDetailView({ detail }: DealDetailProps) {
       : profile.vehicleName
         ? `/ops/cars/${slugifyRouteSegment(profile.vehicleName)}`
         : "/ops/cars";
-  const normalizedPhone = client.phone?.replace(/[^+\d]/g, "") ?? "";
-  const telHref = normalizedPhone ? `tel:${normalizedPhone}` : null;
-  const whatsappHref = normalizedPhone ? `https://wa.me/${normalizedPhone.replace(/^\+/, "")}` : null;
   const createdAtEntry = overview.find((item) => item.label.toLowerCase() === "created at");
-  const clientSourceDisplay =
-    client.source && client.source.trim().length > 0 ? client.source.trim() : "—";
   const vehicleYearEntry = keyInformation.find((item) => {
     const normalized = item.label.toLowerCase();
     return normalized.includes("год") || normalized.includes("year");
   });
   const vehicleYear = vehicleYearEntry?.value && vehicleYearEntry.value !== "—" ? vehicleYearEntry.value : null;
-  const filteredKeyInformation = keyInformation.filter(
-    (item) => item.label.toLowerCase() !== "odoo card",
-  );
   const overdueInvoices = invoices.filter((invoice) =>
     invoice.status.toLowerCase().includes("overdue"),
   );
@@ -252,25 +284,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const dueAmountValue = parseCurrencyValue(profile.dueAmount);
   const hasDebt = (dueAmountValue ?? 0) > 0 || overdueInvoices.length > 0;
   const statusBadgeMeta = getDealStatusBadgeMeta(detail.statusKey);
-  const insuranceEntries = [
-    { label: "Провайдер", value: insurance?.provider ?? "—" },
-    { label: "Номер полиса", value: insurance?.policyNumber ?? "—" },
-    { label: "Тип покрытия", value: insurance?.policyType ?? "—" },
-    { label: "Премия", value: insurance?.premiumAmount ?? "—" },
-    {
-      label: "Частота платежей",
-      value: insurance?.paymentFrequencyLabel ?? insurance?.paymentFrequency ?? "—",
-    },
-    { label: "Следующий платёж", value: insurance?.nextPaymentDueLabel ?? "—" },
-    { label: "Период действия", value: insurance?.coveragePeriodLabel ?? "—" },
-    { label: "Франшиза", value: insurance?.deductible ?? "—" },
-    {
-      label: "Статус последнего платежа",
-      value: insurance?.lastPaymentStatusLabel ?? insurance?.lastPaymentStatus ?? "—",
-    },
-    { label: "Последний платёж", value: insurance?.lastPaymentDateLabel ?? "—" },
-  ];
-  const hasInsuranceData = insuranceEntries.some((entry) => entry.value && entry.value !== "—");
   const dealTasksOrdered = useMemo(() => {
     return [...tasks].sort((a, b) => {
       const aTime = new Date(a.createdAt).getTime();
@@ -278,55 +291,140 @@ export function DealDetailView({ detail }: DealDetailProps) {
       return Number.isNaN(bTime) || Number.isNaN(aTime) ? 0 : bTime - aTime;
     });
   }, [tasks]);
-  const companyDocuments = useMemo(
-    () => clientDocuments.filter((doc) => doc.context === "company"),
-    [clientDocuments],
-  );
-  const dealDocumentsPreview = useMemo(() => documents.slice(0, 5), [documents]);
-  const sellerDocumentsPreview = useMemo(() => sellerDocuments.slice(0, 5), [sellerDocuments]);
-  const companyDocumentItems = useMemo(
-    () =>
-      companyDocuments.map((doc) => ({
-        id: doc.id,
-        title: doc.name,
-        uploadedAt: doc.uploadedAt,
-        url: doc.url ?? null,
-      })),
-    [companyDocuments],
-  );
-  const dealDocumentItems = useMemo(
-    () =>
-      dealDocumentsPreview.map((doc) => ({
-        id: doc.id,
-        title: doc.title,
-        uploadedAt: doc.uploadedAt,
-        url: doc.url ?? null,
-        status: doc.status,
-      })),
-    [dealDocumentsPreview],
-  );
-  const sellerDocumentItems = useMemo(
-    () =>
-      sellerDocumentsPreview.map((doc) => ({
-        id: doc.id,
-        title: doc.title,
-        uploadedAt: doc.uploadedAt,
-        url: doc.url ?? null,
-        status: doc.status,
-      })),
-    [sellerDocumentsPreview],
-  );
-  const vehicleChecklist = useMemo(
-    () =>
-      guardStatuses
-        .filter((guard) => /vehicle|delivery|inspection/i.test(guard.key))
-        .map((guard) => ({
-          id: guard.key,
-          label: guard.label,
-          fulfilled: guard.fulfilled,
-        })),
-    [guardStatuses],
-  );
+  const { workflowDocumentGroups, workflowAdditionalDocuments } = useMemo(() => {
+    const taskSnapshots = tasks.map((task) => {
+      const payload =
+        task.payload && typeof task.payload === "object" && !Array.isArray(task.payload)
+          ? (task.payload as Record<string, unknown>)
+          : null;
+      return {
+        id: task.id,
+        title: task.title?.trim().length ? task.title : "Задача",
+        guardKey:
+          payload && typeof payload.guard_key === "string"
+            ? (payload.guard_key as string)
+            : typeof payload?.guardKey === "string"
+              ? (payload.guardKey as string)
+              : null,
+        stageKey: task.workflowStageKey ?? "deal",
+        stageTitle: task.workflowStageTitle ?? task.workflowStageKey ?? "Сделка",
+        documents: extractDocumentDefinitionsFromPayload(payload),
+      };
+    });
+
+    const groups: Array<{
+      id: string;
+      stageKey: string;
+      stageTitle: string;
+      taskTitle: string;
+      taskTemplateId: string;
+      documents: Array<{ label: string; value: string; status?: string | null; url?: string | null; type?: string | null }>;
+    }> = [];
+    const groupDocTypeMap = new Map<
+      string,
+      Map<string, { label: string; value: string; status?: string | null; url?: string | null }>
+    >();
+    const taskByGuard = new Map<string | null, (typeof taskSnapshots)[number]>();
+    taskSnapshots.forEach((task) => {
+      const guardKey = task.guardKey ?? null;
+      if (!taskByGuard.has(guardKey)) {
+        taskByGuard.set(guardKey, task);
+      }
+    });
+    const defaultGuardlessTask = taskSnapshots.find((t) => !t.guardKey) ?? taskSnapshots[0] ?? null;
+
+    taskSnapshots.forEach((task) => {
+      const groupDocs = task.documents.map((def) => ({
+        label: resolveDocumentLabelFromType(def.documentType, def.label),
+        value: "—",
+        status: null,
+        url: null,
+        type: normalizeDocumentTypeValue(def.documentType),
+      }));
+      groups.push({
+        id: task.id,
+        stageKey: task.stageKey ?? "deal",
+        stageTitle: task.stageTitle ?? "Сделка",
+        taskTitle: task.title,
+        taskTemplateId: task.id,
+        documents: groupDocs,
+      });
+      const docMap = new Map<string, { label: string; value: string; status?: string | null; url?: string | null }>();
+      groupDocs.forEach((def) => {
+        if (def.type) {
+          docMap.set(def.type, def);
+        }
+      });
+      groupDocTypeMap.set(task.id, docMap);
+    });
+
+    const optionalDocs = documents.filter((doc) => isOptionalGuardDocument(doc.metadata));
+    const requiredDocs = documents.filter((doc) => !isOptionalGuardDocument(doc.metadata));
+
+    requiredDocs.forEach((doc) => {
+      const metadata =
+        doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+          ? (doc.metadata as Record<string, unknown>)
+          : null;
+      const docGuard = metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
+      const targetTask = (docGuard ? taskByGuard.get(docGuard) : null) ?? defaultGuardlessTask;
+      const groupKey = targetTask ? targetTask.id : "deal-documents";
+      if (!groupDocTypeMap.has(groupKey)) {
+        groupDocTypeMap.set(groupKey, new Map());
+        groups.push({
+          id: groupKey,
+          stageKey: targetTask?.stageKey ?? "deal",
+          stageTitle: targetTask?.stageTitle ?? "Сделка",
+          taskTitle: targetTask?.title ?? "Документы",
+          taskTemplateId: groupKey,
+          documents: [],
+        });
+      }
+
+      const entryMap = groupDocTypeMap.get(groupKey) ?? new Map();
+      const normalizedType = normalizeDocumentTypeValue(doc.documentType);
+      const existing = normalizedType ? entryMap.get(normalizedType) : null;
+
+      const label = resolveDocumentLabelFromType(doc.documentType ?? null, doc.title ?? null);
+      const valueDate = formatDateValue(doc.uploadedAt ?? null);
+      const value = valueDate !== "—" ? valueDate : doc.status ?? "—";
+      const entry = existing ?? { label, value, status: doc.status ?? null, url: doc.url ?? null };
+      entry.label = label;
+      entry.value = value;
+      entry.status = doc.status ?? null;
+      entry.url = doc.url ?? null;
+
+      if (!existing) {
+        entryMap.set(normalizedType ?? `${doc.id}`, entry);
+        const group = groups.find((g) => g.id === groupKey);
+        if (group) {
+          group.documents.push({ ...entry, type: normalizedType });
+        }
+      }
+
+      groupDocTypeMap.set(groupKey, entryMap);
+    });
+
+    const additionalDocs = optionalDocs.map((doc) => {
+      const metadata =
+        doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+          ? (doc.metadata as Record<string, unknown>)
+          : null;
+      const guardLabel =
+        metadata && typeof metadata.guard_label === "string" && metadata.guard_label.trim().length > 0
+          ? (metadata.guard_label as string)
+          : null;
+      const label = resolveDocumentLabelFromType(doc.documentType ?? null, guardLabel ?? doc.title ?? null);
+      const valueDate = formatDateValue(doc.uploadedAt ?? null);
+      const value = valueDate !== "—" ? valueDate : doc.status ?? "—";
+      return { label, value, status: doc.status ?? null, url: doc.url ?? null };
+    });
+
+    return {
+      workflowDocumentGroups: groups,
+      workflowAdditionalDocuments: additionalDocs,
+    };
+  }, [documents, tasks]);
   const dealCostEntry = keyInformation.find((item) => item.label.toLowerCase().includes("стоим"));
   const normalizedClientName = client.name?.trim() ?? "";
   const clientDisplayName = normalizedClientName.length > 0 ? normalizedClientName : null;
@@ -338,6 +436,8 @@ export function DealDetailView({ detail }: DealDetailProps) {
     clientDisplayName && vehicleDescriptor
       ? `${clientDisplayName} * ${vehicleDescriptor}`
       : clientDisplayName ?? vehicleDescriptor ?? "—";
+  const buyerLine = clientDisplayName ?? "—";
+  const vehicleLine = vehicleDescriptor ?? vehicleNameDisplay ?? "—";
   const nextPaymentDisplay = profile.nextPayment?.trim() ?? "";
   const summaryCards: Array<{
     id: string;
@@ -377,9 +477,28 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   </Badge>
                 </div>
               </div>
-              <CardDescription className="text-sm text-muted-foreground">
-                {clientVehicleLine}
-              </CardDescription>
+              <div className="grid gap-1 text-sm text-foreground">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Покупатель</span>
+                  {clientHref ? (
+                    <Link href={clientHref} className="font-semibold text-brand-600 underline underline-offset-2">
+                      {buyerLine}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold">{buyerLine}</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Авто</span>
+                  {vehicleHref ? (
+                    <Link href={vehicleHref} className="font-semibold text-brand-600 underline underline-offset-2">
+                      {vehicleLine}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold">{vehicleLine}</span>
+                  )}
+                </div>
+              </div>
               {summaryCards.length ? (
                 <dl className="grid gap-3 sm:grid-cols-3">
                   {summaryCards.map((item) => {
@@ -456,212 +575,94 @@ export function DealDetailView({ detail }: DealDetailProps) {
           </Card>
 
           <Card className="bg-card/60 backdrop-blur">
-            <CardHeader>
-              <CardTitle>Страховка</CardTitle>
-              {insurance?.policyNumber ? (
-                <CardDescription>Полис {insurance.policyNumber}</CardDescription>
-              ) : null}
-            </CardHeader>
-            <CardContent>
-              {hasInsuranceData ? (
-                <dl className="grid gap-3 md:grid-cols-2">
-                  {insuranceEntries.map((entry) => (
-                    <div key={entry.label}>
-                      <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{entry.label}</dt>
-                      <dd className="mt-1 text-sm text-foreground">{entry.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <p className="text-sm text-muted-foreground">Данные по страховке ещё не заполнены.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-              <div>
-                <CardTitle>Документы сделки</CardTitle>
-              </div>
-              <Button variant="outline" size="sm" asChild className="rounded-lg">
-                <Link href={`/ops/deals/${slug}/documents`}>Все документы</Link>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle className="text-left">Документы сделки</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-lg transition ${isDocsCollapsed ? "" : "rotate-180"}`}
+                onClick={() => setIsDocsCollapsed((prev) => !prev)}
+                aria-label={isDocsCollapsed ? "Развернуть" : "Свернуть"}
+              >
+                <ChevronDown className="h-4 w-4" />
               </Button>
             </CardHeader>
-            <CardContent>
-              <DocumentList
-                documents={dealDocumentItems}
-                emptyMessage="Документы сделки ещё не загружены."
-                showUploadOnly
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader>
-              <CardTitle>Документы продавца автомобиля</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DocumentList
-                documents={sellerDocumentItems}
-                emptyMessage="Документы продавца пока не добавлены."
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-              <CardTitle className="text-left">Автомобиль</CardTitle>
-              <Button variant="outline" size="sm" asChild className="rounded-lg">
-                <Link href={vehicleHref}>Открыть карточку</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <dl className="grid gap-3 sm:grid-cols-2">
-                {filteredKeyInformation.map((item) => (
-                  <div key={item.label}>
-                    <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{item.label}</dt>
-                    <dd className="mt-1 text-sm text-foreground">{item.value}</dd>
-                  </div>
-                ))}
-              </dl>
-              {vehicleChecklist.length ? (
-                <div className="rounded-lg border border-border/60 bg-surface-subtle p-3">
-                  <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Чек-лист инспекций</p>
-                  <ul className="mt-2 space-y-2 text-sm">
-                    {vehicleChecklist.map((item) => (
-                      <li key={item.id} className="flex items-center gap-2">
-                        <Badge variant={item.fulfilled ? "success" : "outline"} className="rounded-lg">
-                          {item.fulfilled ? "Готово" : "В работе"}
-                        </Badge>
-                        <span>{item.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-            </CardContent>
+            {!isDocsCollapsed ? (
+              <CardContent>
+                <WorkflowDocuments groups={workflowDocumentGroups} additional={workflowAdditionalDocuments} />
+              </CardContent>
+            ) : null}
           </Card>
 
         </div>
 
         <aside className="space-y-6 xl:sticky xl:top-24">
           <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="space-y-3 sm:flex sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-              <div>
-                <CardTitle>Покупатель</CardTitle>
-              </div>
-              <Button variant="outline" size="sm" asChild className="rounded-lg">
-                <Link href={clientHref}>Открыть карточку</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <dl className="grid gap-3">
-                <div>
-                  <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Имя и фамилия</dt>
-                  <dd className="mt-1 text-foreground">{client.name}</dd>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Телефон</dt>
-                    <dd className="mt-1 flex items-center gap-2 text-foreground">
-                      <Phone className="h-4 w-4 text-muted-foreground" /> {client.phone}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Email</dt>
-                    <dd className="mt-1 flex items-center gap-2 text-foreground">
-                      <Mail className="h-4 w-4 text-muted-foreground" /> {client.email || "—"}
-                    </dd>
-                  </div>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Источник</dt>
-                  <dd className="mt-1 text-foreground">{clientSourceDisplay}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Скоринг</dt>
-                  <dd className="mt-1">
-                    <Badge variant="success" className="rounded-lg">
-                      {client.scoring}
-                    </Badge>
-                  </dd>
-                </div>
-              </dl>
-
-              <div className="flex flex-wrap gap-2">
-                {telHref ? (
-                  <Button asChild size="sm" className="rounded-lg">
-                    <a href={telHref}>Позвонить</a>
-                  </Button>
-                ) : null}
-                {whatsappHref ? (
-                  <Button variant="outline" size="sm" asChild className="rounded-lg">
-                    <a href={whatsappHref} target="_blank" rel="noopener noreferrer">
-                      Написать в WhatsApp
-                    </a>
-                  </Button>
-                ) : null}
-              </div>
-
-              <div className="space-y-3 border-t border-border/50 pt-3">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Документы компании
-                </p>
-                <DocumentList
-                  documents={companyDocumentItems}
-                  emptyMessage="Корпоративные документы ещё не загружены."
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="space-y-2">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle>Все задачи сделки</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-left">Все задачи сделки</CardTitle>
                 <Badge variant="outline" className="rounded-lg">
                   {dealTasksOrdered.length}
                 </Badge>
               </div>
-            <CardDescription>
-              Полный список задач, привязанных к сделке, включая завершённые.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DealTasksList tasks={dealTasksOrdered} />
-          </CardContent>
-        </Card>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-lg transition ${isAllTasksCollapsed ? "" : "rotate-180"}`}
+                onClick={() => setIsAllTasksCollapsed((prev) => !prev)}
+                aria-label={isAllTasksCollapsed ? "Развернуть" : "Свернуть"}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            {!isAllTasksCollapsed ? (
+              <CardContent>
+                <DealTasksList tasks={dealTasksOrdered} />
+              </CardContent>
+            ) : null}
+          </Card>
 
           <Card className="bg-card/60 backdrop-blur" id="timeline">
-            <CardHeader>
-              <CardTitle>История действий</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardTitle className="text-left">История действий</CardTitle>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-lg transition ${isTimelineCollapsed ? "" : "rotate-180"}`}
+                onClick={() => setIsTimelineCollapsed((prev) => !prev)}
+                aria-label={isTimelineCollapsed ? "Развернуть" : "Свернуть"}
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
             </CardHeader>
-            <CardContent>
-              {timelineWithTone.length > 0 ? (
-                <ul className="space-y-2 text-sm text-foreground">
-                  {timelineWithTone.map((event) => {
-                    const toneClass =
-                      event.tone === "legal"
-                        ? "border-indigo-200 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-500/10"
-                        : event.tone === "status"
-                          ? "border-brand-200 bg-brand-50 dark:border-brand-500/40 dark:bg-brand-500/10"
-                          : event.tone === "task"
-                            ? "border-emerald-200 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10"
-                            : "border-border/60 bg-card/70";
-                    return (
-                      <li key={event.id} className={`space-y-1 rounded-lg border px-3 py-2 ${toneClass}`}>
-                        <p className="font-medium">{event.text}</p>
-                        <p className="text-xs text-muted-foreground">{event.timestamp}</p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  История действий по сделке пока отсутствует.
-                </p>
-              )}
-            </CardContent>
+            {!isTimelineCollapsed ? (
+              <CardContent>
+                {timelineWithTone.length > 0 ? (
+                  <ul className="space-y-2 text-sm text-foreground">
+                    {timelineWithTone.map((event) => {
+                      const toneClass =
+                        event.tone === "legal"
+                          ? "border-indigo-200 bg-indigo-50 dark:border-indigo-500/40 dark:bg-indigo-500/10"
+                          : event.tone === "status"
+                            ? "border-brand-200 bg-brand-50 dark:border-brand-500/40 dark:bg-brand-500/10"
+                            : event.tone === "task"
+                              ? "border-emerald-200 bg-emerald-50 dark:border-emerald-500/40 dark:bg-emerald-500/10"
+                              : "border-border/60 bg-card/70";
+                      return (
+                        <li key={event.id} className={`space-y-1 rounded-lg border px-3 py-2 ${toneClass}`}>
+                          <p className="font-medium">{event.text}</p>
+                          <p className="text-xs text-muted-foreground">{event.timestamp}</p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    История действий по сделке пока отсутствует.
+                  </p>
+                )}
+              </CardContent>
+            ) : null}
           </Card>
 
         </aside>

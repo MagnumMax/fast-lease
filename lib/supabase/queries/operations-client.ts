@@ -609,7 +609,7 @@ function buildOperationsDashboardSnapshotFromData(
     .filter((member) => member.activeCount > 0 || member.overdueCount > 0)
     .sort((a, b) => b.activeCount - a.activeCount);
 
-  const docsBuyerCount = dealsInRange.filter((deal) => deal.statusKey === "DOCS_COLLECT").length;
+  const docsBuyerCount = dealsInRange.filter((deal) => deal.statusKey === "DOCS_COLLECT_BUYER").length;
   const docsSellerCount = dealsInRange.filter(
     (deal) => deal.statusKey === "DOCS_COLLECT_SELLER",
   ).length;

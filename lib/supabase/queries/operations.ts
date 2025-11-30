@@ -3,6 +3,11 @@ import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import workflowTemplateSource from "@/lib/workflow/catalog.runtime.json";
 import { parseWorkflowTemplate } from "@/lib/workflow/parser";
 import { buildWorkflowCatalog } from "@/lib/workflow/catalog-builder";
+import type {
+  WorkflowDocumentCategory,
+  WorkflowDocumentTypeAlias,
+  WorkflowDocumentTypeEntry,
+} from "@/lib/workflow/types";
 import { stringify as stringifyYaml } from "yaml";
 
 // Типы и константы для операций
@@ -77,7 +82,7 @@ export const OPS_DEAL_PIPELINE_GROUPS = [
   { label: "Vehicle Check", statuses: ["VEHICLE_CHECK" as OpsDealStatusKey] },
   {
     label: "Docs Collection",
-    statuses: ["DOCS_COLLECT" as OpsDealStatusKey, "DOCS_COLLECT_SELLER" as OpsDealStatusKey],
+    statuses: ["DOCS_COLLECT_BUYER" as OpsDealStatusKey, "DOCS_COLLECT_SELLER" as OpsDealStatusKey],
   },
   { label: "Risk Review", statuses: ["RISK_REVIEW" as OpsDealStatusKey] },
   { label: "Finance", statuses: ["FINANCE_REVIEW" as OpsDealStatusKey] },
@@ -358,6 +363,7 @@ export type OpsDealDocument = {
   uploadedAt?: string | null;
   signedAt?: string | null;
   rawStatus?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type OpsSellerDocument = {
@@ -659,31 +665,30 @@ export const OPS_VEHICLE_STATUS_META: Record<string, { label: string; tone: OpsT
   retired: { label: "Списан", tone: "danger" },
 };
 
-export const VEHICLE_DOCUMENT_TYPES = [
-  { value: "vehicle_registration", label: "Регистрационные данные транспортного средства" },
-  { value: "vehicle_inspection_certificate", label: "Сертификат техосмотра" },
-  { value: "vehicle_possession_certificate", label: "Сертификат владения транспортным средством" },
-  { value: "vehicle_transfer_certificate", label: "Сертификат передачи транспортного средства" },
-  { value: "certificate_of_installation", label: "Сертификат установки" },
-  { value: "delivery_form", label: "Акт приёма-передачи" },
-  { value: "insurance_policy", label: "Страховой полис" },
-  { value: "insurance_policy_with_tax_invoice", label: "Страховка с налоговым инвойсом" },
-  { value: "other", label: "Другой документ" },
-] as const;
+export type VehicleDocumentTypeEntry = { value: string; label: string };
+export type VehicleDocumentTypeValue = VehicleDocumentTypeEntry["value"];
 
-export type VehicleDocumentTypeValue = (typeof VEHICLE_DOCUMENT_TYPES)[number]["value"];
+const deriveVehicleDocumentTypesFromCatalog = (): VehicleDocumentTypeEntry[] => {
+  const registry = workflowCatalog.vehicleDocumentTypeRegistry ?? [];
+  return registry.map((entry) => ({
+    value: entry.value,
+    label: entry.label,
+  }));
+};
 
-const VEHICLE_DOCUMENT_TYPE_ALIAS_ENTRIES = [
-  ["vehicle_license", "vehicle_registration"],
-  ["vehicle_test_certificate", "vehicle_inspection_certificate"],
-  ["certificate", "vehicle_inspection_certificate"],
-  ["motor_insurance_policy", "insurance_policy"],
-  ["motor_insurance_policy_schedule", "insurance_policy"],
-] as const satisfies ReadonlyArray<[string, VehicleDocumentTypeValue]>;
+export const VEHICLE_DOCUMENT_TYPES = deriveVehicleDocumentTypesFromCatalog();
+
+const vehicleDocumentTypeValueSet = new Set(VEHICLE_DOCUMENT_TYPES.map((entry) => entry.value));
+
+const VEHICLE_DOCUMENT_TYPE_ALIAS_ENTRIES: ReadonlyArray<[string, VehicleDocumentTypeValue]> = (
+  workflowCatalog.vehicleDocumentTypeAliases ?? []
+)
+  .filter((alias) => vehicleDocumentTypeValueSet.has(alias.target))
+  .map((alias) => [alias.alias, alias.target as VehicleDocumentTypeValue]);
 
 const VEHICLE_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<
   VehicleDocumentTypeValue,
-  (typeof VEHICLE_DOCUMENT_TYPES)[number]
+  VehicleDocumentTypeEntry
 >(VEHICLE_DOCUMENT_TYPES, VEHICLE_DOCUMENT_TYPE_ALIAS_ENTRIES);
 
 export const VEHICLE_DOCUMENT_TYPE_LABEL_MAP = VEHICLE_DOCUMENT_TYPE_REGISTRY.labelMap;
@@ -694,103 +699,37 @@ export const getVehicleDocumentLabel = VEHICLE_DOCUMENT_TYPE_REGISTRY.resolveLab
 
 export type ClientDocumentContext = "personal" | "company" | "any";
 
-export const CLIENT_DOCUMENT_TYPES = [
-  { value: "emirates_id", label: "Emirates ID", context: "personal" as const },
-  { value: "passport", label: "Паспорт", context: "personal" as const },
-  { value: "visa", label: "Виза", context: "personal" as const },
-  { value: "driving_license", label: "Водительские права", context: "personal" as const },
-  { value: "identity_document", label: "Документ, удостоверяющий личность", context: "personal" as const },
-  { value: "salary_certificate", label: "Справка о доходах", context: "personal" as const },
-  { value: "bank_statement", label: "Банковская выписка", context: "personal" as const },
-  { value: "proof_of_address", label: "Подтверждение адреса", context: "personal" as const },
-  { value: "vcc_certificate", label: "VCC (Vehicle Certificate of Conformity)", context: "any" as const },
-  { value: "vehicle_possession_certificate", label: "Vehicle Possession Certificate", context: "any" as const },
-  { value: "hiyaza_certificate", label: "Hiyaza", context: "any" as const },
-  { value: "mulkia_certificate", label: "Mulkia", context: "any" as const },
-  { value: "passing_certificate", label: "Passing", context: "any" as const },
-  { value: "company_license", label: "Лицензия компании", context: "company" as const },
-  { value: "corporate_documents", label: "Корпоративные документы", context: "company" as const },
-  { value: "company_bank_statement", label: "Банковская выписка компании", context: "company" as const },
-  { value: "lease_agreement", label: "Договор аренды", context: "any" as const },
-  { value: "signed_lease_agreement", label: "Договор аренды (подписанный)", context: "any" as const },
-  { value: "purchase_agreement", label: "Договор покупки", context: "any" as const },
-  { value: "signed_purchase_agreement", label: "Договор покупки (подписанный)", context: "any" as const },
-  {
-    value: "preliminary_purchase_agreement",
-    label: "Предварительный договор купли-продажи",
-    context: "any" as const,
-  },
-  { value: "payment_schedule", label: "Платёжный график", context: "any" as const },
-  { value: "signed_payment_schedule", label: "Платёжный график (подписанный)", context: "any" as const },
-  { value: "tax_invoice", label: "Tax invoice", context: "any" as const },
-  { value: "delivery_act", label: "Акт приёма-передачи", context: "any" as const },
-  { value: "signed_delivery_act", label: "Акт приёма-передачи (подписанный)", context: "any" as const },
-  { value: "technical_report", label: "Технический отчёт", context: "any" as const },
-  { value: "aecb_credit_report", label: "AECB credit report", context: "any" as const },
-  { value: "commercial_offer", label: "Коммерческое предложение", context: "any" as const },
-  { value: "signed_commercial_offer", label: "Коммерческое предложение (подписанное)", context: "any" as const },
-  { value: "quotation", label: "Quotation", context: "any" as const },
-  { value: "payment_receipt", label: "Платёжка", context: "any" as const },
-  { value: "spa_invoice", label: "Invoice от физлица (контракт SPA)", context: "any" as const },
-  { value: "noc_company_letter", label: "NOC letter от компании", context: "any" as const },
-  { value: "noc_gps_letter", label: "NOC letter от GPS", context: "any" as const },
-  { value: "trn_certificate", label: "TRN-сертификат", context: "any" as const },
-  { value: "other", label: "Другой документ", context: "any" as const },
-] as const;
+export type ClientDocumentTypeEntry = {
+  value: string;
+  label: string;
+  context: ClientDocumentContext;
+};
 
-export type ClientDocumentTypeValue = (typeof CLIENT_DOCUMENT_TYPES)[number]["value"];
+export type ClientDocumentTypeValue = ClientDocumentTypeEntry["value"];
 
-const CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES = [
-  ["id_card", "identity_document"],
-  ["identity_card", "identity_document"],
-  ["identity_documents", "identity_document"],
-  ["identification", "identity_document"],
-  ["identification_document", "identity_document"],
-  ["identification_documents", "identity_document"],
-  ["personal_identification", "identity_document"],
-  ["national_id", "identity_document"],
-  ["passport_copy", "passport"],
-  ["driver_license", "driving_license"],
-  ["drivers_license", "driving_license"],
-  ["bank_statements", "bank_statement"],
-  ["proof_of_income", "salary_certificate"],
-  ["salary_cert", "salary_certificate"],
-  ["eid", "emirates_id"],
-  ["emirates_id_card", "emirates_id"],
-  ["tax invoice", "tax_invoice"],
-  ["trade_license", "company_license"],
-  ["commercial_license", "company_license"],
-  ["company_registration_documents", "corporate_documents"],
-  ["business_registration_documents", "corporate_documents"],
-  ["company_and_transaction_documents", "corporate_documents"],
-  ["company_documents", "corporate_documents"],
-  ["company_corporate_documents", "corporate_documents"],
-  ["corporate_document", "corporate_documents"],
-  ["company_bank_statements", "company_bank_statement"],
-  ["quote", "quotation"],
-  ["quotation_doc", "quotation"],
-  ["supplier_quotation", "quotation"],
-  ["payment_receipt_doc", "payment_receipt"],
-  ["payment_receipt_supplier", "payment_receipt"],
-  ["payment_order", "payment_receipt"],
-  ["vcc", "vcc_certificate"],
-  ["vehicle_certificate_of_conformity", "vcc_certificate"],
-  ["hiyaza", "hiyaza_certificate"],
-  ["vehicle_possession_certificate/hiyaza", "vehicle_possession_certificate"],
-  ["mulkia", "mulkia_certificate"],
-  ["passing", "passing_certificate"],
-  ["spa", "spa_invoice"],
-  ["spa_contract", "spa_invoice"],
-  ["noc", "noc_company_letter"],
-  ["noc_letter", "noc_company_letter"],
-  ["noc_gps", "noc_gps_letter"],
-  ["trn", "trn_certificate"],
-] as const satisfies ReadonlyArray<[string, ClientDocumentTypeValue]>;
+const deriveClientDocumentTypesFromCatalog = (): ClientDocumentTypeEntry[] => {
+  const registry = workflowCatalog.clientDocumentTypeRegistry ?? [];
+  return registry.map((entry) => ({
+    value: entry.value,
+    label: entry.label,
+    context: (entry.context as ClientDocumentContext | undefined) ?? "any",
+  }));
+};
 
-const CLIENT_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<
-  ClientDocumentTypeValue,
-  (typeof CLIENT_DOCUMENT_TYPES)[number]
->(CLIENT_DOCUMENT_TYPES, CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES);
+export const CLIENT_DOCUMENT_TYPES = deriveClientDocumentTypesFromCatalog();
+
+const clientDocumentTypeValueSet = new Set(CLIENT_DOCUMENT_TYPES.map((entry) => entry.value));
+
+const CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES: ReadonlyArray<[string, ClientDocumentTypeValue]> = (
+  workflowCatalog.clientDocumentTypeAliases ?? []
+)
+  .filter((alias) => clientDocumentTypeValueSet.has(alias.target))
+  .map((alias) => [alias.alias, alias.target as ClientDocumentTypeValue]);
+
+const CLIENT_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<ClientDocumentTypeValue, ClientDocumentTypeEntry>(
+  CLIENT_DOCUMENT_TYPES,
+  CLIENT_DOCUMENT_TYPE_ALIAS_ENTRIES,
+);
 
 export const CLIENT_DOCUMENT_TYPE_LABEL_MAP = CLIENT_DOCUMENT_TYPE_REGISTRY.labelMap;
 
@@ -798,63 +737,79 @@ export const normalizeClientDocumentType = CLIENT_DOCUMENT_TYPE_REGISTRY.normali
 
 export const getClientDocumentLabel = CLIENT_DOCUMENT_TYPE_REGISTRY.resolveLabel;
 
-export type DealDocumentCategory = "required" | "signature" | "archived" | "other";
+export type DealDocumentCategory = WorkflowDocumentCategory;
 
-export const DEAL_DOCUMENT_TYPES = [
-  { value: "account_confirmation_letter", label: "Справка об открытии счёта", category: "other" as const },
-  { value: "addendum", label: "Дополнительное соглашение", category: "other" as const },
-  { value: "assigning_letter", label: "Письмо об уступке прав", category: "signature" as const },
-  { value: "authorization_letter", label: "Письмо-доверенность", category: "signature" as const },
-  { value: "bank_account_details", label: "Банковские реквизиты", category: "other" as const },
-  { value: "commercial_license", label: "Коммерческая лицензия", category: "required" as const },
-  { value: "corporate_documents", label: "Корпоративные документы", category: "other" as const },
-  { value: "contract", label: "Контракт", category: "required" as const },
-  { value: "signed_quote", label: "Подписанное КП", category: "signature" as const },
-  { value: "signed_commercial_offer", label: "Подписанное коммерческое предложение", category: "signature" as const },
-  { value: "estimation", label: "Смета/оценка", category: "other" as const },
-  { value: "investment_agreement", label: "Инвестиционный договор", category: "required" as const },
-  { value: "invoice", label: "Инвойс", category: "other" as const },
-  { value: "lease_agreement", label: "Договор аренды", category: "required" as const },
-  { value: "purchase_agreement", label: "Договор покупки", category: "required" as const },
-  { value: "memorandum_of_understanding", label: "Меморандум о взаимопонимании", category: "signature" as const },
-  { value: "payment_schedule", label: "Платёжный график", category: "required" as const },
-  { value: "proforma_invoice", label: "Проформа-инвойс", category: "other" as const },
-  { value: "receipt", label: "Квитанция", category: "other" as const },
-  { value: "receipt_voucher", label: "Приходный ордер", category: "archived" as const },
-  { value: "sale_confirmation", label: "Подтверждение продажи", category: "signature" as const },
-  { value: "statement", label: "Statement of Account", category: "other" as const },
-  { value: "tax_credit_note", label: "Корректировочный налоговый документ", category: "archived" as const },
-  { value: "tax_invoice", label: "Налоговый инвойс", category: "other" as const },
-  { value: "termination_contract", label: "Договор расторжения", category: "archived" as const },
-  { value: "vat_registration_certificate", label: "Сертификат регистрации VAT", category: "required" as const },
-  { value: "vehicle_purchase_agreement", label: "Договор покупки транспортного средства", category: "required" as const },
-  { value: "vehicle_sale_contract", label: "Контракт продажи транспортного средства", category: "required" as const },
-  { value: "other", label: "Документ сделки", category: "other" as const },
-] as const;
+export type DealDocumentTypeEntry = {
+  value: string;
+  label: string;
+  category: DealDocumentCategory;
+};
+
+const inferDealDocumentCategory = (
+  documentType: string,
+  options: { statusKey?: string; required?: boolean },
+): DealDocumentCategory => {
+  if (documentType.startsWith("signed_") || options.statusKey === "DOC_SIGNING") return "signature";
+  if (options.required === false) return "other";
+  return "required";
+};
+
+const deriveDealDocumentTypesFromCatalog = (): DealDocumentTypeEntry[] => {
+  const merged = new Map<string, DealDocumentTypeEntry>();
+
+  // 1) Явный реестр из YAML (document_types.registry)
+  (workflowCatalog.documentTypeRegistry ?? []).forEach((entry: WorkflowDocumentTypeEntry) => {
+    const category: DealDocumentCategory = entry.category ?? "required";
+    merged.set(entry.value, {
+      value: entry.value,
+      label: entry.label,
+      category,
+    });
+  });
+
+  // 2) Документы из схем задач — чтобы не пропустить новые поля
+  Object.values(workflowCatalog.taskTemplates).forEach((template) => {
+    const statusKey = template.statusKey;
+    const fields = template.schema?.fields ?? [];
+    fields.forEach((field) => {
+      const documentType =
+        (field as { document_type?: string }).document_type ??
+        (field as { documentType?: string }).documentType ??
+        null;
+      if (!documentType) return;
+      if (merged.has(documentType)) return;
+
+      const label =
+        typeof field.label === "string" && field.label.trim().length > 0 ? field.label.trim() : documentType;
+      const category = inferDealDocumentCategory(documentType, { statusKey, required: field.required });
+
+      merged.set(documentType, {
+        value: documentType,
+        label,
+        category,
+      });
+    });
+  });
+
+  return Array.from(merged.values());
+};
+
+export const DEAL_DOCUMENT_TYPES = deriveDealDocumentTypesFromCatalog();
 
 export type DealDocumentTypeValue = (typeof DEAL_DOCUMENT_TYPES)[number]["value"];
 
-const DEAL_DOCUMENT_TYPE_ALIAS_ENTRIES = [
-  ["additional_agreement", "addendum"],
-  ["business_registration_documents", "corporate_documents"],
-  ["company_registration_documents", "corporate_documents"],
-  ["company_and_transaction_documents", "corporate_documents"],
-  ["company_documents", "corporate_documents"],
-  ["long_term_rental_agreement", "lease_agreement"],
-  ["long_term_rental_vehicle_agreement", "lease_agreement"],
-  ["long_term_vehicle_rental_agreement", "lease_agreement"],
-  ["vehicle_rental_agreement", "lease_agreement"],
-  ["rent_payment_schedule", "payment_schedule"],
-  ["schedule", "payment_schedule"],
-  ["preliminary_vehicle_purchase_agreement", "vehicle_purchase_agreement"],
-  ["vehicle_sales_agreement", "vehicle_sale_contract"],
-  ["sale_confirmation_letter", "sale_confirmation"],
-] as const satisfies ReadonlyArray<[string, DealDocumentTypeValue]>;
+const dealDocumentTypeValueSet = new Set(DEAL_DOCUMENT_TYPES.map((entry) => entry.value));
 
-const DEAL_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<
-  DealDocumentTypeValue,
-  (typeof DEAL_DOCUMENT_TYPES)[number]
->(DEAL_DOCUMENT_TYPES, DEAL_DOCUMENT_TYPE_ALIAS_ENTRIES);
+const DEAL_DOCUMENT_TYPE_ALIAS_ENTRIES: ReadonlyArray<[string, DealDocumentTypeValue]> = (
+  workflowCatalog.documentTypeAliases ?? []
+)
+  .filter((alias: WorkflowDocumentTypeAlias) => dealDocumentTypeValueSet.has(alias.target))
+  .map((alias) => [alias.alias, alias.target as DealDocumentTypeValue]);
+
+const DEAL_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<DealDocumentTypeValue, DealDocumentTypeEntry>(
+  DEAL_DOCUMENT_TYPES,
+  DEAL_DOCUMENT_TYPE_ALIAS_ENTRIES,
+);
 
 export const DEAL_DOCUMENT_TYPE_LABEL_MAP = DEAL_DOCUMENT_TYPE_REGISTRY.labelMap;
 

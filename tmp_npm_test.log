@@ -6,14 +6,14 @@
 [1m[46m RUN [49m[22m [36mv4.0.8 [39m[90m/Users/maksymholovakhin/fast-lease[39m
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mupdates deal status and logs audit when transition succeeds
-[22m[39m[WorkflowService] Attempt 1/4 for deal deal-1 transition from DOCS_COLLECT to RISK_REVIEW
+[22m[39m[WorkflowService] Attempt 1/4 for deal deal-1 transition from DOCS_COLLECT_BUYER to RISK_REVIEW
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mupdates deal status and logs audit when transition succeeds
 [22m[39m[StateMachine] Initialized with template stages: [
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -23,7 +23,7 @@
   [32m'ACTIVE'[39m,
   [32m'CANCELLED'[39m
 ]
-[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
+[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT_BUYER' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
 [ValidateTransition] Evaluating 1 guards with context: { docs: { required: { allUploaded: [33mtrue[39m } } }
 [GuardEvaluator] Evaluating condition: key='docs.required.allUploaded', rule='== true', actual= [33mtrue[39m
 [GuardEvaluator] == comparison: actual=true, expected=true, result=true
@@ -39,14 +39,14 @@
 [22m[39m[workflow] no active workflow version found, bootstrapping default { workflowId: [32m'fast-lease-v1'[39m }
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
-[22m[39m[WorkflowService] Attempt 1/4 for deal deal-guard transition from DOCS_COLLECT to RISK_REVIEW
+[22m[39m[WorkflowService] Attempt 1/4 for deal deal-guard transition from DOCS_COLLECT_BUYER to RISK_REVIEW
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
 [22m[39m[StateMachine] Initialized with template stages: [
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -56,7 +56,7 @@
   [32m'ACTIVE'[39m,
   [32m'CANCELLED'[39m
 ]
-[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
+[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT_BUYER' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
 [ValidateTransition] Evaluating 1 guards with context: {}
 [GuardEvaluator] Evaluating condition: key='docs.required.allUploaded', rule='== true', actual= [90mundefined[39m
 [GuardEvaluator] == comparison: actual=undefined, expected=true, result=false
@@ -76,14 +76,14 @@
 [WorkflowService] Retrying transition for deal deal-guard in 1000ms (attempt 2/4)
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
-[22m[39m[WorkflowService] Attempt 2/4 for deal deal-guard transition from DOCS_COLLECT to RISK_REVIEW
+[22m[39m[WorkflowService] Attempt 2/4 for deal deal-guard transition from DOCS_COLLECT_BUYER to RISK_REVIEW
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
 [22m[39m[StateMachine] Initialized with template stages: [
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -93,7 +93,7 @@
   [32m'ACTIVE'[39m,
   [32m'CANCELLED'[39m
 ]
-[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
+[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT_BUYER' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
 [ValidateTransition] Evaluating 1 guards with context: {}
 [GuardEvaluator] Evaluating condition: key='docs.required.allUploaded', rule='== true', actual= [90mundefined[39m
 [GuardEvaluator] == comparison: actual=undefined, expected=true, result=false
@@ -107,14 +107,14 @@
 [WorkflowService] Retrying transition for deal deal-guard in 2000ms (attempt 3/4)
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
-[22m[39m[WorkflowService] Attempt 3/4 for deal deal-guard transition from DOCS_COLLECT to RISK_REVIEW
+[22m[39m[WorkflowService] Attempt 3/4 for deal deal-guard transition from DOCS_COLLECT_BUYER to RISK_REVIEW
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
 [22m[39m[StateMachine] Initialized with template stages: [
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -124,7 +124,7 @@
   [32m'ACTIVE'[39m,
   [32m'CANCELLED'[39m
 ]
-[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
+[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT_BUYER' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
 [ValidateTransition] Evaluating 1 guards with context: {}
 [GuardEvaluator] Evaluating condition: key='docs.required.allUploaded', rule='== true', actual= [90mundefined[39m
 [GuardEvaluator] == comparison: actual=undefined, expected=true, result=false
@@ -138,14 +138,14 @@
 [WorkflowService] Retrying transition for deal deal-guard in 4000ms (attempt 4/4)
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
-[22m[39m[WorkflowService] Attempt 4/4 for deal deal-guard transition from DOCS_COLLECT to RISK_REVIEW
+[22m[39m[WorkflowService] Attempt 4/4 for deal deal-guard transition from DOCS_COLLECT_BUYER to RISK_REVIEW
 
 [90mstdout[2m | lib/workflow/__tests__/service.test.ts[2m > [22m[2mWorkflowService[2m > [22m[2mthrows when guard conditions fail
 [22m[39m[StateMachine] Initialized with template stages: [
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -155,7 +155,7 @@
   [32m'ACTIVE'[39m,
   [32m'CANCELLED'[39m
 ]
-[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
+[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT_BUYER' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
 [ValidateTransition] Evaluating 1 guards with context: {}
 [GuardEvaluator] Evaluating condition: key='docs.required.allUploaded', rule='== true', actual= [90mundefined[39m
 [GuardEvaluator] == comparison: actual=undefined, expected=true, result=false
@@ -174,7 +174,7 @@
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -190,7 +190,7 @@
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -202,7 +202,7 @@
 ]
 
 [90mstdout[2m | lib/workflow/__tests__/state-machine.test.ts[2m > [22m[2mWorkflowStateMachine[2m > [22m[2mrejects transition when guard conditions fail
-[22m[39m[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
+[22m[39m[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT_BUYER' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
 [ValidateTransition] Evaluating 1 guards with context: {}
 [GuardEvaluator] Evaluating condition: key='docs.required.allUploaded', rule='== true', actual= [90mundefined[39m
 [GuardEvaluator] == comparison: actual=undefined, expected=true, result=false
@@ -216,7 +216,7 @@
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,
@@ -228,7 +228,7 @@
 ]
 
 [90mstdout[2m | lib/workflow/__tests__/state-machine.test.ts[2m > [22m[2mWorkflowStateMachine[2m > [22m[2mexecutes entry actions when guards pass
-[22m[39m[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
+[22m[39m[ValidateTransition] Starting validation for transition from 'DOCS_COLLECT_BUYER' to 'RISK_REVIEW' with actorRole 'OP_MANAGER'
 [ValidateTransition] Evaluating 1 guards with context: { docs: { required: { allUploaded: [33mtrue[39m } } }
 [GuardEvaluator] Evaluating condition: key='docs.required.allUploaded', rule='== true', actual= [33mtrue[39m
 [GuardEvaluator] == comparison: actual=true, expected=true, result=true
@@ -242,7 +242,7 @@
   [32m'NEW'[39m,
   [32m'OFFER_PREP'[39m,
   [32m'VEHICLE_CHECK'[39m,
-  [32m'DOCS_COLLECT'[39m,
+  [32m'DOCS_COLLECT_BUYER'[39m,
   [32m'RISK_REVIEW'[39m,
   [32m'FINANCE_REVIEW'[39m,
   [32m'INVESTOR_PENDING'[39m,

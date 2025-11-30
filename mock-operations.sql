@@ -846,7 +846,7 @@ SELECT
     gen_random_uuid(),
     d.id,
     CASE 
-        WHEN RANDOM() > 0.8 THEN 'DOCS_COLLECT'
+        WHEN RANDOM() > 0.8 THEN 'DOCS_COLLECT_BUYER'
         WHEN RANDOM() > 0.6 THEN 'CONTRACT_PREP'
         WHEN RANDOM() > 0.4 THEN 'SIGNING_FUNDING'
         ELSE 'ACTIVE'

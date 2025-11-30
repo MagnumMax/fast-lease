@@ -924,40 +924,42 @@ export function OpsDealsBoard({
             void handleCreateDeal();
           }}
         >
-          <div className="space-y-2">
-            <label htmlFor="deal-reference" className="text-sm font-medium text-foreground/80">
-              Reference (опционально)
-            </label>
-            <Input
-              id="deal-reference"
-              value={formState.reference}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, reference: event.target.value }))
-              }
-              placeholder="LTR-081125-3782"
-              className="rounded-xl"
-            />
-          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label htmlFor="deal-reference" className="text-sm font-medium text-foreground/80">
+                Reference (опционально)
+              </label>
+              <Input
+                id="deal-reference"
+                value={formState.reference}
+                onChange={(event) =>
+                  setFormState((prev) => ({ ...prev, reference: event.target.value }))
+                }
+                placeholder="LTR-081125-3782"
+                className="h-11 rounded-xl"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground/80">Компания</label>
-            <Select
-              value={formState.companyCode}
-              onValueChange={(value) =>
-                setFormState((prev) => ({ ...prev, companyCode: value as DealCompanyCode }))
-              }
-            >
-              <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
-                <SelectValue placeholder="Выберите компанию" />
-              </SelectTrigger>
-              <SelectContent>
-                {DEAL_COMPANY_SELECT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground/80">Компания</label>
+              <Select
+                value={formState.companyCode}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({ ...prev, companyCode: value as DealCompanyCode }))
+                }
+              >
+                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
+                  <SelectValue placeholder="Выберите компанию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEAL_COMPANY_SELECT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

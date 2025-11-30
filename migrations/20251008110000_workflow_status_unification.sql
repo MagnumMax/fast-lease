@@ -56,7 +56,7 @@ create type public.deal_status as enum (
   'NEW',
   'OFFER_PREP',
   'VEHICLE_CHECK',
-  'DOCS_COLLECT',
+  'DOCS_COLLECT_BUYER',
   'RISK_REVIEW',
   'FINANCE_REVIEW',
   'INVESTOR_PENDING',

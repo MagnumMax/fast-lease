@@ -544,7 +544,7 @@ begin
     application_id_third,
     volvo_id,
     client_id,
-    'DOCS_COLLECT',
+    'DOCS_COLLECT_BUYER',
     185000,
     225000,
     3250,

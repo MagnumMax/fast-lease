@@ -2,7 +2,7 @@
 
 WITH buyer_stage AS (
   SELECT '{
-    "code": "DOCS_COLLECT",
+    "code": "DOCS_COLLECT_BUYER",
     "title": "Сбор документов покупателя",
     "entryActions": [
       {
@@ -102,7 +102,7 @@ patched AS (
     jsonb_set(
       jsonb_set(
         w.template,
-        '{stages,DOCS_COLLECT}',
+        '{stages,DOCS_COLLECT_BUYER}',
         (SELECT cfg FROM buyer_stage),
         true
       ),

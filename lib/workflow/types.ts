@@ -8,6 +8,38 @@ export type WorkflowRoleDefinition = {
   categories: WorkflowRoleCategory[];
 };
 
+export type WorkflowDocumentCategory = "required" | "signature" | "archived" | "other";
+export type WorkflowDocumentContext = "personal" | "company" | "any" | "vehicle";
+
+export type WorkflowDocumentTypeEntry = {
+  value: string;
+  label: string;
+  category?: WorkflowDocumentCategory;
+  context?: WorkflowDocumentContext;
+};
+
+export type WorkflowDocumentTypeAlias = {
+  alias: string;
+  target: string;
+};
+
+export type WorkflowDocumentTypesConfig = {
+  registry?: WorkflowDocumentTypeEntry[];
+  aliases?: WorkflowDocumentTypeAlias[];
+  deal?: {
+    registry?: WorkflowDocumentTypeEntry[];
+    aliases?: WorkflowDocumentTypeAlias[];
+  };
+  client?: {
+    registry?: WorkflowDocumentTypeEntry[];
+    aliases?: WorkflowDocumentTypeAlias[];
+  };
+  vehicle?: {
+    registry?: WorkflowDocumentTypeEntry[];
+    aliases?: WorkflowDocumentTypeAlias[];
+  };
+};
+
 export type WorkflowMetadata = {
   id: string;
   title: string;
@@ -197,6 +229,7 @@ export type WorkflowTemplate = {
   workflow: WorkflowMetadata;
   roles: WorkflowRoleDefinition[];
   kanbanOrder: string[];
+  documentTypes?: WorkflowDocumentTypesConfig;
   stages: Record<string, WorkflowStatusDefinition>;
   transitions: WorkflowTransition[];
   permissions: WorkflowPermissions;

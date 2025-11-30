@@ -7,7 +7,7 @@ const DEAL_STATUS_BADGE_VARIANTS: Record<OpsDealStatusKey, DealStatusBadgeVarian
   NEW: "info",
   OFFER_PREP: "info",
   VEHICLE_CHECK: "warning",
-  DOCS_COLLECT: "warning",
+  DOCS_COLLECT_BUYER: "warning",
   DOCS_COLLECT_SELLER: "warning",
   RISK_REVIEW: "danger",
   FINANCE_REVIEW: "warning",

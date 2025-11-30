@@ -543,7 +543,7 @@ do $$
 declare
   app_record record;
   ops_ids uuid[];
-  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','DOC_SIGNING','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
+  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT_BUYER','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','DOC_SIGNING','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
   sources text[] := array['Website','Broker','Referral','Partner Portal','Corporate RFP'];
   wf_version_active uuid;
   wf_version_previous uuid;
@@ -575,7 +575,7 @@ begin
     '2025.02-peak',
     'Fast Lease Workflow Peak Season',
     'Active workflow featuring enhanced investor review gates.',
-    'stages:\n  - NEW\n  - OFFER_PREP\n  - VEHICLE_CHECK\n  - DOCS_COLLECT\n  - RISK_REVIEW\n  - FINANCE_REVIEW\n  - INVESTOR_PENDING\n  - CONTRACT_PREP\n  - SIGNING_FUNDING\n  - VEHICLE_DELIVERY\n  - ACTIVE\n  - CANCELLED',
+    'stages:\n  - NEW\n  - OFFER_PREP\n  - VEHICLE_CHECK\n  - DOCS_COLLECT_BUYER\n  - RISK_REVIEW\n  - FINANCE_REVIEW\n  - INVESTOR_PENDING\n  - CONTRACT_PREP\n  - SIGNING_FUNDING\n  - VEHICLE_DELIVERY\n  - ACTIVE\n  - CANCELLED',
     jsonb_build_object('stages', status_codes, 'escalations', jsonb_build_array('finance_alert','investor_notice')),
     encode(digest('fast-lease-v1-2025.02-peak','sha256'),'hex'),
     true,
@@ -867,7 +867,7 @@ declare
   busy_deals uuid[];
   deal_id uuid;
   ref_counter int := 0;
-  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','DOC_SIGNING','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
+  status_codes text[] := array['NEW','OFFER_PREP','VEHICLE_CHECK','DOCS_COLLECT_BUYER','RISK_REVIEW','FINANCE_REVIEW','INVESTOR_PENDING','CONTRACT_PREP','DOC_SIGNING','SIGNING_FUNDING','VEHICLE_DELIVERY','ACTIVE','CANCELLED'];
 begin
   select array_agg(id order by created_at) into support_ids
   from auth.users where email like '%@support.fastlease.dev';

@@ -41,7 +41,7 @@ function resolveDealStatusTone(status: string | null | undefined) {
       "NEW",
       "OFFER_PREP",
       "VEHICLE_CHECK",
-      "DOCS_COLLECT",
+      "DOCS_COLLECT_BUYER",
       "DOCS_COLLECT_SELLER",
       "RISK_REVIEW",
       "FINANCE_REVIEW",

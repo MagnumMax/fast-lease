@@ -196,6 +196,17 @@ function buildTaskPayload(
 
   const evaluatedBindings = evaluateBindings(bindings, bindingContext);
 
+  // Auto-populate fields from deal payload if they exist in the schema
+  const dealFields = (options.deal?.payload as any)?.fields ?? {};
+  const schemaFields = definition.schema?.fields ?? [];
+  const prefilledFields: Record<string, unknown> = {};
+
+  for (const field of schemaFields) {
+    if (field.id in dealFields) {
+      prefilledFields[field.id] = dealFields[field.id];
+    }
+  }
+
   return {
     template_id: definition.templateId,
     title: definition.title,
@@ -206,6 +217,7 @@ function buildTaskPayload(
     defaults: definition.defaults ?? null,
     fields: {
       ...(definition.defaults ?? {}),
+      ...prefilledFields,
       ...evaluatedBindings,
     },
     status: options.status,

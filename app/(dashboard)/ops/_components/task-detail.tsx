@@ -35,6 +35,7 @@ import {
   normalizeClientDocumentType,
 } from "@/lib/supabase/queries/operations";
 import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
+import { WorkflowDocuments } from "@/app/(dashboard)/ops/_components/workflow-documents";
 
 import { deleteTaskGuardDocumentAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
 
@@ -356,8 +357,8 @@ export function TaskDetailView({
     ? schemaFieldsRaw
     : schemaFieldsRaw && typeof schemaFieldsRaw === "object" && !Array.isArray(schemaFieldsRaw)
       ? (Array.isArray((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields)
-          ? ((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields as TaskFieldDefinition[])
-          : [])
+        ? ((schemaFieldsRaw as { fields?: TaskFieldDefinition[] }).fields as TaskFieldDefinition[])
+        : [])
       : [];
   const fallbackTemplate = WORKFLOW_TASK_TEMPLATES_BY_TYPE[task.type]?.[0];
   const rawFields =
@@ -388,77 +389,77 @@ export function TaskDetailView({
   const hasWorkflowDocuments = hasWorkflowDocumentFields || hasWorkflowChecklist;
   const workflowDocumentsRequired = Boolean(
     guardMeta?.requiresDocument ||
-      requiresDocumentFlag ||
-      enforcedDocumentType ||
-      workflowDocumentFields.some((field) => field.required) ||
-      visibleFields.some((field) => field.type?.toLowerCase() === "checklist" && field.required),
+    requiresDocumentFlag ||
+    enforcedDocumentType ||
+    workflowDocumentFields.some((field) => field.required) ||
+    visibleFields.some((field) => field.type?.toLowerCase() === "checklist" && field.required),
   );
   const hasMandatoryWorkflowDocs = workflowDocumentsRequired || Boolean(requiresDocumentFlag || enforcedDocumentType);
   const workflowDocumentItems =
     checklist && checklist.items.length > 0
       ? checklist.items.map((item) => ({
-          key: item.key,
-          label:
-            getClientDocumentLabel((item.normalizedType as ClientDocumentTypeValue | null) ?? null) ??
-            getClientDocumentLabel(item.key as ClientDocumentTypeValue) ??
-            item.label,
-          fulfilled: item.fulfilled,
-          matchesCount: item.matches.length,
-          required: workflowDocumentsRequired,
-        }))
+        key: item.key,
+        label:
+          getClientDocumentLabel((item.normalizedType as ClientDocumentTypeValue | null) ?? null) ??
+          getClientDocumentLabel(item.key as ClientDocumentTypeValue) ??
+          item.label,
+        fulfilled: item.fulfilled,
+        matchesCount: item.matches.length,
+        required: workflowDocumentsRequired,
+      }))
       : workflowDocumentFields.map((field) => {
-          const mappedType = getFieldDocumentType(field);
-          const label =
-            (mappedType ? getClientDocumentLabel(mappedType) : null) ??
-            (field.label && /(файл)/i.test(field.label) ? field.label.replace(/\s*\(файл\)/gi, "").trim() : field.label) ??
-            field.id;
-          const itemRequired = Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired);
-          return {
-            key: field.id,
-            label,
-            fulfilled: null as boolean | null,
-            matchesCount: null as number | null,
-            required: itemRequired,
-          };
-        });
+        const mappedType = getFieldDocumentType(field);
+        const label =
+          (mappedType ? getClientDocumentLabel(mappedType) : null) ??
+          (field.label && /(файл)/i.test(field.label) ? field.label.replace(/\s*\(файл\)/gi, "").trim() : field.label) ??
+          field.id;
+        const itemRequired = Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired);
+        return {
+          key: field.id,
+          label,
+          fulfilled: null as boolean | null,
+          matchesCount: null as number | null,
+          required: itemRequired,
+        };
+      });
 
-function renderFieldRow(opts: {
-  id: string;
-  label: string;
-  required?: boolean;
-  control: JSX.Element;
-  useTwoColumn: boolean;
-  rowClass: string;
-}) {
-  const { id, label, required, control, useTwoColumn, rowClass } = opts;
-  const labelNode = (
-    <Label
-      htmlFor={`field-${id}`}
-      className="text-sm font-semibold leading-tight text-foreground normal-case tracking-normal"
-    >
-      {label}
-      {required ? (
-        <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
-          *
-        </span>
-      ) : null}
-    </Label>
-  );
-  if (useTwoColumn) {
+  function renderFieldRow(opts: {
+    id: string;
+    label: string;
+    required?: boolean;
+    control: JSX.Element;
+    useTwoColumn: boolean;
+    rowClass: string;
+  }) {
+    const { id, label, required, control, useTwoColumn, rowClass } = opts;
+    const labelNode = (
+      <Label
+        htmlFor={`field-${id}`}
+        className="text-sm font-semibold leading-tight text-foreground normal-case tracking-normal"
+      >
+        {label}
+        {required ? (
+          <span className="ml-1 align-middle font-semibold text-destructive" aria-hidden="true">
+            *
+          </span>
+        ) : null}
+      </Label>
+    );
+    if (useTwoColumn) {
+      return (
+        <div key={id} className={rowClass}>
+          <div className="flex flex-col gap-1">{labelNode}</div>
+          <div className="space-y-2">{control}</div>
+        </div>
+      );
+    }
     return (
       <div key={id} className={rowClass}>
-        <div className="flex flex-col gap-1">{labelNode}</div>
-        <div className="space-y-2">{control}</div>
+        {labelNode}
+        {control}
       </div>
     );
   }
-  return (
-    <div key={id} className={rowClass}>
-      {labelNode}
-      {control}
-    </div>
-  );
-}
 
   const documentSectionDescription =
     "Загрузите дополнительные файлы по сделке. Поддерживаются PDF, JPG и PNG.";
@@ -526,16 +527,16 @@ function renderFieldRow(opts: {
   }, [guardDocumentLinks]);
   const instructionShortRaw =
     payload?.defaults &&
-    typeof payload.defaults === "object" &&
-    !Array.isArray(payload.defaults) &&
-    typeof (payload.defaults as Record<string, unknown>).instruction_short === "string"
+      typeof payload.defaults === "object" &&
+      !Array.isArray(payload.defaults) &&
+      typeof (payload.defaults as Record<string, unknown>).instruction_short === "string"
       ? ((payload.defaults as Record<string, unknown>).instruction_short as string)
       : null;
   const instructionsDefaults =
     payload?.defaults &&
-    typeof payload.defaults === "object" &&
-    !Array.isArray(payload.defaults) &&
-    typeof (payload.defaults as Record<string, unknown>).instructions === "string"
+      typeof payload.defaults === "object" &&
+      !Array.isArray(payload.defaults) &&
+      typeof (payload.defaults as Record<string, unknown>).instructions === "string"
       ? ((payload.defaults as Record<string, unknown>).instructions as string)
       : null;
   const instructionsValue = resolveFieldValue("instructions", payload);
@@ -729,14 +730,14 @@ function renderFieldRow(opts: {
         ? workflowDocs
         : dealEntity.documents.length > 0
           ? [
-              {
-                stageKey: "deal",
-                stageTitle: dealEntity.title,
-                taskTitle: "Документы сделки",
-                taskTemplateId: "deal-documents",
-                documents: dealEntity.documents,
-              } satisfies WorkflowDocumentGroupEntry,
-            ]
+            {
+              stageKey: "deal",
+              stageTitle: dealEntity.title,
+              taskTitle: "Документы сделки",
+              taskTemplateId: "deal-documents",
+              documents: dealEntity.documents,
+            } satisfies WorkflowDocumentGroupEntry,
+          ]
           : [];
     const additionalDocs = dealEntity.additionalDocuments ?? [];
 
@@ -772,97 +773,7 @@ function renderFieldRow(opts: {
               </div>
             ))}
 
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Документы сделки
-                </p>
-                {effectiveWorkflowDocs.length ? (
-                  <div className="space-y-3">
-                    {effectiveWorkflowDocs.map((group) => (
-                      <div
-                        key={`${group.stageKey}-${group.taskTemplateId}`}
-                        className="rounded-lg border border-border/60 bg-background/80"
-                      >
-                        <div className="flex items-center justify-between border-b border-border/60 px-4 py-2 text-xs font-semibold text-foreground">
-                          <span>{group.taskTitle}</span>
-                        </div>
-                        <div className="divide-y divide-border/60">
-                          {group.documents.map((doc, idx) => (
-                            <div
-                              key={`${group.taskTemplateId}-doc-${idx}-${doc.label}`}
-                              className="flex items-start justify-between gap-3 px-4 py-3 text-xs"
-                            >
-                              <div className="flex flex-col gap-1">
-                                <span className="text-sm font-semibold text-foreground">{doc.label}</span>
-                                <span className="text-muted-foreground">
-                                  {doc.value}
-                                  {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
-                                </span>
-                              </div>
-                              {doc.url ? (
-                                <Button asChild size="sm" variant="outline" className="rounded-lg">
-                                  <Link href={doc.url} target="_blank">
-                                    Открыть
-                                  </Link>
-                                </Button>
-                              ) : (
-                                <Badge variant="outline" className="rounded-lg text-[11px] text-muted-foreground">
-                                  {doc.value === "—" ? "—" : doc.status ?? "Нет ссылки"}
-                                </Badge>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                    —
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Дополнительные документы
-                </p>
-                {additionalDocs.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    {additionalDocs.map((doc) => (
-                      <div
-                        key={`${dealEntity.title}-extra-${doc.label}`}
-                        className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-background/80 px-3 py-2 text-xs"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium text-foreground">{doc.label}</span>
-                          <span className="text-muted-foreground">
-                            {doc.value}
-                            {doc.status && doc.value !== "—" ? ` • ${doc.status}` : ""}
-                          </span>
-                        </div>
-                        {doc.url ? (
-                          <Button asChild size="sm" variant="outline" className="rounded-lg">
-                            <Link href={doc.url} target="_blank">
-                              Открыть
-                            </Link>
-                          </Button>
-                        ) : (
-                          <Badge variant="outline" className="rounded-lg text-[11px] text-muted-foreground">
-                            {doc.value === "—" ? "—" : doc.status ?? "Нет ссылки"}
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="rounded-md border border-dashed border-border/60 px-3 py-2 text-xs text-muted-foreground">
-                    —
-                  </p>
-                )}
-              </div>
-            </div>
+            <WorkflowDocuments groups={effectiveWorkflowDocs} additional={additionalDocs} />
           </div>
         </CardContent>
       </Card>
@@ -1009,12 +920,12 @@ function renderFieldRow(opts: {
 
               {visibleFields.length > 0 ? (
                 <div className="space-y-3">
-      {visibleFields.map((field, index) => {
-        const fieldId = field.id;
-        const value = resolveFieldValue(fieldId, payload);
-        const baseLabel = field.label ?? fieldId;
-        const rawHint = field.hint ?? "";
-        const hint = ""; // хинты скрываем для компактности
+                  {visibleFields.map((field, index) => {
+                    const fieldId = field.id;
+                    const value = resolveFieldValue(fieldId, payload);
+                    const baseLabel = field.label ?? fieldId;
+                    const rawHint = field.hint ?? "";
+                    const hint = ""; // хинты скрываем для компактности
                     let label = baseLabel;
                     if (fieldId === "buyer_contact_email" && buyerType === "individual") {
                       label = "Электронная почта покупателя";
@@ -1035,11 +946,10 @@ function renderFieldRow(opts: {
                       : field.required ?? false;
                     const isLastRow = index === visibleFields.length - 1;
                     const rowClass = useTwoColumnFieldLayout
-                      ? `grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,260px)_1fr] sm:items-center px-4 py-3 ${
-                          isLastRow ? "" : "border-b border-border/60"
-                        }`
+                      ? `grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,260px)_1fr] sm:items-center px-4 py-3 ${isLastRow ? "" : "border-b border-border/60"
+                      }`
                       : "space-y-2 py-2";
-        const renderRow = (control: JSX.Element) =>
+                    const renderRow = (control: JSX.Element) =>
                       renderFieldRow({
                         id: `${fieldId}-${buyerType}-${formResetToken}`
                           .replace(/\s+/g, '-')
@@ -1536,7 +1446,14 @@ function renderFieldRow(opts: {
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
                 {isApprovalTask ? (
-                  <Button type="button" variant="outline" className="rounded-lg" disabled>
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    className="rounded-lg text-destructive hover:bg-destructive/5 hover:text-destructive"
+                    name="intent"
+                    value="return_for_revision"
+                    disabled={pending}
+                  >
                     Вернуть на доработку
                   </Button>
                 ) : null}

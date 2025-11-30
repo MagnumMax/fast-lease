@@ -12,6 +12,11 @@ import type {
   WorkflowTemplate,
 } from "./types";
 import type { AppRole } from "../auth/types";
+import type {
+  WorkflowDocumentCategory,
+  WorkflowDocumentContext,
+  WorkflowDocumentTypesConfig,
+} from "./types";
 
 export class WorkflowTemplateParseError extends Error {
   constructor(message: string, readonly cause?: unknown) {
@@ -128,6 +133,34 @@ const rawActionSchema = z.discriminatedUnion("type", [
   rawWebhookActionSchema,
   rawScheduleActionSchema,
 ]);
+
+const documentTypeCategoryEnum = z.enum(["required", "signature", "archived", "other"]);
+const documentTypeContextEnum = z.enum(["personal", "company", "any", "vehicle"]);
+
+const documentTypeRegistrySchema = z.object({
+  value: z.string().min(1),
+  label: z.string().min(1),
+  category: documentTypeCategoryEnum.optional(),
+  context: documentTypeContextEnum.optional(),
+});
+
+const documentTypeAliasSchema = z.object({
+  alias: z.string().min(1),
+  target: z.string().min(1),
+});
+
+const documentTypeGroupSchema = z.object({
+  registry: z.array(documentTypeRegistrySchema).optional(),
+  aliases: z.array(documentTypeAliasSchema).optional(),
+});
+
+const documentTypesSchema = z.object({
+  registry: z.array(documentTypeRegistrySchema).optional(),
+  aliases: z.array(documentTypeAliasSchema).optional(),
+  deal: documentTypeGroupSchema.optional(),
+  client: documentTypeGroupSchema.optional(),
+  vehicle: documentTypeGroupSchema.optional(),
+});
 
 type RawTaskDefinition = z.infer<typeof rawTaskDefinitionSchema>;
 type RawAction = z.infer<typeof rawActionSchema>;
@@ -375,6 +408,7 @@ const templateSchema = z.object({
   workflow: metadataSchema,
   roles: z.array(roleDefinitionSchema).min(1),
   kanban_order: z.array(z.string().min(1)).min(1),
+  document_types: documentTypesSchema.optional(),
   statuses: z.record(z.string(), statusSchema),
   transitions: z.array(transitionSchema).min(1),
   permissions: z.record(z.string(), permissionEntrySchema),
@@ -426,10 +460,49 @@ const normalizeTemplate = (result: TemplateSchemaResult): WorkflowTemplate => {
     return acc;
   }, {} as Record<string, WorkflowStatusDefinition>);
 
+  const mapRegistryEntry = (entry: z.infer<typeof documentTypeRegistrySchema>) => ({
+    value: entry.value,
+    label: entry.label,
+    category: entry.category as WorkflowDocumentCategory | undefined,
+    context: entry.context as WorkflowDocumentContext | undefined,
+  });
+
+  const mapAliases = (aliases?: z.infer<typeof documentTypeAliasSchema>[]) =>
+    aliases?.map((alias) => ({
+      alias: alias.alias,
+      target: alias.target,
+    })) ?? [];
+
+  const documentTypes: WorkflowDocumentTypesConfig | undefined = result.document_types
+    ? {
+        registry: result.document_types.registry?.map(mapRegistryEntry),
+        aliases: mapAliases(result.document_types.aliases),
+        deal: result.document_types.deal
+          ? {
+              registry: result.document_types.deal.registry?.map(mapRegistryEntry),
+              aliases: mapAliases(result.document_types.deal.aliases),
+            }
+          : undefined,
+        client: result.document_types.client
+          ? {
+              registry: result.document_types.client.registry?.map(mapRegistryEntry),
+              aliases: mapAliases(result.document_types.client.aliases),
+            }
+          : undefined,
+        vehicle: result.document_types.vehicle
+          ? {
+              registry: result.document_types.vehicle.registry?.map(mapRegistryEntry),
+              aliases: mapAliases(result.document_types.vehicle.aliases),
+            }
+          : undefined,
+      }
+    : undefined;
+
   return {
     workflow: result.workflow,
     roles: result.roles,
     kanbanOrder: result.kanban_order,
+    documentTypes,
     stages: statuses,
     transitions: result.transitions,
     permissions: result.permissions,

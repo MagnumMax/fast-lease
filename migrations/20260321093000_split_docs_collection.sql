@@ -10,7 +10,7 @@ BEGIN
       WHERE t.typname = 'deal_status'
         AND e.enumlabel = 'DOCS_COLLECT_SELLER'
     ) THEN
-      ALTER TYPE public.deal_status ADD VALUE 'DOCS_COLLECT_SELLER' AFTER 'DOCS_COLLECT';
+      ALTER TYPE public.deal_status ADD VALUE 'DOCS_COLLECT_SELLER' AFTER 'DOCS_COLLECT_BUYER';
     END IF;
   END IF;
 END $$;
@@ -24,7 +24,7 @@ BEGIN
   ) THEN
     UPDATE deal_statuses
       SET title = 'Сбор документов покупателя', sort_order = 4
-      WHERE code = 'DOCS_COLLECT';
+      WHERE code = 'DOCS_COLLECT_BUYER';
 
     INSERT INTO deal_statuses (code, title, sort_order) VALUES
       ('DOCS_COLLECT_SELLER', 'Сбор документов продавца', 5)
@@ -45,7 +45,7 @@ END $$;
 
 WITH buyer_stage AS (
   SELECT '{
-    "code": "DOCS_COLLECT",
+    "code": "DOCS_COLLECT_BUYER",
     "title": "Сбор документов покупателя",
     "entryActions": [
       {
@@ -121,7 +121,7 @@ WITH buyer_stage AS (
         jsonb_set(
           jsonb_set(
             w.template,
-            '{stages,DOCS_COLLECT}',
+            '{stages,DOCS_COLLECT_BUYER}',
             (SELECT cfg FROM buyer_stage),
             true
           ),
@@ -138,8 +138,8 @@ WITH buyer_stage AS (
           ) base
           CROSS JOIN LATERAL (
             SELECT CASE
-                     WHEN base.val = 'DOCS_COLLECT'
-                       THEN jsonb_build_array('DOCS_COLLECT', 'DOCS_COLLECT_SELLER')
+                     WHEN base.val = 'DOCS_COLLECT_BUYER'
+                       THEN jsonb_build_array('DOCS_COLLECT_BUYER', 'DOCS_COLLECT_SELLER')
                      ELSE jsonb_build_array(base.val)
                    END AS expanded
           ) exp
@@ -154,12 +154,12 @@ WITH buyer_stage AS (
           SELECT elem
           FROM jsonb_array_elements(w.template -> 'transitions') elem
           WHERE NOT (
-            (elem->>'from' = 'DOCS_COLLECT' AND elem->>'to' = 'RISK_REVIEW')
-            OR (elem->>'from' = 'DOCS_COLLECT' AND elem->>'to' = 'CANCELLED')
+            (elem->>'from' = 'DOCS_COLLECT_BUYER' AND elem->>'to' = 'RISK_REVIEW')
+            OR (elem->>'from' = 'DOCS_COLLECT_BUYER' AND elem->>'to' = 'CANCELLED')
           )
           UNION ALL
           SELECT jsonb_build_object(
-            'from', 'DOCS_COLLECT',
+            'from', 'DOCS_COLLECT_BUYER',
             'to', 'DOCS_COLLECT_SELLER',
             'byRoles', jsonb_build_array('OP_MANAGER'),
             'guards', jsonb_build_array(jsonb_build_object('key', 'docs.required.allUploaded', 'rule', '== true'))

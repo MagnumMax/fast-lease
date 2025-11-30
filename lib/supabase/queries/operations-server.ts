@@ -150,7 +150,7 @@ export const OPS_DEAL_PIPELINE_GROUPS = [
   { label: "Vehicle Check", statuses: ["VEHICLE_CHECK" as OpsDealStatusKey] },
   {
     label: "Docs Collection",
-    statuses: ["DOCS_COLLECT" as OpsDealStatusKey, "DOCS_COLLECT_SELLER" as OpsDealStatusKey],
+    statuses: ["DOCS_COLLECT_BUYER" as OpsDealStatusKey, "DOCS_COLLECT_SELLER" as OpsDealStatusKey],
   },
   { label: "Risk Review", statuses: ["RISK_REVIEW" as OpsDealStatusKey] },
   { label: "Finance", statuses: ["FINANCE_REVIEW" as OpsDealStatusKey] },
@@ -3225,6 +3225,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         signaturesRequired,
         uploadedAt: createdAtIso,
         signedAt: signedAtIso,
+        metadata: (doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
+          ? (doc.metadata as Record<string, unknown>)
+          : null),
       };
     })
   );

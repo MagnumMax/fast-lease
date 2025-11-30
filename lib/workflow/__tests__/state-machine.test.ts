@@ -42,7 +42,7 @@ describe("WorkflowStateMachine", () => {
   it("rejects transition when guard conditions fail", async () => {
     await expect(
       machine.performTransition({
-        from: "DOCS_COLLECT",
+        from: "DOCS_COLLECT_BUYER",
         to: "DOCS_COLLECT_SELLER",
         actorRole: "OP_MANAGER",
       }),
@@ -56,7 +56,7 @@ describe("WorkflowStateMachine", () => {
 
   it("executes entry actions when guards pass", async () => {
     const result = await machine.performTransition({
-      from: "DOCS_COLLECT",
+      from: "DOCS_COLLECT_BUYER",
       to: "DOCS_COLLECT_SELLER",
       actorRole: "OP_MANAGER",
       guardContext: {

@@ -6,6 +6,9 @@ import type {
   WorkflowStatusDefinition,
   WorkflowTaskDefinition,
   WorkflowRoleDefinition,
+  WorkflowDocumentTypeEntry,
+  WorkflowDocumentTypeAlias,
+  WorkflowDocumentTypesConfig,
 } from "@/lib/workflow/types";
 
 type TaskTemplate = WorkflowTaskDefinition & {
@@ -19,6 +22,12 @@ export type WorkflowCatalog = {
   statusByKey: Record<string, WorkflowStatusDefinition>;
   statusesOrdered: WorkflowStatusDefinition[];
   kanbanOrder: string[];
+  documentTypeRegistry: WorkflowDocumentTypeEntry[];
+  documentTypeAliases: WorkflowDocumentTypeAlias[];
+  clientDocumentTypeRegistry: WorkflowDocumentTypeEntry[];
+  clientDocumentTypeAliases: WorkflowDocumentTypeAlias[];
+  vehicleDocumentTypeRegistry: WorkflowDocumentTypeEntry[];
+  vehicleDocumentTypeAliases: WorkflowDocumentTypeAlias[];
   taskTemplates: Record<string, TaskTemplate>;
   taskTemplatesByType: Record<string, TaskTemplate[]>;
   exitRequirementsByStatus: Record<string, WorkflowRequirement[] | undefined>;
@@ -70,6 +79,37 @@ function indexTransitionsByFrom(transitions: WorkflowTransition[]): Record<strin
   }, {});
 }
 
+const resolveDocumentTypes = (
+  documentTypes: WorkflowDocumentTypesConfig | undefined,
+): {
+  dealRegistry: WorkflowDocumentTypeEntry[];
+  dealAliases: WorkflowDocumentTypeAlias[];
+  clientRegistry: WorkflowDocumentTypeEntry[];
+  clientAliases: WorkflowDocumentTypeAlias[];
+  vehicleRegistry: WorkflowDocumentTypeEntry[];
+  vehicleAliases: WorkflowDocumentTypeAlias[];
+} => {
+  const dealRegistry =
+    documentTypes?.deal?.registry ?? documentTypes?.registry ?? [];
+  const dealAliases =
+    documentTypes?.deal?.aliases ?? documentTypes?.aliases ?? [];
+
+  const clientRegistry = documentTypes?.client?.registry ?? [];
+  const clientAliases = documentTypes?.client?.aliases ?? [];
+
+  const vehicleRegistry = documentTypes?.vehicle?.registry ?? [];
+  const vehicleAliases = documentTypes?.vehicle?.aliases ?? [];
+
+  return {
+    dealRegistry,
+    dealAliases,
+    clientRegistry,
+    clientAliases,
+    vehicleRegistry,
+    vehicleAliases,
+  };
+};
+
 export function buildWorkflowCatalog(template: WorkflowTemplate): WorkflowCatalog {
   const rolesByCode = template.roles.reduce<Record<string, WorkflowRoleDefinition>>((acc, role) => {
     acc[role.code] = role;
@@ -100,6 +140,14 @@ export function buildWorkflowCatalog(template: WorkflowTemplate): WorkflowCatalo
   }, {});
 
   const transitionsByFrom = indexTransitionsByFrom(template.transitions);
+  const {
+    dealRegistry,
+    dealAliases,
+    clientRegistry,
+    clientAliases,
+    vehicleRegistry,
+    vehicleAliases,
+  } = resolveDocumentTypes(template.documentTypes);
 
   return {
     template,
@@ -108,6 +156,12 @@ export function buildWorkflowCatalog(template: WorkflowTemplate): WorkflowCatalo
     statusByKey,
     statusesOrdered,
     kanbanOrder: template.kanbanOrder,
+    documentTypeRegistry: dealRegistry,
+    documentTypeAliases: dealAliases,
+    clientDocumentTypeRegistry: clientRegistry,
+    clientDocumentTypeAliases: clientAliases,
+    vehicleDocumentTypeRegistry: vehicleRegistry,
+    vehicleDocumentTypeAliases: vehicleAliases,
     taskTemplates,
     taskTemplatesByType,
     exitRequirementsByStatus,

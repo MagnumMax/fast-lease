@@ -865,8 +865,8 @@ UNIQUE(workflow_id, version)
   },
   "roles": [...],
   "stages": {
-    "DOCS_COLLECT": {
-      "code": "DOCS_COLLECT",
+    "DOCS_COLLECT_BUYER": {
+      "code": "DOCS_COLLECT_BUYER",
       "title": "Сбор документов покупателя",
       "entryActions": [...],
       "sla": {"maxHours": 24}
@@ -1178,7 +1178,7 @@ graph TD
 ### 2. Workflow сделки
 
 #### Статусы сделок:
-1. **DOCS_COLLECT** - Сбор документов покупателя
+1. **DOCS_COLLECT_BUYER** - Сбор документов покупателя
 2. **DOCS_COLLECT_SELLER** - Сбор документов продавца
 3. **CONTRACT_PREP** - Подготовка договора
 4. **DOC_SIGNING** - Подписание документов
@@ -1188,7 +1188,7 @@ graph TD
 
 #### Ключевые задачи по статусам:
 
-**DOCS_COLLECT (покупатель):**
+**DOCS_COLLECT_BUYER (покупатель):**
 - `docs.required.allUploaded` (CLIENT → OP_MANAGER, SLA: 24h)
 - `docs.kyc.completed` (OP_MANAGER → RISK_MANAGER, SLA: 48h)
 

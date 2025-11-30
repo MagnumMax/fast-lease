@@ -41,7 +41,7 @@ kanban_order:
   - NEW
   - OFFER_PREP
   - VEHICLE_CHECK
-  - DOCS_COLLECT
+  - DOCS_COLLECT_BUYER
   - DOCS_COLLECT_SELLER
   - RISK_REVIEW
   - FINANCE_REVIEW
@@ -219,6 +219,250 @@ schemas:
         label: "SPA Invoice"
         document_type: spa_invoice
 
+document_types:
+  client:
+    registry:
+      - value: emirates_id
+        label: "Emirates ID"
+        context: personal
+      - value: passport
+        label: "Паспорт"
+        context: personal
+      - value: visa
+        label: "Виза"
+        context: personal
+      - value: driving_license
+        label: "Водительские права"
+        context: personal
+      - value: identity_document
+        label: "Документ, удостоверяющий личность"
+        context: personal
+      - value: salary_certificate
+        label: "Справка о доходах"
+        context: personal
+      - value: bank_statement
+        label: "Банковская выписка"
+        context: personal
+      - value: proof_of_address
+        label: "Подтверждение адреса"
+        context: personal
+      - value: vcc_certificate
+        label: "VCC (Vehicle Certificate of Conformity)"
+        context: any
+      - value: vehicle_possession_certificate
+        label: "Vehicle Possession Certificate"
+        context: any
+      - value: hiyaza_certificate
+        label: "Hiyaza"
+        context: any
+      - value: mulkia_certificate
+        label: "Mulkia"
+        context: any
+      - value: passing_certificate
+        label: "Passing"
+        context: any
+      - value: company_license
+        label: "Лицензия компании"
+        context: company
+      - value: corporate_documents
+        label: "Корпоративные документы"
+        context: company
+      - value: company_bank_statement
+        label: "Банковская выписка компании"
+        context: company
+      - value: lease_agreement
+        label: "Договор аренды"
+        context: any
+      - value: signed_lease_agreement
+        label: "Договор аренды (подписанный)"
+        context: any
+      - value: purchase_agreement
+        label: "Договор покупки"
+        context: any
+      - value: signed_purchase_agreement
+        label: "Договор покупки (подписанный)"
+        context: any
+      - value: preliminary_purchase_agreement
+        label: "Предварительный договор купли-продажи"
+        context: any
+      - value: payment_schedule
+        label: "Платёжный график"
+        context: any
+      - value: signed_payment_schedule
+        label: "Платёжный график (подписанный)"
+        context: any
+      - value: tax_invoice
+        label: "Tax invoice"
+        context: any
+      - value: delivery_act
+        label: "Акт приёма-передачи"
+        context: any
+      - value: signed_delivery_act
+        label: "Акт приёма-передачи (подписанный)"
+        context: any
+      - value: technical_report
+        label: "Технический отчёт"
+        context: any
+      - value: aecb_credit_report
+        label: "AECB credit report"
+        context: any
+      - value: commercial_offer
+        label: "Коммерческое предложение"
+        context: any
+      - value: signed_commercial_offer
+        label: "Коммерческое предложение (подписанное)"
+        context: any
+      - value: quotation
+        label: "Quotation"
+        context: any
+      - value: payment_receipt
+        label: "Платёжка"
+        context: any
+      - value: spa_invoice
+        label: "SPA Invoice"
+        context: any
+      - value: noc_company_letter
+        label: "NOC letter от компании"
+        context: any
+      - value: noc_gps_letter
+        label: "NOC letter от GPS"
+        context: any
+      - value: trn_certificate
+        label: "TRN-сертификат"
+        context: any
+      - value: other
+        label: "Другой документ"
+        context: any
+    aliases:
+      - alias: id_card
+        target: identity_document
+      - alias: identity_card
+        target: identity_document
+      - alias: identity_documents
+        target: identity_document
+      - alias: identification
+        target: identity_document
+      - alias: identification_document
+        target: identity_document
+      - alias: identification_documents
+        target: identity_document
+      - alias: personal_identification
+        target: identity_document
+      - alias: national_id
+        target: identity_document
+      - alias: passport_copy
+        target: passport
+      - alias: driver_license
+        target: driving_license
+      - alias: drivers_license
+        target: driving_license
+      - alias: bank_statements
+        target: bank_statement
+      - alias: proof_of_income
+        target: salary_certificate
+      - alias: salary_cert
+        target: salary_certificate
+      - alias: eid
+        target: emirates_id
+      - alias: emirates_id_card
+        target: emirates_id
+      - alias: tax invoice
+        target: tax_invoice
+      - alias: trade_license
+        target: company_license
+      - alias: commercial_license
+        target: company_license
+      - alias: company_registration_documents
+        target: corporate_documents
+      - alias: business_registration_documents
+        target: corporate_documents
+      - alias: company_and_transaction_documents
+        target: corporate_documents
+      - alias: company_documents
+        target: corporate_documents
+      - alias: company_corporate_documents
+        target: corporate_documents
+      - alias: corporate_document
+        target: corporate_documents
+      - alias: company_bank_statements
+        target: company_bank_statement
+      - alias: quote
+        target: quotation
+      - alias: quotation_doc
+        target: quotation
+      - alias: supplier_quotation
+        target: quotation
+      - alias: payment_receipt_doc
+        target: payment_receipt
+      - alias: payment_receipt_supplier
+        target: payment_receipt
+      - alias: payment_order
+        target: payment_receipt
+      - alias: vcc
+        target: vcc_certificate
+      - alias: vehicle_certificate_of_conformity
+        target: vcc_certificate
+      - alias: hiyaza
+        target: hiyaza_certificate
+      - alias: vehicle_possession_certificate/hiyaza
+        target: vehicle_possession_certificate
+      - alias: mulkia
+        target: mulkia_certificate
+      - alias: passing
+        target: passing_certificate
+      - alias: spa
+        target: spa_invoice
+      - alias: spa_contract
+        target: spa_invoice
+      - alias: noc
+        target: noc_company_letter
+      - alias: noc_letter
+        target: noc_company_letter
+      - alias: noc_gps
+        target: noc_gps_letter
+      - alias: trn
+        target: trn_certificate
+  vehicle:
+    registry:
+      - value: vehicle_registration
+        label: "Регистрационные данные транспортного средства"
+        context: vehicle
+      - value: vehicle_inspection_certificate
+        label: "Сертификат техосмотра"
+        context: vehicle
+      - value: vehicle_possession_certificate
+        label: "Сертификат владения транспортным средством"
+        context: vehicle
+      - value: vehicle_transfer_certificate
+        label: "Сертификат передачи транспортного средства"
+        context: vehicle
+      - value: certificate_of_installation
+        label: "Сертификат установки"
+        context: vehicle
+      - value: delivery_form
+        label: "Акт приёма-передачи"
+        context: vehicle
+      - value: insurance_policy
+        label: "Страховой полис"
+        context: vehicle
+      - value: insurance_policy_with_tax_invoice
+        label: "Страховка с налоговым инвойсом"
+        context: vehicle
+      - value: other
+        label: "Другой документ"
+        context: vehicle
+    aliases:
+      - alias: vehicle_license
+        target: vehicle_registration
+      - alias: vehicle_test_certificate
+        target: vehicle_inspection_certificate
+      - alias: certificate
+        target: vehicle_inspection_certificate
+      - alias: motor_insurance_policy
+        target: insurance_policy
+      - alias: motor_insurance_policy_schedule
+        target: insurance_policy
+
 statuses:
   NEW:
     title: "Новая заявка"
@@ -336,7 +580,7 @@ statuses:
         rule: "== true"
         message: "Технический отчёт и оценка авто не подтверждены."
 
-  DOCS_COLLECT:
+  DOCS_COLLECT_BUYER:
     title: "Сбор документов покупателя"
     entry_actions:
       - type: TASK_CREATE
@@ -553,6 +797,11 @@ statuses:
           schema:
             version: "1.0"
             fields:
+              - id: doc_preliminary_purchase_agreement
+                type: file
+                label: "Предварительный договор купли-продажи"
+                document_type: preliminary_purchase_agreement
+                required: true
               - id: doc_purchase_agreement
                 type: file
                 label: "Договор купли-продажи"
@@ -574,6 +823,7 @@ statuses:
                 document_type: delivery_act
                 required: true
           defaults:
+            doc_preliminary_purchase_agreement: ""
             instruction_short: "Сформируйте договор и материалы для подписания."
     exit_requirements:
       - key: legal.contractReady
@@ -598,6 +848,11 @@ statuses:
                 type: file
                 label: "Подписанный договор купли-продажи"
                 document_type: signed_purchase_agreement
+                required: true
+              - id: signed_preliminary_purchase_agreement
+                type: file
+                label: "Подписанный предварительный договор купли-продажи"
+                document_type: signed_preliminary_purchase_agreement
                 required: true
               - id: signed_lease_agreement
                 type: file
@@ -746,13 +1001,13 @@ transitions:
         rule: "== true"
 
   - from: VEHICLE_CHECK
-    to: DOCS_COLLECT
+    to: DOCS_COLLECT_BUYER
     by_roles: [OP_MANAGER, TECH_SPECIALIST]
     guards:
       - key: vehicle.verified
         rule: "== true"
 
-  - from: DOCS_COLLECT
+  - from: DOCS_COLLECT_BUYER
     to: DOCS_COLLECT_SELLER
     by_roles: [OP_MANAGER]
     guards:
@@ -827,7 +1082,7 @@ transitions:
   - from: VEHICLE_CHECK
     to: CANCELLED
     by_roles: [OP_MANAGER, TECH_SPECIALIST]
-  - from: DOCS_COLLECT
+  - from: DOCS_COLLECT_BUYER
     to: CANCELLED
     by_roles: [OP_MANAGER]
   - from: DOCS_COLLECT_SELLER
@@ -864,7 +1119,7 @@ permissions:
   STATUS_TRANSITION:
     rules:
       - role: OP_MANAGER
-        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT, DOCS_COLLECT_SELLER, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY]
+        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT_BUYER, DOCS_COLLECT_SELLER, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY]
       - role: TECH_SPECIALIST
         allowed_from: [VEHICLE_CHECK, VEHICLE_DELIVERY]
       - role: RISK_MANAGER
@@ -892,7 +1147,7 @@ metrics:
   enabled: true
   timers:
     - name: "t_docs_collect_buyer"
-      from: DOCS_COLLECT
+      from: DOCS_COLLECT_BUYER
       to: DOCS_COLLECT_SELLER
     - name: "t_docs_collect_seller"
       from: DOCS_COLLECT_SELLER

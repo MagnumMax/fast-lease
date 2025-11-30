@@ -13,7 +13,7 @@ WITH updated AS (
               jsonb_set(
                 rule,
                 '{allowedFrom}',
-                '["NEW","OFFER_PREP","VEHICLE_CHECK","DOCS_COLLECT","RISK_REVIEW","FINANCE_REVIEW","INVESTOR_PENDING","CONTRACT_PREP","DOC_SIGNING","SIGNING_FUNDING","VEHICLE_DELIVERY"]'::jsonb,
+                '["NEW","OFFER_PREP","VEHICLE_CHECK","DOCS_COLLECT_BUYER","RISK_REVIEW","FINANCE_REVIEW","INVESTOR_PENDING","CONTRACT_PREP","DOC_SIGNING","SIGNING_FUNDING","VEHICLE_DELIVERY"]'::jsonb,
                 true
               )
             ELSE rule
