@@ -65,7 +65,7 @@ test("оперменеджер создаёт покупателя, авто и 
     await page.getByRole("combobox").nth(1).click();
     await page.getByRole("option", { name: carMake + " " + carModel }).click();
 
-    await page.getByRole("button", { name: "Add to workflow" }).click();
+    await page.getByRole("button", { name: "Add deal" }).click();
 
     await expect(page.getByText(dealReference)).toBeVisible({ timeout: 20_000 });
   } finally {

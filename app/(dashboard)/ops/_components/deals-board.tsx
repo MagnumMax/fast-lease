@@ -156,7 +156,15 @@ const CURRENT_USER_ROLE: WorkflowRole = "OP_MANAGER";
 
 const FALLBACK_VEHICLE = "Vehicle TBD";
 const FALLBACK_SOURCE = "Website";
-const BASE_SOURCE_OPTIONS = ["Supabase import", "Broker", "Dubizzle"];
+const BLOCKED_SOURCE_OPTIONS = new Set(["supabase import", "supabase"]);
+const BASE_SOURCE_OPTIONS = ["Broker", "Dubizzle"];
+
+function isBlockedSource(value: string | null | undefined) {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return false;
+
+  return BLOCKED_SOURCE_OPTIONS.has(normalized);
+}
 
 function buildPaddedOptionLabel(primary: string, secondary: string | null, padLength: number) {
   const trimmedPrimary = primary.trim();
@@ -182,7 +190,13 @@ function resolveVehicleSecondaryLabel(vehicle: VehicleOption) {
 }
 
 function extractSourceOptions(deals: OpsDealSummary[]) {
-  const sources = Array.from(new Set(deals.map((deal) => deal.source))).filter(Boolean);
+  const sources = Array.from(
+    new Set(
+      deals
+        .map((deal) => deal.source)
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0),
+    ),
+  ).filter((source) => !isBlockedSource(source));
 
   if (sources.length === 0) sources.push(FALLBACK_SOURCE);
 
@@ -1081,7 +1095,7 @@ export function OpsDealsBoard({
                   Создание...
                 </>
               ) : (
-                "Add to workflow"
+                "Add deal"
               )}
             </Button>
           </DialogFooter>

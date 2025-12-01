@@ -24,7 +24,7 @@ test("операционный менеджер создаёт сделку че
   await page.getByLabel(/Reference/).fill(reference);
 
   // Остальные поля уже предзаполнены первыми элементами справочников
-  await page.getByRole("button", { name: "Add to workflow" }).click();
+  await page.getByRole("button", { name: "Add deal" }).click();
 
   // Проверяем, что новая заявка появилась в таблице/канбане
   await expect(page.getByText(reference, { exact: false })).toBeVisible({

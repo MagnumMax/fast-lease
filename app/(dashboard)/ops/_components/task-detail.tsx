@@ -1441,7 +1441,7 @@ export function TaskDetailView({
             ) : null}
 
             {enableDocsSection ? (
-              <div className="space-y-4 rounded-2xl border border-dashed border-border/70 bg-muted/20 p-4">
+              <div className="mt-6 space-y-4 rounded-2xl border border-dashed border-border/70 p-4">
                 <div className="space-y-1">
                   <span className="text-sm font-semibold text-foreground">Загрузка дополнительных документов</span>
                   <p className="text-xs text-muted-foreground">
@@ -1456,7 +1456,7 @@ export function TaskDetailView({
                     documentDrafts.map((draft, index) => (
                       <div
                         key={draft.id}
-                        className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-3 shadow-sm"
+                        className="space-y-3 rounded-xl border border-border/70 p-3 shadow-sm"
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
