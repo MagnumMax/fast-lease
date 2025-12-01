@@ -17,6 +17,7 @@ export type WorkflowDocumentGroupEntry = {
   stageTitle: string;
   taskTitle: string;
   taskTemplateId: string;
+  taskId?: string | null;
   documents: WorkflowDocumentEntry[];
 };
 
@@ -43,8 +44,13 @@ export function WorkflowDocuments({ groups, additional, className }: WorkflowDoc
                 key={`${group.stageKey}-${group.taskTemplateId}`}
                 className="rounded-lg border border-border/60 bg-background/80"
               >
-                <div className="flex items-center justify-between border-b border-border/60 px-4 py-2 text-sm font-semibold text-foreground">
+                <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-border/60 bg-muted/40 px-4 py-2 text-sm font-semibold text-foreground">
                   <span>{group.taskTitle}</span>
+                  {group.taskTemplateId ? (
+                    <Button asChild size="sm" variant="ghost" className="h-8 rounded-lg px-2 text-xs font-medium">
+                      <Link href={`/ops/tasks/${group.taskTemplateId}#reopen-task`}>Переоткрыть</Link>
+                    </Button>
+                  ) : null}
                 </div>
                 <div className="flex flex-col px-4 py-2">
                   {group.documents.map((doc, idx) => (

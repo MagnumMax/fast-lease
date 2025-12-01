@@ -202,6 +202,17 @@ const INDIVIDUAL_ONLY_FIELDS = new Set([
   "doc_driving_license_buyer",
   "doc_second_driver_bundle",
 ]);
+const REOPEN_REASON_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "quality", label: "Качество / ошибка выполнения" },
+  { value: "requirements", label: "Уточнены требования" },
+  { value: "missing_data", label: "Не хватает данных или документов" },
+  { value: "incorrect_inputs", label: "Ошибочные исходные данные / предположения" },
+  { value: "communication", label: "Коммуникация или ожидание ответа" },
+  { value: "priority_shift", label: "Изменились сроки или приоритеты" },
+  { value: "infrastructure", label: "Инфраструктура / внешние блокеры" },
+  { value: "compliance", label: "Риски / комплаенс / безопасность" },
+  { value: "other", label: "Другое" },
+];
 function getFieldDocumentType(field: TaskFieldDefinition): ClientDocumentTypeValue | null {
   const docTypeRaw = field.document_type ?? (field as { documentType?: string }).documentType;
   const normalized = normalizeClientDocumentType(docTypeRaw ?? undefined);
@@ -933,7 +944,7 @@ export function TaskDetailView({
       ) : null}
 
       {canReopen ? (
-        <Card className="border-border/80 bg-card/80 backdrop-blur">
+        <Card className="border-border/80 bg-card/80 backdrop-blur" id="reopen-task">
           <CardHeader className="space-y-1">
             <CardTitle className="text-lg font-semibold">Переоткрытие задачи</CardTitle>
             <CardDescription>Добавьте причину и комментарий — задача вернётся в работу.</CardDescription>
@@ -959,10 +970,11 @@ export function TaskDetailView({
                     <SelectValue placeholder="Выберите причину" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="quality">Качество / ошибка выполнения</SelectItem>
-                    <SelectItem value="requirements">Уточнены требования</SelectItem>
-                    <SelectItem value="infrastructure">Инфраструктура / внешние блокеры</SelectItem>
-                    <SelectItem value="other">Другое</SelectItem>
+                    {REOPEN_REASON_OPTIONS.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1608,18 +1620,6 @@ export function TaskDetailView({
 
             {!isReadOnly ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-                {isApprovalTask ? (
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    className="rounded-lg text-destructive hover:bg-destructive/5 hover:text-destructive"
-                    name="intent"
-                    value="return_for_revision"
-                    disabled={pending}
-                  >
-                    Вернуть на доработку
-                  </Button>
-                ) : null}
                 <Button
                   type="submit"
                   className="rounded-lg"

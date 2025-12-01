@@ -38,7 +38,7 @@ const COMPLETE_FORM_SCHEMA = z.object({
   guardLabel: z.string().optional(),
   requiresDocument: z.enum(["true", "false"]).default("false"),
   initialNote: z.string().optional(),
-  intent: z.enum(["save", "complete", "return_for_revision"]).optional(),
+  intent: z.enum(["save", "complete"]).optional(),
 });
 
 const DELETE_GUARD_DOCUMENT_SCHEMA = z.object({
@@ -872,115 +872,6 @@ export async function completeTaskFormAction(
     revalidateRelatedPaths();
 
     return { status: "success", message: "Черновик сохранён" };
-  }
-
-  if (intent === "return_for_revision") {
-    // 1. Find the target task (CONFIRM_CAR)
-    const { data: targetTask, error: targetTaskError } = await supabase
-      .from("tasks")
-      .select("id, payload")
-      .eq("deal_id", dealId)
-      .eq("type", "CONFIRM_CAR")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (targetTaskError || !targetTask) {
-      console.error("[workflow] target task for revision not found", targetTaskError);
-      return { status: "error", message: "Не удалось найти задачу для возврата" };
-    }
-
-    // 2. Reset Deal Status and Guards
-    const payload = (dealRow.payload as Record<string, unknown> | null) ?? {};
-    const guardTasks = (payload.guard_tasks as Record<string, unknown> | null) ?? {};
-
-    // Reset specific guards
-    const guardsToReset = [
-      "tasks.confirmCar.completed",
-      "quotationPrepared",
-      "vehicle.verified",
-      "docs.required.allUploaded",
-      "docs.seller.allUploaded",
-      "risk.approved",
-      "finance.approved"
-    ];
-
-    for (const key of guardsToReset) {
-      if (guardTasks[key]) {
-        (guardTasks[key] as Record<string, unknown>).fulfilled = false;
-      }
-    }
-
-    // Ensure nested guards are also reset if they exist directly in payload (legacy support)
-    // Helper to unset nested property
-    const unsetNested = (obj: any, path: string) => {
-      const parts = path.split('.');
-      let current = obj;
-      for (let i = 0; i < parts.length - 1; i++) {
-        if (!current[parts[i]]) return;
-        current = current[parts[i]];
-      }
-      if (current && current[parts[parts.length - 1]]) {
-        current[parts[parts.length - 1]] = false;
-      }
-    };
-
-    for (const key of guardsToReset) {
-      unsetNested(payload, key);
-    }
-
-    const { error: dealUpdateError } = await supabase
-      .from("deals")
-      .update({
-        status: "NEW",
-        payload: { ...payload, guard_tasks: guardTasks }
-      })
-      .eq("id", dealId);
-
-    if (dealUpdateError) {
-      console.error("[workflow] failed to reset deal status", dealUpdateError);
-      return { status: "error", message: "Не удалось сбросить статус сделки" };
-    }
-
-    // 3. Update Target Task (Confirm Car)
-    const targetPayload = (targetTask.payload as Record<string, unknown> | null) ?? {};
-    const defaults = (targetPayload.defaults as Record<string, unknown> | null) ?? {};
-    const currentInstruction = (defaults.instruction_short as string) || "";
-    const revisionComment = noteValue ? `\n\nRETURNED FOR REVISION: ${noteValue}` : "\n\nRETURNED FOR REVISION";
-
-    const { error: targetUpdateError } = await supabase
-      .from("tasks")
-      .update({
-        status: "OPEN",
-        completed_at: null,
-        payload: {
-          ...targetPayload,
-          defaults: {
-            ...defaults,
-            instruction_short: currentInstruction + revisionComment
-          }
-        }
-      })
-      .eq("id", targetTask.id);
-
-    if (targetUpdateError) {
-      console.error("[workflow] failed to re-open target task", targetUpdateError);
-      return { status: "error", message: "Не удалось переоткрыть задачу подтверждения" };
-    }
-
-    // 4. Cancel Current Task
-    const { error: currentTaskError } = await supabase
-      .from("tasks")
-      .update({ status: "CANCELLED" })
-      .eq("id", taskId);
-
-    if (currentTaskError) {
-      console.error("[workflow] failed to cancel current task", currentTaskError);
-      // Non-blocking error, proceed
-    }
-
-    revalidateRelatedPaths();
-    return redirect(taskRedirectPath);
   }
 
   if (intent === "complete" && requiresDoc) {
