@@ -4,6 +4,37 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+const COMMISSION_LABELS = new Set(["комиссия менеджера renty", "комиссия менеджера салона"]);
+
+function normalizeLabel(label: string): string {
+  return label.trim().toLowerCase();
+}
+
+function parsePercent(value: string): number | null {
+  const normalized = value.replace(",", ".").replace(/\s+/g, "");
+  const match = normalized.match(/-?\d+(?:\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatCommissionValue(label: string, value: string, financedAmount?: number | null): string {
+  if (value === "—") return value;
+  const normalizedLabel = normalizeLabel(label);
+  if (!COMMISSION_LABELS.has(normalizedLabel)) return value;
+  if (financedAmount == null || !Number.isFinite(financedAmount)) return value;
+
+  const percent = parsePercent(value);
+  if (percent == null) return value;
+
+  const amount = (financedAmount * percent) / 100;
+  if (!Number.isFinite(amount)) return value;
+
+  const percentText = percent.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+  const amountText = amount.toLocaleString("ru-RU", { maximumFractionDigits: 0 });
+  return `${percentText}% (${amountText} AED)`;
+}
+
 export type WorkflowDocumentEntry = {
   label: string;
   value: string;
@@ -24,10 +55,11 @@ export type WorkflowDocumentGroupEntry = {
 type WorkflowDocumentsProps = {
   groups: WorkflowDocumentGroupEntry[];
   additional: WorkflowDocumentEntry[];
+  financedAmount?: number | null;
   className?: string;
 };
 
-export function WorkflowDocuments({ groups, additional, className }: WorkflowDocumentsProps) {
+export function WorkflowDocuments({ groups, additional, financedAmount, className }: WorkflowDocumentsProps) {
   const hasGroups = groups.length > 0;
   const hasAdditional = additional.length > 0;
 
@@ -62,7 +94,7 @@ export function WorkflowDocuments({ groups, additional, className }: WorkflowDoc
                         <span className="text-xs font-semibold text-foreground">{doc.label}</span>
                         {doc.kind === "parameter" ? (
                           doc.status ? (
-                            <span className="text-muted-foreground">{doc.status}</span>
+                        <span className="text-muted-foreground">{doc.status}</span>
                           ) : null
                         ) : (
                           <span className="text-muted-foreground">
@@ -73,7 +105,7 @@ export function WorkflowDocuments({ groups, additional, className }: WorkflowDoc
                       </div>
                       {doc.kind === "parameter" ? (
                         <span className="text-right text-xs font-medium text-foreground">
-                          {doc.value || "—"}
+                          {formatCommissionValue(doc.label, doc.value || "—", financedAmount)}
                         </span>
                       ) : doc.url ? (
                         <Button asChild size="sm" variant="outline" className="rounded-lg">

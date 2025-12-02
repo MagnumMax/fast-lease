@@ -233,8 +233,14 @@
         {
           "id": "doc_tax_invoice",
           "type": "file",
-          "label": "Tax Invoice",
+          "label": "Tax Invoice (для VAT-продавцов)",
           "document_type": "tax_invoice"
+        },
+        {
+          "id": "doc_invoice",
+          "type": "file",
+          "label": "Invoice (без VAT)",
+          "document_type": "invoice"
         },
         {
           "id": "doc_passing_certificate",
@@ -451,6 +457,11 @@
           "context": "any"
         },
         {
+          "value": "invoice",
+          "label": "Invoice (без VAT)",
+          "context": "any"
+        },
+        {
           "value": "delivery_act",
           "label": "Акт приёма-передачи",
           "context": "any"
@@ -584,6 +595,10 @@
         {
           "alias": "tax invoice",
           "target": "tax_invoice"
+        },
+        {
+          "alias": "invoice",
+          "target": "invoice"
         },
         {
           "alias": "trade_license",
@@ -944,9 +959,23 @@
                   "label": "Аналоги на площадках #1"
                 },
                 {
+                  "id": "analog_market_pdf_1",
+                  "type": "file",
+                  "label": "PDF Страница #1",
+                  "document_type": "other",
+                  "required": false
+                },
+                {
                   "id": "analog_market_url_2",
                   "type": "text",
                   "label": "Аналоги на площадках #2"
+                },
+                {
+                  "id": "analog_market_pdf_2",
+                  "type": "file",
+                  "label": "PDF Страница #2",
+                  "document_type": "other",
+                  "required": false
                 },
                 {
                   "id": "analog_market_url_3",
@@ -954,9 +983,23 @@
                   "label": "Аналоги на площадках #3"
                 },
                 {
+                  "id": "analog_market_pdf_3",
+                  "type": "file",
+                  "label": "PDF Страница #3",
+                  "document_type": "other",
+                  "required": false
+                },
+                {
                   "id": "analog_market_plus1_url_1",
                   "type": "text",
                   "label": "Аналоги на площадках +1 год #1"
+                },
+                {
+                  "id": "analog_market_plus1_pdf_1",
+                  "type": "file",
+                  "label": "PDF Страница +1 год #1",
+                  "document_type": "other",
+                  "required": false
                 },
                 {
                   "id": "analog_market_plus1_url_2",
@@ -964,9 +1007,23 @@
                   "label": "Аналоги на площадках +1 год #2"
                 },
                 {
+                  "id": "analog_market_plus1_pdf_2",
+                  "type": "file",
+                  "label": "PDF Страница +1 год #2",
+                  "document_type": "other",
+                  "required": false
+                },
+                {
                   "id": "analog_market_plus1_url_3",
                   "type": "text",
                   "label": "Аналоги на площадках +1 год #3"
+                },
+                {
+                  "id": "analog_market_plus1_pdf_3",
+                  "type": "file",
+                  "label": "PDF Страница +1 год #3",
+                  "document_type": "other",
+                  "required": false
                 }
               ]
             },
@@ -1249,13 +1306,14 @@
               ]
             },
             "defaults": {
-              "instruction_short": "Загрузите документы продавца-юрлица и контакты.",
+              "instruction_short": "Загрузите документы продавца-юрлица и контакты. Прикрепите Tax Invoice (если продавец плательщик VAT) или обычный Invoice.",
               "seller_contact_email": "",
               "seller_contact_phone": "",
               "seller_bank_details": "",
               "doc_company_license": "",
               "doc_quotation": "",
               "doc_tax_invoice": "",
+              "doc_invoice": "",
               "doc_passing_certificate": "",
               "doc_mulkia_certificate": "",
               "doc_hiyaza_certificate": "",

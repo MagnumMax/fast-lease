@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -205,6 +205,8 @@ function resolveTimelineTone(text: string): TimelineTone {
   return "default";
 }
 
+const COLLAPSE_TOGGLE_COOLDOWN_MS = 250;
+
 const TASK_STATUS_META: Record<
   string,
   {
@@ -293,22 +295,98 @@ export function DealDetailView({ detail }: DealDetailProps) {
   const [isDocsCollapsed, setIsDocsCollapsed] = useState(true);
   const [isAllTasksCollapsed, setIsAllTasksCollapsed] = useState(true);
   const [isTimelineCollapsed, setIsTimelineCollapsed] = useState(true);
+  const docsToggleLockRef = useRef(0);
+  const allTasksToggleLockRef = useRef(0);
+  const timelineToggleLockRef = useRef(0);
   const {
     profile,
-    company,
-    client,
-    documents,
-    clientDocuments,
-    keyInformation,
-    overview = [],
-    invoices,
-    timeline,
+  company,
+  client,
+  documents,
+  clientDocuments,
+  keyInformation,
+  overview = [],
+  invoices,
+  timeline,
   workflowTasks,
   guardStatuses,
   tasks,
   slug,
   commercialOffer,
+  financials,
+  editDefaults,
 } = detail;
+
+  const toggleWithCooldown = (setState: Dispatch<SetStateAction<boolean>>, lockRef: MutableRefObject<number>) => {
+    const now = Date.now();
+    if (now - lockRef.current < COLLAPSE_TOGGLE_COOLDOWN_MS) return;
+    lockRef.current = now;
+    setState((prev) => !prev);
+  };
+
+  const financedAmount = useMemo(() => {
+    const principalFromDeal =
+      typeof editDefaults?.principalAmount === "number" && Number.isFinite(editDefaults.principalAmount)
+        ? editDefaults.principalAmount
+        : null;
+    if (principalFromDeal != null) return Math.max(0, principalFromDeal);
+
+    const price =
+      typeof commercialOffer?.priceVat === "number"
+        ? commercialOffer.priceVat
+        : parseCurrencyValue(
+            commercialOffer?.priceVat != null ? String(commercialOffer.priceVat) : null,
+          );
+    const downPaymentAmount =
+      typeof commercialOffer?.downPaymentAmount === "number"
+        ? commercialOffer.downPaymentAmount
+        : parseCurrencyValue(
+            commercialOffer?.downPaymentAmount != null
+              ? String(commercialOffer.downPaymentAmount)
+              : null,
+          );
+    const downPaymentPercent =
+      typeof commercialOffer?.downPaymentPercent === "number"
+        ? commercialOffer.downPaymentPercent
+        : parseCurrencyValue(
+            commercialOffer?.downPaymentPercent != null
+              ? String(commercialOffer.downPaymentPercent)
+              : null,
+          );
+
+    if (price != null && Number.isFinite(price)) {
+      const resolvedDownPayment =
+        downPaymentAmount != null && Number.isFinite(downPaymentAmount)
+          ? downPaymentAmount
+          : downPaymentPercent != null && Number.isFinite(downPaymentPercent)
+            ? (price * downPaymentPercent) / 100
+            : null;
+      if (resolvedDownPayment != null) {
+        const principal = price - resolvedDownPayment;
+        return Number.isFinite(principal) ? Math.max(0, principal) : null;
+      }
+    }
+
+    const financialsPrincipal =
+      financials
+        .map((entry) => ({
+          label: entry.label.toLowerCase(),
+          value: parseCurrencyValue(entry.value),
+        }))
+        .find(
+          (entry) =>
+            entry.value != null &&
+            (entry.label.includes("principal") || entry.label.includes("финансируем")),
+        )?.value ?? null;
+
+    return financialsPrincipal != null && Number.isFinite(financialsPrincipal)
+      ? Math.max(0, financialsPrincipal)
+      : null;
+  }, [commercialOffer, editDefaults, financials]);
+
+  const handleDocsToggle = () => toggleWithCooldown(setIsDocsCollapsed, docsToggleLockRef);
+  const handleAllTasksToggle = () => toggleWithCooldown(setIsAllTasksCollapsed, allTasksToggleLockRef);
+  const handleTimelineToggle = () => toggleWithCooldown(setIsTimelineCollapsed, timelineToggleLockRef);
 
   const hasPendingTasks = workflowTasks.some((task) => !task.fulfilled);
   const dealTitle = slug.startsWith("deal-")
@@ -686,21 +764,29 @@ export function DealDetailView({ detail }: DealDetailProps) {
           </Card>
 
           <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle className="text-left">Документы сделки</CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 rounded-lg transition ${isDocsCollapsed ? "" : "rotate-180"}`}
-                onClick={() => setIsDocsCollapsed((prev) => !prev)}
-                aria-label={isDocsCollapsed ? "Развернуть" : "Свернуть"}
+            <CardHeader className="space-y-0">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                onClick={handleDocsToggle}
+                aria-expanded={!isDocsCollapsed}
               >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
+                <CardTitle className="text-left">Документы сделки</CardTitle>
+                <span
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition ${isDocsCollapsed ? "" : "rotate-180"}`}
+                  aria-hidden
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </button>
             </CardHeader>
             {!isDocsCollapsed ? (
               <CardContent>
-                <WorkflowDocuments groups={workflowDocumentGroups} additional={workflowAdditionalDocuments} />
+                <WorkflowDocuments
+                  groups={workflowDocumentGroups}
+                  additional={workflowAdditionalDocuments}
+                  financedAmount={financedAmount}
+                />
               </CardContent>
             ) : null}
           </Card>
@@ -709,22 +795,26 @@ export function DealDetailView({ detail }: DealDetailProps) {
 
         <aside className="space-y-6 xl:sticky xl:top-24">
           <Card className="bg-card/60 backdrop-blur">
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-left">Все задачи сделки</CardTitle>
-                <Badge variant="outline" className="rounded-lg">
-                  {dealTasksOrdered.length}
-                </Badge>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 rounded-lg transition ${isAllTasksCollapsed ? "" : "rotate-180"}`}
-                onClick={() => setIsAllTasksCollapsed((prev) => !prev)}
-                aria-label={isAllTasksCollapsed ? "Развернуть" : "Свернуть"}
+            <CardHeader className="space-y-0">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                onClick={handleAllTasksToggle}
+                aria-expanded={!isAllTasksCollapsed}
               >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-left">Все задачи сделки</CardTitle>
+                  <Badge variant="outline" className="rounded-lg">
+                    {dealTasksOrdered.length}
+                  </Badge>
+                </div>
+                <span
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition ${isAllTasksCollapsed ? "" : "rotate-180"}`}
+                  aria-hidden
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </button>
             </CardHeader>
             {!isAllTasksCollapsed ? (
               <CardContent>
@@ -734,17 +824,21 @@ export function DealDetailView({ detail }: DealDetailProps) {
           </Card>
 
           <Card className="bg-card/60 backdrop-blur" id="timeline">
-            <CardHeader className="flex flex-row items-center justify-between gap-3">
-              <CardTitle className="text-left">История действий</CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 rounded-lg transition ${isTimelineCollapsed ? "" : "rotate-180"}`}
-                onClick={() => setIsTimelineCollapsed((prev) => !prev)}
-                aria-label={isTimelineCollapsed ? "Развернуть" : "Свернуть"}
+            <CardHeader className="space-y-0">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 rounded-lg px-1 py-1 text-left transition hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+                onClick={handleTimelineToggle}
+                aria-expanded={!isTimelineCollapsed}
               >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
+                <CardTitle className="text-left">История действий</CardTitle>
+                <span
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition ${isTimelineCollapsed ? "" : "rotate-180"}`}
+                  aria-hidden
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </span>
+              </button>
             </CardHeader>
             {!isTimelineCollapsed ? (
               <CardContent>

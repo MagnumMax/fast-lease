@@ -421,6 +421,7 @@ export function TaskDetailView({
   const requiresDocument = isBuyerDocsTask || isSellerDocsTask
     ? false
     : (guardMeta?.requiresDocument ?? false) || Boolean(enforcedDocumentType);
+  const guardRequiresDocument = Boolean(guardMeta?.requiresDocument || requiresDocumentFlag);
   const documentsEnabled =
     isBuyerDocsTask || isSellerDocsTask || requiresDocument || isAecbTask || isPaySupplierTask;
   const enableDocsSection = documentsEnabled || isPrepareQuoteTask;
@@ -430,14 +431,18 @@ export function TaskDetailView({
   const hasWorkflowDocumentFields = workflowDocumentFields.length > 0;
   const hasWorkflowChecklist = Boolean(checklist && checklist.items.length > 0);
   const hasWorkflowDocuments = hasWorkflowDocumentFields || hasWorkflowChecklist;
-  const workflowDocumentsRequired = Boolean(
-    guardMeta?.requiresDocument ||
-    requiresDocumentFlag ||
-    enforcedDocumentType ||
-    workflowDocumentFields.some((field) => field.required) ||
-    visibleFields.some((field) => field.type?.toLowerCase() === "checklist" && field.required),
-  );
-  const hasMandatoryWorkflowDocs = workflowDocumentsRequired || Boolean(requiresDocumentFlag || enforcedDocumentType);
+  const isDocFieldRequired = (field: TaskFieldDefinition): boolean => {
+    const docFieldType = getFieldDocumentType(field);
+    if (!docFieldType) return false;
+    if (field.required) return true;
+    if (enforcedDocumentType && docFieldType === enforcedDocumentType) return true;
+    if (guardRequiresDocument && workflowDocumentFields.length === 1) return true;
+    return false;
+  };
+  const workflowDocumentsRequired =
+    workflowDocumentFields.some((field) => isDocFieldRequired(field)) || hasWorkflowChecklist;
+  const hasMandatoryWorkflowDocs =
+    workflowDocumentsRequired || Boolean(guardRequiresDocument || enforcedDocumentType);
   const workflowDocumentItems =
     checklist && checklist.items.length > 0
       ? checklist.items.map((item) => ({
@@ -456,7 +461,7 @@ export function TaskDetailView({
           (mappedType ? getClientDocumentLabel(mappedType) : null) ??
           (field.label && /(файл)/i.test(field.label) ? field.label.replace(/\s*\(файл\)/gi, "").trim() : field.label) ??
           field.id;
-        const itemRequired = Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired);
+        const itemRequired = isDocFieldRequired(field);
         return {
           key: field.id,
           label,
@@ -633,6 +638,21 @@ export function TaskDetailView({
     setDocumentDrafts((prev) => [...prev, createDocumentDraft(defaultDocumentType)]);
   }
 
+  function resetFileInputValue(inputId: string) {
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    if (input) {
+      input.value = "";
+    }
+  }
+
+  function triggerFilePicker(inputId: string) {
+    const input = document.getElementById(inputId) as HTMLInputElement | null;
+    if (input) {
+      input.value = "";
+      input.click();
+    }
+  }
+
   useEffect(() => {
     if (formState.status === "success" && formState.redirectTo) {
       router.push(formState.redirectTo);
@@ -771,6 +791,17 @@ export function TaskDetailView({
     const entities = [snapshot.deal].filter(Boolean) as FinanceEntitySnapshot[];
     if (!entities.length) return null;
     const dealEntity = snapshot.deal;
+    const financedAmount = (() => {
+      const entry = dealEntity.data.find((item) => {
+        const normalized = item.label.toLowerCase();
+        return normalized.includes("финансируем") || normalized.includes("principal");
+      });
+      if (!entry) return null;
+      const numeric = entry.value
+        ? Number(entry.value.replace(/[^\d.,-]/g, "").replace(/\s+/g, "").replace(",", "."))
+        : null;
+      return numeric != null && Number.isFinite(numeric) ? numeric : null;
+    })();
     const workflowDocs = dealEntity.workflowDocuments ?? [];
     const effectiveWorkflowDocs =
       workflowDocs.length > 0
@@ -820,7 +851,11 @@ export function TaskDetailView({
               </div>
             ))}
 
-            <WorkflowDocuments groups={effectiveWorkflowDocs} additional={additionalDocs} />
+            <WorkflowDocuments
+              groups={effectiveWorkflowDocs}
+              additional={additionalDocs}
+              financedAmount={financedAmount}
+            />
           </div>
         </CardContent>
       </Card>
@@ -1101,9 +1136,7 @@ export function TaskDetailView({
                   }
                   const type = field.type?.toLowerCase();
                   const isDocField = Boolean(docFieldType || type === "file");
-                  const isRequired = isDocField
-                    ? Boolean(field.required || requiresDocumentFlag || enforcedDocumentType || workflowDocumentsRequired)
-                    : field.required ?? false;
+                  const isRequired = isDocField ? isDocFieldRequired(field) : field.required ?? false;
                   const isLastRow = index === visibleFields.length - 1;
                   const rowClass = useTwoColumnFieldLayout
                     ? `grid grid-cols-1 gap-2 sm:grid-cols-[minmax(220px,260px)_1fr] sm:items-center px-4 py-3 ${isLastRow ? "" : "border-b border-border/60"
@@ -1328,12 +1361,13 @@ export function TaskDetailView({
                       null;
                     const deletingAttached = attachedDoc ? isDocumentDeleting(attachedDoc.id) : false;
                     const effectiveDocType = docFieldType ?? "";
+                    const docFieldInputId = `document-field-${fieldId}`;
 
                     const fileControl = (
                       <div className="space-y-2">
                         <input type="hidden" name={`documentFields[${fieldId}][type]`} value={effectiveDocType} />
                         <input
-                          id={`document-field-${fieldId}`}
+                          id={docFieldInputId}
                           type="file"
                           name={`documentFields[${fieldId}][file]`}
                           accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
@@ -1371,10 +1405,7 @@ export function TaskDetailView({
                                 size="icon"
                                 className="rounded-lg"
                                 onClick={() => {
-                                  const input = document.getElementById(`document-field-${fieldId}`) as
-                                    | HTMLInputElement
-                                    | null;
-                                  input?.click();
+                                  triggerFilePicker(docFieldInputId);
                                 }}
                                 disabled={pending || isReadOnly}
                               >
@@ -1388,10 +1419,7 @@ export function TaskDetailView({
                                 size="sm"
                                 className="rounded-lg"
                                 onClick={() => {
-                                  const input = document.getElementById(`document-field-${fieldId}`) as
-                                    | HTMLInputElement
-                                    | null;
-                                  input?.click();
+                                  triggerFilePicker(docFieldInputId);
                                 }}
                                 disabled={pending || isReadOnly}
                               >
@@ -1409,6 +1437,7 @@ export function TaskDetailView({
                                   if (attachedDoc && !currentFile) {
                                     handleDeleteGuardDocument(attachedDoc.id);
                                   }
+                                  resetFileInputValue(docFieldInputId);
                                   setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
                                   setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
                                 }}
@@ -1473,130 +1502,128 @@ export function TaskDetailView({
                   {documentDrafts.length === 0 ? (
                     <p className="text-xs text-muted-foreground">{documentEmptyStateText}</p>
                   ) : (
-                    documentDrafts.map((draft, index) => (
-                      <div
-                        key={draft.id}
-                        className="space-y-3 rounded-xl border border-border/70 p-3 shadow-sm"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                            Документ {index + 1}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-lg text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveDocumentDraft(draft.id)}
-                            disabled={pending || isReadOnly}
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                            <span className="sr-only">Удалить файл</span>
-                          </Button>
-                        </div>
-                        <div className="flex flex-col gap-3 md:flex-row">
-                          <div className="flex-1 space-y-2">
-                            <Label>Тип документа</Label>
-                            <Select
-                              value={draft.type || DOCUMENT_TYPE_EMPTY_VALUE}
-                              onValueChange={(nextValue) => {
-                                const normalized =
-                                  nextValue === DOCUMENT_TYPE_EMPTY_VALUE
-                                    ? ""
-                                    : (nextValue as ClientDocumentTypeValue);
-                                handleDocumentDraftTypeChange(draft.id, normalized);
-                              }}
+                    documentDrafts.map((draft, index) => {
+                      const draftInputId = `document-file-${draft.id}`;
+                      return (
+                        <div
+                          key={draft.id}
+                          className="space-y-3 rounded-xl border border-border/70 p-3 shadow-sm"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                              Документ {index + 1}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="rounded-lg text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemoveDocumentDraft(draft.id)}
                               disabled={pending || isReadOnly}
                             >
-                              <SelectTrigger className="rounded-lg">
-                                <SelectValue placeholder="Выберите тип документа" />
-                              </SelectTrigger>
-                              <SelectContent className="max-h-72 overflow-y-auto">
-                                <SelectItem value={DOCUMENT_TYPE_EMPTY_VALUE}>Не выбран</SelectItem>
-                                {CLIENT_DOCUMENT_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <input type="hidden" name={`documents[${draft.id}][type]`} value={draft.type} />
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
+                              <span className="sr-only">Удалить файл</span>
+                            </Button>
                           </div>
-                          <div className="flex-1 space-y-2">
-                            <Label htmlFor={`document-file-${draft.id}`}>
-                              Файл
-                            </Label>
-                            <input
-                              id={`document-file-${draft.id}`}
-                              type="file"
-                              name={`documents[${draft.id}][file]`}
-                              accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                              onChange={(event) =>
-                                handleDocumentDraftFileChange(draft.id, event.currentTarget.files?.[0] ?? null)
-                              }
-                              className="sr-only"
-                              disabled={pending || isReadOnly}
-                            />
-                            <div className="flex flex-wrap items-center gap-2 justify-end">
-                              <span className="text-xs text-muted-foreground">
-                                {draft.file?.name ? `Выбран файл: ${draft.file.name}` : "Файл не выбран"}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {draft.file?.name ? (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="rounded-lg"
-                                    onClick={() => {
-                                      const input = document.getElementById(`document-file-${draft.id}`) as
-                                        | HTMLInputElement
-                                        | null;
-                                      input?.click();
-                                    }}
-                                    disabled={pending || isReadOnly}
-                                  >
-                                    <RefreshCcw className="h-4 w-4" />
-                                    <span className="sr-only">Заменить файл</span>
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="rounded-lg"
-                                    onClick={() => {
-                                      const input = document.getElementById(`document-file-${draft.id}`) as
-                                        | HTMLInputElement
-                                        | null;
-                                      input?.click();
-                                    }}
-                                    disabled={pending || isReadOnly}
-                                  >
-                                    <Paperclip className="mr-2 h-4 w-4" />
-                                    Выбрать файл
-                                  </Button>
-                                )}
-                                {draft.file?.name ? (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="rounded-lg text-destructive"
-                                    onClick={() => {
-                                      handleDocumentDraftFileChange(draft.id, null);
-                                    }}
-                                    disabled={pending || isReadOnly}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Удалить файл</span>
-                                  </Button>
-                                ) : null}
+                          <div className="flex flex-col gap-3 md:flex-row">
+                            <div className="flex-1 space-y-2">
+                              <Label>Тип документа</Label>
+                              <Select
+                                value={draft.type || DOCUMENT_TYPE_EMPTY_VALUE}
+                                onValueChange={(nextValue) => {
+                                  const normalized =
+                                    nextValue === DOCUMENT_TYPE_EMPTY_VALUE
+                                      ? ""
+                                      : (nextValue as ClientDocumentTypeValue);
+                                  handleDocumentDraftTypeChange(draft.id, normalized);
+                                }}
+                                disabled={pending || isReadOnly}
+                              >
+                                <SelectTrigger className="rounded-lg">
+                                  <SelectValue placeholder="Выберите тип документа" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-72 overflow-y-auto">
+                                  <SelectItem value={DOCUMENT_TYPE_EMPTY_VALUE}>Не выбран</SelectItem>
+                                  {CLIENT_DOCUMENT_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <input type="hidden" name={`documents[${draft.id}][type]`} value={draft.type} />
+                            </div>
+                            <div className="flex-1 space-y-2">
+                              <Label htmlFor={draftInputId}>
+                                Файл
+                              </Label>
+                              <input
+                                id={draftInputId}
+                                type="file"
+                                name={`documents[${draft.id}][file]`}
+                                accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                                onChange={(event) =>
+                                  handleDocumentDraftFileChange(draft.id, event.currentTarget.files?.[0] ?? null)
+                                }
+                                className="sr-only"
+                                disabled={pending || isReadOnly}
+                              />
+                              <div className="flex flex-wrap items-center gap-2 justify-end">
+                                <span className="text-xs text-muted-foreground">
+                                  {draft.file?.name ? `Выбран файл: ${draft.file.name}` : "Файл не выбран"}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {draft.file?.name ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="rounded-lg"
+                                      onClick={() => {
+                                        triggerFilePicker(draftInputId);
+                                      }}
+                                      disabled={pending || isReadOnly}
+                                    >
+                                      <RefreshCcw className="h-4 w-4" />
+                                      <span className="sr-only">Заменить файл</span>
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="rounded-lg"
+                                      onClick={() => {
+                                        triggerFilePicker(draftInputId);
+                                      }}
+                                      disabled={pending || isReadOnly}
+                                    >
+                                      <Paperclip className="mr-2 h-4 w-4" />
+                                      Выбрать файл
+                                    </Button>
+                                  )}
+                                  {draft.file?.name ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="rounded-lg text-destructive"
+                                      onClick={() => {
+                                        resetFileInputValue(draftInputId);
+                                        handleDocumentDraftFileChange(draft.id, null);
+                                      }}
+                                      disabled={pending || isReadOnly}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Удалить файл</span>
+                                    </Button>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
