@@ -55,6 +55,7 @@ type TaskDetailViewProps = {
   stageTitle: string | null;
   guardDocuments: GuardDocumentLink[];
   financeSnapshot?: FinanceReviewSnapshot | null;
+  commercialOfferPriceVat?: number | null;
   completeAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
   reopenAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
 };
@@ -172,7 +173,6 @@ const CLIENT_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 const TASKS_LIST_ROUTE = "/ops/tasks";
 const INDIVIDUAL_DOC_LABELS: Record<string, string> = {
   doc_passport_driver: "Паспорт покупателя",
-  doc_visa_driver: "Виза покупателя",
   doc_emirates_id_driver: "Emirates ID покупателя",
   doc_driving_license: "Права покупателя",
 };
@@ -181,23 +181,19 @@ const HIDE_FOR_INDIVIDUAL = new Set([
   "buyer_company_phone",
   "doc_company_license",
   "doc_emirates_id_manager",
-  "doc_visa_manager",
   "doc_passport_manager",
   "doc_emirates_id_driver",
-  "doc_visa_driver",
   "doc_passport_driver",
   "doc_driving_license",
 ]);
 const HIDE_FOR_COMPANY = new Set([
   "doc_passport_buyer",
-  "doc_visa_buyer",
   "doc_emirates_id_buyer",
   "doc_driving_license_buyer",
   "doc_second_driver_bundle",
 ]);
 const INDIVIDUAL_ONLY_FIELDS = new Set([
   "doc_passport_buyer",
-  "doc_visa_buyer",
   "doc_emirates_id_buyer",
   "doc_driving_license_buyer",
   "doc_second_driver_bundle",
@@ -301,6 +297,14 @@ function isEditableField(field: TaskFieldDefinition): boolean {
   return type !== "badge";
 }
 
+function deriveRentyManagerFee(priceVat?: number | null): string | null {
+  if (priceVat == null) return null;
+  const normalized = Number(priceVat);
+  if (!Number.isFinite(normalized)) return null;
+  const percent = normalized < 500_000 ? 1 : 1.5;
+  return `${percent}%`;
+}
+
 export function TaskDetailView({
   task,
   guardKey,
@@ -310,6 +314,7 @@ export function TaskDetailView({
   deal,
   guardDocuments,
   financeSnapshot,
+  commercialOfferPriceVat,
   completeAction,
   reopenAction,
 }: TaskDetailViewProps) {
@@ -593,6 +598,10 @@ export function TaskDetailView({
   const guardDocumentTypeLabel = guardState?.documentType
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
+  const rentyManagerFeeDefault = useMemo(
+    () => deriveRentyManagerFee(commercialOfferPriceVat),
+    [commercialOfferPriceVat],
+  );
   const allowDocumentDeletion = Boolean(deal?.id);
   const taskTitle = isVehicleVerificationTask
     ? "Проверка тех состояния и оценочной стоимости авто"
@@ -1080,6 +1089,12 @@ export function TaskDetailView({
                   if (buyerType === "individual" && INDIVIDUAL_DOC_LABELS[fieldId]) {
                     label = INDIVIDUAL_DOC_LABELS[fieldId];
                   }
+                  const isRentyManagerFeeField = fieldId === "renty_manager_fee";
+                  const hasUserValue = typeof value === "string" ? value.trim().length > 0 : value != null;
+                  const effectiveValue =
+                    isRentyManagerFeeField && !hasUserValue
+                      ? rentyManagerFeeDefault ?? value
+                      : value;
                   const docFieldType = getFieldDocumentType(field);
                   if (docFieldType && /(файл)/i.test(label)) {
                     label = label.replace(/\s*\(файл\)/gi, "").trim();
@@ -1416,16 +1431,21 @@ export function TaskDetailView({
                   }
 
                   const inputControl = (
-                    <Input
-                      id={`field-${fieldId}`}
-                      name={`field:${fieldId}`}
-                      defaultValue={value}
-                      required={isRequired}
-                      placeholder={hint}
-                      className="rounded-lg"
-                      readOnly={isReadOnly}
-                      disabled={pending || isReadOnly}
-                    />
+                    <>
+                      <Input
+                        id={`field-${fieldId}`}
+                        name={`field:${fieldId}`}
+                        defaultValue={effectiveValue ?? ""}
+                        required={isRequired}
+                        placeholder={hint}
+                        className="rounded-lg"
+                        readOnly={isReadOnly || isRentyManagerFeeField}
+                        disabled={pending || isReadOnly || isRentyManagerFeeField}
+                      />
+                      {isRentyManagerFeeField ? (
+                        <input type="hidden" name={`field:${fieldId}`} value={effectiveValue ?? ""} />
+                      ) : null}
+                    </>
                   );
                   return renderRow(inputControl);
                 })}

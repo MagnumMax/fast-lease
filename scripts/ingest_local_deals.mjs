@@ -73,7 +73,6 @@ const DOCUMENT_CATEGORY_KEYWORDS = {
     "customer",
     "buyer id",
     "personal",
-    "visa",
     "residence",
     "contact",
   ],

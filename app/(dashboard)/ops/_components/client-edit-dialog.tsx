@@ -152,7 +152,6 @@ const COMPANY_DOCUMENT_TYPE_VALUES = new Set<ClientDocumentTypeValue>(
 const CLIENT_IDENTITY_KEYWORDS = [
   "emirates",
   "passport",
-  "visa",
   "id",
   "identity",
   "nationality",

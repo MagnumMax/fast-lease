@@ -77,10 +77,6 @@ schemas:
         type: file
         label: "Emirates ID менеджера лицензии"
         document_type: emirates_id
-      - id: doc_visa_manager
-        type: file
-        label: "Виза менеджера лицензии"
-        document_type: visa
       - id: doc_passport_manager
         type: file
         label: "Паспорт менеджера лицензии"
@@ -89,10 +85,6 @@ schemas:
         type: file
         label: "Emirates ID водителя"
         document_type: emirates_id
-      - id: doc_visa_driver
-        type: file
-        label: "Виза водителя"
-        document_type: visa
       - id: doc_passport_driver
         type: file
         label: "Паспорт водителя"
@@ -115,10 +107,6 @@ schemas:
         type: file
         label: "Паспорт покупателя"
         document_type: passport
-      - id: doc_visa_buyer
-        type: file
-        label: "Виза покупателя"
-        document_type: visa
       - id: doc_emirates_id_buyer
         type: file
         label: "Emirates ID покупателя"
@@ -227,9 +215,6 @@ document_types:
         context: personal
       - value: passport
         label: "Паспорт"
-        context: personal
-      - value: visa
-        label: "Виза"
         context: personal
       - value: driving_license
         label: "Водительские права"
@@ -488,6 +473,9 @@ statuses:
               - id: seller_vehicle_price
                 type: text
                 label: "Цена авто продавца"
+              - id: seller_vehicle_price_with_vat
+                type: boolean
+                label: "Цена авто продавца с VAT"
               - id: insurance_amount
                 type: text
                 label: "Страховка на сумму"
@@ -496,7 +484,7 @@ statuses:
                 label: "Сумма регистрации"
               - id: renty_manager_fee
                 type: text
-                label: "Комиссия менеджера ренти"
+                label: "Комиссия менеджера RENTY"
               - id: showroom_manager_fee
                 type: text
                 label: "Комиссия менеджера салона"
@@ -505,6 +493,7 @@ statuses:
                 label: "Продавец плательщик VAT"
           defaults:
             instruction_short: "Подтвердите наличие авто и условия у дилера/брокера."
+            seller_vehicle_price_with_vat: false
             seller_vat_payer: false
           bindings:
             deal_id: "{{deal.id}}"
@@ -619,10 +608,8 @@ statuses:
             buyer_contact_phone: ""
             doc_company_license: ""
             doc_emirates_id_manager: ""
-            doc_visa_manager: ""
             doc_passport_manager: ""
             doc_emirates_id_driver: ""
-            doc_visa_driver: ""
             doc_passport_driver: ""
             doc_driving_license: ""
           conditions:
@@ -638,11 +625,10 @@ statuses:
           sla: { hours: 48 }
           schema: *buyer_docs_individual
           defaults:
-            instruction_short: "Прикрепите паспорт, визу, EID и права покупателя; добавьте второй комплект для второго водителя при необходимости."
+            instruction_short: "Прикрепите паспорт, EID и права покупателя; добавьте второй комплект для второго водителя при необходимости."
             buyer_contact_email: ""
             buyer_contact_phone: ""
             doc_passport_buyer: ""
-            doc_visa_buyer: ""
             doc_emirates_id_buyer: ""
             doc_driving_license_buyer: ""
             doc_second_driver_bundle: ""

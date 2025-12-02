@@ -564,6 +564,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
   let financeSnapshot: FinanceReviewSnapshot | null = null;
   let dealDocuments: DealDocumentWithUrl[] = [];
   let relatedTasks: DealTaskSnapshot[] = [];
+  let commercialOffer: CommercialOfferExtract | null = null;
 
   if (task.dealId) {
     const supabase = await createSupabaseServerClient();
@@ -613,6 +614,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         clientId: effectiveClientId,
         vehicleId: dealRow.vehicle_id ?? null,
       };
+      commercialOffer = extractCommercialOfferFromPayload(dealRow.payload ?? null);
       const { data: tasksData, error: tasksError } = await supabase
         .from("tasks")
         .select("id, title, payload, created_at")
@@ -895,7 +897,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       ) {
         const workflowStageTitle = stageMeta?.title ?? null;
         const dealDataPoints: SummaryDataPoint[] = [];
-        const commercialOffer = extractCommercialOfferFromPayload(dealRow.payload ?? null);
+        commercialOffer = commercialOffer ?? extractCommercialOfferFromPayload(dealRow.payload ?? null);
         if (commercialOffer) {
           const commercialOfferEntries: SummaryDataPoint[] = [];
           if (commercialOffer.priceVat != null) {
@@ -1176,6 +1178,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       stageTitle={stageMeta?.title ?? null}
       guardDocuments={guardDocuments}
       financeSnapshot={financeSnapshot}
+      commercialOfferPriceVat={commercialOffer?.priceVat ?? null}
       completeAction={completeTaskFormAction}
       reopenAction={reopenTaskAction}
     />

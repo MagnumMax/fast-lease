@@ -69,11 +69,6 @@ export const applicationDocuments: Record<
       description: "Color copy, page with photo and signature.",
     },
     {
-      id: "visa",
-      title: "Resident visa or entry stamp",
-      description: "If visa is in process, attach confirmation.",
-    },
-    {
       id: "license",
       title: "Driving license from your country",
       description: "Attach international license if necessary.",
