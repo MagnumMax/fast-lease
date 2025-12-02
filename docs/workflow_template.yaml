@@ -131,7 +131,7 @@ schemas:
         label: "Телефон продавца"
       - id: seller_bank_details
         type: text
-        label: "Банковские реквизиты продавца"
+        label: "IBAN"
       - id: doc_company_license
         type: file
         label: "Лицензия компании"
