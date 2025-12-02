@@ -83,7 +83,7 @@ export const publicFaqs: FaqCategory[] = [
       {
         question: "Can I add a second driver?",
         answer:
-          "Yes. In Documents section upload second driver's license, and we will activate it within 1 business day.",
+          "Yes. In Documents section upload the second UAE driver's license, and we will activate it within 1 business day.",
       },
       {
         question: "How to set up notifications?",

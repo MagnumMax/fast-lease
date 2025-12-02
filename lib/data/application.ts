@@ -70,8 +70,8 @@ export const applicationDocuments: Record<
     },
     {
       id: "license",
-      title: "Driving license from your country",
-      description: "Attach international license if necessary.",
+      title: "UAE Driving License",
+      description: "Must be UAE-issued; add an international licence copy if available.",
     },
     {
       id: "uae_contact",

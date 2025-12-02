@@ -91,7 +91,7 @@ schemas:
         document_type: passport
       - id: doc_driving_license
         type: file
-        label: "Права покупателя/водителя"
+        label: "Водительские права (UAE) покупателя/водителя"
         document_type: driving_license
 
   buyer_docs_individual: &buyer_docs_individual
@@ -113,7 +113,7 @@ schemas:
         document_type: emirates_id
       - id: doc_driving_license_buyer
         type: file
-        label: "Права покупателя"
+        label: "Водительские права (UAE) покупателя"
         document_type: driving_license
       - id: doc_second_driver_bundle
         type: file
@@ -217,7 +217,7 @@ document_types:
         label: "Паспорт"
         context: personal
       - value: driving_license
-        label: "Водительские права"
+        label: "Водительские права (UAE)"
         context: personal
       - value: identity_document
         label: "Документ, удостоверяющий личность"

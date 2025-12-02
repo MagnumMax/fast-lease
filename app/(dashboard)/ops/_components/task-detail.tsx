@@ -174,7 +174,7 @@ const TASKS_LIST_ROUTE = "/ops/tasks";
 const INDIVIDUAL_DOC_LABELS: Record<string, string> = {
   doc_passport_driver: "Паспорт покупателя",
   doc_emirates_id_driver: "Emirates ID покупателя",
-  doc_driving_license: "Права покупателя",
+  doc_driving_license: "Водительские права (UAE) покупателя",
 };
 const HIDE_FOR_INDIVIDUAL = new Set([
   "buyer_company_email",

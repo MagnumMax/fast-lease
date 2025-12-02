@@ -156,7 +156,7 @@
         {
           "id": "doc_driving_license",
           "type": "file",
-          "label": "Права покупателя/водителя",
+          "label": "Водительские права (UAE) покупателя/водителя",
           "document_type": "driving_license"
         }
       ]
@@ -189,7 +189,7 @@
         {
           "id": "doc_driving_license_buyer",
           "type": "file",
-          "label": "Права покупателя",
+          "label": "Водительские права (UAE) покупателя",
           "document_type": "driving_license"
         },
         {
@@ -347,7 +347,7 @@
         },
         {
           "value": "driving_license",
-          "label": "Водительские права",
+          "label": "Водительские права (UAE)",
           "context": "personal"
         },
         {
@@ -1058,7 +1058,7 @@
                 {
                   "id": "doc_driving_license",
                   "type": "file",
-                  "label": "Права покупателя/водителя",
+                  "label": "Водительские права (UAE) покупателя/водителя",
                   "document_type": "driving_license"
                 }
               ]
@@ -1123,7 +1123,7 @@
                 {
                   "id": "doc_driving_license_buyer",
                   "type": "file",
-                  "label": "Права покупателя",
+                  "label": "Водительские права (UAE) покупателя",
                   "document_type": "driving_license"
                 },
                 {
