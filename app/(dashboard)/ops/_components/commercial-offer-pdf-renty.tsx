@@ -25,6 +25,7 @@ export type CommercialOfferData = {
   priceVat?: string | null;
   termMonths?: string | null;
   downPayment?: string | null;
+  downPaymentPercent?: string | null;
   interestRateAnnual?: string | null;
   insuranceRateAnnual?: string | null;
   comment?: string | null;

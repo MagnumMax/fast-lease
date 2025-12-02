@@ -101,6 +101,8 @@ const saveCommercialOfferSchema = z.object({
   priceVat: z.string().optional(),
   termMonths: z.string().optional(),
   downPayment: z.string().optional(),
+  downPaymentPercent: z.string().optional(),
+  downPaymentSource: z.enum(["amount", "percent"]).optional(),
   interestRateAnnual: z.string().optional(),
   insuranceRateAnnual: z.string().optional(),
   comment: z.string().optional(),
@@ -485,6 +487,7 @@ export async function saveCommercialOffer(
 
   const { dealId, slug, priceVat, termMonths, downPayment, interestRateAnnual, insuranceRateAnnual, comment } =
     parsed.data;
+  const { downPaymentPercent, downPaymentSource } = parsed.data;
 
   try {
     const supabase = await createSupabaseServiceClient();
@@ -506,9 +509,56 @@ export async function saveCommercialOffer(
 
     const nextPayload = ensureDealPayload(dealRow.payload ?? null);
 
-    nextPayload.price_vat = parseCommercialNumber(priceVat);
-    nextPayload.term_months = parseCommercialNumber(termMonths);
-    nextPayload.down_payment_amount = parseCommercialNumber(downPayment);
+    const priceValue = parseCommercialNumber(priceVat);
+    const termMonthsValue = parseCommercialNumber(termMonths);
+    const downPaymentAmountValue = parseCommercialNumber(downPayment);
+    const downPaymentPercentValue = parseCommercialNumber(downPaymentPercent);
+    const resolvedSource = downPaymentSource === "percent" || downPaymentSource === "amount" ? downPaymentSource : null;
+
+    let resolvedDownPaymentAmount = downPaymentAmountValue;
+    let resolvedDownPaymentPercent = downPaymentPercentValue;
+
+    if (
+      resolvedSource === "percent" &&
+      downPaymentPercentValue != null &&
+      priceValue != null
+    ) {
+      resolvedDownPaymentAmount = Number(((downPaymentPercentValue / 100) * priceValue).toFixed(2));
+    }
+
+    if (
+      resolvedSource === "amount" &&
+      downPaymentAmountValue != null &&
+      priceValue != null &&
+      priceValue !== 0
+    ) {
+      resolvedDownPaymentPercent = Number(((downPaymentAmountValue / priceValue) * 100).toFixed(2));
+    }
+
+    if (
+      !resolvedSource &&
+      downPaymentPercentValue != null &&
+      resolvedDownPaymentAmount == null &&
+      priceValue != null
+    ) {
+      resolvedDownPaymentAmount = Number(((downPaymentPercentValue / 100) * priceValue).toFixed(2));
+    }
+
+    if (
+      !resolvedSource &&
+      downPaymentAmountValue != null &&
+      resolvedDownPaymentPercent == null &&
+      priceValue != null &&
+      priceValue !== 0
+    ) {
+      resolvedDownPaymentPercent = Number(((downPaymentAmountValue / priceValue) * 100).toFixed(2));
+    }
+
+    nextPayload.price_vat = priceValue;
+    nextPayload.term_months = termMonthsValue;
+    nextPayload.down_payment_amount = resolvedDownPaymentAmount;
+    nextPayload.down_payment_percent = resolvedDownPaymentPercent;
+    nextPayload.down_payment_source = resolvedSource ?? undefined;
     nextPayload.interest_rate_annual = parseCommercialNumber(interestRateAnnual);
     nextPayload.insurance_rate_annual = parseCommercialNumber(insuranceRateAnnual);
 

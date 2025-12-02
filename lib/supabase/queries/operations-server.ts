@@ -430,6 +430,7 @@ type CommercialOfferExtract = {
   priceVat: number | null;
   termMonths: number | null;
   downPaymentAmount: number | null;
+  downPaymentPercent: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
   comment: string | null;
@@ -448,6 +449,7 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
   const priceVat = parseQuoteNumber((payload as Record<string, unknown>)["price_vat"]);
   const termMonths = parseQuoteNumber((payload as Record<string, unknown>)["term_months"]);
   const downPaymentAmount = parseQuoteNumber((payload as Record<string, unknown>)["down_payment_amount"]);
+  const downPaymentPercent = parseQuoteNumber((payload as Record<string, unknown>)["down_payment_percent"]);
   const interestRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["interest_rate_annual"]);
   const insuranceRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["insurance_rate_annual"]);
 
@@ -467,6 +469,7 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
     priceVat,
     termMonths,
     downPaymentAmount,
+    downPaymentPercent,
     interestRateAnnual,
     insuranceRateAnnual,
     comment,
@@ -477,10 +480,30 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
     updatedByPhone: getString(metaBranch["updated_by_phone"]),
   };
 
+  if (
+    result.downPaymentPercent == null &&
+    result.downPaymentAmount != null &&
+    result.priceVat != null &&
+    result.priceVat !== 0
+  ) {
+    const percent = (result.downPaymentAmount / result.priceVat) * 100;
+    result.downPaymentPercent = Number(percent.toFixed(2));
+  }
+
+  if (
+    result.downPaymentAmount == null &&
+    result.downPaymentPercent != null &&
+    result.priceVat != null
+  ) {
+    const amount = (result.priceVat * result.downPaymentPercent) / 100;
+    result.downPaymentAmount = Number(amount.toFixed(2));
+  }
+
   const hasValue =
     result.priceVat != null ||
     result.termMonths != null ||
     result.downPaymentAmount != null ||
+    result.downPaymentPercent != null ||
     result.interestRateAnnual != null ||
     result.insuranceRateAnnual != null ||
     (result.comment && result.comment.length > 0);
@@ -3522,6 +3545,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         priceVat: commercialOfferExtract.priceVat,
         termMonths: commercialOfferExtract.termMonths,
         downPaymentAmount: commercialOfferExtract.downPaymentAmount,
+        downPaymentPercent: commercialOfferExtract.downPaymentPercent,
         interestRateAnnual: commercialOfferExtract.interestRateAnnual,
         insuranceRateAnnual: commercialOfferExtract.insuranceRateAnnual,
         comment: commercialOfferExtract.comment,
@@ -3544,6 +3568,12 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     quotedFinancials.push({
       label: "Quoted down payment",
       value: formatCurrency(commercialOfferExtract.downPaymentAmount),
+    });
+  }
+  if (commercialOfferExtract?.downPaymentPercent != null) {
+    quotedFinancials.push({
+      label: "Quoted down payment (%)",
+      value: formatRate(commercialOfferExtract.downPaymentPercent),
     });
   }
   if (commercialOfferExtract?.termMonths != null) {

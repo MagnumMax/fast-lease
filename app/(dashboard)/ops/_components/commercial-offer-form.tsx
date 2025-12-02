@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
 import { CheckCircle2, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -15,14 +15,13 @@ import { saveCommercialOffer, type SaveCommercialOfferResult } from "@/app/(dash
 import type { OpsCommercialOffer } from "@/lib/supabase/queries/operations";
 
 const FIELD_CONFIG: Array<{
-  id: "priceVat" | "termMonths" | "downPayment" | "insuranceRateAnnual";
+  id: "priceVat" | "termMonths";
   label: string;
   placeholder: string;
+  disabled?: boolean;
 }> = [
   { id: "priceVat", label: "Стоимость с VAT, AED", placeholder: "Например, 145000" },
   { id: "termMonths", label: "Срок, месяцев", placeholder: "36" },
-  { id: "downPayment", label: "Аванс, AED", placeholder: "20000" },
-  { id: "insuranceRateAnnual", label: "Ставка страхования, % годовых", placeholder: "2.1" },
 ];
 const INTEREST_RATE_LABEL = "Ставка финансирования, % годовых";
 const INTEREST_RATE_MIN = 16;
@@ -32,7 +31,9 @@ const INTEREST_RATE_STEP = 0.5;
 type FormState = {
   priceVat: string;
   termMonths: string;
-  downPayment: string;
+  downPaymentAmount: string;
+  downPaymentPercent: string;
+  downPaymentSource: "amount" | "percent";
   interestRateAnnual: string;
   insuranceRateAnnual: string;
   comment: string;
@@ -48,8 +49,12 @@ type CommercialOfferFormProps = {
   offer: OpsCommercialOffer | null;
 };
 
-function formatInitialNumber(value: number | null): string {
+function formatInitialNumber(value: number | null, fractionDigits?: number): string {
   if (value == null || Number.isNaN(value)) return "";
+  if (typeof fractionDigits === "number") {
+    const fixed = value.toFixed(fractionDigits);
+    return fixed.replace(/\.?0+$/, "");
+  }
   return `${value}`;
 }
 
@@ -67,6 +72,18 @@ function formatInitialInterestRate(value: number | null): string {
   return normalizeInterestRate(value ?? INTEREST_RATE_MIN).toString();
 }
 
+function parseNumberInput(value: string): number | null {
+  if (!value) return null;
+  const digits = value.replace(/[^\d.,-]/g, "").replace(",", ".");
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatNumericInput(value: number | null, fractionDigits: number): string {
+  if (value == null || Number.isNaN(value)) return "";
+  return value.toFixed(fractionDigits).replace(/\.?0+$/, "");
+}
+
 export function CommercialOfferForm({
   dealId,
   slug,
@@ -76,24 +93,55 @@ export function CommercialOfferForm({
   companyName,
   offer,
 }: CommercialOfferFormProps) {
-  const [form, setForm] = useState<FormState>(
-    () => ({
-      priceVat: formatInitialNumber(offer?.priceVat ?? null),
+  const [form, setForm] = useState<FormState>(() => {
+    const initialPrice = offer?.priceVat ?? null;
+    const initialAmount = offer?.downPaymentAmount ?? null;
+    const initialPercent =
+      offer?.downPaymentPercent ??
+      (initialPrice != null && initialPrice !== 0 && initialAmount != null
+        ? Number(((initialAmount / initialPrice) * 100).toFixed(2))
+        : null);
+    const initialSource: "amount" | "percent" = offer?.downPaymentPercent != null ? "percent" : "amount";
+
+    return {
+      priceVat: formatInitialNumber(initialPrice),
       termMonths: formatInitialNumber(offer?.termMonths ?? null),
-      downPayment: formatInitialNumber(offer?.downPaymentAmount ?? null),
+      downPaymentAmount: formatInitialNumber(initialAmount),
+      downPaymentPercent: formatInitialNumber(initialPercent, 2),
+      downPaymentSource: initialSource,
       interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
-      insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? null),
+      insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? 4),
       comment: offer?.comment ?? "",
-    }),
-  );
+    };
+  });
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<SaveCommercialOfferResult | null>(null);
+
+  const priceValue = useMemo(() => parseNumberInput(form.priceVat), [form.priceVat]);
+
+  const resolvedDownPayment = useMemo(() => {
+    const amountValue = parseNumberInput(form.downPaymentAmount);
+    const percentValue = parseNumberInput(form.downPaymentPercent);
+    const source = form.downPaymentSource;
+
+    let resolvedAmount = amountValue;
+    let resolvedPercent = percentValue;
+
+    if (source === "percent" && percentValue != null && priceValue != null) {
+      resolvedAmount = Number(((percentValue / 100) * priceValue).toFixed(2));
+    } else if (source === "amount" && amountValue != null && priceValue != null && priceValue !== 0) {
+      resolvedPercent = Number(((amountValue / priceValue) * 100).toFixed(2));
+    }
+
+    return { amount: resolvedAmount, percent: resolvedPercent, source, price: priceValue };
+  }, [form.downPaymentAmount, form.downPaymentPercent, form.downPaymentSource, priceValue]);
 
   const offerData: CommercialOfferData | null = useMemo(() => {
     const hasValues =
       form.priceVat.trim() ||
       form.termMonths.trim() ||
-      form.downPayment.trim() ||
+      form.downPaymentAmount.trim() ||
+      form.downPaymentPercent.trim() ||
       form.interestRateAnnual.trim() ||
       form.insuranceRateAnnual.trim();
 
@@ -109,7 +157,14 @@ export function CommercialOfferForm({
       vehicleVin: null,
       priceVat: form.priceVat || null,
       termMonths: form.termMonths || null,
-      downPayment: form.downPayment || null,
+      downPayment:
+        resolvedDownPayment.amount != null
+          ? formatNumericInput(resolvedDownPayment.amount, 2)
+          : form.downPaymentAmount || null,
+      downPaymentPercent:
+        resolvedDownPayment.percent != null
+          ? formatNumericInput(resolvedDownPayment.percent, 2)
+          : form.downPaymentPercent || null,
       interestRateAnnual: form.interestRateAnnual || null,
       insuranceRateAnnual: form.insuranceRateAnnual || null,
       comment: form.comment || offer?.comment || null,
@@ -119,7 +174,16 @@ export function CommercialOfferForm({
       preparedAt,
       companyName: companyName ?? "Fast Lease",
     };
-  }, [companyName, dealNumber, clientName, form, offer, vehicleName]);
+  }, [
+    companyName,
+    dealNumber,
+    clientName,
+    form,
+    offer,
+    resolvedDownPayment.amount,
+    resolvedDownPayment.percent,
+    vehicleName,
+  ]);
 
   const lastUpdated = useMemo(() => {
     if (!offer?.updatedAt) return null;
@@ -129,7 +193,45 @@ export function CommercialOfferForm({
   }, [offer]);
 
   function handleInputChange(field: keyof FormState, value: string) {
+    setResult(null);
     setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleDownPaymentAmountChange(value: string) {
+    setResult(null);
+    setForm((prev) => {
+      const price = parseNumberInput(prev.priceVat);
+      const amountValue = parseNumberInput(value);
+      const percentValue =
+        price != null && price !== 0 && amountValue != null
+          ? Math.max(0, Math.min((amountValue / price) * 100, 100))
+          : null;
+
+      return {
+        ...prev,
+        downPaymentSource: "amount",
+        downPaymentAmount: value,
+        downPaymentPercent: percentValue != null ? formatNumericInput(percentValue, 2) : "",
+      };
+    });
+  }
+
+  function handleDownPaymentPercentChange(value: string) {
+    setResult(null);
+    setForm((prev) => {
+      const price = parseNumberInput(prev.priceVat);
+      const percentValue = parseNumberInput(value);
+      const clampedPercent = percentValue != null ? Math.max(0, Math.min(percentValue, 100)) : null;
+      const amountValue =
+        price != null && price !== 0 && clampedPercent != null ? (price * clampedPercent) / 100 : null;
+
+      return {
+        ...prev,
+        downPaymentSource: "percent",
+        downPaymentPercent: value,
+        downPaymentAmount: amountValue != null ? formatNumericInput(amountValue, 2) : "",
+      };
+    });
   }
 
   function handleInterestRateChange(nextValue: number) {
@@ -142,13 +244,43 @@ export function CommercialOfferForm({
     [form.interestRateAnnual],
   );
 
+  useEffect(() => {
+    if (priceValue == null || priceValue === 0) {
+      return;
+    }
+
+    if (form.downPaymentSource === "amount") {
+      const amountValue = parseNumberInput(form.downPaymentAmount);
+      const nextPercent =
+        amountValue != null ? formatNumericInput(Math.max(0, Math.min((amountValue / priceValue) * 100, 100)), 2) : "";
+      if (nextPercent !== form.downPaymentPercent) {
+        setForm((prev) => ({ ...prev, downPaymentPercent: nextPercent }));
+      }
+    } else {
+      const percentValue = parseNumberInput(form.downPaymentPercent);
+      const nextAmount =
+        percentValue != null ? formatNumericInput(Math.max(0, (percentValue / 100) * priceValue), 2) : "";
+      if (nextAmount !== form.downPaymentAmount) {
+        setForm((prev) => ({ ...prev, downPaymentAmount: nextAmount }));
+      }
+    }
+  }, [form.downPaymentAmount, form.downPaymentPercent, form.downPaymentSource, priceValue]);
+
   function resetToPayload() {
     setForm({
       priceVat: formatInitialNumber(offer?.priceVat ?? null),
       termMonths: formatInitialNumber(offer?.termMonths ?? null),
-      downPayment: formatInitialNumber(offer?.downPaymentAmount ?? null),
+      downPaymentAmount: formatInitialNumber(offer?.downPaymentAmount ?? null),
+      downPaymentPercent: formatInitialNumber(
+        offer?.downPaymentPercent ??
+          (offer?.priceVat && offer?.priceVat !== 0 && offer?.downPaymentAmount != null
+            ? Number(((offer.downPaymentAmount / offer.priceVat) * 100).toFixed(2))
+            : null),
+        2,
+      ),
+      downPaymentSource: offer?.downPaymentPercent != null ? "percent" : "amount",
       interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
-      insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? null),
+      insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? 4),
       comment: offer?.comment ?? "",
     });
     setResult(null);
@@ -159,12 +291,23 @@ export function CommercialOfferForm({
     setResult(null);
 
     startTransition(async () => {
+      const downPaymentAmountPayload =
+        resolvedDownPayment.amount != null
+          ? formatNumericInput(resolvedDownPayment.amount, 2)
+          : form.downPaymentAmount;
+      const downPaymentPercentPayload =
+        resolvedDownPayment.percent != null
+          ? formatNumericInput(resolvedDownPayment.percent, 2)
+          : form.downPaymentPercent;
+
       const response = await saveCommercialOffer({
         dealId,
         slug,
         priceVat: form.priceVat,
         termMonths: form.termMonths,
-        downPayment: form.downPayment,
+        downPayment: downPaymentAmountPayload,
+        downPaymentPercent: downPaymentPercentPayload,
+        downPaymentSource: form.downPaymentSource,
         interestRateAnnual: form.interestRateAnnual,
         insuranceRateAnnual: form.insuranceRateAnnual,
         comment: form.comment,
@@ -178,13 +321,23 @@ export function CommercialOfferForm({
     if (!offerData) return;
 
     setResult(null);
+    const downPaymentAmountPayload =
+      resolvedDownPayment.amount != null
+        ? formatNumericInput(resolvedDownPayment.amount, 2)
+        : form.downPaymentAmount;
+    const downPaymentPercentPayload =
+      resolvedDownPayment.percent != null
+        ? formatNumericInput(resolvedDownPayment.percent, 2)
+        : form.downPaymentPercent;
     // Триггерим сохранение перед генерацией, чтобы payload был актуален
     const response = await saveCommercialOffer({
       dealId,
       slug,
       priceVat: form.priceVat,
       termMonths: form.termMonths,
-      downPayment: form.downPayment,
+      downPayment: downPaymentAmountPayload,
+      downPaymentPercent: downPaymentPercentPayload,
+      downPaymentSource: form.downPaymentSource,
       interestRateAnnual: form.interestRateAnnual,
       insuranceRateAnnual: form.insuranceRateAnnual,
       comment: form.comment,
@@ -193,12 +346,6 @@ export function CommercialOfferForm({
   };
 
   const calculations = useMemo(() => {
-    const parseNumberInput = (value: string): number | null => {
-      if (!value) return null;
-      const digits = value.replace(/[^\d.,-]/g, "").replace(",", ".");
-      const parsed = Number(digits);
-      return Number.isFinite(parsed) ? parsed : null;
-    };
     const formatCurrencyAED = (value: number | null): string => {
       if (value == null || Number.isNaN(value)) return "—";
       return `AED ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -208,9 +355,9 @@ export function CommercialOfferForm({
       return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
     };
 
-    const price = parseNumberInput(form.priceVat);
+    const price = priceValue;
     const termMonths = parseNumberInput(form.termMonths);
-    const downPayment = parseNumberInput(form.downPayment) ?? 0;
+    const downPayment = resolvedDownPayment.amount ?? 0;
     const annualRate = parseNumberInput(form.interestRateAnnual);
     const insuranceAnnualRate = parseNumberInput(form.insuranceRateAnnual);
 
@@ -247,7 +394,13 @@ export function CommercialOfferForm({
       { label: "Страховые платежи", value: formatCurrencyAED(insuranceTotal) },
       { label: "Итого для покупателя (страх. + аванс)", value: formatCurrencyAED(totalForClient) },
     ];
-  }, [form.downPayment, form.insuranceRateAnnual, form.interestRateAnnual, form.priceVat, form.termMonths]);
+  }, [
+    resolvedDownPayment.amount,
+    form.insuranceRateAnnual,
+    form.interestRateAnnual,
+    priceValue,
+    form.termMonths,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -275,35 +428,82 @@ export function CommercialOfferForm({
                 onChange={(event) => handleInputChange(field.id, event.target.value)}
                 placeholder={field.placeholder}
                 className="rounded-lg"
+                disabled={field.disabled}
               />
             </div>
           ))}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="interestRateAnnual">{INTEREST_RATE_LABEL}</Label>
-              <span className="text-sm font-semibold text-foreground">
-                {interestRateValue.toFixed(1)}%
-              </span>
+          <div className="space-y-2 md:col-span-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="downPaymentAmount" className="text-xs text-muted-foreground">
+                  Аванс, AED
+                </Label>
+                <Input
+                  id="downPaymentAmount"
+                  name="downPaymentAmount"
+                  value={form.downPaymentAmount}
+                  onChange={(event) => handleDownPaymentAmountChange(event.target.value)}
+                  placeholder="20000"
+                  className="rounded-lg"
+                  inputMode="decimal"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="downPaymentPercent" className="text-xs text-muted-foreground">
+                  Аванс, %
+                </Label>
+                <Input
+                  id="downPaymentPercent"
+                  name="downPaymentPercent"
+                  value={form.downPaymentPercent}
+                  onChange={(event) => handleDownPaymentPercentChange(event.target.value)}
+                  placeholder="10"
+                  className="rounded-lg"
+                  inputMode="decimal"
+                />
+              </div>
             </div>
-            <input
-              id="interestRateAnnual"
-              name="interestRateAnnual"
-              type="range"
-              min={INTEREST_RATE_MIN}
-              max={INTEREST_RATE_MAX}
-              step={INTEREST_RATE_STEP}
-              value={interestRateValue}
-              onChange={(event) => handleInterestRateChange(Number.parseFloat(event.target.value))}
-              className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-              aria-valuemin={INTEREST_RATE_MIN}
-              aria-valuemax={INTEREST_RATE_MAX}
-              aria-valuenow={interestRateValue}
-              aria-valuetext={`${interestRateValue.toFixed(1)}%`}
-            />
-            <div className="flex justify-between text-[11px] text-muted-foreground">
-              <span>{INTEREST_RATE_MIN}%</span>
-              <span>Шаг 0.5%</span>
-              <span>{INTEREST_RATE_MAX}%</span>
+          </div>
+          <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="interestRateAnnual">{INTEREST_RATE_LABEL}</Label>
+                <span className="text-sm font-semibold text-foreground">
+                  {interestRateValue.toFixed(1)}%
+                </span>
+              </div>
+              <input
+                id="interestRateAnnual"
+                name="interestRateAnnual"
+                type="range"
+                min={INTEREST_RATE_MIN}
+                max={INTEREST_RATE_MAX}
+                step={INTEREST_RATE_STEP}
+                value={interestRateValue}
+                onChange={(event) => handleInterestRateChange(Number.parseFloat(event.target.value))}
+                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+                aria-valuemin={INTEREST_RATE_MIN}
+                aria-valuemax={INTEREST_RATE_MAX}
+                aria-valuenow={interestRateValue}
+                aria-valuetext={`${interestRateValue.toFixed(1)}%`}
+              />
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>{INTEREST_RATE_MIN}%</span>
+                <span>Шаг 0.5%</span>
+                <span>{INTEREST_RATE_MAX}%</span>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="insuranceRateAnnual">Ставка страхования, % годовых</Label>
+              <Input
+                id="insuranceRateAnnual"
+                name="insuranceRateAnnual"
+                value={form.insuranceRateAnnual}
+                onChange={(event) => handleInputChange("insuranceRateAnnual", event.target.value)}
+                placeholder="4.0"
+                className="rounded-lg"
+                disabled
+              />
             </div>
           </div>
         </div>

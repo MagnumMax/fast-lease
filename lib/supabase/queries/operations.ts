@@ -462,6 +462,7 @@ export type OpsCommercialOffer = {
   priceVat: number | null;
   termMonths: number | null;
   downPaymentAmount: number | null;
+  downPaymentPercent: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
   comment: string | null;
