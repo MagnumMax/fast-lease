@@ -2,7 +2,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 async function deleteTestDeal() {
-  const dealId = "lease-6982-38321982-db01-5eb8-bee2-f2706489e5b9";
+  const dealId = "1c144441-163f-4150-9abe-0f4b20c56db9";
   
   // Check environment variables
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
