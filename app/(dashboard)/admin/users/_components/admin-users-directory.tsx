@@ -124,6 +124,15 @@ type DeleteBlocker = {
   count: number;
 };
 
+type BulkDeleteState = {
+  isChecking: boolean;
+  isDialogOpen: boolean;
+  isDeleting: boolean;
+  selectedUserIds: Set<string>;
+  blockers: DeleteBlocker[];
+  error: string | null;
+};
+
 type DeleteState = {
   isChecking: boolean;
   isDialogOpen: boolean;
@@ -151,6 +160,15 @@ const DEFAULT_DELETE_STATE: DeleteState = {
   isChecking: false,
   isDialogOpen: false,
   isDeleting: false,
+  blockers: [],
+  error: null,
+};
+
+const DEFAULT_BULK_DELETE_STATE: BulkDeleteState = {
+  isChecking: false,
+  isDialogOpen: false,
+  isDeleting: false,
+  selectedUserIds: new Set(),
   blockers: [],
   error: null,
 };
@@ -389,6 +407,7 @@ export function AdminUsersDirectory({
     DEFAULT_RESET_PASSWORD_STATE,
   );
   const [deleteState, setDeleteState] = useState<DeleteState>(DEFAULT_DELETE_STATE);
+  const [bulkDeleteState, setBulkDeleteState] = useState<BulkDeleteState>(DEFAULT_BULK_DELETE_STATE);
   const [roleFilter, setRoleFilter] = useState<AppRole | null>(() =>
     isRolesMode ? ROLES_MODE_SCOPE[0] ?? null : null,
   );
@@ -723,6 +742,190 @@ export function AdminUsersDirectory({
       });
       return { ...prev, roles: nextRoles };
     });
+  }
+
+  function toggleUserSelection(userId: string) {
+    setBulkDeleteState((prev) => {
+      const nextSelected = new Set(prev.selectedUserIds);
+      if (nextSelected.has(userId)) {
+        nextSelected.delete(userId);
+      } else {
+        nextSelected.add(userId);
+      }
+      return { ...prev, selectedUserIds: nextSelected };
+    });
+  }
+
+  function toggleSelectAll() {
+    setBulkDeleteState((prev) => {
+      const allUserIds = new Set(paginatedUsers.map((user) => user.id));
+      const nextSelected = prev.selectedUserIds.size === paginatedUsers.length
+        ? new Set<string>()
+        : allUserIds;
+      return { ...prev, selectedUserIds: nextSelected };
+    });
+  }
+
+  function resetBulkDeleteState() {
+    setBulkDeleteState(DEFAULT_BULK_DELETE_STATE);
+  }
+
+  async function handleBulkDeleteCheck() {
+    if (bulkDeleteState.selectedUserIds.size === 0) {
+      setBulkDeleteState((prev) => ({
+        ...prev,
+        error: "Выберите хотя бы одного пользователя для удаления.",
+      }));
+      return;
+    }
+
+    if (!actorCanMutate) {
+      setBulkDeleteState((prev) => ({
+        ...prev,
+        error: "Your account is limited to read-only access.",
+      }));
+      return;
+    }
+
+    setBulkDeleteState((prev) => ({ ...prev, isChecking: true, error: null }));
+
+    try {
+      // Check if all selected users can be deleted
+      const userIds = Array.from(bulkDeleteState.selectedUserIds);
+      const checkPromises = userIds.map(async (userId) => {
+        const response = await fetch("/api/admin/users/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, intent: "check" }),
+        });
+
+        let payload: DeleteApiResponse | null = null;
+        try {
+          payload = (await response.json()) as DeleteApiResponse;
+        } catch {
+          payload = null;
+        }
+
+        return { userId, payload, response };
+      });
+
+      const results = await Promise.all(checkPromises);
+      const allBlockers: DeleteBlocker[] = [];
+      let canDeleteAll = true;
+
+      for (const result of results) {
+        const blockers = result.payload?.blockers ?? [];
+        const canDelete = Boolean(result.payload?.canDelete) && result.response.ok;
+
+        if (!canDelete && blockers.some((blocker) => blocker.count > 0)) {
+          canDeleteAll = false;
+        }
+
+        allBlockers.push(...blockers);
+      }
+
+      if (!canDeleteAll) {
+        throw new Error("Очистите связанные объекты перед удалением.");
+      }
+
+      setBulkDeleteState((prev) => ({
+        ...prev,
+        blockers: allBlockers,
+        isDialogOpen: true,
+        error: null,
+      }));
+    } catch (error) {
+      setBulkDeleteState((prev) => ({
+        ...prev,
+        error: error instanceof Error ? error.message : "Не удалось проверить возможность удаления.",
+      }));
+    } finally {
+      setBulkDeleteState((prev) => ({ ...prev, isChecking: false }));
+    }
+  }
+
+  function closeBulkDeleteDialog() {
+    setBulkDeleteState((prev) => ({ ...prev, isDialogOpen: false, isDeleting: false }));
+  }
+
+  async function handleBulkDeleteConfirm() {
+    if (bulkDeleteState.selectedUserIds.size === 0 || bulkDeleteState.isDeleting) {
+      return;
+    }
+
+    if (!actorCanMutate) {
+      setBulkDeleteState((prev) => ({
+        ...prev,
+        error: "Your account is limited to read-only access.",
+      }));
+      return;
+    }
+
+    setBulkDeleteState((prev) => ({ ...prev, isDeleting: true, error: null }));
+
+    try {
+      const userIds = Array.from(bulkDeleteState.selectedUserIds);
+      const deletePromises = userIds.map(async (userId) => {
+        const response = await fetch("/api/admin/users/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, intent: "delete" }),
+        });
+
+        let payload: DeleteApiResponse | null = null;
+        try {
+          payload = (await response.json()) as DeleteApiResponse;
+        } catch {
+          payload = null;
+        }
+
+        return { userId, payload, response };
+      });
+
+      const results = await Promise.all(deletePromises);
+      let hasErrors = false;
+      const errorMessages: string[] = [];
+
+      for (const result of results) {
+        if (!result.response.ok || !result.payload?.ok) {
+          hasErrors = true;
+          const message = resolveDeleteErrorMessage(result.payload, "Не удалось удалить пользователя.") ?? "Не удалось удалить пользователя.";
+          errorMessages.push(message);
+        }
+      }
+
+      if (hasErrors) {
+        throw new Error(errorMessages.join("\n"));
+      }
+
+      // Remove deleted users from the list
+      setUsers((prev) => prev.filter((user) => !bulkDeleteState.selectedUserIds.has(user.id)));
+
+      // Add audit log entries for each deleted user
+      const deletedUsers = users.filter((user) => bulkDeleteState.selectedUserIds.has(user.id));
+      setAuditLog((prev) => [
+        ...deletedUsers.map((user) =>
+          makeAuditEntry(
+            actorName,
+            "Удалена учётная запись",
+            user.email ?? user.fullName ?? user.id,
+          ),
+        ),
+        ...prev,
+      ]);
+
+      router.refresh();
+      resetBulkDeleteState();
+      setManageError(null);
+    } catch (error) {
+      setBulkDeleteState((prev) => ({
+        ...prev,
+        error: error instanceof Error ? error.message : "Не удалось удалить пользователей.",
+        isDialogOpen: false,
+      }));
+    } finally {
+      setBulkDeleteState((prev) => ({ ...prev, isDeleting: false }));
+    }
   }
 
   function updatePortalAccess(portal: PortalCode, enabled: boolean) {
@@ -1097,6 +1300,37 @@ export function AdminUsersDirectory({
                 />
               </div>
               <div className="flex flex-wrap gap-2">
+                {!isRolesMode && bulkDeleteState.selectedUserIds.size > 0 ? (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="rounded-xl"
+                    onClick={handleBulkDeleteCheck}
+                    disabled={bulkDeleteState.isChecking || actorIsReadOnly}
+                    title={actorIsReadOnly ? readOnlyTooltip : undefined}
+                  >
+                    {bulkDeleteState.isChecking ? (
+                      <span className="flex items-center gap-2">
+                        <svg
+                          className="h-4 w-4 animate-spin"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                        >
+                          <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+                          <path d="M22 12a10 10 0 0 1-10 10" />
+                        </svg>
+                        Checking...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Trash2 className="h-4 w-4" />
+                        Delete Selected ({bulkDeleteState.selectedUserIds.size})
+                      </span>
+                    )}
+                  </Button>
+                ) : null}
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="rounded-xl">
@@ -1485,6 +1719,14 @@ export function AdminUsersDirectory({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={bulkDeleteState.selectedUserIds.size === paginatedUsers.length && paginatedUsers.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    disabled={actorIsReadOnly || paginatedUsers.length === 0}
+                    title={actorIsReadOnly ? readOnlyTooltip : undefined}
+                  />
+                </TableHead>
                 <TableHead>
                   <button
                     type="button"
@@ -1536,6 +1778,14 @@ export function AdminUsersDirectory({
                 );
                 return (
                   <TableRow key={user.id} className="align-top">
+                    <TableCell>
+                      <Checkbox
+                        checked={bulkDeleteState.selectedUserIds.has(user.id)}
+                        onCheckedChange={() => toggleUserSelection(user.id)}
+                        disabled={actorIsReadOnly}
+                        title={actorIsReadOnly ? readOnlyTooltip : undefined}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="space-y-1">
                         <p className="font-medium leading-tight">{user.fullName}</p>
@@ -2157,6 +2407,62 @@ export function AdminUsersDirectory({
                 <span className="flex items-center gap-2">
                   <Trash2 className="h-4 w-4" />
                   Удалить
+                </span>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={bulkDeleteState.isDialogOpen}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeBulkDeleteDialog();
+          }
+        }}
+      >
+        <DialogContent className="max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Удалить выбранных пользователей</DialogTitle>
+            <DialogDescription>
+              Эта операция удалит {bulkDeleteState.selectedUserIds.size} учётных записей из Supabase Auth и всех связанных справочников.
+              Восстановление будет невозможно.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Назначенные роли, порталы и профили будут очищены автоматически после подтверждения.
+            </p>
+            {bulkDeleteState.error ? (
+              <p className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {bulkDeleteState.error}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              className="rounded-xl"
+              onClick={closeBulkDeleteDialog}
+              disabled={bulkDeleteState.isDeleting}
+            >
+              Отмена
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-xl"
+              onClick={handleBulkDeleteConfirm}
+              disabled={bulkDeleteState.isDeleting || actorIsReadOnly}
+              title={actorIsReadOnly ? readOnlyTooltip : undefined}
+            >
+              {bulkDeleteState.isDeleting ? (
+                "Удаляем..."
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Удалить ({bulkDeleteState.selectedUserIds.size})
                 </span>
               )}
             </Button>

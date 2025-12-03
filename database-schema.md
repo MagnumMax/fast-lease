@@ -1,3 +1,4 @@
+
 # Схема базы данных FastLease - Детальная документация
 
 ## Содержание
@@ -109,6 +110,7 @@ avatar_url: text
 last_login_at: timestamptz
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
+source: text
 ```
 
 #### `user_roles`
@@ -116,14 +118,13 @@ updated_at: timestamptz (auto)
 ```sql
 id: uuid (PK)
 user_id: uuid → auth.users(id)
-role: user_role ('CLIENT', 'OPERATOR', 'OP_MANAGER', 'ADMIN', 'INVESTOR', 'FINANCE', 'SUPPORT')
-portal: portal_code ('app', 'investor', 'client', 'partner')
+role: user_role ('CLIENT', 'OPERATOR', 'OP_MANAGER', 'ADMIN', 'INVESTOR', 'FINANCE', 'SUPPORT', 'TECH_SPECIALIST', 'RISK_MANAGER', 'LEGAL', 'ACCOUNTING', 'OPS_MANAGER')
 assigned_at: timestamptz (auto)
 assigned_by: uuid → auth.users(id)
 metadata: jsonb ({}'::jsonb)
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
-UNIQUE(user_id, role, portal)
+portal: portal_code ('app', 'investor', 'client', 'partner')
 ```
 
 #### `user_portals`
@@ -137,7 +138,6 @@ metadata: jsonb ({}'::jsonb)
 last_access_at: timestamptz
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
-UNIQUE(user_id, portal)
 ```
 
 RLS: `service_role` управляет записями; пользователи читают только себя; `ADMIN`/`OP_MANAGER` получают read-only доступ для админки.
@@ -222,6 +222,7 @@ status: vehicle_status ('draft', 'available', 'reserved', 'leased', 'maintenance
 features: jsonb ({}'::jsonb)
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
+license_plate: text
 ```
 
 #### `vehicle_images`
@@ -248,6 +249,22 @@ spec_value: text
 unit: text
 sort_order: integer (default 0)
 created_at: timestamptz (auto)
+```
+
+#### `vehicle_documents`
+Документы транспортных средств
+```sql
+id: uuid (PK)
+vehicle_id: uuid → vehicles(id) (CASCADE)
+document_type: text (обязательно)
+title: text
+storage_path: text (обязательно)
+mime_type: text
+file_size: bigint
+status: text (default 'uploaded')
+metadata: jsonb ({}'::jsonb)
+uploaded_at: timestamptz (auto)
+uploaded_by: uuid → auth.users(id)
 ```
 
 ### 3. Модуль заявок (Applications)
@@ -278,6 +295,7 @@ rejected_at: timestamptz
 rejection_reason: text
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
+residency_status: text
 ```
 
 #### `application_documents`
@@ -307,15 +325,13 @@ verified_by: uuid → auth.users(id)
 ```sql
 id: uuid (PK)
 deal_number: text (unique)
-company_code: text → deal_companies(code)
 application_id: uuid → applications(id) (RESTRICT)
 vehicle_id: uuid → vehicles(id) (RESTRICT)
 client_id: uuid → auth.users(id) (RESTRICT)
-status: deal_status ('draft', 'pending_activation', 'active', 'suspended', 'completed', 'defaulted', 'cancelled')
+status: deal_status ('NEW', 'OFFER_PREP', 'VEHICLE_CHECK', 'DOCS_COLLECT_BUYER', 'DOCS_COLLECT_SELLER', 'RISK_REVIEW', 'FINANCE_REVIEW', 'INVESTOR_PENDING', 'CONTRACT_PREP', 'DOC_SIGNING', 'SIGNING_FUNDING', 'VEHICLE_DELIVERY', 'ACTIVE', 'CANCELLED')
 principal_amount: numeric(16,2)
 total_amount: numeric(16,2)
 monthly_payment: numeric(16,2)
-monthly_lease_rate: numeric(16,2)
 term_months: integer
 interest_rate: numeric(8,4)
 down_payment_amount: numeric(16,2)
@@ -325,9 +341,19 @@ first_payment_date: date
 contract_terms: jsonb ({}'::jsonb)
 insurance_details: jsonb ({}'::jsonb)
 assigned_account_manager: uuid → auth.users(id)
+activated_at: timestamptz
 completed_at: timestamptz
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
+workflow_id: text (default 'fast-lease-v1')
+workflow_version_id: uuid → workflow_versions.id
+asset_id: uuid → workflow_assets.id
+source: text
+payload: jsonb ({}'::jsonb)
+op_manager_id: uuid → auth.users(id)
+monthly_lease_rate: numeric(16,2)
+company_code: text (default 'FLS')
+created_by: uuid → auth.users(id)
 ```
 
 #### `deal_companies`
@@ -367,6 +393,25 @@ created_by: uuid → auth.users(id)
 created_at: timestamptz (auto)
 ```
 
+#### `deal_documents`
+Документы сделок
+```sql
+id: uuid (PK)
+deal_id: uuid → deals(id) (CASCADE)
+title: text (обязательно)
+document_type: text
+status: text
+storage_path: text
+signed_at: timestamptz
+created_at: timestamptz (auto)
+document_category: text
+mime_type: text
+file_size: bigint
+metadata: jsonb ({}'::jsonb)
+uploaded_at: timestamptz (auto)
+uploaded_by: uuid → auth.users(id)
+```
+
 ### 5. Финансовый модуль (Finance)
 
 #### `invoices`
@@ -389,6 +434,7 @@ payment_terms: text
 paid_at: timestamptz
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
+pdf_storage_path: text
 ```
 
 #### `payments`
@@ -434,7 +480,6 @@ status: invoice_status ('draft', 'pending', 'overdue', 'paid', 'cancelled')
 metadata: jsonb ({}'::jsonb)
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
-UNIQUE(deal_id, sequence)
 ```
 
 ### 6. Покупательский портал (Client Portal)
@@ -489,6 +534,30 @@ metadata: jsonb ({}'::jsonb)
 occurred_at: timestamptz (auto)
 ```
 
+#### `referral_deals`
+Реферальные сделки
+```sql
+id: uuid (PK)
+referral_id: uuid → referral_codes(id) (CASCADE)
+deal_id: uuid → deals(id) (SET NULL)
+friend_name: text
+status: deal_status ('NEW', 'OFFER_PREP', 'VEHICLE_CHECK', 'DOCS_COLLECT_BUYER', 'DOCS_COLLECT_SELLER', 'RISK_REVIEW', 'FINANCE_REVIEW', 'INVESTOR_PENDING', 'CONTRACT_PREP', 'DOC_SIGNING', 'SIGNING_FUNDING', 'VEHICLE_DELIVERY', 'ACTIVE', 'CANCELLED')
+monthly_payment: numeric(16,2)
+created_at: timestamptz (auto)
+```
+
+#### `referral_rewards`
+Вознаграждения по реферальной программе
+```sql
+id: uuid (PK)
+referral_id: uuid → referral_codes(id) (CASCADE)
+deal_id: uuid → deals(id) (SET NULL)
+reward_amount: numeric(16,2)
+status: referral_reward_status ('pending', 'earned', 'paid', 'cancelled')
+created_at: timestamptz (auto)
+paid_at: timestamptz
+```
+
 #### `client_notifications`
 Уведомления покупателей
 ```sql
@@ -500,6 +569,25 @@ icon: text
 severity: text ('info', 'warning', 'error') (default 'info')
 read_at: timestamptz
 created_at: timestamptz (auto)
+```
+
+#### `client_documents`
+Документы клиентов
+```sql
+id: uuid (PK)
+client_id: uuid → auth.users(id) (CASCADE)
+document_type: text (обязательно)
+document_category: text
+title: text
+storage_path: text (обязательно)
+mime_type: text
+file_size: bigint
+status: text (default 'uploaded')
+metadata: jsonb ({}'::jsonb)
+uploaded_at: timestamptz (auto)
+uploaded_by: uuid → auth.users(id)
+verified_at: timestamptz
+verified_by: uuid → auth.users(id)
 ```
 
 #### `vehicle_services`
@@ -585,6 +673,35 @@ created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
 ```
 
+#### `portfolio_performance_snapshots`
+Снимки производительности портфеля
+```sql
+id: uuid (PK)
+portfolio_id: uuid → investment_portfolios(id) (CASCADE)
+period_start: date
+period_end: date
+period_label: text
+accrued_amount: numeric(16,2) (default 0)
+actual_amount: numeric(16,2) (default 0)
+irr_percent: numeric(6,3)
+created_at: timestamptz (auto)
+```
+
+#### `portfolio_activity_events`
+События активности портфеля
+```sql
+id: uuid (PK)
+portfolio_id: uuid → investment_portfolios(id) (CASCADE)
+occurred_at: timestamptz (auto)
+category: text
+description: text
+amount: numeric(16,2)
+currency: text (default 'AED')
+amount_direction: text (default 'credit')
+metadata: jsonb ({}'::jsonb)
+created_at: timestamptz (auto)
+```
+
 #### `investor_reports`
 Отчеты для инвесторов
 ```sql
@@ -624,7 +741,22 @@ payload: jsonb ({}'::jsonb, not null)
 action_hash: text
 created_at: timestamptz (auto)
 updated_at: timestamptz (auto)
-UNIQUE(action_hash) WHERE action_hash IS NOT NULL
+reopen_count: integer (default 0)
+reopened_at: timestamptz
+reopen_reason: text
+reopen_comment: text
+```
+
+#### `task_reopen_events`
+События повторного открытия задач
+```sql
+id: uuid (PK)
+task_id: uuid → tasks(id) (CASCADE)
+deal_id: uuid → deals(id) (SET NULL)
+actor_user_id: uuid → auth.users(id)
+reason: text
+comment: text
+created_at: timestamptz (auto)
 ```
 
 #### `workflow_task_templates`
@@ -658,7 +790,95 @@ created_at: timestamptz (auto)
 processed_at: timestamptz
 ```
 
-### 9. Аудит и мониторинг (Audit)
+### 9. Workflow система
+
+#### `workflow_versions`
+Версии workflow процессов
+```sql
+id: uuid (PK)
+workflow_id: text (обязательно)
+version: text (обязательно)
+title: text (обязательно)
+description: text
+source_yaml: text (обязательно)
+template: jsonb (обязательно)
+checksum: text (обязательно)
+is_active: boolean (default false)
+created_by: uuid → auth.users(id)
+created_at: timestamptz (auto)
+UNIQUE(workflow_id, version)
+```
+
+#### `workflow_assets`
+Активы workflow
+```sql
+id: uuid (PK)
+type: text (default 'VEHICLE')
+vin: text
+make: text
+model: text
+trim: text
+year: integer
+supplier: text
+price: numeric(18,2)
+meta: jsonb ({}'::jsonb)
+created_at: timestamptz (auto)
+```
+
+#### `workflow_notification_queue`
+Очередь уведомлений workflow
+```sql
+id: uuid (PK)
+kind: text (default 'NOTIFY')
+deal_id: uuid → deals(id)
+transition_from: text
+transition_to: text
+template: text (обязательно)
+to_roles: text[] (default '{}'::text[])
+payload: jsonb
+status: text (default 'PENDING')
+action_hash: text (unique)
+created_at: timestamptz (auto)
+processed_at: timestamptz
+error: text
+```
+
+#### `workflow_webhook_queue`
+Очередь вебхуков workflow
+```sql
+id: uuid (PK)
+deal_id: uuid → deals(id)
+transition_from: text
+transition_to: text
+endpoint: text (обязательно)
+payload: jsonb
+status: text (default 'PENDING')
+retry_count: integer (default 0)
+next_attempt_at: timestamptz
+action_hash: text (unique)
+created_at: timestamptz (auto)
+processed_at: timestamptz
+error: text
+```
+
+#### `workflow_schedule_queue`
+Очередь расписаний workflow
+```sql
+id: uuid (PK)
+deal_id: uuid → deals(id)
+transition_from: text
+transition_to: text
+job_type: text (обязательно)
+cron: text
+payload: jsonb
+status: text (default 'PENDING')
+action_hash: text (unique)
+created_at: timestamptz (auto)
+processed_at: timestamptz
+error: text
+```
+
+### 10. Аудит и мониторинг (Audit)
 
 #### `audit_log`
 Журнал аудита операций
@@ -676,226 +896,6 @@ created_at: timestamptz (auto)
 #### `admin_portal_audit`
 Административные действия с порталами/ролями
 ```sql
-id: uuid (PK)
-actor_user_id: uuid → auth.users(id) (SET NULL)
-target_user_id: uuid → auth.users(id) (CASCADE)
-action: text
-metadata: jsonb
-created_at: timestamptz (auto)
-```
-
----
-
-## Связи между таблицами
-
-### Основные связи (Foreign Keys)
-
-#### Пользователи и роли
-- `profiles.user_id` → `auth.users.id` (CASCADE)
-- `user_roles.user_id` → `auth.users.id` (CASCADE)
-
-#### Транспортные средства
-- `vehicle_images.vehicle_id` → `vehicles.id` (CASCADE)
-- `vehicle_specifications.vehicle_id` → `vehicles.id` (CASCADE)
-
-#### Заявки и документы
-- `applications.user_id` → `auth.users.id` (RESTRICT)
-- `applications.vehicle_id` → `vehicles.id` (SET NULL)
-- `application_documents.application_id` → `applications.id` (CASCADE)
-
-#### Сделки и финансы
-- `deals.application_id` → `applications.id` (RESTRICT)
-- `deals.vehicle_id` → `vehicles.id` (RESTRICT)
-- `deals.client_id` → `auth.users.id` (RESTRICT)
-- `deal_events.deal_id` → `deals.id` (CASCADE)
-
-#### Инвойсы и платежи
-- `invoices.deal_id` → `deals.id` (CASCADE)
-- `payments.deal_id` → `deals.id` (CASCADE)
-- `payments.invoice_id` → `invoices.id` (SET NULL)
-- `payment_transactions.payment_id` → `payments.id` (CASCADE)
-- `payment_schedules.deal_id` → `deals.id` (CASCADE)
-
-#### Покупательская поддержка
-- `support_tickets.client_id` → `auth.users.id` (CASCADE)
-- `support_tickets.deal_id` → `deals.id` (SET NULL)
-- `support_messages.ticket_id` → `support_tickets.id` (CASCADE)
-- `support_messages.author_id` → `auth.users.id` (CASCADE)
-
-#### Реферальная программа
-- `referral_codes.client_id` → `auth.users.id` (CASCADE)
-- `referral_events.referral_id` → `referral_codes.id` (CASCADE)
-- `referral_deals.referral_id` → `referral_codes.id` (CASCADE)
-- `referral_deals.deal_id` → `deals.id` (SET NULL)
-- `referral_rewards.referral_id` → `referral_codes.id` (CASCADE)
-- `referral_rewards.deal_id` → `deals.id` (SET NULL)
-
-#### Уведомления
-- `client_notifications.client_id` → `auth.users.id` (CASCADE)
-
-#### Сервисное обслуживание
-- `vehicle_services.vehicle_id` → `vehicles.id` (CASCADE)
-- `vehicle_services.deal_id` → `deals.id` (SET NULL)
-
-#### Инвесторский модуль
-- `investors.user_id` → `auth.users.id` (CASCADE, UNIQUE)
-- `investment_portfolios.investor_id` → `investors.id` (CASCADE)
-- `portfolio_assets.portfolio_id` → `investment_portfolios.id` (CASCADE)
-- `portfolio_assets.deal_id` → `deals.id`
-- `portfolio_assets.vehicle_id` → `vehicles.id`
-- `portfolio_performance_snapshots.portfolio_id` → `investment_portfolios.id` (CASCADE)
-- `portfolio_activity_events.portfolio_id` → `investment_portfolios.id` (CASCADE)
-- `investor_reports.portfolio_id` → `investment_portfolios.id` (CASCADE)
-- `investor_reports.requested_by` → `auth.users.id`
-
-#### Система задач
-- `tasks.deal_id` → `deals.id` (CASCADE)
-- `tasks.assignee_user_id` → `auth.users.id`
-- `workflow_task_templates.workflow_version_id` → `workflow_versions.id` (CASCADE)
-- `workflow_task_queue.deal_id` → `deals.id` (CASCADE)
-
-#### Аудит
-- `audit_log.deal_id` → `deals.id` (CASCADE)
-- `audit_log.actor_user_id` → `auth.users.id`
-
-### Индексы для оптимизации
-
-#### Основные индексы
-- `idx_profiles_user_id` на `profiles.user_id`
-- `idx_profiles_status` на `profiles.status`
-- `idx_user_roles_user_id` на `user_roles.user_id`
-- `idx_user_roles_role` на `user_roles.role`
-- `idx_vehicles_status` на `vehicles.status`
-- `idx_vehicles_make_model` на `vehicles.make, model`
-- `idx_vehicle_images_vehicle` на `vehicle_images.vehicle_id`
-- `uniq_vehicle_primary_image` на `vehicle_images(vehicle_id) WHERE is_primary`
-- `idx_vehicle_specifications_vehicle` на `vehicle_specifications.vehicle_id`
-
-#### Индексы заявок
-- `idx_applications_user` на `applications.user_id`
-- `idx_applications_status` на `applications.status`
-- `idx_application_documents_application` на `application_documents.application_id`
-- `idx_application_documents_type` на `application_documents.document_type`
-
-#### Индексы сделок
-- `idx_deals_client` на `deals.client_id`
-- `idx_deals_status` на `deals.status`
-- `idx_deal_events_deal` на `deal_events.deal_id`
-- `idx_deal_events_type` на `deal_events.event_type`
-
-#### Финансовые индексы
-- `idx_invoices_deal` на `invoices.deal_id`
-- `idx_invoices_status` на `invoices.status`
-- `idx_payments_deal` на `payments.deal_id`
-- `idx_payments_invoice` на `payments.invoice_id`
-- `idx_payments_status` на `payments.status`
-- `idx_payment_transactions_payment` на `payment_transactions.payment_id`
-- `idx_payment_transactions_status` на `payment_transactions.status`
-- `idx_payment_schedules_deal` на `payment_schedules.deal_id`
-
-#### Покупательские индексы
-- `idx_support_tickets_client` на `support_tickets.client_id`
-- `idx_support_tickets_status` на `support_tickets.status`
-- `idx_support_messages_ticket` на `support_messages.ticket_id`
-- `idx_support_messages_author` на `support_messages.author_id`
-- `idx_referral_codes_client` на `referral_codes.client_id`
-- `idx_referral_codes_code` на `referral_codes.code`
-- `idx_referral_events_referral` на `referral_events.referral_id`
-- `idx_referral_events_type` на `referral_events.event_type`
-- `idx_referral_deals_referral` на `referral_deals.referral_id`
-- `idx_referral_rewards_referral` на `referral_rewards.referral_id`
-- `idx_client_notifications_client` на `client_notifications.client_id`
-- `idx_vehicle_services_vehicle` на `vehicle_services.vehicle_id`
-- `idx_vehicle_services_deal` на `vehicle_services.deal_id`
-
-#### Инвесторские индексы
-- `idx_investors_user_id` на `investors.user_id`
-- `idx_investment_portfolios_investor_id` на `investment_portfolios.investor_id`
-- `idx_portfolio_assets_portfolio_id` на `portfolio_assets.portfolio_id`
-- `idx_portfolio_assets_status` на `portfolio_assets.status`
-- `idx_portfolio_performance_portfolio_id` на `portfolio_performance_snapshots.portfolio_id`
-- `idx_portfolio_performance_period` на `portfolio_performance_snapshots.period_start`
-- `idx_portfolio_activity_portfolio_id` на `portfolio_activity_events.portfolio_id`
-- `idx_portfolio_activity_occurred_at` на `portfolio_activity_events.occurred_at DESC`
-- `idx_investor_reports_portfolio_id` на `investor_reports.portfolio_id`
-- `idx_investor_reports_status` на `investor_reports.status`
-
-#### Индексы задач
-- `tasks_action_hash_key` на `tasks(action_hash) WHERE action_hash IS NOT NULL`
-- `tasks_deal_id_idx` на `tasks.deal_id`
-- `tasks_status_idx` на `tasks.status`
-- `tasks_assignee_user_idx` на `tasks.assignee_user_id`
-- `tasks_sla_due_idx` на `tasks.sla_due_at`
-- `workflow_task_templates_version_template_idx` на `workflow_task_templates(workflow_version_id, template_id)`
-- `workflow_task_queue_status_idx` на `workflow_task_queue.status`
-
-#### Аудит индексы
-- `audit_log_deal_id_idx` на `audit_log.deal_id`
-
----
-
-## Workflow система
-
-### Основные компоненты
-
-#### `workflow_versions`
-Версии workflow процессов
-```sql
-id: uuid (PK)
-workflow_id: text (обязательно)
-version: text (обязательно)
-is_active: boolean (default false)
-template: jsonb (обязательно)
-created_at: timestamptz (auto)
-updated_at: timestamptz (auto)
-UNIQUE(workflow_id, version)
-```
-
-#### Состояния workflow
-Система использует JSONB для хранения сложных workflow конфигураций:
-
-```json
-{
-  "workflow": {
-    "id": "fast-lease-v1",
-    "title": "Fast Lease Deal Workflow",
-    "entity": "deal",
-    "ownerRole": "OP_MANAGER",
-    "timezone": "Asia/Dubai"
-  },
-  "roles": [...],
-  "stages": {
-    "DOCS_COLLECT_BUYER": {
-      "code": "DOCS_COLLECT_BUYER",
-      "title": "Сбор документов покупателя",
-      "entryActions": [...],
-      "sla": {"maxHours": 24}
-    },
-    "DOCS_COLLECT_SELLER": {
-      "code": "DOCS_COLLECT_SELLER",
-      "title": "Сбор документов продавца",
-      "entryActions": [...],
-      "sla": {"maxHours": 24}
-    },
-    "CONTRACT_PREP": {...},
-    "DOC_SIGNING": {...},
-    "SIGNING_FUNDING": {...},
-    "ACTIVE": {...}
-  },
-  "transitions": [...],
-  "permissions": {...}
-}
-```
-
-### Типы задач workflow
-
-#### 1. Задачи документооборота
-- `docs.required.allUploaded` - проверка загрузки документов покупателя
-- `docs.seller.allUploaded` - проверка загрузки документов продавца
-- `docs.kyc.completed` - завершение KYC проверки
-
-#### 2. Финансовые задачи
-- `payments.advanceReceived` - получение авансового платежа
 - `payments.supplierPaid` - оплата поставщику
 - `finance.approved` - финансовое одобрение
 
