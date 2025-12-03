@@ -1823,7 +1823,9 @@
           "type": "TASK_CREATE",
           "task": {
             "defaults": {
-              "instruction_short": "Укажите слот и локацию выдачи, подтвердите готовность."
+              "instruction_short": "Приложите контракт аренды, страховой полис, GPS сертификат и Mulkia, подтвердите готовность.",
+              "registration_salik": false,
+              "registration_darb": false
             },
             "template_id": "arrange_delivery_v1",
             "type": "ARRANGE_DELIVERY",
@@ -1837,20 +1839,41 @@
               "version": "1.0",
               "fields": [
                 {
-                  "id": "delivery_slot",
-                  "type": "datetime",
-                  "label": "Слот доставки"
+                  "id": "doc_rental_contract",
+                  "type": "file",
+                  "label": "Контракт аренды",
+                  "document_type": "lease_agreement",
+                  "required": true
                 },
                 {
-                  "id": "location",
-                  "type": "text",
-                  "label": "Локация"
+                  "id": "doc_insurance_policy",
+                  "type": "file",
+                  "label": "Страховка",
+                  "document_type": "insurance_policy"
+                },
+                {
+                  "id": "doc_gps_certificate",
+                  "type": "file",
+                  "label": "GPS сертификат",
+                  "document_type": "certificate_of_installation"
+                },
+                {
+                  "id": "doc_mulkia_certificate",
+                  "type": "file",
+                  "label": "Mulkia",
+                  "document_type": "mulkia_certificate"
+                },
+                {
+                  "id": "registration_salik",
+                  "type": "boolean",
+                  "label": "Регистрация Salik"
+                },
+                {
+                  "id": "registration_darb",
+                  "type": "boolean",
+                  "label": "Регистрация Darb"
                 }
               ]
-            },
-            "bindings": {
-              "delivery_slot": "{{payload.delivery.slot}}",
-              "location": "{{payload.delivery.location}}"
             }
           }
         }
