@@ -274,6 +274,9 @@ document_types:
       - value: preliminary_purchase_agreement
         label: "Предварительный договор купли-продажи"
         context: any
+      - value: authorization_letter
+        label: "Authorization Letter"
+        context: any
       - value: payment_schedule
         label: "Платёжный график"
         context: any
@@ -841,15 +844,15 @@ statuses:
           schema:
             version: "1.0"
             fields:
+              - id: doc_purchase_agreement
+                type: file
+                label: "Договор купли-продажи (продавец)"
+                document_type: purchase_agreement
+                required: true
               - id: doc_preliminary_purchase_agreement
                 type: file
                 label: "Предварительный договор купли-продажи"
                 document_type: preliminary_purchase_agreement
-                required: true
-              - id: doc_purchase_agreement
-                type: file
-                label: "Договор купли-продажи"
-                document_type: purchase_agreement
                 required: true
               - id: doc_lease_agreement
                 type: file
@@ -866,8 +869,14 @@ statuses:
                 label: "Акт приема-передачи"
                 document_type: delivery_act
                 required: true
+              - id: doc_authorization_letter
+                type: file
+                label: "Authorization Letter"
+                document_type: authorization_letter
+                required: false
           defaults:
             doc_preliminary_purchase_agreement: ""
+            doc_authorization_letter: ""
             instruction_short: "Сформируйте договор и материалы для подписания."
     exit_requirements:
       - key: legal.contractReady
@@ -913,8 +922,14 @@ statuses:
                 label: "Подписанный акт приема-передачи"
                 document_type: signed_delivery_act
                 required: true
+              - id: doc_authorization_letter
+                type: file
+                label: "Authorization Letter"
+                document_type: authorization_letter
+                required: false
           defaults:
             instruction_short: "Приложите подписанные документы сделки."
+            doc_authorization_letter: ""
     exit_requirements:
       - key: contracts.signedUploaded
         rule: "== true"
