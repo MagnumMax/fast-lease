@@ -288,21 +288,18 @@ export async function POST(request: Request) {
     const intent = normalizeIntent(payload?.intent);
 
     const serviceClient = await createSupabaseServiceClient();
-    const { data: profileRow, error: profileError } = await serviceClient
-      .from("profiles")
-      .select("user_id")
-      .eq("user_id", userId)
-      .maybeSingle();
+    // Check if user exists in auth.users instead of requiring profiles
+    const { data: authUser, error: authError } = await serviceClient.auth.admin.getUserById(userId);
 
-    if (profileError) {
-      console.error("[admin-users] delete load profile failed", profileError);
+    if (authError) {
+      console.error("[admin-users] delete load auth user failed", authError);
       return NextResponse.json(
-        { error: "Не удалось загрузить профиль." },
+        { error: "Не удалось загрузить пользователя." },
         { status: 500 },
       );
     }
 
-    if (!profileRow) {
+    if (!authUser) {
       return NextResponse.json(
         { error: "Пользователь не найден." },
         { status: 404 },
@@ -349,12 +346,14 @@ export async function POST(request: Request) {
     const deletions = [
       serviceClient.from("user_portals").delete().eq("user_id", userId),
       serviceClient.from("user_roles").delete().eq("user_id", userId),
+      // Try to delete from profiles if exists, but don't fail if it doesn't
       serviceClient.from("profiles").delete().eq("user_id", userId),
     ];
 
-    for (const promise of deletions) {
+    // Execute deletions, but don't fail if profiles deletion fails
+    for (const [index, promise] of deletions.entries()) {
       const { error } = await promise;
-      if (error) {
+      if (error && index !== 2) { // Skip error for profiles deletion (index 2)
         throw new Error(`[admin-users] delete cascade failed: ${error.message}`);
       }
     }

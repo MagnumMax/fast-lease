@@ -180,11 +180,18 @@ function resolveVehicleSecondaryLabel(vehicle: VehicleOption) {
   if (vehicle.vin && vehicle.vin.trim() && vehicle.vin !== "—") {
     return vehicle.vin.trim();
   }
-  if (vehicle.detailHref && vehicle.detailHref.trim()) {
-    return vehicle.detailHref.trim();
+  const licensePlate =
+    (vehicle.licensePlateDisplay && vehicle.licensePlateDisplay.trim()) ||
+    (vehicle.licensePlate && vehicle.licensePlate.trim());
+  if (licensePlate) {
+    return licensePlate;
   }
-  if (vehicle.optionValue && vehicle.optionValue.trim()) {
-    return vehicle.optionValue.trim();
+  if (vehicle.year) {
+    return `${vehicle.year}`;
+  }
+  if (vehicle.id && vehicle.id.trim()) {
+    const shortId = vehicle.id.trim().slice(-6).toUpperCase();
+    return `ID ${shortId}`;
   }
   return "—";
 }
@@ -207,8 +214,14 @@ function resolveVehicleOptionValue(vehicle: OpsCarRecord, index: number): string
   if (vehicle.vin && vehicle.vin.trim() && vehicle.vin !== "—") {
     return vehicle.vin;
   }
-  if (vehicle.detailHref && vehicle.detailHref.trim()) {
-    return vehicle.detailHref;
+  if (vehicle.licensePlate && vehicle.licensePlate.trim()) {
+    return vehicle.licensePlate;
+  }
+  if (vehicle.licensePlateDisplay && vehicle.licensePlateDisplay.trim()) {
+    return vehicle.licensePlateDisplay;
+  }
+  if (vehicle.id && vehicle.id.trim()) {
+    return vehicle.id;
   }
   return `vehicle-${index}`;
 }

@@ -442,18 +442,42 @@ const { name, email, phone } = parsed.data;
       };
     }
 
-    const { error: roleError } = await serviceClient
+    // Ensure client role exists - check first, then insert if needed
+    const { data: existingRole, error: roleCheckError } = await serviceClient
       .from("user_roles")
-      .upsert(
-        {
-          user_id: userId,
-          role: "CLIENT",
-        },
-        { onConflict: "user_id,role" },
-      );
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", "CLIENT")
+      .maybeSingle();
 
-    if (roleError) {
-      console.error("[operations] failed to ensure client role", roleError);
+    if (roleCheckError) {
+      console.error("[operations] failed to check existing client role", roleCheckError);
+    }
+
+    // Only insert if role doesn't exist yet
+    if (!existingRole) {
+      const { error: roleInsertError } = await serviceClient
+        .from("user_roles")
+        .insert({
+            user_id: userId,
+            role: "CLIENT",
+            portal: "client",
+            assigned_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            metadata: {}
+        });
+
+      if (roleInsertError) {
+        console.error("[operations] failed to insert client role", roleInsertError);
+        return {
+          error: "Не удалось назначить роль клиента. Покупатель создан, но не будет отображаться в списке без роли CLIENT.",
+        };
+      }
+
+      console.log("[operations] successfully assigned CLIENT role to user", { userId });
+    } else {
+      console.log("[operations] client role already exists for user", { userId });
     }
 
     for (const path of getWorkspacePaths("clients")) {

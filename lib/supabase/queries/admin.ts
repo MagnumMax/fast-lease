@@ -151,21 +151,32 @@ export type AdminUserDirectory = {
 };
 
 export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
-  try {
-    const supabase = await createSupabaseServerClient();
+try {
+  const supabase = await createSupabaseServerClient();
 
-    const [profilesResult, rolesResult] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, user_id, status, full_name, phone, metadata, last_login_at")
-        .order("full_name", { ascending: true })
-        .returns<ProfileRow[]>(),
-      supabase
-        .from("view_portal_roles")
-        .select("user_id, role, portal, assigned_at, role_metadata")
-        .order("assigned_at", { ascending: true })
-        .returns<UserRoleRow[]>(),
-    ]);
+  // Try to load from profiles first, but fall back to auth.users if profiles is empty
+  const [profilesResult, rolesResult] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, user_id, status, full_name, phone, metadata, last_login_at")
+      .order("full_name", { ascending: true })
+      .returns<ProfileRow[]>(),
+    supabase
+      .from("view_portal_roles")
+      .select("user_id, role, portal, assigned_at, role_metadata")
+      .order("assigned_at", { ascending: true })
+      .returns<UserRoleRow[]>(),
+  ]);
+
+  // If profiles is empty, load users from auth.users instead
+  let authUsers: AuthUserRow[] = [];
+  if (!profilesResult.data?.length) {
+    try {
+      authUsers = await listSupabaseAuthUsers({ perPage: 30, maxPages: 80 });
+    } catch (serviceError) {
+      console.warn("[admin] Service client unavailable, skipping auth.users fallback", serviceError);
+    }
+  }
 
     if (profilesResult.error) {
       console.warn("[admin] Failed to load profiles, falling back to static data", profilesResult.error);
@@ -179,7 +190,11 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
 
     const profiles = profilesResult.data ?? [];
     const roles = rolesResult.data ?? [];
-    const profileIds = profiles.map((profile) => profile.user_id);
+
+    // Use authUsers if profiles is empty
+    const profileIds = profiles.length > 0
+      ? profiles.map((profile) => profile.user_id)
+      : authUsers.map((user) => user.id);
 
     const [portalsResult, loginEventsResult, adminAuditResult] = await Promise.all([
       profileIds.length
@@ -218,8 +233,6 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
       console.warn("[admin] Failed to load admin portal audit log", adminAuditResult.error);
     }
 
-    let authUsers: AuthUserRow[] = [];
-
     const hasServiceRoleKey =
       typeof process !== "undefined" &&
       typeof process.env?.SUPABASE_SERVICE_ROLE_KEY === "string" &&
@@ -229,7 +242,7 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
       console.warn(
         "[admin] Skipping auth directory enrichment – SUPABASE_SERVICE_ROLE_KEY is not configured.",
       );
-    } else {
+    } else if (authUsers.length === 0) {
       try {
         authUsers = await listSupabaseAuthUsers({ perPage: 30, maxPages: 80 });
       } catch (serviceError) {
@@ -281,19 +294,47 @@ export async function getAdminUserDirectory(): Promise<AdminUserDirectory> {
       loginMap.set(event.user_id, existing);
     }
 
-    const enrichedUsers = profiles.map((profile) => {
-      const roleEntries = roleMap[profile.user_id] ?? [];
-      const authUser = authUserMap[profile.user_id] ?? null;
-      const portalSummaries = portalMap[profile.user_id] ?? [];
-      const loginEvents = loginMap.get(profile.user_id) ?? [];
-      return createUserRecord(
-        profile,
-        authUser,
-        roleEntries,
-        portalSummaries,
-        loginEvents,
-      );
-    });
+    // Create user records from either profiles or auth.users
+    const enrichedUsers = profiles.length > 0
+      ? profiles.map((profile) => {
+          const roleEntries = roleMap[profile.user_id] ?? [];
+          const authUser = authUserMap[profile.user_id] ?? null;
+          const portalSummaries = portalMap[profile.user_id] ?? [];
+          const loginEvents = loginMap.get(profile.user_id) ?? [];
+          return createUserRecord(
+            profile,
+            authUser,
+            roleEntries,
+            portalSummaries,
+            loginEvents,
+          );
+        })
+      : authUsers.map((authUser) => {
+          // Create a minimal profile-like object from auth user data
+          const mockProfile: ProfileRow = {
+            id: authUser.id,
+            user_id: authUser.id,
+            status: "active",
+            full_name: authUser.user_metadata?.full_name as string | null,
+            phone: authUser.phone as string | null,
+            metadata: {
+              email: authUser.email,
+              ...authUser.user_metadata,
+            },
+            last_login_at: authUser.last_sign_in_at,
+          };
+
+          // Find roles for this user
+          const roleEntries = roles.filter(role => role.user_id === authUser.id);
+
+          return createUserRecord(
+            mockProfile,
+            authUser,
+            roleEntries,
+            [], // No portal info from auth.users
+            [], // No login events from auth.users
+          );
+        });
 
     const auditLog =
       adminAuditResult.data?.map<AdminAuditLogEntry>((entry) => ({

@@ -1530,10 +1530,30 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
   let profilesData: SupabaseClientProfileRow[] | null = null;
   let profilesError: unknown = null;
 
+  const { data: clientRoleRows, error: clientRolesError } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "CLIENT");
+
+  if (clientRolesError) {
+    console.error("[SERVER-OPS] failed to load client roles:", clientRolesError);
+    return [];
+  }
+
+  const clientUserIds = (clientRoleRows ?? [])
+    .map((row) => row.user_id)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  if (clientUserIds.length === 0) {
+    console.log("[SERVER-OPS] no CLIENT role users found");
+    return [];
+  }
+
   {
     const response = await supabase
       .from("profiles")
       .select(profileSelect)
+      .in("user_id", clientUserIds)
       .order("full_name", { ascending: true });
     profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
     profilesError = response.error;
@@ -1546,6 +1566,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       .select(
         "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata",
       )
+      .in("user_id", clientUserIds)
       .order("full_name", { ascending: true });
     profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
     profilesError = response.error;
@@ -1661,8 +1682,8 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       : null;
     const memberSince = rawMemberSince && rawMemberSince !== "—" ? rawMemberSince : null;
 
-    const overdueCount = index % 3 === 0 ? 1 : 0;
-    const overdueSummary = overdueCount > 0 ? `${overdueCount} проср.` : "Нет просрочек";
+    const overdueCount = 0;
+    const overdueSummary = "Нет просрочек";
 
     const tags = Array.from(
       new Set(
@@ -2385,9 +2406,6 @@ export async function getOperationsCars(): Promise<OperationsCar[]> {
         deals:deals!deals_vehicle_id_fkey (id, deal_number, status)
       `,
     )
-    .not("vin", "is", null)
-    .not("vin", "eq", "")
-    .neq("vin", "—")
     .order("make", { ascending: true });
 
   if (error) {

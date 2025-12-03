@@ -43,7 +43,6 @@ const CLIENT_STATUS_TONE_CLASS: Record<string, string> = {
 };
 
 const FILTER_ALL_VALUE = "__all";
-const OVERDUE_ALL_VALUE = "__overdue_all";
 
 function normalizeVin(value: string | null | undefined) {
   return value ? value.replace(/[^a-z0-9]/gi, "").toLowerCase() : "";
@@ -86,7 +85,6 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
   const [clients, setClients] = useState(initialClients);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(FILTER_ALL_VALUE);
-  const [overdueFilter, setOverdueFilter] = useState<string>(OVERDUE_ALL_VALUE);
   const [page, setPage] = useState(0);
   const pageSize = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -104,7 +102,6 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
   }, [clients]);
 
   const normalizedStatusFilter = statusFilter === FILTER_ALL_VALUE ? "" : statusFilter;
-  const normalizedOverdueFilter = overdueFilter === OVERDUE_ALL_VALUE ? "" : overdueFilter;
 
   const filteredClients = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -116,12 +113,9 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
       const matchesVin =
         normalizedVinQuery.length > 0 && normalizeVin(client.leasing?.vin).includes(normalizedVinQuery);
       const matchesStatus = !normalizedStatusFilter || client.status === normalizedStatusFilter;
-      const matchesOverdue =
-        !normalizedOverdueFilter ||
-        (normalizedOverdueFilter === "0" ? client.overdue === 0 : client.overdue > 0);
-      return (matchesText || matchesVin) && matchesStatus && matchesOverdue;
+      return (matchesText || matchesVin) && matchesStatus;
     });
-  }, [clients, searchQuery, normalizedStatusFilter, normalizedOverdueFilter]);
+  }, [clients, searchQuery, normalizedStatusFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredClients.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -133,7 +127,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
 
   useEffect(() => {
     setPage(0);
-  }, [searchQuery, normalizedStatusFilter, normalizedOverdueFilter, clients]);
+  }, [searchQuery, normalizedStatusFilter, clients]);
 
 function handleCreateClient() {
     if (!formState.name.trim()) return;
@@ -280,16 +274,6 @@ function handleCreateClient() {
                 <SelectItem value="Blocked">Blocked</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={overdueFilter} onValueChange={setOverdueFilter}>
-              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 md:w-48">
-                <SelectValue placeholder="Все задолженности" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={OVERDUE_ALL_VALUE}>Все задолженности</SelectItem>
-                <SelectItem value="0">Без просрочек</SelectItem>
-                <SelectItem value=">0">Есть просрочки</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </CardContent>
       </Card>
@@ -302,7 +286,6 @@ function handleCreateClient() {
                 <TableHead className="min-w-[200px]">Полное имя</TableHead>
                 <TableHead className="min-w-[120px]">Статус</TableHead>
                 <TableHead className="min-w-[200px]">Контакты</TableHead>
-                <TableHead className="min-w-[140px]">Просрочки</TableHead>
                 <TableHead className="min-w-[220px]">Лизинг</TableHead>
               </TableRow>
             </TableHeader>
@@ -340,15 +323,6 @@ function handleCreateClient() {
                         <span>{client.phone}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-foreground">
-                      {client.overdue > 0 ? (
-                        <Badge variant="danger" className="rounded-lg">
-                          {client.metricsSummary?.overdue ?? `${client.overdue} проср.`}
-                        </Badge>
-                      ) : (
-                        client.metricsSummary?.overdue ?? "Нет просрочек"
-                      )}
-                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {client.leasing ? (
                         <div className="space-y-1">
@@ -374,7 +348,7 @@ function handleCreateClient() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-10 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
                     Подходящих покупателей не найдено. Измените фильтры или создайте нового покупателя.
                   </TableCell>
                 </TableRow>
