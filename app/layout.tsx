@@ -1,20 +1,26 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { cn } from "@/lib/utils";
 
-const geistSans = Inter({
-  subsets: ["latin"],
+const geistSans = localFont({
+  src: [
+    {
+      path: "../public/fonts/InterVariable.ttf",
+      weight: "100 900",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/InterVariable-Italic.ttf",
+      weight: "100 900",
+      style: "italic",
+    },
+  ],
   variable: "--font-geist-sans",
   display: "swap",
-});
-
-const geistMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -33,7 +39,6 @@ export default function RootLayout({
       <body
         className={cn(
           geistSans.variable,
-          geistMono.variable,
           "bg-background text-foreground min-h-screen font-sans antialiased",
         )}
       >

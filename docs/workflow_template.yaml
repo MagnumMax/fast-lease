@@ -132,6 +132,11 @@ schemas:
       - id: seller_bank_details
         type: text
         label: "IBAN"
+      - id: doc_emirates_id_owner
+        type: file
+        label: "Emirates ID владельца"
+        document_type: emirates_id
+        required: false
       - id: doc_company_license
         type: file
         label: "Лицензия компании"
@@ -698,6 +703,7 @@ statuses:
             seller_contact_email: ""
             seller_contact_phone: ""
             seller_bank_details: ""
+            doc_emirates_id_owner: ""
             doc_company_license: ""
             doc_quotation: ""
             doc_tax_invoice: ""

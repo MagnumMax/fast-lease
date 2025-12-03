@@ -64,6 +64,9 @@ type WorkflowDocumentDefinition = {
   documentType: string;
   label: string;
 };
+type TaskSchemaEntry =
+  | { kind: "document"; id: string; label: string; documentType: string }
+  | { kind: "parameter"; id: string; label: string; value: string };
 type WorkflowDocumentGroupEntry = {
   stageKey: string;
   stageTitle: string;
@@ -207,6 +210,22 @@ function stripFileSuffix(label?: string | null): string {
   return label.replace(/\s*\(файл\)/gi, "").trim();
 }
 
+const EXCLUDED_FIELD_LABELS = new Set([
+  "id сделки",
+  "текущий этап",
+  "номер сделки",
+  "этап workflow",
+  "статус сделки",
+]);
+
+function isDocumentSchemaEntry(entry: TaskSchemaEntry): entry is Extract<TaskSchemaEntry, { kind: "document" }> {
+  return entry.kind === "document";
+}
+
+function isParameterSchemaEntry(entry: TaskSchemaEntry): entry is Extract<TaskSchemaEntry, { kind: "parameter" }> {
+  return entry.kind === "parameter";
+}
+
 function extractDocumentDefinitionsFromPayload(payload: Record<string, unknown> | null): WorkflowDocumentDefinition[] {
   const schemaBranch =
     payload && typeof payload.schema === "object" && !Array.isArray(payload.schema)
@@ -250,13 +269,6 @@ function extractFieldDefinitionsFromPayload(payload: Record<string, unknown> | n
       ? (payload.schema as Record<string, unknown>)
       : null;
   const fieldsRaw = Array.isArray(schemaBranch?.fields) ? schemaBranch.fields : [];
-  const excludedLabels = new Set([
-    "id сделки",
-    "текущий этап",
-    "номер сделки",
-    "этап workflow",
-    "статус сделки",
-  ]);
 
   const definitions: Array<{ id: string; label: string }> = [];
 
@@ -272,7 +284,7 @@ function extractFieldDefinitionsFromPayload(payload: Record<string, unknown> | n
     if (type === "file" || hasDocumentType) return;
     const label = typeof branch.label === "string" ? branch.label : id;
     const normalizedLabel = label.trim().toLowerCase();
-    if (excludedLabels.has(normalizedLabel)) return;
+    if (EXCLUDED_FIELD_LABELS.has(normalizedLabel)) return;
     definitions.push({ id, label: label.trim().length > 0 ? label : id });
   });
 
@@ -325,6 +337,55 @@ function formatTaskFieldValue(value: unknown): string {
   return String(value);
 }
 
+function extractOrderedSchemaEntriesFromPayload(payload: Record<string, unknown> | null): TaskSchemaEntry[] {
+  const schemaBranch =
+    payload && typeof payload.schema === "object" && !Array.isArray(payload.schema)
+      ? (payload.schema as Record<string, unknown>)
+      : null;
+  const fieldsRaw = Array.isArray(schemaBranch?.fields) ? schemaBranch.fields : [];
+  const entries: TaskSchemaEntry[] = [];
+
+  fieldsRaw.forEach((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const branch = raw as Record<string, unknown>;
+    const id = typeof branch.id === "string" ? branch.id : null;
+    if (!id) return;
+    const labelRaw = typeof branch.label === "string" ? branch.label : id;
+    const normalizedLabel = labelRaw.trim().toLowerCase();
+    const fieldType = typeof branch.type === "string" ? branch.type.toLowerCase() : "";
+    const documentType =
+      typeof branch.document_type === "string"
+        ? (branch.document_type as string)
+        : typeof (branch as { documentType?: unknown }).documentType === "string"
+          ? ((branch as { documentType?: string }).documentType as string)
+          : null;
+    const hasDocumentType = Boolean(documentType);
+
+    if (fieldType === "file" || hasDocumentType) {
+      if (!documentType) return;
+      const docLabel = stripFileSuffix(labelRaw);
+      entries.push({
+        kind: "document",
+        id,
+        documentType,
+        label: docLabel.length > 0 ? docLabel : documentType,
+      });
+      return;
+    }
+
+    if (EXCLUDED_FIELD_LABELS.has(normalizedLabel)) return;
+
+    entries.push({
+      kind: "parameter",
+      id,
+      label: labelRaw.trim().length > 0 ? labelRaw : id,
+      value: formatTaskFieldValue(resolveTaskFieldValue(id, payload)),
+    });
+  });
+
+  return entries;
+}
+
 type DealTaskSnapshot = {
   id: string;
   title: string;
@@ -332,6 +393,7 @@ type DealTaskSnapshot = {
   stageKey: string | null;
   stageTitle: string | null;
   createdAt: string | null;
+  schemaEntries: TaskSchemaEntry[];
   documents: WorkflowDocumentDefinition[];
   parameters: Array<{ id: string; label: string; value: string }>;
 };
@@ -355,32 +417,55 @@ function buildTaskDocumentGroups(
   // инициализируем группы по задачам, чтобы показать даже не загруженные документы
   tasks.forEach((task) => {
     const groupKey = task.id;
-    const groupDocs = task.documents.map<SummaryDocumentEntry>((def) => ({
-      label: resolveDocumentLabelFromType(def.documentType, def.label),
-      value: "—",
-      status: null,
-      url: null,
-    }));
-    const parameterEntries = task.parameters.map<SummaryDocumentEntry>((param) => ({
-      label: param.label ?? param.id,
-      value: param.value ?? "—",
-      status: null,
-      url: null,
-      kind: "parameter",
-    }));
+    const orderedEntries: TaskSchemaEntry[] =
+      task.schemaEntries.length > 0
+        ? task.schemaEntries
+        : [
+            ...task.documents.map((def) => ({
+              kind: "document" as const,
+              id: def.documentType,
+              label: def.label,
+              documentType: def.documentType,
+            })),
+            ...task.parameters.map((param) => ({
+              kind: "parameter" as const,
+              id: param.id,
+              label: param.label,
+              value: param.value,
+            })),
+          ];
+    const groupDocs: SummaryDocumentEntry[] = [];
+    const docMap = new Map<string, SummaryDocumentEntry>();
+
+    orderedEntries.forEach((entry) => {
+      if (isDocumentSchemaEntry(entry)) {
+        const docEntry: SummaryDocumentEntry = {
+          label: resolveDocumentLabelFromType(entry.documentType, entry.label),
+          value: "—",
+          status: null,
+          url: null,
+        };
+        groupDocs.push(docEntry);
+        const normalized = normalizeDocumentTypeValue(entry.documentType);
+        if (normalized) {
+          docMap.set(normalized, docEntry);
+        }
+      } else if (isParameterSchemaEntry(entry)) {
+        groupDocs.push({
+          label: entry.label ?? entry.id,
+          value: entry.value ?? "—",
+          status: null,
+          url: null,
+          kind: "parameter",
+        });
+      }
+    });
     groups.set(groupKey, {
       stageKey: task.stageKey ?? "deal",
       stageTitle: task.stageTitle ?? task.stageKey ?? "Сделка",
       taskTitle: task.title,
       taskTemplateId: task.id,
-      documents: [...groupDocs, ...parameterEntries],
-    });
-    const docMap = new Map<string, SummaryDocumentEntry>();
-    task.documents.forEach((def, index) => {
-      const normalized = normalizeDocumentTypeValue(def.documentType);
-      if (normalized) {
-        docMap.set(normalized, groupDocs[index]);
-      }
+      documents: groupDocs,
     });
     groupDocTypeMap.set(groupKey, docMap);
   });
@@ -629,6 +714,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
               ? (row.payload as Record<string, unknown>)
               : {};
+          const guardNote = getStringValue((payload as { guard_note?: unknown }).guard_note);
           const guardKey = resolveTaskGuardKey({
             guardKey: typeof payload.guard_key === "string" ? (payload.guard_key as string) : null,
             payload,
@@ -640,11 +726,42 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
                 ? ((payload.status as Record<string, unknown>).key as string)
                 : null;
           const stageTitle = stageKey && OPS_WORKFLOW_STATUS_MAP[stageKey] ? OPS_WORKFLOW_STATUS_MAP[stageKey].title : stageKey;
-          const parameters = extractFieldDefinitionsFromPayload(payload).map((field) => ({
-            id: field.id,
-            label: field.label,
-            value: formatTaskFieldValue(resolveTaskFieldValue(field.id, payload)),
-          }));
+          const schemaEntriesBase = extractOrderedSchemaEntriesFromPayload(payload);
+          const schemaEntries =
+            guardNote && !schemaEntriesBase.some((entry) => isParameterSchemaEntry(entry) && entry.id === "guard_note")
+              ? [
+                  ...schemaEntriesBase,
+                  {
+                    kind: "parameter" as const,
+                    id: "guard_note",
+                    label: "Комментарий",
+                    value: guardNote,
+                  },
+                ]
+              : schemaEntriesBase;
+          const parameters = schemaEntries
+            .filter(isParameterSchemaEntry)
+            .map((entry) => ({
+              id: entry.id,
+              label: entry.label,
+              value: entry.value,
+            }));
+          const documents = schemaEntries
+            .filter(isDocumentSchemaEntry)
+            .map((entry) => ({
+              documentType: entry.documentType,
+              label: entry.label,
+            }));
+          const parametersFallback =
+            parameters.length > 0
+              ? parameters
+              : extractFieldDefinitionsFromPayload(payload).map((field) => ({
+                  id: field.id,
+                  label: field.label,
+                  value: formatTaskFieldValue(resolveTaskFieldValue(field.id, payload)),
+                }));
+          const documentsFallback =
+            documents.length > 0 ? documents : extractDocumentDefinitionsFromPayload(payload);
 
           return {
             id: row.id,
@@ -653,8 +770,9 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             stageKey,
             stageTitle: stageTitle ?? null,
             createdAt: row.created_at ?? null,
-            documents: extractDocumentDefinitionsFromPayload(payload),
-            parameters,
+            schemaEntries,
+            documents: documentsFallback,
+            parameters: parametersFallback,
           };
         });
       }
