@@ -26,9 +26,9 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["lightningcss", "@tailwindcss/node", "@tailwindcss/oxide"],
   experimental: {
     serverActions: {
-      bodySizeLimit: "100mb",
+      bodySizeLimit: "1gb",
     },
-    proxyClientMaxBodySize: "100mb",
+    proxyClientMaxBodySize: "1gb",
   },
   ...(imagesConfig ? { images: imagesConfig } : {}),
   outputFileTracingIncludes: {

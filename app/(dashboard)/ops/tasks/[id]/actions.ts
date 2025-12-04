@@ -1,6 +1,11 @@
 "use server";
 
 import { Buffer } from "node:buffer";
+import { promises as fs } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { spawn } from "node:child_process";
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -63,10 +68,31 @@ const DEAL_DOCUMENT_CATEGORY_MAP: Record<string, string> = DEAL_DOCUMENT_TYPES.r
   acc[entry.value] = entry.category;
   return acc;
 }, {} as Record<string, string>);
+const STORAGE_OBJECT_MAX_BYTES = 50 * 1024 * 1024; // Supabase storage single-object limit
+const PDF_COMPRESSION_SETTINGS = [
+  "-sDEVICE=pdfwrite",
+  "-dCompatibilityLevel=1.4",
+  "-dPDFSETTINGS=/ebook",
+  "-dNOPAUSE",
+  "-dQUIET",
+  "-dBATCH",
+];
 
 function resolveDealDocumentCategory(value: string | null): string {
   if (!value) return "other";
   return DEAL_DOCUMENT_CATEGORY_MAP[value] ?? "other";
+}
+
+function formatBytes(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let index = 0;
+  let current = value;
+  while (current >= 1024 && index < units.length - 1) {
+    current /= 1024;
+    index += 1;
+  }
+  return `${Math.round(current * 10) / 10} ${units[index]}`;
 }
 
 function parseFieldEntries(formData: FormData): Record<string, unknown> {
@@ -211,6 +237,43 @@ function buildDocumentTypeMapFromSchema(
   return map;
 }
 
+async function compressPdfWithGhostscript(
+  buffer: Buffer<ArrayBufferLike>,
+): Promise<{ buffer: Buffer<ArrayBufferLike>; format: string; reduced: boolean }> {
+  const tmpBase = join(tmpdir(), `pdf-compress-${randomUUID()}`);
+  const inputPath = `${tmpBase}-in.pdf`;
+  const outputPath = `${tmpBase}-out.pdf`;
+
+  try {
+    await fs.writeFile(inputPath, buffer);
+
+    const args = [...PDF_COMPRESSION_SETTINGS, `-sOutputFile=${outputPath}`, inputPath];
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn("gs", args, { stdio: "ignore" });
+      proc.on("error", reject);
+      proc.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Ghostscript exited with code ${code}`));
+        }
+      });
+    });
+
+    const output = await fs.readFile(outputPath);
+    const reduced = output.length < buffer.length * 0.98;
+    return { buffer: reduced ? output : buffer, format: "pdf-gs", reduced };
+  } catch (error) {
+    console.warn("[workflow] PDF compression skipped", error);
+    return { buffer, format: "none", reduced: false };
+  } finally {
+    await Promise.allSettled([
+      fs.rm(inputPath, { force: true }),
+      fs.rm(outputPath, { force: true }),
+    ]);
+  }
+}
+
 async function uploadAttachment(options: {
   supabase: Awaited<ReturnType<typeof createSupabaseServiceClient>>;
   dealId: string;
@@ -233,7 +296,12 @@ async function uploadAttachment(options: {
   } = options;
 
   const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  const originalBuffer: Buffer<ArrayBufferLike> = Buffer.from(arrayBuffer);
+  let uploadBuffer: Buffer<ArrayBufferLike> = originalBuffer;
+  let uploadMime = file.type || "application/octet-stream";
+  const originalSize = originalBuffer.length;
+  let compressedSize = originalSize;
+  let compressionFormat: string | null = null;
   const baseName = getFileName(file) || guardKey || "attachment";
   const sanitizedName = sanitizeFileName(baseName);
   const path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
@@ -245,19 +313,74 @@ async function uploadAttachment(options: {
     guard_label: guardLabel,
     guard_document_type: documentType,
     guard_deal_id: dealId,
+    compression: {
+      applied: false,
+      from_bytes: originalSize,
+      to_bytes: originalSize,
+      format: null,
+    },
   };
+
+  if (file.type && file.type.startsWith("image/")) {
+    try {
+      const sharpModule = await import("sharp").catch(() => null);
+      const sharp = sharpModule?.default;
+      if (sharp) {
+        const pipeline = sharp(originalBuffer).rotate();
+        const compressedBuffer = await pipeline.webp({ quality: 75 }).toBuffer();
+        if (compressedBuffer.length < originalBuffer.length * 0.95) {
+          uploadBuffer = compressedBuffer;
+          uploadMime = "image/webp";
+          compressedSize = compressedBuffer.length;
+          compressionFormat = "webp";
+          metadata.compression = {
+            applied: true,
+            from_bytes: originalSize,
+            to_bytes: compressedSize,
+            format: compressionFormat,
+          };
+        }
+      }
+    } catch (compressionError) {
+      console.warn("[workflow] image compression skipped", compressionError);
+    }
+  }
+
+  if (file.type === "application/pdf" || (file.name && file.name.toLowerCase().endsWith(".pdf"))) {
+    const pdfCompressed = await compressPdfWithGhostscript(uploadBuffer);
+    if (pdfCompressed.reduced) {
+      uploadBuffer = pdfCompressed.buffer;
+      uploadMime = "application/pdf";
+      compressedSize = uploadBuffer.length;
+      compressionFormat = pdfCompressed.format;
+      metadata.compression = {
+        applied: true,
+        from_bytes: originalSize,
+        to_bytes: compressedSize,
+        format: compressionFormat,
+      };
+    }
+  }
 
   if (isAdditional) {
     metadata.guard_optional = true;
   }
 
-  const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).upload(path, buffer, {
-    contentType: file.type || "application/octet-stream",
+  // Fail fast if size exceeds storage limit even after compression attempt.
+  if (uploadBuffer.length > STORAGE_OBJECT_MAX_BYTES) {
+    return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
+  }
+
+  const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).upload(path, uploadBuffer, {
+    contentType: uploadMime,
     upsert: true,
   });
 
   if (uploadError) {
     console.error("[workflow] failed to upload task attachment", uploadError);
+    if ((uploadError as { statusCode?: string | number }).statusCode === "413" || (uploadError as { status?: number }).status === 413) {
+      return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
+    }
     return { error: "Не удалось загрузить вложение" };
   }
 
@@ -268,8 +391,8 @@ async function uploadAttachment(options: {
     document_category: documentCategory,
     status: "uploaded",
     storage_path: path,
-    mime_type: file.type || null,
-    file_size: typeof file.size === "number" ? file.size : null,
+    mime_type: uploadMime || null,
+    file_size: uploadBuffer.length,
     metadata,
     uploaded_by: uploadedBy,
   });

@@ -125,10 +125,10 @@ type FinanceReviewSnapshot = {
 const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
-const MAX_FILE_UPLOAD_BYTES = 20 * 1024 * 1024;
-const MAX_FILE_UPLOAD_LABEL = "20 МБ";
-const MAX_TOTAL_UPLOAD_BYTES = 100 * 1024 * 1024;
-const MAX_TOTAL_UPLOAD_LABEL = "100 МБ";
+const COMPRESSION_HINT_THRESHOLD_BYTES = 20 * 1024 * 1024;
+const COMPRESSION_HINT_LABEL = "20 МБ";
+const MAX_TOTAL_UPLOAD_BYTES = Number.POSITIVE_INFINITY;
+const MAX_TOTAL_UPLOAD_LABEL = "без лимита";
 const AECB_GUARD_KEY = "risk.approved";
 const AECB_CREDIT_REPORT_TYPE: ClientDocumentTypeValue = "aecb_credit_report";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
@@ -336,8 +336,9 @@ export function TaskDetailView({
   const [pendingBuyerType, setPendingBuyerType] = useState<PartyTypeValue | "">("");
   const [reopenReason, setReopenReason] = useState<string>("quality");
   const [uploadValidationError, setUploadValidationError] = useState<string | null>(null);
-  const [docFieldErrors, setDocFieldErrors] = useState<Record<string, string>>({});
-  const [draftErrors, setDraftErrors] = useState<Record<string, string>>({});
+  const [docFieldWarnings, setDocFieldWarnings] = useState<Record<string, string>>({});
+  const [draftWarnings, setDraftWarnings] = useState<Record<string, string>>({});
+  const [requiredDocErrors, setRequiredDocErrors] = useState<Record<string, string>>({});
 
   function setDocumentDeleting(id: string, deleting: boolean) {
     setDeletingDocumentIds((prev) => {
@@ -414,6 +415,7 @@ export function TaskDetailView({
   let visibleFields = editableFields;
   const statusMeta = getTaskStatusMeta(task.status);
   const canReopen = task.status.toUpperCase() === "DONE";
+  const isReopenedTask = task.reopenCount > 0;
   const reopenBadge =
     task.reopenCount > 0
       ? `Переоткрыта ${task.reopenCount} ${task.reopenCount === 1 ? "раз" : "раз"}`
@@ -431,7 +433,7 @@ export function TaskDetailView({
   const guardRequiresDocument = Boolean(guardMeta?.requiresDocument || requiresDocumentFlag);
   const documentsEnabled =
     isBuyerDocsTask || isSellerDocsTask || requiresDocument || isAecbTask || isPaySupplierTask;
-  const enableDocsSection = documentsEnabled || isPrepareQuoteTask;
+  const enableDocsSection = documentsEnabled || isPrepareQuoteTask || isReopenedTask;
   const defaultDocumentType: ClientDocumentTypeValue | "" = "";
   const useTwoColumnFieldLayout = true;
   const workflowDocumentFields = visibleFields.filter((field) => getFieldDocumentType(field));
@@ -580,6 +582,34 @@ export function TaskDetailView({
     });
     return map;
   }, [guardDocumentLinks]);
+  const expectedDocumentTypes = useMemo(() => {
+    const types = new Set<string>();
+    workflowDocumentFields.forEach((field) => {
+      const normalized = getFieldDocumentType(field);
+      if (normalized) {
+        types.add(normalized);
+      }
+    });
+    (checklist?.items ?? []).forEach((item) => {
+      if (item.normalizedType) {
+        types.add(item.normalizedType);
+      }
+    });
+    return types;
+  }, [checklist?.items, workflowDocumentFields]);
+  const visibleGuardDocuments = useMemo(
+    () =>
+      guardDocumentLinks.filter((doc) => {
+        if (isPlaceholderGuardDocument(doc)) {
+          return false;
+        }
+        const normalized = normalizeClientDocumentType(doc.documentType ?? undefined);
+        if (!normalized) return true;
+        return !expectedDocumentTypes.has(normalized);
+      }),
+    [expectedDocumentTypes, guardDocumentLinks],
+  );
+  const hasVisibleGuardDocuments = visibleGuardDocuments.length > 0;
   const instructionShortRaw =
     payload?.defaults &&
       typeof payload.defaults === "object" &&
@@ -645,9 +675,9 @@ export function TaskDetailView({
     setDocumentDrafts((prev) => [...prev, createDocumentDraft(defaultDocumentType)]);
   }
 
-  function isFileWithinLimit(file: File | null | undefined): boolean {
-    if (!file || typeof file.size !== "number") return true;
-    return file.size <= MAX_FILE_UPLOAD_BYTES;
+  function isFileLarge(file: File | null | undefined): boolean {
+    if (!file || typeof file.size !== "number") return false;
+    return file.size > COMPRESSION_HINT_THRESHOLD_BYTES;
   }
 
   function getFileSize(file: File | null | undefined): number {
@@ -663,13 +693,12 @@ export function TaskDetailView({
     return docFieldTotal + draftTotal;
   }
 
-  function handleOversizeFile(fileName: string | null) {
-    const displayName = fileName && fileName.trim().length > 0 ? fileName.trim() : "файл";
-    setUploadValidationError(`Превышен лимит ${MAX_FILE_UPLOAD_LABEL}. Сожмите или выберите меньший файл.`);
+  function buildCompressionWarning() {
+    return `Файл больше ${COMPRESSION_HINT_LABEL}. Будет сжат перед загрузкой.`;
   }
 
-  function setDocFieldError(fieldId: string, message: string | null) {
-    setDocFieldErrors((prev) => {
+  function setDocFieldWarning(fieldId: string, message: string | null) {
+    setDocFieldWarnings((prev) => {
       if (!message) {
         const next = { ...prev };
         delete next[fieldId];
@@ -679,8 +708,8 @@ export function TaskDetailView({
     });
   }
 
-  function setDraftError(draftId: string, message: string | null) {
-    setDraftErrors((prev) => {
+  function setDraftWarning(draftId: string, message: string | null) {
+    setDraftWarnings((prev) => {
       if (!message) {
         const next = { ...prev };
         delete next[draftId];
@@ -720,38 +749,49 @@ export function TaskDetailView({
   function handleRemoveDocumentDraft(id: string) {
     setDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
     setUploadValidationError(null);
-    setDraftError(id, null);
+    setDraftWarning(id, null);
   }
 
   function validateUploadsBeforeSubmit(): boolean {
-    const oversizeDraft = documentDrafts.find((draft) => draft.file && !isFileWithinLimit(draft.file));
-    if (oversizeDraft?.file) {
-      handleOversizeFile(oversizeDraft.file.name);
-      setDraftError(
-        oversizeDraft.id,
-        `Превышен лимит ${MAX_FILE_UPLOAD_LABEL}. Сожмите или выберите меньший файл.`,
-      );
-      return false;
+    const nextRequiredErrors: Record<string, string> = {};
+
+    // Проверяем обязательные doc-поля
+    for (const field of visibleFields) {
+      const docFieldType = getFieldDocumentType(field);
+      if (!docFieldType) continue;
+      if (!isDocFieldRequired(field)) continue;
+      const fieldId = field.id;
+      const hasFile = Boolean(docFieldFiles[fieldId]);
+      const storedValue = docFieldValues[fieldId] ?? resolveFieldValue(fieldId, payload) ?? "";
+      const hasValue = typeof storedValue === "string" ? storedValue.trim().length > 0 : Boolean(storedValue);
+      if (!hasFile && !hasValue) {
+        nextRequiredErrors[fieldId] = "Загрузите обязательный документ";
+      }
     }
-    const oversizeField = Object.values(docFieldFiles).find((file) => file && !isFileWithinLimit(file));
-    if (oversizeField) {
-      handleOversizeFile(oversizeField.name);
-      const fieldEntry = Object.entries(docFieldFiles).find(([, file]) => file === oversizeField);
-      if (fieldEntry) {
-        const [fieldId] = fieldEntry;
-        setDocFieldError(
-          fieldId,
-          `Превышен лимит ${MAX_FILE_UPLOAD_LABEL}. Сожмите или выберите меньший файл.`,
-        );
+
+    setRequiredDocErrors(nextRequiredErrors);
+    const hasRequiredErrors = Object.keys(nextRequiredErrors).length > 0;
+    if (hasRequiredErrors) {
+      setUploadValidationError("Заполните обязательные документы.");
+      if (typeof console !== "undefined") {
+        console.warn("[task-form] submission blocked", { requiredMissing: nextRequiredErrors });
       }
       return false;
     }
+
     const totalSize = getTotalUploadSize(docFieldFiles, documentDrafts);
     if (totalSize > MAX_TOTAL_UPLOAD_BYTES) {
       handleTotalOversize();
+      if (typeof console !== "undefined") {
+        console.warn("[task-form] submission blocked: total size limit");
+      }
       return false;
     }
+
     setUploadValidationError(null);
+    if (typeof console !== "undefined") {
+      console.log("[task-form] submission passed client-side validation");
+    }
     return true;
   }
 
@@ -819,14 +859,20 @@ export function TaskDetailView({
     return normalized ?? null;
   }
 
+  function isPlaceholderGuardDocument(doc: GuardDocumentLink): boolean {
+    const normalizedTitle = doc.title?.trim().toLowerCase();
+    if (!normalizedTitle) return false;
+    return normalizedTitle === "нет подписанных документов" || normalizedTitle === "нет подписанных документов.";
+  }
+
   function renderGuardDocumentList(showActions: boolean) {
-    if (!guardDocumentLinks.length) {
+    if (!visibleGuardDocuments.length) {
       return null;
     }
 
     return (
       <div className="flex max-h-80 flex-col gap-2 overflow-y-auto pr-1">
-        {guardDocumentLinks.map((doc) => {
+        {visibleGuardDocuments.map((doc) => {
           const label = resolveDocumentLabel(doc);
           const deleting = isDocumentDeleting(doc.id);
           const openButton = doc.url ? (
@@ -1157,7 +1203,7 @@ export function TaskDetailView({
             </div>
           ) : null}
 
-          {hasGuardDocuments ? (
+          {hasVisibleGuardDocuments ? (
             <div className="mb-4 rounded-lg border border-border/60 bg-muted/15 p-4 shadow-sm">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 <Paperclip className="h-3 w-3" />
@@ -1177,6 +1223,9 @@ export function TaskDetailView({
             action={isReadOnly ? undefined : formAction}
             className="space-y-5"
             onSubmit={(event) => {
+              if (typeof console !== "undefined") {
+                console.log("[task-form] submit attempt");
+              }
               if (!validateUploadsBeforeSubmit()) {
                 event.preventDefault();
               }
@@ -1469,31 +1518,30 @@ export function TaskDetailView({
                         <input
                           id={docFieldInputId}
                           type="file"
-                              name={`documentFields[${fieldId}][file]`}
-                              accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                              className="sr-only"
-                              required={isRequired && !isReadOnly}
-                              onChange={(event) => {
+                          name={`documentFields[${fieldId}][file]`}
+                          accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                          className="sr-only"
+                          onChange={(event) => {
                                 const file = event.currentTarget.files?.[0] ?? null;
-                                if (file && !isFileWithinLimit(file)) {
-                                  handleOversizeFile(file.name);
-                                  resetFileInputValue(docFieldInputId);
-                                  setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
-                                  setDocFieldError(fieldId, `Превышен лимит ${MAX_FILE_UPLOAD_LABEL}. Сожмите или выберите меньший файл.`);
-                                  return;
-                                }
                                 const prevFile = docFieldFiles[fieldId] ?? null;
                                 const currentTotal = getTotalUploadSize(docFieldFiles, documentDrafts);
                                 const nextTotal = currentTotal - getFileSize(prevFile) + getFileSize(file);
                                 if (nextTotal > MAX_TOTAL_UPLOAD_BYTES) {
                                   handleTotalOversize();
-                                  resetFileInputValue(docFieldInputId);
-                                  setDocFieldError(fieldId, null);
-                                  return;
+                                } else {
+                                  setUploadValidationError(null);
                                 }
-                                setUploadValidationError(null);
                                 setDocFieldFiles((prev) => ({ ...prev, [fieldId]: file }));
-                                setDocFieldError(fieldId, null);
+                                if (file && isFileLarge(file)) {
+                                  setDocFieldWarning(fieldId, buildCompressionWarning());
+                                } else {
+                                  setDocFieldWarning(fieldId, null);
+                                }
+                                setRequiredDocErrors((prev) => {
+                                  const next = { ...prev };
+                                  delete next[fieldId];
+                                  return next;
+                                });
                                 if (file) {
                                   setDocFieldValues((prev) => ({ ...prev, [fieldId]: currentValue }));
                                 }
@@ -1558,7 +1606,7 @@ export function TaskDetailView({
                                   resetFileInputValue(docFieldInputId);
                                   setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
                                   setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
-                                  setDocFieldError(fieldId, null);
+                                  setDocFieldWarning(fieldId, null);
                                 }}
                                 disabled={pending || deletingAttached || isReadOnly}
                               >
@@ -1572,13 +1620,22 @@ export function TaskDetailView({
                             ) : null}
                           </div>
                         </div>
-                        {docFieldErrors[fieldId] ? (
+                        {requiredDocErrors[fieldId] ? (
                           <div className="flex justify-end">
                             <Badge
                               variant="danger"
                               className="bg-red-600 text-white border-red-600 text-[11px] font-medium"
                             >
-                              {docFieldErrors[fieldId]}
+                              {requiredDocErrors[fieldId]}
+                            </Badge>
+                          </div>
+                        ) : docFieldWarnings[fieldId] ? (
+                          <div className="flex justify-end">
+                            <Badge
+                              variant="secondary"
+                              className="bg-amber-400 text-amber-950 border-amber-400 text-[11px] font-medium"
+                            >
+                              {docFieldWarnings[fieldId]}
                             </Badge>
                           </div>
                         ) : null}
@@ -1695,25 +1752,16 @@ export function TaskDetailView({
                         accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
                         onChange={(event) => {
                           const file = event.currentTarget.files?.[0] ?? null;
-                          if (file && !isFileWithinLimit(file)) {
-                            handleOversizeFile(file.name);
-                            resetFileInputValue(draftInputId);
-                            handleDocumentDraftFileChange(draft.id, null);
-                            setDraftError(draft.id, `Превышен лимит ${MAX_FILE_UPLOAD_LABEL}. Сожмите или выберите меньший файл.`);
-                            return;
-                          }
                           const currentTotal = getTotalUploadSize(docFieldFiles, documentDrafts);
                           const prevDraft = documentDrafts.find((entry) => entry.id === draft.id);
                           const prevSize = getFileSize(prevDraft?.file);
                           const nextTotal = currentTotal - prevSize + getFileSize(file);
                           if (nextTotal > MAX_TOTAL_UPLOAD_BYTES) {
                             handleTotalOversize();
-                            resetFileInputValue(draftInputId);
-                            setDraftError(draft.id, null);
-                            return;
+                          } else {
+                            setUploadValidationError(null);
                           }
-                          setUploadValidationError(null);
-                          setDraftError(draft.id, null);
+                          setDraftWarning(draft.id, file && isFileLarge(file) ? buildCompressionWarning() : null);
                           handleDocumentDraftFileChange(draft.id, file);
                         }}
                         className="sr-only"
@@ -1758,12 +1806,13 @@ export function TaskDetailView({
                                       variant="ghost"
                                       size="icon"
                                       className="rounded-lg text-destructive"
-                                      onClick={() => {
-                                        resetFileInputValue(draftInputId);
-                                        handleDocumentDraftFileChange(draft.id, null);
-                                      }}
-                                      disabled={pending || isReadOnly}
-                                    >
+                                  onClick={() => {
+                                    resetFileInputValue(draftInputId);
+                                    handleDocumentDraftFileChange(draft.id, null);
+                                    setDraftWarning(draft.id, null);
+                                  }}
+                                  disabled={pending || isReadOnly}
+                                >
                                       <Trash2 className="h-4 w-4" />
                                       <span className="sr-only">Удалить файл</span>
                                     </Button>
@@ -1771,13 +1820,13 @@ export function TaskDetailView({
                                 </div>
                           </div>
                         </div>
-                        {draftErrors[draft.id] ? (
+                        {draftWarnings[draft.id] ? (
                           <div className="flex justify-end">
                             <Badge
-                              variant="danger"
-                              className="bg-red-600 text-white border-red-600 text-[11px] font-medium"
+                              variant="secondary"
+                              className="bg-amber-400 text-amber-950 border-amber-400 text-[11px] font-medium"
                             >
-                              {draftErrors[draft.id]}
+                              {draftWarnings[draft.id]}
                             </Badge>
                           </div>
                         ) : null}
@@ -1828,6 +1877,11 @@ export function TaskDetailView({
 
             {!isReadOnly ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
+                {pending ? (
+                  <span className="text-xs text-muted-foreground">
+                    Сжимаем и загружаем файлы, завершаем задачу...
+                  </span>
+                ) : null}
                 <Button
                   type="submit"
                   className="rounded-lg"

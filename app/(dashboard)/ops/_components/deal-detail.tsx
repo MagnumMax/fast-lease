@@ -319,8 +319,8 @@ function DealTasksList({ tasks }: DealTasksListProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Задача</TableHead>
-            <TableHead>Этап</TableHead>
             <TableHead>Статус</TableHead>
+            <TableHead>Переоткрыть</TableHead>
             <TableHead>Выполнено</TableHead>
           </TableRow>
         </TableHeader>
@@ -339,21 +339,26 @@ function DealTasksList({ tasks }: DealTasksListProps) {
                     </Link>
                   </div>
                 </TableCell>
-              <TableCell>
-                <div className="text-sm text-foreground">
-                  {task.workflowStageTitle ?? "—"}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant={statusMeta.variant} className="rounded-lg">
-                  {statusMeta.label}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm text-foreground">
-                {formatDateTime(task.completedAt)}
-              </TableCell>
-            </TableRow>
-          );
+                <TableCell>
+                  <Badge variant={statusMeta.variant} className="rounded-lg">
+                    {statusMeta.label}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 rounded-lg px-2 text-xs font-medium"
+                  >
+                    <Link href={`/ops/tasks/${task.id}#reopen-task`}>Переоткрыть</Link>
+                  </Button>
+                </TableCell>
+                <TableCell className="text-sm text-foreground">
+                  {formatDateTime(task.completedAt)}
+                </TableCell>
+              </TableRow>
+            );
           })}
         </TableBody>
       </Table>
