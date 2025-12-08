@@ -23,7 +23,7 @@ const imagesConfig: NextConfig["images"] = supabaseHostname
   : undefined;
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["lightningcss", "@tailwindcss/node", "@tailwindcss/oxide"],
+  serverExternalPackages: ["lightningcss", "@tailwindcss/node", "@tailwindcss/oxide", "sharp"],
   experimental: {
     serverActions: {
       bodySizeLimit: "1gb",
