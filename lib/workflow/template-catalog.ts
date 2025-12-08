@@ -14,13 +14,21 @@ type CatalogCache = {
 
 let catalogCache: CatalogCache | null = null;
 let catalogCacheSync: CatalogCache | null = null;
+let catalogLoadPromise: Promise<CatalogCache> | null = null;
 
-async function readTemplateSource(): Promise<{ source: string; mtimeMs: number }> {
-  const [stat, source] = await Promise.all([
-    fs.stat(WORKFLOW_TEMPLATE_PATH),
-    fs.readFile(WORKFLOW_TEMPLATE_PATH, "utf8"),
-  ]);
-  return { source, mtimeMs: stat.mtimeMs };
+async function loadCatalog(): Promise<CatalogCache> {
+  const stat = await fs.stat(WORKFLOW_TEMPLATE_PATH);
+
+  if (catalogCache && catalogCache.mtimeMs === stat.mtimeMs) {
+    return catalogCache;
+  }
+
+  const source = await fs.readFile(WORKFLOW_TEMPLATE_PATH, "utf8");
+  const template = parseWorkflowTemplate(source);
+  const catalog = buildWorkflowCatalog(template);
+  catalogCache = { mtimeMs: stat.mtimeMs, catalog };
+
+  return catalogCache;
 }
 
 /**
@@ -28,22 +36,20 @@ async function readTemplateSource(): Promise<{ source: string; mtimeMs: number }
  * In dev it will reload when the YAML mtime changes; in prod it stays cached.
  */
 export async function getWorkflowCatalog(): Promise<WorkflowCatalog> {
-  const { source, mtimeMs } = await readTemplateSource();
-
-  if (catalogCache && catalogCache.mtimeMs === mtimeMs) {
-    return catalogCache.catalog;
+  if (!catalogLoadPromise) {
+    catalogLoadPromise = loadCatalog().finally(() => {
+      catalogLoadPromise = null;
+    });
   }
 
-  const template = parseWorkflowTemplate(source);
-  const catalog = buildWorkflowCatalog(template);
-  catalogCache = { mtimeMs, catalog };
-
-  return catalog;
+  const cache = await catalogLoadPromise;
+  return cache.catalog;
 }
 
 export function clearWorkflowCatalogCache(): void {
   catalogCache = null;
   catalogCacheSync = null;
+  catalogLoadPromise = null;
 }
 
 /**

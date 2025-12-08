@@ -54,7 +54,7 @@ async function deleteByFilter(table: string, filter: string) {
 }
 
 async function findDealIdsByReference(reference: string) {
-  const filter = encodeURIComponent(`payload->metadata->>reference=eq.${reference}`);
+  const filter = `payload->metadata->>reference=eq.${encodeURIComponent(reference)}`;
   const res = await adminApi(`/rest/v1/deals?select=id,deal_number&${filter}&limit=10`);
   if (!res || !res.ok) return [];
   const data = (await res.json()) as Array<{ id: string }>;
@@ -62,7 +62,7 @@ async function findDealIdsByReference(reference: string) {
 }
 
 async function findVehicleIdsByVin(vin: string) {
-  const filter = encodeURIComponent(`vin=eq.${vin}`);
+  const filter = `vin=eq.${encodeURIComponent(vin)}`;
   const res = await adminApi(`/rest/v1/vehicles?select=id,vin&${filter}&limit=5`);
   if (!res || !res.ok) return [];
   const data = (await res.json()) as Array<{ id: string }>;
@@ -77,8 +77,8 @@ async function deleteDealsByReference(reference?: string) {
   }
   const ids = await findDealIdsByReference(reference);
   if (ids.length === 0) return;
-  const idList = encodeURIComponent(`(${ids.join(",")})`);
-  await deleteByFilter("deals", `id=in.${idList}`);
+  const idList = ids.join(",");
+  await deleteByFilter("deals", `id=in.(${idList})`);
 }
 
 async function deleteVehiclesByVin(vin?: string) {
@@ -89,9 +89,11 @@ async function deleteVehiclesByVin(vin?: string) {
   }
   const ids = await findVehicleIdsByVin(vin);
   if (ids.length === 0) return;
-  const idList = encodeURIComponent(`(${ids.join(",")})`);
-  await deleteByFilter("vehicles", `id=in.${idList}`);
+  const idList = ids.join(",");
+  await deleteByFilter("vehicles", `id=in.(${idList})`);
 }
+
+import { createClient } from "@supabase/supabase-js";
 
 async function deleteAuthUserByEmail(email?: string) {
   if (!email) return;
@@ -99,19 +101,30 @@ async function deleteAuthUserByEmail(email?: string) {
     console.warn(`[e2e-cleanup] skip auth user: unsafe email ${email}`);
     return;
   }
-  const res = await adminApi(`/auth/v1/admin/users?email=${encodeURIComponent(email)}`);
-  if (!res || !res.ok) {
+
+  if (!hasSupabaseSecrets()) return;
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  // Note: listUsers might return all users if not filtered correctly by the API, 
+  // or passing params might typically return a page.
+  // We manually filter to be 100% safe.
+  const { data: { users }, error } = await supabase.auth.admin.listUsers();
+
+  if (error || !users) {
+    console.warn(`[e2e-cleanup] failed to list users: ${error?.message}`);
     return;
   }
-  const data = (await res.json()) as { users?: Array<{ id: string }> } | { id?: string } | null;
-  const users: Array<{ id: string }> =
-    Array.isArray((data as any)?.users) ? (data as any).users : (data ? [data as any] : []);
 
   for (const user of users) {
-    if (!user?.id) continue;
-    const del = await adminApi(`/auth/v1/admin/users/${user.id}`, { method: "DELETE" });
-    if (!del?.ok) {
-      console.warn(`[e2e-cleanup] failed to delete auth user ${user.id}:`, del?.status, await del?.text());
+    // STRICT CHECK: Only delete if email EXACTLY matches
+    if (user.email === email) {
+      const { error: delError } = await supabase.auth.admin.deleteUser(user.id);
+      if (delError) {
+        console.warn(`[e2e-cleanup] failed to delete auth user ${user.id}: ${delError.message}`);
+      } else {
+        console.log(`[e2e-cleanup] deleted user ${user.id} (${user.email})`);
+      }
     }
   }
 }

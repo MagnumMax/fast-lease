@@ -26,20 +26,20 @@ import type { WorkflowActionContext } from "@/lib/workflow/state-machine";
 import { getWorkflowVersionChecksum } from "@/lib/workflow/versioning";
 
 export type DealRow = {
-   id: string;
-   workflow_id: string;
-   workflow_version_id: string | null;
-   client_id: string | null;
-   asset_id: string | null;
-   vehicle_id: string | null;
-   source: string | null;
-   status: string;
-   op_manager_id: string | null;
-   deal_number: string | null;
-   company_code: string | null;
-   created_at: string;
-   updated_at: string;
-   payload: Record<string, unknown> | null;
+  id: string;
+  workflow_id: string;
+  workflow_version_id: string | null;
+  client_id: string | null;
+  asset_id: string | null;
+  vehicle_id: string | null;
+  source: string | null;
+  status: string;
+  op_manager_id: string | null;
+  deal_number: string | null;
+  company_code: string | null;
+  created_at: string;
+  updated_at: string;
+  payload: Record<string, unknown> | null;
 };
 
 type CreateDealResult =
@@ -524,11 +524,28 @@ export async function createDealWithWorkflow(
       };
     }
 
+    console.log(`[DEBUG-WORKFLOW] active version:`, {
+      version: activeVersion.version,
+      id: activeVersion.id,
+    });
+
     const baseCompanyCode =
       "company_code" in payload && typeof payload.company_code === "string"
         ? payload.company_code
         : DEFAULT_DEAL_COMPANY_CODE;
     const companyMeta = await resolveDealCompanyMeta(supabase, baseCompanyCode);
+
+    console.info(`[DEBUG-WORKFLOW] resolved company:`, {
+      input: baseCompanyCode,
+      resolved: companyMeta.code,
+      prefix: companyMeta.prefix,
+    });
+
+    // 2. Создаем или находим клиента (Idempotent)
+    // TODO: Check if client exists by external ID or email before creating?
+    // Current logic: payload.customer -> create/update
+    // If we have op_manager_id, use it.
+    console.info(`[DEBUG-WORKFLOW] resolving client...`);
 
     let assetId: string | null = null;
     let vehicleId: string | null = null;
@@ -599,21 +616,21 @@ export async function createDealWithWorkflow(
         .select("id, type, make, model, trim, year, vin, supplier, price, meta")
         .single();
 
-        if (assetInsert.error || !assetInsert.data) {
-          if (isMissingTableError(assetInsert.error)) {
-            console.warn(
-              "[workflow] skipping asset creation – table missing",
-              assetInsert.error,
-            );
-          } else {
-            console.error("[workflow] failed to create asset", assetInsert.error);
-            return {
-              success: false,
-              statusCode: 500,
-              message: "Failed to create asset",
-            };
-          }
+      if (assetInsert.error || !assetInsert.data) {
+        if (isMissingTableError(assetInsert.error)) {
+          console.warn(
+            "[workflow] skipping asset creation – table missing",
+            assetInsert.error,
+          );
         } else {
+          console.error("[workflow] failed to create asset", assetInsert.error);
+          return {
+            success: false,
+            statusCode: 500,
+            message: "Failed to create asset",
+          };
+        }
+      } else {
         assetId = assetInsert.data.id;
         createdAsset = true;
         assetSnapshot = assetInsert.data as WorkflowAssetSnapshot;
@@ -621,6 +638,7 @@ export async function createDealWithWorkflow(
     }
 
     if (assetId) {
+      console.log("[DEBUG-WORKFLOW] processing asset/vehicle...");
       if (!assetSnapshot) {
         assetSnapshot = await loadWorkflowAsset(supabase, assetId);
       }
@@ -634,43 +652,67 @@ export async function createDealWithWorkflow(
             : typeof mileageRaw === "string"
               ? Number.parseFloat(mileageRaw)
               : null;
-        const vehicleInsert = await supabase
-          .from("vehicles")
-          .upsert(
-            {
-              vin: assetSnapshot.vin ?? null,
-              make: assetSnapshot.make ?? null,
-              model: assetSnapshot.model ?? null,
-              variant: assetSnapshot.trim ?? null,
-              year: assetSnapshot.year ?? null,
-              status: "reserved",
-              mileage: mileageValue ?? null,
-              features: assetMeta ?? {},
-            },
-            assetSnapshot.vin
-              ? { onConflict: "vin" }
-              : undefined,
-          )
-          .select("id")
-          .maybeSingle();
+        // Check if vehicle exists by VIN first to avoid unique constraint violation on race/upsert issues
+        let existingVehicleId: string | null = null;
+        if (assetSnapshot.vin) {
+          const { data: existing } = await supabase
+            .from("vehicles")
+            .select("id")
+            .eq("vin", assetSnapshot.vin)
+            .maybeSingle();
 
-        if (vehicleInsert.error) {
-          console.error("[workflow] failed to create vehicle record", vehicleInsert.error);
-          if (createdAsset && assetId) {
-            await supabase.from("workflow_assets").delete().eq("id", assetId);
+          if (existing) {
+            existingVehicleId = existing.id;
+            console.log(
+              `[DEBUG-WORKFLOW] Found existing vehicle ${existingVehicleId} for VIN ${assetSnapshot.vin}`,
+            );
           }
-          return {
-            success: false,
-            statusCode: 500,
-            message: "Failed to create vehicle record",
-          };
         }
 
-        vehicleId = vehicleInsert.data?.id ?? null;
+        if (existingVehicleId) {
+          vehicleId = existingVehicleId;
+          // Optional: Update vehicle details if needed, but for now just link it.
+        } else {
+          console.log(`[DEBUG-WORKFLOW] creating new vehicle for VIN: ${assetSnapshot.vin}`);
+          const vehicleInsert = await supabase
+            .from("vehicles")
+            .upsert(
+              {
+                vin: assetSnapshot.vin ?? null,
+                make: assetSnapshot.make ?? null,
+                model: assetSnapshot.model ?? null,
+                variant: assetSnapshot.trim ?? null,
+                year: assetSnapshot.year ?? null,
+                status: "reserved",
+                mileage: mileageValue ?? null,
+                features: assetMeta ?? {},
+              },
+              assetSnapshot.vin ? { onConflict: "vin" } : undefined,
+            )
+            .select("id")
+            .maybeSingle();
+
+          if (vehicleInsert.error) {
+            console.error(
+              "[workflow] failed to create vehicle record",
+              vehicleInsert.error,
+            );
+            if (createdAsset && assetId) {
+              await supabase.from("workflow_assets").delete().eq("id", assetId);
+            }
+            return {
+              success: false,
+              statusCode: 500,
+              message: "Failed to create vehicle record",
+            };
+          }
+          vehicleId = vehicleInsert.data?.id ?? null;
+        }
       }
     }
 
     if (!resolvedClientId) {
+      console.log("[DEBUG-WORKFLOW] no resolved client ID");
       return {
         success: false,
         statusCode: 400,
@@ -678,6 +720,7 @@ export async function createDealWithWorkflow(
       };
     }
 
+    console.log("[DEBUG-WORKFLOW] preparing payload...");
     const mergedPayload = deepMergePayload(
       DEFAULT_GUARD_PAYLOAD,
       payload.payload ?? null,
@@ -700,6 +743,7 @@ export async function createDealWithWorkflow(
 
     const actorRole = resolveActorRole("OP_MANAGER");
 
+    console.log("[DEBUG-WORKFLOW] generating deal number...");
     const dealNumber = await generateFormattedDealNumber(supabase, {
       createdAt: new Date(),
       vin: assetSnapshot?.vin ?? null,
@@ -707,6 +751,7 @@ export async function createDealWithWorkflow(
     });
     console.log(`[DEBUG] Generated formatted deal number: ${dealNumber}`);
 
+    console.log("[DEBUG-WORKFLOW] inserting deal...");
     const { data, error } = await supabase
       .from("deals")
       .insert({
@@ -749,6 +794,7 @@ export async function createDealWithWorkflow(
       };
     }
 
+    console.log("[DEBUG-WORKFLOW] executing entry actions...");
     try {
       const newStage = activeVersion.template.stages?.NEW;
       if (newStage?.entryActions?.length) {

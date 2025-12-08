@@ -149,7 +149,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const { data: dealRow, error: dealError } = await supabase
     .from("deals")
-    .select("payload, status")
+    .select("payload, status, workflow_id, workflow_version_id")
     .eq("id", dealId)
     .maybeSingle();
 
@@ -179,6 +179,9 @@ export async function POST(request: Request, context: RouteContext) {
     currentDealStatus: dealRow.status,
     dealPayload: (dealRow.payload as Record<string, unknown> | null) ?? null,
     actorRoles: sessionUser.roles,
+    workflowId: (dealRow.workflow_id as string | null) ?? null,
+    workflowVersionId: (dealRow.workflow_version_id as string | null) ?? null,
+    supabase,
   };
 
   trace("handler-start");
@@ -197,14 +200,17 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  // Получаем обновленную информацию о задаче для ответа
-  const { data: updatedTask } = await supabase
-    .from("tasks")
-    .select(
-      "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, sla_status, payload, created_at, updated_at",
-    )
-    .eq("id", id)
-    .single();
+  let updatedTask = result.updatedTask;
+  if (!updatedTask) {
+    const { data: fetched } = await supabase
+      .from("tasks")
+      .select(
+        "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, sla_status, payload, created_at, updated_at",
+      )
+      .eq("id", id)
+      .single();
+    updatedTask = fetched ?? existing.data;
+  }
   trace("response-ready", { updatedStatus: updatedTask?.status, dealId });
 
   // Логируем результат перехода

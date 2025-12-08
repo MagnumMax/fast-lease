@@ -10,7 +10,14 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["tests/setup.ts"],
-    include: ["tests/**/*.test.ts", "lib/**/__tests__/**/*.test.ts", "app/**/__tests__/**/*.test.ts"],
+    include: [
+      "tests/**/*.test.{ts,tsx}",
+      "lib/**/__tests__/**/*.test.ts",
+      "app/**/__tests__/**/*.test.ts",
+    ],
+    environmentMatchGlobs: [
+      ["tests/ui/**", "jsdom"],
+    ],
     exclude: [
       "e2e/**",
       "playwright.config.ts",

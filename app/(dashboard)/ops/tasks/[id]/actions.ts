@@ -799,7 +799,7 @@ export async function completeTaskFormAction(
 
   const { data: dealRow, error: dealError } = await supabase
     .from("deals")
-    .select("payload, status, deal_number, client_id")
+    .select("payload, status, deal_number, client_id, workflow_id, workflow_version_id")
     .eq("id", dealId)
     .maybeSingle();
 
@@ -1045,6 +1045,9 @@ export async function completeTaskFormAction(
     currentDealStatus: dealRow.status,
     dealPayload,
     actorRoles: sessionUser.roles,
+    workflowId: (dealRow.workflow_id as string | null) ?? null,
+    workflowVersionId: (dealRow.workflow_version_id as string | null) ?? null,
+    supabase,
   };
 
   const completionResult = await handleTaskCompletion(completionContext);

@@ -71,6 +71,8 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
     "@playwright/test": "^1.57.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^24.10.1",
     "@types/qrcode": "^1.5.6",

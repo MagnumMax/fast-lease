@@ -67,16 +67,18 @@ export async function createOperationsDeal(
 
   const metadataPayload = parsed.data.reference
     ? {
-        metadata: {
-          reference: parsed.data.reference,
-        },
-      }
+      metadata: {
+        reference: parsed.data.reference,
+      },
+    }
     : {};
+
+  const opManagerId = parsed.data.opManagerId ?? sessionUser.user.id;
 
   const payload: CreateDealWithEntitiesRequest = {
     source: parsed.data.source,
     company_code: parsed.data.companyCode ?? DEFAULT_DEAL_COMPANY_CODE,
-    op_manager_id: parsed.data.opManagerId,
+    op_manager_id: opManagerId,
     customer: {
       full_name: parsed.data.customer.full_name,
       email: parsed.data.customer.email,

@@ -3,6 +3,7 @@ import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createWorkflowService } from "@/lib/workflow";
 import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
+import type { WorkflowTemplate } from "@/lib/workflow/types";
 
 type TraceContext = Record<string, unknown>;
 
@@ -33,6 +34,22 @@ type WorkflowStageMeta = {
 type WorkflowPayloadWithGuards = Record<string, unknown> & {
   tasks: Record<string, unknown>;
   guard_tasks: Record<string, unknown>;
+};
+
+type TaskCompletionSnapshot = {
+  id: string;
+  deal_id: string | null;
+  type: string | null;
+  title: string | null;
+  status: string;
+  assignee_role: string | null;
+  assignee_user_id: string | null;
+  payload: Record<string, unknown> | null;
+  sla_due_at: string | null;
+  completed_at: string | null;
+  sla_status: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 const QUOTE_FIELD_KEYS = [
@@ -169,6 +186,93 @@ function deriveCompletionSlaStatus(
   return completedAt <= due ? "ON_TRACK" : "BREACHED";
 }
 
+type SupabaseServiceClient = Awaited<ReturnType<typeof createSupabaseServiceClient>>;
+
+type LoadedWorkflowTemplate = {
+  template: WorkflowTemplate;
+  versionId: string;
+};
+
+const workflowTemplateCache = new Map<string, WorkflowTemplate>();
+
+async function loadWorkflowTemplateForDeal(
+  supabase: SupabaseServiceClient,
+  dealId: string,
+  meta?: { workflowId?: string | null; workflowVersionId?: string | null; workflowTemplate?: WorkflowTemplate | null },
+): Promise<LoadedWorkflowTemplate | null> {
+  let workflowId = meta?.workflowId ?? null;
+  let workflowVersionId = meta?.workflowVersionId ?? null;
+
+  if (meta?.workflowTemplate && workflowVersionId) {
+    workflowTemplateCache.set(workflowVersionId, meta.workflowTemplate);
+    return { template: meta.workflowTemplate, versionId: workflowVersionId };
+  }
+
+  if (!workflowId || !workflowVersionId) {
+    const { data: deal, error: dealError } = await supabase
+      .from("deals")
+      .select("workflow_id, workflow_version_id")
+      .eq("id", dealId)
+      .maybeSingle();
+
+    if (dealError || !deal) {
+      console.error("[workflow] failed to load deal for workflow template", dealError);
+      return null;
+    }
+
+    workflowId = typeof deal.workflow_id === "string" ? (deal.workflow_id as string) : null;
+    workflowVersionId =
+      typeof deal.workflow_version_id === "string" ? (deal.workflow_version_id as string) : null;
+  }
+
+  if (!workflowVersionId) {
+    if (!workflowId) {
+      return null;
+    }
+
+    const { data: activeVersion, error: versionError } = await supabase
+      .from("workflow_versions")
+      .select("id, template")
+      .eq("workflow_id", workflowId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (versionError || !activeVersion) {
+      console.error("[workflow] failed to load active workflow version", versionError);
+      return null;
+    }
+
+    workflowVersionId = activeVersion.id;
+    if (activeVersion.template) {
+      workflowTemplateCache.set(activeVersion.id, activeVersion.template as WorkflowTemplate);
+      return { template: activeVersion.template as WorkflowTemplate, versionId: activeVersion.id };
+    }
+  }
+
+  if (!workflowVersionId) {
+    return null;
+  }
+
+  const cached = workflowTemplateCache.get(workflowVersionId);
+  if (cached) {
+    return { template: cached, versionId: workflowVersionId };
+  }
+
+  const { data: version, error: versionDataError } = await supabase
+    .from("workflow_versions")
+    .select("id, template")
+    .eq("id", workflowVersionId)
+    .maybeSingle();
+
+  if (versionDataError || !version || !version.template) {
+    console.error("[workflow] failed to load workflow version template", versionDataError);
+    return null;
+  }
+
+  workflowTemplateCache.set(version.id, version.template as WorkflowTemplate);
+  return { template: version.template as WorkflowTemplate, versionId: version.id };
+}
+
 export interface TaskCompletionContext {
   taskId: string;
   dealId: string;
@@ -180,6 +284,10 @@ export interface TaskCompletionContext {
   currentDealStatus: string | null;
   dealPayload: Record<string, unknown> | null;
   actorRoles?: AppRole[] | null;
+  workflowId?: string | null;
+  workflowVersionId?: string | null;
+  workflowTemplate?: WorkflowTemplate | null;
+  supabase?: SupabaseServiceClient;
 }
 
 export interface TaskCompletionResult {
@@ -190,6 +298,7 @@ export interface TaskCompletionResult {
   error?: string;
   transitionSkippedReason?: string;
   expectedExitGuards?: string[];
+  updatedTask?: TaskCompletionSnapshot;
 }
 
 /**
@@ -199,7 +308,7 @@ export interface TaskCompletionResult {
 export async function handleTaskCompletion(
   context: TaskCompletionContext,
 ): Promise<TaskCompletionResult> {
-  const supabase = await createSupabaseServiceClient();
+  const supabase = context.supabase ?? (await createSupabaseServiceClient());
   const completedAt = new Date().toISOString();
   const slaStatus = deriveCompletionSlaStatus(context.slaDueAt, completedAt);
   const trace = createTracer("task-completion", {
@@ -221,7 +330,7 @@ export async function handleTaskCompletion(
       })
       .eq("id", context.taskId)
       .select(
-        "id, deal_id, type, status, assignee_role, assignee_user_id, payload, sla_due_at, completed_at, sla_status",
+        "id, deal_id, type, title, status, assignee_role, assignee_user_id, payload, sla_due_at, completed_at, sla_status, created_at, updated_at",
       )
       .single();
 
@@ -242,6 +351,7 @@ export async function handleTaskCompletion(
         error: "Task not found after update",
       };
     }
+    const taskSnapshot = updatedTask as TaskCompletionSnapshot;
     trace("task-updated", { status: updatedTask.status, slaStatus: updatedTask.sla_status ?? null });
 
     // Получаем guard key для задачи
@@ -253,6 +363,7 @@ export async function handleTaskCompletion(
       return {
         taskUpdated: true,
         transitionAttempted: false,
+        updatedTask: taskSnapshot,
       };
     }
     trace("guard-resolved", { guardKey });
@@ -329,6 +440,7 @@ export async function handleTaskCompletion(
       return {
         taskUpdated: true,
         transitionAttempted: false,
+        updatedTask: taskSnapshot,
         error: `Failed to update deal payload: ${payloadUpdateError.message}`,
       };
     }
@@ -350,6 +462,10 @@ export async function handleTaskCompletion(
       assigneeRole: context.assigneeRole,
       assigneeUserId: context.assigneeUserId,
       actorRoles: context.actorRoles ?? undefined,
+      workflowId: context.workflowId,
+      workflowVersionId: context.workflowVersionId,
+      workflowTemplate: context.workflowTemplate,
+      supabase,
     });
     trace("transition-result", {
       success: transitionResult.success,
@@ -372,6 +488,7 @@ export async function handleTaskCompletion(
         transitionSkippedReason: transitionResult.error,
         expectedExitGuards: transitionResult.expectedGuards,
         error: transitionResult.error,
+        updatedTask: taskSnapshot,
       };
     }
 
@@ -381,6 +498,7 @@ export async function handleTaskCompletion(
       transitionSuccess: transitionResult.success,
       newStatus: transitionResult.newStatus,
       error: transitionResult.error,
+      updatedTask: taskSnapshot,
     };
 
   } catch (error) {
@@ -389,6 +507,7 @@ export async function handleTaskCompletion(
     return {
       taskUpdated: false,
       transitionAttempted: false,
+      updatedTask: undefined,
       error: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
@@ -405,6 +524,10 @@ async function attemptWorkflowTransition(params: {
   assigneeRole?: string | null;
   assigneeUserId?: string | null;
   actorRoles?: AppRole[] | null;
+  workflowId?: string | null;
+  workflowVersionId?: string | null;
+  workflowTemplate?: WorkflowTemplate | null;
+  supabase?: SupabaseServiceClient;
 }): Promise<{
   success: boolean;
   newStatus?: string;
@@ -421,6 +544,8 @@ async function attemptWorkflowTransition(params: {
 
   try {
     trace("start");
+    const supabase = params.supabase ?? (await createSupabaseServiceClient());
+
     // Нормализуем статус
     const statusKey = normalizeStatusKey(params.currentStatus);
     if (!statusKey) {
@@ -428,81 +553,65 @@ async function attemptWorkflowTransition(params: {
       return { success: false, error: "Invalid current status" };
     }
 
-    // Получаем метаданные статуса из workflow конфигурации
-    const statusMeta = await getWorkflowStatusMeta(statusKey, params.dealId);
-    if (!statusMeta) {
+    const loadedTemplate = await loadWorkflowTemplateForDeal(supabase, params.dealId, {
+      workflowId: params.workflowId,
+      workflowVersionId: params.workflowVersionId,
+      workflowTemplate: params.workflowTemplate,
+    });
+    if (!loadedTemplate) {
+      trace("template-missing");
+      return { success: false, error: "Failed to load workflow template" };
+    }
+
+    const plan = resolveAutoTransitionPlan({
+      template: loadedTemplate.template,
+      currentStatus: statusKey,
+      guardKey: params.guardKey,
+      guardContext,
+    });
+
+    trace("status-meta-loaded", { exitGuards: plan.exitGuardKeys.length });
+
+    if (!plan.statusFound) {
       trace("status-meta-missing");
       return { success: false, error: "Status metadata not found" };
     }
-    trace("status-meta-loaded", { exitGuards: (statusMeta.exitRequirements ?? []).length });
 
-    // Проверяем, соответствует ли guard key выходным guard'ам статуса
-    const exitGuards = statusMeta.exitRequirements ?? [];
-    const exitGuardKeys = exitGuards
-      .map((guard) => guard?.key ?? null)
-      .filter((key): key is string => Boolean(key));
-    const guardMatches = exitGuardKeys.some((key) => key === params.guardKey);
-    if (!guardMatches && exitGuardKeys.length > 0) {
-      const reason = `Guard '${params.guardKey}' не подходит для статуса '${statusKey}'. Ожидаемые guard'ы: ${exitGuardKeys.join(", ")}`;
+    if (!plan.guardMatched && plan.exitGuardKeys.length > 0) {
+      const reason = `Guard '${params.guardKey}' не подходит для статуса '${statusKey}'. Ожидаемые guard'ы: ${plan.exitGuardKeys.join(", ")}`;
       console.warn("[workflow] guard key does not match exit guards", {
         dealId: params.dealId,
         statusKey,
         guardKey: params.guardKey,
-        expected: exitGuardKeys,
+        expected: plan.exitGuardKeys,
       });
-      trace("guard-mismatch", { expected: exitGuardKeys });
-      return { success: false, error: reason, skipped: true, expectedGuards: exitGuardKeys };
+      trace("guard-mismatch", { expected: plan.exitGuardKeys });
+      return { success: false, error: reason, skipped: true, expectedGuards: plan.exitGuardKeys };
     }
 
-    const unsatisfiedGuards = exitGuards.filter((guard) => {
-      if (!guard || typeof guard.rule !== "string" || typeof guard.key !== "string") {
-        return true;
-      }
-      const actual = resolveGuardPathValue(guardContext, guard.key);
-      const rule = guard.rule.trim();
-      if (rule === "truthy") return !actual;
-      if (rule === "falsy") return Boolean(actual);
-      if (rule.startsWith("==")) {
-        return actual !== parseGuardExpectedValue(rule.slice(2));
-      }
-      if (rule.startsWith("!=")) {
-        return actual === parseGuardExpectedValue(rule.slice(2));
-      }
-      return true;
-    });
-
-    if (unsatisfiedGuards.length > 0) {
-      const missingKeys = unsatisfiedGuards
-        .map((guard) => guard?.key)
-        .filter((key): key is string => Boolean(key));
-      const reason =
-        missingKeys.length > 0
-          ? `Guard conditions not met: ${missingKeys.join(", ")}`
-          : "Guard conditions not met";
-
+    if (plan.unsatisfiedGuards.length > 0) {
       console.info("[workflow] skipping transition — guard conditions not met", {
         dealId: params.dealId,
         statusKey,
         guardKey: params.guardKey,
-        missingKeys,
+        missingKeys: plan.unsatisfiedGuards,
       });
-      trace("guards-unsatisfied", { missingKeys });
+      trace("guards-unsatisfied", { missingKeys: plan.unsatisfiedGuards });
 
       return {
         success: false,
         skipped: true,
-        expectedGuards: exitGuardKeys,
-        error: reason,
+        expectedGuards: plan.exitGuardKeys,
+        error: `Guard conditions not met: ${plan.unsatisfiedGuards.join(", ")}`,
       };
     }
 
-    // Определяем следующий статус
-    const targetStatus = await determineNextStatus(statusKey, params.guardKey, params.dealId);
-    if (!targetStatus) {
+    if (!plan.targetStatus) {
       trace("next-status-missing");
       return { success: false, error: "No next status available" };
     }
-    trace("next-status-resolved", { targetStatus });
+
+    trace("next-status-resolved", { targetStatus: plan.targetStatus });
 
     // Определяем роль актора для перехода; для контрактного этапа принудительно OP_MANAGER во избежание ROLE_NOT_ALLOWED
     const actorRole = resolveTransitionActorRole({
@@ -515,27 +624,27 @@ async function attemptWorkflowTransition(params: {
     console.log("[workflow] Attempting transition", {
       dealId: params.dealId,
       currentStatus: params.currentStatus,
-      targetStatus,
+      targetStatus: plan.targetStatus,
       guardKey: params.guardKey,
       guardContext: params.guardContext,
       actorRole,
     });
-    trace("workflow-service-call", { targetStatus, actorRole });
+    trace("workflow-service-call", { targetStatus: plan.targetStatus, actorRole });
     const workflowService = await createWorkflowService();
     await workflowService.transitionDeal({
       dealId: params.dealId,
-      targetStatus,
+      targetStatus: plan.targetStatus,
       actorRole,
       actorId: params.assigneeUserId ?? undefined,
       guardContext: params.guardContext,
     });
     console.log("[workflow] Transition completed successfully", {
       dealId: params.dealId,
-      targetStatus,
+      targetStatus: plan.targetStatus,
     });
-    trace("workflow-service-success", { targetStatus });
+    trace("workflow-service-success", { targetStatus: plan.targetStatus });
 
-    return { success: true, newStatus: targetStatus };
+    return { success: true, newStatus: plan.targetStatus };
 
   } catch (error) {
     if (error instanceof WorkflowTransitionError) {
@@ -588,6 +697,101 @@ function parseGuardExpectedValue(raw: string): unknown {
   return trimmed;
 }
 
+type AutoTransitionPlan = {
+  statusFound: boolean;
+  exitGuardKeys: string[];
+  guardMatched: boolean;
+  unsatisfiedGuards: string[];
+  targetStatus: string | null;
+};
+
+export function resolveAutoTransitionPlan(params: {
+  template: WorkflowTemplate;
+  currentStatus: string;
+  guardKey: string;
+  guardContext: Record<string, unknown>;
+}): AutoTransitionPlan {
+  const statusMeta = params.template.stages?.[params.currentStatus];
+  if (!statusMeta) {
+    return {
+      statusFound: false,
+      exitGuardKeys: [],
+      guardMatched: true,
+      unsatisfiedGuards: [],
+      targetStatus: null,
+    };
+  }
+
+  const exitGuards = statusMeta.exitRequirements ?? [];
+  const exitGuardKeys = exitGuards
+    .map((guard) => guard?.key ?? null)
+    .filter((key): key is string => Boolean(key));
+
+  const guardMatched = exitGuardKeys.length === 0 || exitGuardKeys.includes(params.guardKey);
+
+  const unsatisfiedGuards = exitGuards
+    .filter((guard) => {
+      if (!guard || typeof guard.rule !== "string" || typeof guard.key !== "string") {
+        return true;
+      }
+      const actual = resolveGuardPathValue(params.guardContext, guard.key);
+      const rule = guard.rule.trim();
+      if (rule === "truthy") return !actual;
+      if (rule === "falsy") return Boolean(actual);
+      if (rule.startsWith("==")) {
+        return actual !== parseGuardExpectedValue(rule.slice(2));
+      }
+      if (rule.startsWith("!=")) {
+        return actual === parseGuardExpectedValue(rule.slice(2));
+      }
+      return true;
+    })
+    .map((guard) => guard?.key)
+    .filter((key): key is string => Boolean(key));
+
+  const targetStatus = findNextStatusFromTemplate(
+    params.template.transitions ?? [],
+    params.currentStatus,
+    params.guardKey,
+  );
+
+  return {
+    statusFound: true,
+    exitGuardKeys,
+    guardMatched,
+    unsatisfiedGuards,
+    targetStatus,
+  };
+}
+
+function findNextStatusFromTemplate(
+  transitions: WorkflowTemplate["transitions"] | undefined,
+  currentStatus: string,
+  guardKey: string,
+): string | null {
+  if (!transitions || transitions.length === 0) {
+    return null;
+  }
+
+  for (const transition of transitions) {
+    if (transition.from !== currentStatus) {
+      continue;
+    }
+
+    if (transition.guards && transition.guards.length > 0) {
+      const guardMatches = transition.guards.some((guard) => guard.key === guardKey);
+      if (guardMatches) {
+        return transition.to;
+      }
+      continue;
+    }
+
+    return transition.to;
+  }
+
+  return null;
+}
+
 /**
  * Нормализует ключ статуса к верхнему регистру
  */
@@ -596,142 +800,6 @@ function normalizeStatusKey(value: string | null | undefined): string | null {
     return null;
   }
   return value.toUpperCase();
-}
-
-/**
- * Получает метаданные статуса из workflow конфигурации
- */
-async function getWorkflowStatusMeta(statusKey: string, dealId: string): Promise<WorkflowStageMeta | null> {
-  const supabase = await createSupabaseServiceClient();
-
-  // Получаем информацию о сделке для определения workflow версии
-  const { data: deal, error: dealError } = await supabase
-    .from("deals")
-    .select("workflow_id, workflow_version_id")
-    .eq("id", dealId)
-    .maybeSingle();
-
-  if (dealError || !deal) {
-    console.error("[workflow] failed to load deal for status meta", dealError);
-    return null;
-  }
-
-  // Получаем активную версию workflow
-  let workflowVersionId = deal.workflow_version_id;
-  if (!workflowVersionId) {
-    const { data: activeVersion, error: versionError } = await supabase
-      .from("workflow_versions")
-      .select("id, template")
-      .eq("workflow_id", deal.workflow_id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (versionError || !activeVersion) {
-      console.error("[workflow] failed to load active workflow version", versionError);
-      return null;
-    }
-
-    workflowVersionId = activeVersion.id;
-  }
-
-  // Получаем template workflow версии
-  const { data: version, error: versionDataError } = await supabase
-    .from("workflow_versions")
-    .select("template")
-    .eq("id", workflowVersionId)
-    .maybeSingle();
-
-  if (versionDataError || !version) {
-    console.error("[workflow] failed to load workflow version template", versionDataError);
-    return null;
-  }
-
-  const template = version.template as { stages?: Record<string, WorkflowStageMeta> } | null;
-  if (!template || !template.stages) {
-    console.error("[workflow] invalid workflow template structure");
-    return null;
-  }
-
-  // Возвращаем метаданные статуса
-  return template.stages[statusKey] || null;
-}
-
-/**
- * Определяет следующий статус на основе текущего и guard key
- */
-async function determineNextStatus(
-  currentStatus: string,
-  guardKey: string,
-  dealId: string
-): Promise<string | null> {
-  const supabase = await createSupabaseServiceClient();
-
-  // Получаем информацию о сделке для определения workflow версии
-  const { data: deal, error: dealError } = await supabase
-    .from("deals")
-    .select("workflow_id, workflow_version_id")
-    .eq("id", dealId)
-    .maybeSingle();
-
-  if (dealError || !deal) {
-    console.error("[workflow] failed to load deal for next status", dealError);
-    return null;
-  }
-
-  // Получаем активную версию workflow
-  let workflowVersionId = deal.workflow_version_id;
-  if (!workflowVersionId) {
-    const { data: activeVersion, error: versionError } = await supabase
-      .from("workflow_versions")
-      .select("id, template")
-      .eq("workflow_id", deal.workflow_id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (versionError || !activeVersion) {
-      console.error("[workflow] failed to load active workflow version", versionError);
-      return null;
-    }
-
-    workflowVersionId = activeVersion.id;
-  }
-
-  // Получаем template workflow версии
-  const { data: version, error: versionDataError } = await supabase
-    .from("workflow_versions")
-    .select("template")
-    .eq("id", workflowVersionId)
-    .maybeSingle();
-
-  if (versionDataError || !version) {
-    console.error("[workflow] failed to load workflow version template", versionDataError);
-    return null;
-  }
-
-  const template = version.template as any;
-  if (!template || !template.transitions) {
-    console.error("[workflow] invalid workflow template structure");
-    return null;
-  }
-
-  // Ищем подходящий переход на основе текущего статуса и guard key
-  const transitions = template.transitions;
-  for (const transition of transitions) {
-    if (transition.from === currentStatus) {
-      // Проверяем, что guard key соответствует одному из guards перехода
-      if (transition.guards && transition.guards.length > 0) {
-        const guardMatches = transition.guards.some((guard: any) => guard.key === guardKey);
-        if (guardMatches) {
-          return transition.to;
-        }
-      } else {
-        // Если у перехода нет guards, то он может быть выполнен
-        return transition.to;
-      }
-    }
-  }
-
-  return null;
 }
 
 const SUPERVISOR_TRANSITION_ROLES: AppRole[] = ["ADMIN", "OP_MANAGER"];

@@ -52,7 +52,7 @@ function resolveClientStatusToneClass(status: string | undefined | null) {
   if (!status) {
     return CLIENT_STATUS_TONE_CLASS.muted;
   }
-  
+
   switch (status) {
     case "Active":
       return CLIENT_STATUS_TONE_CLASS.success;
@@ -129,7 +129,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
     setPage(0);
   }, [searchQuery, normalizedStatusFilter, clients]);
 
-function handleCreateClient() {
+  function handleCreateClient() {
     if (!formState.name.trim()) return;
     setErrorMessage(null);
 
@@ -209,6 +209,7 @@ function handleCreateClient() {
                 }
                 placeholder="client@fastlease.dev"
                 className="rounded-xl"
+                type="email"
               />
             </div>
             <div className="space-y-2">

@@ -138,9 +138,11 @@ async function userHasPortalAccess(
     .maybeSingle();
 
   if (error) {
-    console.error("[proxy] Failed to load portal access", error);
+    console.error("[proxy-debug] userHasPortalAccess error:", error);
     return false;
   }
+
+  console.log("[proxy-debug] userHasPortalAccess result:", { userId, portal, data });
 
   if (!data) {
     return false;
@@ -259,7 +261,7 @@ export async function proxy(req: NextRequest) {
     if (userError) {
       console.error("[proxy] Auth error:", userError);
     } else {
-      console.log("[proxy] User data:", userData.user ? "present" : "null");
+      console.log("[proxy-debug] User found:", userData.user?.id);
     }
 
     if (userError || !userData.user) {
@@ -280,7 +282,7 @@ export async function proxy(req: NextRequest) {
       );
 
       if (!hasPortal) {
-        console.warn("[proxy] User lacks required portal", {
+        console.warn("[proxy-debug] User lacks required portal (ACCESS DENIED)", {
           userId: userData.user.id,
           requiredPortal,
         });
