@@ -44,6 +44,9 @@ const EXCLUDED_FIELD_LABELS = new Set([
   "номер сделки",
   "этап workflow",
   "статус сделки",
+  "сделка",
+  "deal",
+  "deal id",
 ]);
 
 type TaskSchemaEntry =

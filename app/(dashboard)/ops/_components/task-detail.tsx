@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState, type JSX } from "react";
+import { useActionState, useEffect, useMemo, useState, startTransition, type JSX } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -38,7 +38,8 @@ import {
 import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
 import { WorkflowDocuments } from "@/app/(dashboard)/ops/_components/workflow-documents";
 
-import { deleteTaskGuardDocumentAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
+import { deleteTaskGuardDocumentAction, getUploadUrlAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type TaskDetailViewProps = {
   task: WorkspaceTask;
@@ -322,7 +323,7 @@ export function TaskDetailView({
   completeAction,
   reopenAction,
 }: TaskDetailViewProps) {
-  const [formState, formAction, pending] = useActionState(completeAction, INITIAL_STATE);
+  const [formState, formAction, serverPending] = useActionState(completeAction, INITIAL_STATE);
   const [reopenState, reopenFormAction, reopenPending] = useActionState(reopenAction, INITIAL_STATE);
   const [, setDraftRequiredValues] = useState<Record<string, string>>({});
   const router = useRouter();
@@ -339,6 +340,8 @@ export function TaskDetailView({
   const [docFieldWarnings, setDocFieldWarnings] = useState<Record<string, string>>({});
   const [draftWarnings, setDraftWarnings] = useState<Record<string, string>>({});
   const [requiredDocErrors, setRequiredDocErrors] = useState<Record<string, string>>({});
+  const [isUploading, setIsUploading] = useState(false);
+  const pending = serverPending || isUploading;
 
   function setDocumentDeleting(id: string, deleting: boolean) {
     setDeletingDocumentIds((prev) => {
@@ -420,8 +423,24 @@ export function TaskDetailView({
     task.reopenCount > 0
       ? `Переоткрыта ${task.reopenCount} ${task.reopenCount === 1 ? "раз" : "раз"}`
       : null;
-  const deadlineInfo = task.slaDueAt ? formatDate(task.slaDueAt) : null;
-  const completedInfo = task.completedAt ? formatDate(task.completedAt) : null;
+  const [completedInfo, setCompletedInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (task.completedAt) {
+      setCompletedInfo(formatDate(task.completedAt));
+    } else {
+      setCompletedInfo(null);
+    }
+  }, [task.completedAt]);
+  const [deadlineInfo, setDeadlineInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (task.slaDueAt) {
+      setDeadlineInfo(formatDate(task.slaDueAt));
+    } else {
+      setDeadlineInfo(null);
+    }
+  }, [task.slaDueAt]);
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
   const buyerDefaultDocType = "";
   const sellerDefaultDocType = "";
@@ -1000,6 +1019,103 @@ export function TaskDetailView({
     );
   }
 
+  async function handleFormSubmit(event: React.FormEvent<HTMLFormElement>) {
+    if (typeof console !== "undefined") {
+      console.log("[task-form] submit attempt intercepted");
+    }
+    event.preventDefault();
+
+    if (!validateUploadsBeforeSubmit()) {
+      return;
+    }
+
+    setIsUploading(true);
+    setDocumentActionError(null);
+
+    const formData = new FormData(event.currentTarget);
+    const currentDealId = deal?.id || task.dealId || "";
+    const currentGuardKey = guardKey ?? guardMeta?.key ?? "unknown";
+
+    try {
+      // 1. Identify files to upload
+      const uploadsToPerform: Array<{
+        file: File;
+        fieldId: string; // fieldId or draftId
+        isDraft: boolean;
+      }> = [];
+
+      // Required/Field docs
+      for (const [id, file] of Object.entries(docFieldFiles)) {
+        if (file) {
+          uploadsToPerform.push({ file, fieldId: id, isDraft: false });
+        }
+      }
+
+      // Drafts
+      for (const draft of documentDrafts) {
+        if (draft.file) {
+          uploadsToPerform.push({ file: draft.file, fieldId: draft.id, isDraft: true });
+        }
+      }
+
+      // 2. Perform uploads
+      if (uploadsToPerform.length > 0) {
+        await Promise.all(
+          uploadsToPerform.map(async ({ file, fieldId, isDraft }) => {
+            // Get signed URL
+            const urlResult = await getUploadUrlAction({
+              dealId: currentDealId,
+              guardKey: currentGuardKey,
+              fileName: file.name,
+            });
+
+            if (!urlResult.success) {
+              throw new Error(`Не удалось получить ссылку для загрузки файла ${file.name}: ${urlResult.error}`);
+            }
+
+            // Upload to Supabase
+            const { url, path } = urlResult;
+            const uploadResult = await fetch(url, {
+              method: "PUT",
+              body: file,
+              headers: {
+                "Content-Type": file.type || "application/octet-stream",
+              },
+            });
+
+            if (!uploadResult.ok) {
+              throw new Error(`Ошибка загрузки файла ${file.name} в хранилище`);
+            }
+
+            // Update FormData
+            if (isDraft) {
+              formData.delete(`documents[${fieldId}][file]`);
+              formData.set(`documents[${fieldId}][path]`, path);
+              formData.set(`documents[${fieldId}][size]`, file.size.toString());
+              formData.set(`documents[${fieldId}][mime]`, file.type || "application/octet-stream");
+            } else {
+              formData.delete(`documentFields[${fieldId}][file]`);
+              formData.set(`documentFields[${fieldId}][path]`, path);
+              formData.set(`documentFields[${fieldId}][size]`, file.size.toString());
+              formData.set(`documentFields[${fieldId}][mime]`, file.type || "application/octet-stream");
+            }
+          })
+        );
+      }
+
+      // 3. Submit form
+      startTransition(() => {
+        formAction(formData);
+      });
+
+    } catch (error) {
+      console.error("[task-form] upload error", error);
+      setDocumentActionError(error instanceof Error ? error.message : "Ошибка при загрузке файлов");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
   return (
     <div className="flex w-full flex-col gap-6">
       <div className="flex">
@@ -1220,16 +1336,8 @@ export function TaskDetailView({
           ) : null}
 
           <form
-            action={isReadOnly ? undefined : formAction}
             className="space-y-5"
-            onSubmit={(event) => {
-              if (typeof console !== "undefined") {
-                console.log("[task-form] submit attempt");
-              }
-              if (!validateUploadsBeforeSubmit()) {
-                event.preventDefault();
-              }
-            }}
+            onSubmit={handleFormSubmit}
           >
             <input type="hidden" name="taskId" value={task.id} />
             <input type="hidden" name="requiresDocument" value={requiresDocument ? "true" : "false"} />
@@ -1883,9 +1991,11 @@ export function TaskDetailView({
 
             {!isReadOnly ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
-                {pending ? (
-                  <span className="text-xs text-muted-foreground">
-                    Сжимаем и загружаем файлы, завершаем задачу...
+                {pending || isUploading ? (
+                  <span className="text-xs text-muted-foreground animate-pulse">
+                    {isUploading 
+                      ? "Загружаем файлы в облако (может занять время)..." 
+                      : "Сохраняем данные и завершаем задачу..."}
                   </span>
                 ) : null}
                 <Button
@@ -1893,15 +2003,20 @@ export function TaskDetailView({
                   className="rounded-lg"
                   name="intent"
                   value="complete"
-                  disabled={pending}
+                  disabled={pending || isUploading}
                 >
-                  {pending
-                    ? isApprovalTask
-                      ? "Утверждаем..."
-                      : "Завершаем..."
-                    : isApprovalTask
-                      ? "Утвердить"
-                      : "Завершить задачу"}
+                  {pending || isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {isUploading 
+                        ? "Загрузка..." 
+                        : isApprovalTask
+                          ? "Утверждаем..."
+                          : "Завершаем..."}
+                    </>
+                  ) : (
+                    isApprovalTask ? "Утвердить" : "Завершить задачу"
+                  )}
                 </Button>
               </div>
             ) : (

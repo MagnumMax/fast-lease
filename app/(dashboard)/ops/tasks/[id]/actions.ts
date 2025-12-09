@@ -118,14 +118,17 @@ function parseFieldEntries(formData: FormData): Record<string, unknown> {
 type ParsedDocumentUpload = {
   id: string;
   type: ClientDocumentTypeValue;
-  file: FileLike;
+  file?: FileLike;
+  existingPath?: string;
+  fileSize?: number;
+  mimeType?: string;
 };
 
-const DOCUMENT_FIELD_REGEX = /^documents\[(.+?)\]\[(type|file)\]$/;
-const DOC_FIELD_UPLOAD_REGEX = /^documentFields\[(.+?)\]\[(type|file)\]$/;
+const DOCUMENT_FIELD_REGEX = /^documents\[(.+?)\]\[(type|file|path|size|mime)\]$/;
+const DOC_FIELD_UPLOAD_REGEX = /^documentFields\[(.+?)\]\[(type|file|path|size|mime)\]$/;
 
 function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
-  const entries = new Map<string, { type?: string; file?: FileLike }>();
+  const entries = new Map<string, { type?: string; file?: FileLike; path?: string; size?: number; mime?: string }>();
 
   for (const [key, value] of formData.entries()) {
     const match = DOCUMENT_FIELD_REGEX.exec(key);
@@ -138,20 +141,41 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
       current.type = value.trim();
     } else if (field === "file" && isFileLike(value) && value.size > 0) {
       current.file = value;
+    } else if (field === "path" && typeof value === "string" && value.trim().length > 0) {
+      current.path = value.trim();
+    } else if (field === "size" && typeof value === "string") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        current.size = parsed;
+      }
+    } else if (field === "mime" && typeof value === "string") {
+      current.mime = value.trim();
     }
     entries.set(id, current);
   }
 
   const uploads: ParsedDocumentUpload[] = [];
   for (const [id, entry] of entries.entries()) {
-    if (!entry.type || !entry.file) {
+    if (!entry.type) {
       continue;
     }
+    // We need either a file or an existing path
+    if (!entry.file && !entry.path) {
+      continue;
+    }
+
     const normalized = normalizeClientDocumentType(entry.type);
     if (!normalized) {
       continue;
     }
-    uploads.push({ id, type: normalized, file: entry.file });
+    uploads.push({
+      id,
+      type: normalized,
+      file: entry.file,
+      existingPath: entry.path,
+      fileSize: entry.size,
+      mimeType: entry.mime,
+    });
   }
 
   return uploads;
@@ -160,14 +184,17 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
 type FieldDocumentUpload = {
   fieldId: string;
   type: ClientDocumentTypeValue;
-  file: FileLike;
+  file?: FileLike;
+  existingPath?: string;
+  fileSize?: number;
+  mimeType?: string;
 };
 
 function extractFieldDocumentUploads(
   formData: FormData,
   docFieldTypeMap: Record<string, ClientDocumentTypeValue>,
 ): FieldDocumentUpload[] {
-  const entries = new Map<string, { type?: string; file?: FileLike }>();
+  const entries = new Map<string, { type?: string; file?: FileLike; path?: string; size?: number; mime?: string }>();
 
   for (const [key, value] of formData.entries()) {
     const match = DOC_FIELD_UPLOAD_REGEX.exec(key);
@@ -178,13 +205,24 @@ function extractFieldDocumentUploads(
       current.type = value.trim();
     } else if (field === "file" && isFileLike(value) && value.size > 0) {
       current.file = value;
+    } else if (field === "path" && typeof value === "string" && value.trim().length > 0) {
+      current.path = value.trim();
+    } else if (field === "size" && typeof value === "string") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        current.size = parsed;
+      }
+    } else if (field === "mime" && typeof value === "string") {
+      current.mime = value.trim();
     }
     entries.set(fieldId, current);
   }
 
   const uploads: FieldDocumentUpload[] = [];
   for (const [fieldId, entry] of entries.entries()) {
-    if (!entry.file) continue;
+    // We need either a file or an existing path
+    if (!entry.file && !entry.path) continue;
+
     const docTypeFromSchema = docFieldTypeMap[fieldId];
     const normalizedType =
       docTypeFromSchema ??
@@ -193,7 +231,14 @@ function extractFieldDocumentUploads(
         (entry.type as ClientDocumentTypeValue)
         : null);
     if (!normalizedType) continue;
-    uploads.push({ fieldId, type: normalizedType, file: entry.file });
+    uploads.push({
+      fieldId,
+      type: normalizedType,
+      file: entry.file,
+      existingPath: entry.path,
+      fileSize: entry.size,
+      mimeType: entry.mime,
+    });
   }
   return uploads;
 }
@@ -279,10 +324,13 @@ async function uploadAttachment(options: {
   dealId: string;
   guardKey: string;
   guardLabel?: string;
-  file: FileLike;
+  file?: FileLike;
   documentType: ClientDocumentTypeValue;
   uploadedBy: string | null;
   isAdditional?: boolean;
+  existingPath?: string;
+  fileSize?: number;
+  mimeType?: string;
 }): Promise<{ path: string } | { error: string }> {
   const {
     supabase,
@@ -293,20 +341,14 @@ async function uploadAttachment(options: {
     documentType,
     uploadedBy,
     isAdditional = false,
+    existingPath,
+    fileSize,
+    mimeType,
   } = options;
 
-  const arrayBuffer = await file.arrayBuffer();
-  const originalBuffer: Buffer<ArrayBufferLike> = Buffer.from(arrayBuffer);
-  let uploadBuffer: Buffer<ArrayBufferLike> = originalBuffer;
-  let uploadMime = file.type || "application/octet-stream";
-  const originalSize = originalBuffer.length;
-  let compressedSize = originalSize;
-  let compressionFormat: string | null = null;
-  const baseName = getFileName(file) || guardKey || "attachment";
-  const sanitizedName = sanitizeFileName(baseName);
-  const path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
-  const documentCategory = resolveDealDocumentCategory(documentType);
-  const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? null;
+  let path: string;
+  let uploadMime = mimeType || "application/octet-stream";
+  let uploadSize = fileSize || 0;
   const metadata: Record<string, unknown> = {
     upload_context: "workflow_task",
     guard_key: guardKey,
@@ -315,73 +357,105 @@ async function uploadAttachment(options: {
     guard_deal_id: dealId,
     compression: {
       applied: false,
-      from_bytes: originalSize,
-      to_bytes: originalSize,
+      from_bytes: uploadSize,
+      to_bytes: uploadSize,
       format: null,
     },
   };
+  const documentCategory = resolveDealDocumentCategory(documentType);
+  const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? null;
 
-  if (file.type && file.type.startsWith("image/")) {
-    try {
-      const sharpModule = await import("sharp").catch(() => null);
-      const sharp = sharpModule?.default;
-      if (sharp) {
-        const pipeline = sharp(originalBuffer).rotate();
-        const compressedBuffer = await pipeline.webp({ quality: 75 }).toBuffer();
-        if (compressedBuffer.length < originalBuffer.length * 0.95) {
-          uploadBuffer = compressedBuffer;
-          uploadMime = "image/webp";
-          compressedSize = compressedBuffer.length;
-          compressionFormat = "webp";
-          metadata.compression = {
-            applied: true,
-            from_bytes: originalSize,
-            to_bytes: compressedSize,
-            format: compressionFormat,
-          };
-        }
-      }
-    } catch (compressionError) {
-      console.warn("[workflow] image compression skipped", compressionError);
+  if (existingPath) {
+    path = existingPath;
+    // When using existing path (client upload), we skip server-side compression
+    // and storage upload, but we still create the DB record.
+  } else {
+    if (!file) {
+      return { error: "Файл не предоставлен" };
     }
-  }
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const originalBuffer: Buffer<ArrayBufferLike> = Buffer.from(arrayBuffer);
+    let uploadBuffer: Buffer<ArrayBufferLike> = originalBuffer;
+    uploadMime = file.type || "application/octet-stream";
+    const originalSize = originalBuffer.length;
+    let compressedSize = originalSize;
+    let compressionFormat: string | null = null;
+    const baseName = getFileName(file) || guardKey || "attachment";
+    const sanitizedName = sanitizeFileName(baseName);
+    path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
 
-  if (file.type === "application/pdf" || (file.name && file.name.toLowerCase().endsWith(".pdf"))) {
-    const pdfCompressed = await compressPdfWithGhostscript(uploadBuffer);
-    if (pdfCompressed.reduced) {
-      uploadBuffer = pdfCompressed.buffer;
-      uploadMime = "application/pdf";
-      compressedSize = uploadBuffer.length;
-      compressionFormat = pdfCompressed.format;
-      metadata.compression = {
-        applied: true,
-        from_bytes: originalSize,
-        to_bytes: compressedSize,
-        format: compressionFormat,
-      };
+    metadata.compression = {
+      applied: false,
+      from_bytes: originalSize,
+      to_bytes: originalSize,
+      format: null,
+    };
+
+    if (file.type && file.type.startsWith("image/")) {
+      try {
+        const sharpModule = await import("sharp").catch(() => null);
+        const sharp = sharpModule?.default;
+        if (sharp) {
+          const pipeline = sharp(originalBuffer).rotate();
+          const compressedBuffer = await pipeline.webp({ quality: 75 }).toBuffer();
+          if (compressedBuffer.length < originalBuffer.length * 0.95) {
+            uploadBuffer = compressedBuffer;
+            uploadMime = "image/webp";
+            compressedSize = compressedBuffer.length;
+            compressionFormat = "webp";
+            metadata.compression = {
+              applied: true,
+              from_bytes: originalSize,
+              to_bytes: compressedSize,
+              format: compressionFormat,
+            };
+          }
+        }
+      } catch (compressionError) {
+        console.warn("[workflow] image compression skipped", compressionError);
+      }
+    }
+
+    if (file.type === "application/pdf" || (file.name && file.name.toLowerCase().endsWith(".pdf"))) {
+      const pdfCompressed = await compressPdfWithGhostscript(uploadBuffer);
+      if (pdfCompressed.reduced) {
+        uploadBuffer = pdfCompressed.buffer;
+        uploadMime = "application/pdf";
+        compressedSize = uploadBuffer.length;
+        compressionFormat = pdfCompressed.format;
+        metadata.compression = {
+          applied: true,
+          from_bytes: originalSize,
+          to_bytes: compressedSize,
+          format: compressionFormat,
+        };
+      }
+    }
+
+    // Fail fast if size exceeds storage limit even after compression attempt.
+    if (uploadBuffer.length > STORAGE_OBJECT_MAX_BYTES) {
+      return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
+    }
+    
+    uploadSize = uploadBuffer.length;
+
+    const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).upload(path, uploadBuffer, {
+      contentType: uploadMime,
+      upsert: true,
+    });
+
+    if (uploadError) {
+      console.error("[workflow] failed to upload task attachment", uploadError);
+      if ((uploadError as { statusCode?: string | number }).statusCode === "413" || (uploadError as { status?: number }).status === 413) {
+        return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
+      }
+      return { error: "Не удалось загрузить вложение" };
     }
   }
 
   if (isAdditional) {
     metadata.guard_optional = true;
-  }
-
-  // Fail fast if size exceeds storage limit even after compression attempt.
-  if (uploadBuffer.length > STORAGE_OBJECT_MAX_BYTES) {
-    return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
-  }
-
-  const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).upload(path, uploadBuffer, {
-    contentType: uploadMime,
-    upsert: true,
-  });
-
-  if (uploadError) {
-    console.error("[workflow] failed to upload task attachment", uploadError);
-    if ((uploadError as { statusCode?: string | number }).statusCode === "413" || (uploadError as { status?: number }).status === 413) {
-      return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
-    }
-    return { error: "Не удалось загрузить вложение" };
   }
 
   const { error: insertError } = await supabase.from("deal_documents").insert({
@@ -392,7 +466,7 @@ async function uploadAttachment(options: {
     status: "uploaded",
     storage_path: path,
     mime_type: uploadMime || null,
-    file_size: uploadBuffer.length,
+    file_size: uploadSize,
     metadata,
     uploaded_by: uploadedBy,
   });
@@ -695,6 +769,33 @@ export async function deleteTaskGuardDocumentAction(
   }
 }
 
+export async function getUploadUrlAction(input: {
+  dealId: string;
+  guardKey: string;
+  fileName: string;
+}): Promise<{ success: true; url: string; path: string; token: string } | { success: false; error: string }> {
+  const sessionUser = await getMutationSessionUser();
+  if (!sessionUser) {
+    return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
+  }
+
+  const { dealId, guardKey, fileName } = input;
+  const sanitizedName = sanitizeFileName(fileName);
+  const path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
+
+  const supabase = await createSupabaseServiceClient();
+  const { data, error } = await supabase.storage
+    .from(DEAL_DOCUMENT_BUCKET)
+    .createSignedUploadUrl(path);
+
+  if (error || !data) {
+    console.error("[workflow] failed to create signed upload url", error);
+    return { success: false, error: "Не удалось получить ссылку для загрузки" };
+  }
+
+  return { success: true, url: data.signedUrl, path: data.path, token: data.token };
+}
+
 export async function completeTaskFormAction(
   _prevState: FormStatus,
   formData: FormData,
@@ -901,6 +1002,9 @@ export async function completeTaskFormAction(
         documentType: upload.type,
         uploadedBy: sessionUser.user.id,
         isAdditional: true,
+        existingPath: upload.existingPath,
+        fileSize: upload.fileSize,
+        mimeType: upload.mimeType,
       });
 
       if ("error" in uploadResult) {
@@ -919,6 +1023,9 @@ export async function completeTaskFormAction(
           file: upload.file,
           documentType: upload.type,
           uploadedBy: sessionUser.user.id,
+          existingPath: upload.existingPath,
+          fileSize: upload.fileSize,
+          mimeType: upload.mimeType,
         });
 
         if ("error" in uploadResult) {

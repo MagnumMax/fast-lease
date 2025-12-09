@@ -60,7 +60,8 @@ type WorkflowDocumentsProps = {
 };
 
 export function WorkflowDocuments({ groups, additional, financedAmount, className }: WorkflowDocumentsProps) {
-  const hasGroups = groups.length > 0;
+  const visibleGroups = groups.filter((group) => group.documents.length > 0);
+  const hasGroups = visibleGroups.length > 0;
   const hasAdditional = additional.length > 0;
 
   return (
@@ -71,12 +72,12 @@ export function WorkflowDocuments({ groups, additional, financedAmount, classNam
         </p>
         {hasGroups ? (
           <div className="space-y-3">
-            {groups.map((group) => (
+            {visibleGroups.map((group) => (
               <div
                 key={`${group.stageKey}-${group.taskTemplateId}`}
                 className="rounded-lg border border-border/60 bg-background/80"
               >
-                <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-border/60 bg-muted/40 px-4 py-2 text-sm font-semibold text-foreground">
+                <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-border/60 bg-muted/10 px-4 py-2 text-sm font-semibold text-foreground">
                   <span>{group.taskTitle}</span>
                   {group.taskTemplateId ? (
                     <Button asChild size="sm" variant="ghost" className="h-8 rounded-lg px-2 text-xs font-medium">
