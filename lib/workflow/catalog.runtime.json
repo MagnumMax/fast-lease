@@ -94,6 +94,7 @@
     "INVESTOR_PENDING",
     "CONTRACT_PREP",
     "DOC_SIGNING",
+    "DOC_CHECK_LEGAL",
     "SIGNING_FUNDING",
     "VEHICLE_DELIVERY",
     "ACTIVE",
@@ -1779,6 +1780,46 @@
         }
       ]
     },
+    "DOC_CHECK_LEGAL": {
+      "title": "Проверка документов юристом",
+      "entry_actions": [
+        {
+          "type": "TASK_CREATE",
+          "task": {
+            "template_id": "check_signed_docs_v1",
+            "type": "CHECK_SIGNED_DOCS",
+            "title": "Проверить подписанные документы клиентом",
+            "assignee_role": "LEGAL",
+            "guard_key": "contracts.legalChecked",
+            "sla": { "hours": 24 },
+            "schema": {
+              "version": "1.0",
+              "fields": [
+                {
+                  "id": "documents_verified",
+                  "type": "boolean",
+                  "label": "Документы проверены и подтверждены",
+                  "required": true
+                },
+                {
+                  "id": "comment",
+                  "type": "textarea",
+                  "label": "Комментарий к проверке",
+                  "required": false
+                }
+              ]
+            },
+            "defaults": {
+              "instruction_short": "Проверьте загруженные подписанные документы на корректность.",
+              "documents_verified": false
+            }
+          }
+        }
+      ],
+      "exit_requirements": [
+        { "key": "contracts.legalChecked", "rule": "== true", "message": "Документы не проверены юристом." }
+      ]
+    },
     "SIGNING_FUNDING": {
       "title": "Подписание и финансирование",
       "entry_actions": [
@@ -2104,13 +2145,27 @@
     },
     {
       "from": "DOC_SIGNING",
-      "to": "SIGNING_FUNDING",
+      "to": "DOC_CHECK_LEGAL",
       "by_roles": [
         "OP_MANAGER"
       ],
       "guards": [
         {
           "key": "contracts.signedUploaded",
+          "rule": "== true"
+        }
+      ]
+    },
+    {
+      "from": "DOC_CHECK_LEGAL",
+      "to": "SIGNING_FUNDING",
+      "by_roles": [
+        "LEGAL",
+        "OP_MANAGER"
+      ],
+      "guards": [
+        {
+          "key": "contracts.legalChecked",
           "rule": "== true"
         }
       ]
@@ -2213,6 +2268,13 @@
     },
     {
       "from": "DOC_SIGNING",
+      "to": "CANCELLED",
+      "by_roles": [
+        "OP_MANAGER"
+      ]
+    },
+    {
+      "from": "DOC_CHECK_LEGAL",
       "to": "CANCELLED",
       "by_roles": [
         "OP_MANAGER"

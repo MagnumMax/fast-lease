@@ -89,6 +89,7 @@ export const OPS_DEAL_PIPELINE_GROUPS = [
   { label: "Investor", statuses: ["INVESTOR_PENDING" as OpsDealStatusKey] },
   { label: "Contract", statuses: ["CONTRACT_PREP" as OpsDealStatusKey] },
   { label: "Doc Signing", statuses: ["DOC_SIGNING" as OpsDealStatusKey] },
+  { label: "Legal Check", statuses: ["DOC_CHECK_LEGAL" as OpsDealStatusKey] },
   { label: "Signing & Funding", statuses: ["SIGNING_FUNDING" as OpsDealStatusKey] },
   { label: "Delivery", statuses: ["VEHICLE_DELIVERY" as OpsDealStatusKey] },
   { label: "Active", statuses: ["ACTIVE" as OpsDealStatusKey] },
