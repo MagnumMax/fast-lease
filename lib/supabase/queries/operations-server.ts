@@ -1589,6 +1589,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
 
   let leasingRows: Array<{
     client_id: string;
+    deal_id: string;
     deal_number: string | null;
     company_code: string | null;
     vehicle_name: string | null;
@@ -1601,7 +1602,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     const leasingResult = await supabase
       .from("deals")
       .select(
-        "client_id, deal_number, company_code, total_amount, contract_start_date, vehicles:vehicle_id(make, model, vin)",
+        "id, client_id, deal_number, company_code, total_amount, contract_start_date, vehicles:vehicle_id(make, model, vin)",
       )
       .in("client_id", clientIds)
       .order("contract_start_date", { ascending: false, nullsFirst: false });
@@ -1621,6 +1622,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
             : null;
         return {
           client_id: row.client_id as string,
+          deal_id: row.id as string,
           deal_number: getString(row.deal_number),
           company_code: getString(row.company_code),
           total_amount: typeof row.total_amount === "number" ? row.total_amount : null,
@@ -1738,6 +1740,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
               amount: leasingAmount,
               since: leasingStart,
               dealNumber: leasing.deal_number ?? undefined,
+              dealId: leasing.deal_id,
               vin: leasingVin,
             }
           : undefined,

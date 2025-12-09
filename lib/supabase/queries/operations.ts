@@ -208,6 +208,7 @@ export type OpsClientRecord = {
     amount: string;
     since: string;
     dealNumber?: string;
+    dealId?: string;
     vin?: string | null;
   };
 };

@@ -1251,7 +1251,13 @@ export function TaskDetailView({
             ) : null}
 
             {visibleFields.length > 0 ? (
-              <div className="workflow-template-block space-y-3">
+              <div
+                className={`workflow-template-block space-y-3 rounded-xl border-2 p-4 transition-shadow ${
+                  isCompleted
+                    ? "border-emerald-400/40 bg-emerald-50/70 shadow-[0_20px_40px_-28px_rgba(16,185,129,0.45)] dark:bg-emerald-500/10"
+                    : "border-amber-400/60 bg-amber-100/70 shadow-[0_20px_45px_-25px_rgba(245,158,11,0.6)] dark:bg-amber-500/10"
+                }`}
+              >
                 {visibleFields.map((field, index) => {
                   const fieldId = field.id;
                   const value = resolveFieldValue(fieldId, payload);

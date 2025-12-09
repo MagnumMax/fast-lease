@@ -298,7 +298,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                 <TableHead className="min-w-[200px]">Полное имя</TableHead>
                 <TableHead className="min-w-[120px]">Статус</TableHead>
                 <TableHead className="min-w-[200px]">Контакты</TableHead>
-                <TableHead className="min-w-[220px]">Лизинг</TableHead>
+                <TableHead className="min-w-[220px]">Сделка</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -336,21 +336,20 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {client.leasing ? (
+                      {client.leasing && client.leasing.dealId ? (
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2 text-foreground">
+                          <Link
+                            href={`/ops/deals/${client.leasing.dealId}`}
+                            className="flex items-center gap-2 font-medium text-foreground hover:underline"
+                          >
                             <CarFront className="h-4 w-4 text-muted-foreground" />
                             <span>{client.leasing.vehicle}</span>
-                          </div>
-                          {client.leasing.vin ? (
-                            <p className="text-xs text-muted-foreground">VIN: {client.leasing.vin}</p>
+                          </Link>
+                          {client.leasing.dealNumber ? (
+                            <p className="text-xs text-muted-foreground">
+                              {client.leasing.dealNumber}
+                            </p>
                           ) : null}
-                          <div className="grid grid-cols-[auto,1fr] gap-x-2 text-xs text-muted-foreground">
-                            <span>Сумма:</span>
-                            <span>{client.leasing.amount}</span>
-                            <span>Старт:</span>
-                            <span>{client.leasing.since}</span>
-                          </div>
                         </div>
                       ) : (
                         "—"

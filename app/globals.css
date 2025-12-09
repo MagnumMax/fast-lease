@@ -274,6 +274,10 @@
     border-color: rgba(250, 204, 21, 0.4);
   }
 
+  .dark .workflow-template-block {
+    border-color: rgba(146, 64, 14, 0.3);
+  }
+
 
   .public-header {
     @apply border-b bg-header backdrop-blur;

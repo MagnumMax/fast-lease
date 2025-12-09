@@ -76,72 +76,147 @@ async function fetchRoles(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<RoleEntry[]> {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role, metadata")
-    .eq("user_id", userId);
+  let attempts = 0;
+  const maxAttempts = 3;
 
-  if (error) {
-    console.error("[auth] failed to load roles", error);
-    return [];
-  }
+  while (attempts < maxAttempts) {
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("role, metadata")
+      .eq("user_id", userId);
 
-  const roles: RoleEntry[] = [];
-  for (const row of data ?? []) {
-    const role = normalizeRoleCode((row as { role: unknown }).role);
-    if (role) {
-      const metadata = (row as { metadata?: Record<string, unknown> | null }).metadata;
-      roles.push({
-        role,
-        isReadOnly: Boolean(metadata && metadata.read_only === true),
-      });
+    if (error) {
+      const isRetryable =
+        (error as { message?: string }).message?.includes("fetch failed") ||
+        (error as { message?: string }).message?.includes("timeout") ||
+        (error as { code?: string }).code === "500" ||
+        (error as { code?: string }).code === "502" ||
+        (error as { code?: string }).code === "503" ||
+        (error as { code?: string }).code === "504";
+
+      if (isRetryable && attempts < maxAttempts - 1) {
+        console.warn(
+          `[auth] fetchRoles failed (attempt ${attempts + 1}/${maxAttempts}), retrying...`,
+          error,
+        );
+        attempts++;
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempts));
+        continue;
+      }
+
+      console.error("[auth] failed to load roles", error);
+      return [];
     }
+
+    const roles: RoleEntry[] = [];
+    for (const row of data ?? []) {
+      const role = normalizeRoleCode((row as { role: unknown }).role);
+      if (role) {
+        const metadata = (row as { metadata?: Record<string, unknown> | null }).metadata;
+        roles.push({
+          role,
+          isReadOnly: Boolean(metadata && metadata.read_only === true),
+        });
+      }
+    }
+
+    return roles;
   }
 
-  return roles;
+  return [];
 }
 
 async function fetchPortals(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<PortalCode[]> {
-  const { data, error } = await supabase
-    .from("user_portals")
-    .select("portal")
-    .eq("user_id", userId);
+  let attempts = 0;
+  const maxAttempts = 3;
 
-  if (error) {
-    console.error("[auth] failed to load portals", error);
-    return [];
-  }
+  while (attempts < maxAttempts) {
+    const { data, error } = await supabase
+      .from("user_portals")
+      .select("portal")
+      .eq("user_id", userId);
 
-  const portals: PortalCode[] = [];
-  for (const row of data ?? []) {
-    const portal = (row as { portal: PortalCode | null }).portal;
-    if (portal) {
-      portals.push(portal);
+    if (error) {
+      const isRetryable =
+        (error as { message?: string }).message?.includes("fetch failed") ||
+        (error as { message?: string }).message?.includes("timeout") ||
+        (error as { code?: string }).code === "500" ||
+        (error as { code?: string }).code === "502" ||
+        (error as { code?: string }).code === "503" ||
+        (error as { code?: string }).code === "504";
+
+      if (isRetryable && attempts < maxAttempts - 1) {
+        console.warn(
+          `[auth] fetchPortals failed (attempt ${attempts + 1}/${maxAttempts}), retrying...`,
+          error,
+        );
+        attempts++;
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempts));
+        continue;
+      }
+
+      console.error("[auth] failed to load portals", error);
+      return [];
     }
+
+    const portals: PortalCode[] = [];
+    for (const row of data ?? []) {
+      const portal = (row as { portal: PortalCode | null }).portal;
+      if (portal) {
+        portals.push(portal);
+      }
+    }
+
+    return portals;
   }
 
-  return portals;
+  return [];
 }
 
 async function fetchProfile(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<ProfileRecord | null> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
+  let attempts = 0;
+  const maxAttempts = 3;
 
-  if (error) {
-    console.error("[auth] failed to load profile", error);
-    return null;
+  while (attempts < maxAttempts) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      const isRetryable =
+        (error as { message?: string }).message?.includes("fetch failed") ||
+        (error as { message?: string }).message?.includes("timeout") ||
+        (error as { code?: string }).code === "500" ||
+        (error as { code?: string }).code === "502" ||
+        (error as { code?: string }).code === "503" ||
+        (error as { code?: string }).code === "504";
+
+      if (isRetryable && attempts < maxAttempts - 1) {
+        console.warn(
+          `[auth] fetchProfile failed (attempt ${attempts + 1}/${maxAttempts}), retrying...`,
+          error,
+        );
+        attempts++;
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempts));
+        continue;
+      }
+
+      console.error("[auth] failed to load profile", error);
+      return null;
+    }
+
+    return normalizeProfile(data);
   }
 
-  return normalizeProfile(data);
+  return null;
 }
 
 /**
