@@ -269,6 +269,11 @@
     @apply mx-auto flex w-full max-w-6xl flex-col gap-6;
   }
 
+  .workflow-template-block {
+    @apply rounded-2xl border border-amber-200/70 bg-amber-50/60 px-4 py-4 shadow-sm;
+    border-color: rgba(250, 204, 21, 0.4);
+  }
+
 
   .public-header {
     @apply border-b bg-header backdrop-blur;
@@ -425,53 +430,4 @@
   }
 }
 
-@media (max-width: 1200px) and (min-width: 1024px) {
-  .dashboard-sidebar {
-    width: 16rem;
-  }
 
-  .dashboard-main {
-    padding-left: 16rem;
-  }
-}
-
-@media (max-width: 1023px) {
-  .dashboard-sidebar {
-    transform: translateX(-100%);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 2px 0 18px rgba(15, 23, 42, 0.35);
-    width: 16rem;
-  }
-
-  .dashboard-sidebar[data-open="true"] {
-    display: flex;
-    transform: translateX(0);
-  }
-
-  .dashboard-main {
-    padding-left: 0;
-  }
-
-  .dashboard-header {
-    @apply px-4;
-  }
-
-  .dashboard-content {
-    @apply px-3;
-  }
-
-}
-
-@media (max-width: 480px) {
-  .dashboard-header {
-    height: 4rem;
-  }
-
-  .dashboard-sidebar {
-    width: 14rem;
-  }
-
-  .dashboard-content {
-    padding-top: 1rem;
-  }
-}

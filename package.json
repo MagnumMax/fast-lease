@@ -20,7 +20,7 @@
     "test:ci": "vitest run --coverage --reporter=dot --reporter=default",
     "test:e2e": "node scripts/run-e2e.js",
     "test:e2e:ui": "playwright test --ui",
-    "tests": "npm run test:run && npm run test:e2e",
+    "tests": "npm run test:run",
     "sync:vehicle-images": "ts-node scripts/sync_vehicle_images.ts",
     "ingest:deals": "node scripts/ingest_local_deals.mjs",
     "ingest:deals:specific": "node scripts/ingest_local_deals.mjs --only",

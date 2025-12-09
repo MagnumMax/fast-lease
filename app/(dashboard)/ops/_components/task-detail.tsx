@@ -1251,7 +1251,7 @@ export function TaskDetailView({
             ) : null}
 
             {visibleFields.length > 0 ? (
-              <div className="space-y-3">
+              <div className="workflow-template-block space-y-3">
                 {visibleFields.map((field, index) => {
                   const fieldId = field.id;
                   const value = resolveFieldValue(fieldId, payload);

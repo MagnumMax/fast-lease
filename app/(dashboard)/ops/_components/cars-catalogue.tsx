@@ -2,11 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Plus, Search } from "lucide-react";
+import { Filter, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -18,13 +26,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -35,6 +36,7 @@ import {
 import { OPS_VEHICLE_STATUS_META, type OpsCarRecord, type OpsTone } from "@/lib/supabase/queries/operations";
 import { createOperationsCar } from "@/app/(dashboard)/ops/cars/actions";
 import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
+import { useDashboard } from "@/components/providers/dashboard-context";
 
 type OpsCarsCatalogueProps = {
   initialCars: OpsCarRecord[];
@@ -80,8 +82,8 @@ function createDefaultCarFormState(): CarFormState {
 }
 
 export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
+  const { setHeaderActions, searchQuery } = useDashboard();
   const [cars, setCars] = useState(initialCars);
-  const [searchQuery, setSearchQuery] = useState("");
   const [bodyTypeFilter, setBodyTypeFilter] = useState<string>(FILTER_ALL_VALUE);
   const [statusFilter, setStatusFilter] = useState<string>(FILTER_ALL_VALUE);
   const [page, setPage] = useState(0);
@@ -147,6 +149,54 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
   const currentPage = Math.min(page, pageCount - 1);
   const pageSliceStart = currentPage * pageSize;
   const currentCars = filteredCars.slice(pageSliceStart, pageSliceStart + pageSize);
+
+  useEffect(() => {
+    setHeaderActions(
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="text-muted-foreground">
+            <Filter className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Статус</DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={statusFilter === FILTER_ALL_VALUE}
+            onCheckedChange={() => setStatusFilter(FILTER_ALL_VALUE)}
+          >
+            Все статусы
+          </DropdownMenuCheckboxItem>
+          {Object.entries(OPS_VEHICLE_STATUS_META).map(([status, meta]) => (
+            <DropdownMenuCheckboxItem
+              key={status}
+              checked={statusFilter === status}
+              onCheckedChange={() => setStatusFilter(status)}
+            >
+              {meta.label}
+            </DropdownMenuCheckboxItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel>Тип кузова</DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            checked={bodyTypeFilter === FILTER_ALL_VALUE}
+            onCheckedChange={() => setBodyTypeFilter(FILTER_ALL_VALUE)}
+          >
+            Все типы
+          </DropdownMenuCheckboxItem>
+          {bodyTypeOptions.map((type) => (
+            <DropdownMenuCheckboxItem
+              key={type}
+              checked={bodyTypeFilter === type}
+              onCheckedChange={() => setBodyTypeFilter(type)}
+            >
+              {type}
+            </DropdownMenuCheckboxItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+    return () => setHeaderActions(null);
+  }, [setHeaderActions, statusFilter, bodyTypeFilter, bodyTypeOptions]);
 
   useEffect(() => {
     setPage(0);
@@ -334,48 +384,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
         action={createDialog}
       />
 
-      <Card className="bg-card/60 backdrop-blur">
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <div className="relative w-full sm:w-64">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Поиск (VIN, марка, модель, номер)"
-                className="h-10 w-full rounded-xl pl-9 pr-3"
-              />
-            </div>
-            <Select value={bodyTypeFilter} onValueChange={setBodyTypeFilter}>
-              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 sm:w-48">
-                <SelectValue placeholder="Все типы" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={FILTER_ALL_VALUE}>Все типы</SelectItem>
-                {bodyTypeOptions.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 sm:w-48">
-                <SelectValue placeholder="Все статусы" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={FILTER_ALL_VALUE}>Все статусы</SelectItem>
-                {Object.entries(OPS_VEHICLE_STATUS_META).map(([status, meta]) => (
-                  <SelectItem key={status} value={status}>
-                    {meta.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="hidden border border-border bg-card/60 backdrop-blur md:block">
         <CardContent className="p-0">
           <Table>
@@ -486,7 +494,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
 
       <div className="grid gap-4 md:hidden">
         {currentCars.length ? currentCars.map((car) => (
-          <Card key={car.vin} className="bg-card/60 backdrop-blur">
+          <Card key={car.id} className="bg-card/60 backdrop-blur">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">

@@ -6,7 +6,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ComponentProps,
   type KeyboardEvent,
 } from "react";
 import {
@@ -14,12 +13,11 @@ import {
   ArrowUp,
   ArrowUpDown,
   AlertTriangle,
-  Check,
   Clock,
+  Filter,
   LayoutGrid,
   Loader2,
   Plus,
-  Search,
   ShieldCheck,
   Table as TableIcon,
   UserCircle2,
@@ -28,6 +26,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -81,6 +86,7 @@ import { buildSlugWithId } from "@/lib/utils/slugs";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
 import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 import { DEAL_STATUS_BADGE_VARIANTS } from "@/app/(dashboard)/ops/_components/deal-status-badge-meta";
+import { useDashboard } from "@/components/providers/dashboard-context";
 
 // Обновляем тип для включения deal_number
 type DealRowWithDealNumber = DealRow & {
@@ -418,15 +424,62 @@ export function OpsDealsBoard({
     firstVehicle: eligibleVehicles[0],
   });
 
+  const { setHeaderActions, searchQuery } = useDashboard();
   const [deals, setDeals] = useState<OpsDealSummary[]>(() => initialDeals);
 
   const [view, setView] = useState<"kanban" | "table">("table");
-  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OpsDealStatusKey | "all">("all");
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sortState, setSortState] = useState<SortState>(DEFAULT_SORT);
+
+  useEffect(() => {
+    setHeaderActions(
+      <>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-muted-foreground">
+              <Filter className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Статус сделки</DropdownMenuLabel>
+            <DropdownMenuCheckboxItem
+              checked={statusFilter === "all"}
+              onCheckedChange={() => setStatusFilter("all")}
+            >
+              Все статусы
+            </DropdownMenuCheckboxItem>
+            {STATUS_ORDER.map((status) => (
+              <DropdownMenuCheckboxItem
+                key={status}
+                checked={statusFilter === status}
+                onCheckedChange={() => setStatusFilter(status)}
+              >
+                {STATUS_LABELS[status]}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <ToggleGroup
+          type="single"
+          value={view}
+          onValueChange={(value) => value && setView(value as "kanban" | "table")}
+          className="hidden sm:flex"
+        >
+          <ToggleGroupItem value="kanban" aria-label="Kanban view">
+            <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="table" aria-label="Table view">
+            <TableIcon className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </>
+    );
+    return () => setHeaderActions(null);
+  }, [setHeaderActions, statusFilter, view]);
 
   const summary = useMemo(() => {
     const total = deals.length;
@@ -1134,54 +1187,6 @@ export function OpsDealsBoard({
         helperTone={headerHelperTone}
         action={createDealDialog}
       />
-
-      <Card className="bg-card/60 backdrop-blur">
-        <CardContent className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Поиск (покупатель, авто, VIN, ID)"
-                className="h-10 w-full rounded-xl pl-9"
-              />
-            </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => setStatusFilter(value as OpsDealStatusKey | "all")}
-            >
-              <SelectTrigger className="h-10 rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
-                <SelectValue placeholder="Все статусы" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Все статусы</SelectItem>
-                {STATUS_ORDER.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {STATUS_LABELS[status]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <ToggleGroup
-              type="single"
-              value={view}
-              onValueChange={(value) => value && setView(value as "kanban" | "table")}
-            >
-              <ToggleGroupItem value="kanban" aria-label="Kanban view" className="gap-2">
-                <LayoutGrid className="h-4 w-4" />
-                <span className="text-xs font-medium">Kanban</span>
-              </ToggleGroupItem>
-              <ToggleGroupItem value="table" aria-label="Table view" className="gap-2">
-                <TableIcon className="h-4 w-4" />
-                <span className="text-xs font-medium">Table</span>
-              </ToggleGroupItem>
-            </ToggleGroup>
-          </div>
-        </CardContent>
-      </Card>
 
       {view === "kanban" ? (
         <section className="overflow-x-auto pb-4">

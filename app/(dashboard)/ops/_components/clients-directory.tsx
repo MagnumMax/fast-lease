@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { CarFront, Mail, Phone, Plus, Search } from "lucide-react";
+import { CarFront, Mail, Phone, Plus, Filter } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { createOperationsClient } from "@/app/(dashboard)/ops/clients/actions";
 import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
+import { useDashboard } from "@/components/providers/dashboard-context";
 import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 
 const CLIENT_STATUS_TONE_CLASS: Record<string, string> = {
@@ -82,10 +84,45 @@ type OpsClientsDirectoryProps = {
 };
 
 export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps) {
+  const { setHeaderActions, searchQuery } = useDashboard();
   const [clients, setClients] = useState(initialClients);
-  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(FILTER_ALL_VALUE);
   const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    setHeaderActions(
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="text-muted-foreground">
+            <Filter className="h-5 w-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Фильтр по статусу</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuCheckboxItem
+            checked={statusFilter === FILTER_ALL_VALUE}
+            onCheckedChange={() => setStatusFilter(FILTER_ALL_VALUE)}
+          >
+            Все статусы
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={statusFilter === "Active"}
+            onCheckedChange={() => setStatusFilter("Active")}
+          >
+            Active
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={statusFilter === "Blocked"}
+            onCheckedChange={() => setStatusFilter("Blocked")}
+          >
+            Blocked
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+    return () => setHeaderActions(null);
+  }, [setHeaderActions, statusFilter]);
   const pageSize = 10;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, startTransition] = useTransition();
@@ -252,32 +289,6 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
         ]}
         action={createDialog}
       />
-
-      <Card className="bg-card/60 backdrop-blur">
-        <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
-          <div className="relative w-full md:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Поиск (имя, email, телефон, теги, VIN)"
-              className="h-10 rounded-xl pl-9 pr-3"
-            />
-          </div>
-          <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500 md:w-48">
-                <SelectValue placeholder="Все статусы" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={FILTER_ALL_VALUE}>Все статусы</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Blocked">Blocked</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card className="border border-border/70 bg-card/70 backdrop-blur">
         <CardContent className="p-0">

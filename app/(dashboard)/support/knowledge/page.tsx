@@ -51,7 +51,7 @@ export default function SupportKnowledgePage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Knowledge</p>
-            <h1 className="text-2xl font-semibold text-foreground">База макросов</h1>
+            {/* <h1 className="text-2xl font-semibold text-foreground">База макросов</h1> */}
             <p className="text-sm text-muted-foreground">Последние обновления статей и скриптов.</p>
           </div>
           <div className="relative w-full max-w-sm">

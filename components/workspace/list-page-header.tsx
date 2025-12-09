@@ -38,7 +38,6 @@ export function WorkspaceListHeader({
     <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between", className)}>
       <div className="space-y-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
           {stats?.length ? (
             <dl className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
               {stats.map((stat) => (

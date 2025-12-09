@@ -23,7 +23,7 @@ export function RouteScaffold({
   return (
     <Card className="border border-dashed border-border bg-card backdrop-blur-sm">
       <CardHeader className="gap-3 border-b border-border">
-        <CardTitle className="text-2xl tracking-tight">{title}</CardTitle>
+        {/* <CardTitle className="text-2xl tracking-tight">{title}</CardTitle> */}
         {description ? (
           <CardDescription className="max-w-2xl text-sm leading-relaxed">
             {description}

@@ -2,7 +2,16 @@
 
 import Link from "next/link";
 import * as React from "react";
-import { CircleUserRound, Menu } from "lucide-react";
+import { 
+  CircleUserRound, 
+  Menu, 
+  Bell, 
+  Search, 
+  LogOut, 
+  Settings, 
+  User,
+  PanelLeftClose
+} from "lucide-react";
 
 import { signOutAction } from "@/app/(auth)/actions";
 import type { AppRole } from "@/lib/auth/types";
@@ -14,6 +23,7 @@ import { clientNav } from "@/lib/navigation";
 import type { NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +36,7 @@ import { ThemeToggle } from "@/components/system/theme-toggle";
 import { resolveNavIcon } from "@/components/navigation/nav-icon";
 import { useActivePathname } from "@/components/navigation/use-active-pathname";
 import { ReadOnlyBanner } from "@/components/providers/access-control-provider";
+import { DashboardProvider, useDashboard } from "@/components/providers/dashboard-context";
 
 type DashboardLayoutProps = {
   navItems: NavItem[];
@@ -58,6 +69,71 @@ const ROLE_DISPLAY_LABELS: Record<AppRole, string> = {
   ),
 } as Record<AppRole, string>;
 
+function DashboardHeader({
+  sidebarOpen,
+  setSidebarOpen,
+  brand,
+  sidebarId,
+  activeItem,
+}: {
+  sidebarOpen: boolean;
+  setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  brand: { title: string; subtitle: string };
+  sidebarId: string;
+  activeItem: NavItem | undefined;
+}) {
+  const { searchQuery, setSearchQuery, headerActions } = useDashboard();
+
+  return (
+    <header className="sticky top-0 z-50 flex h-16 items-center gap-4 border-b bg-[var(--header)] backdrop-blur px-4 md:px-6">
+      <div className="flex items-center gap-2 md:gap-4">
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={() => setSidebarOpen((prev) => !prev)}
+          className="lg:hidden"
+          aria-label={sidebarOpen ? "Hide menu" : "Open menu"}
+          aria-expanded={sidebarOpen}
+          aria-controls={sidebarId}
+        >
+          <Menu className="h-5 w-5" aria-hidden="true" />
+        </Button>
+        
+        <div className="flex items-center gap-2">
+          <div className="hidden md:flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
+            FL
+          </div>
+          <div className="ml-2">
+            <h1 className="text-sm md:text-lg font-semibold tracking-tight truncate max-w-[120px] md:max-w-none">{activeItem?.label}</h1>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-1 items-center justify-center px-2 md:px-8">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Поиск..."
+            className="h-9 w-full bg-background pl-8 md:w-[300px] lg:w-[400px]"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        {headerActions}
+        <Button variant="ghost" size="icon" className="text-muted-foreground">
+          <Bell className="h-5 w-5" />
+          <span className="sr-only">Уведомления</span>
+        </Button>
+      </div>
+    </header>
+  );
+}
+
 export function DashboardLayout({
   navItems,
   children,
@@ -70,8 +146,7 @@ export function DashboardLayout({
   const sidebarId = React.useId();
   const profileMenuId = React.useId();
   const [profileMenuOpen, setProfileMenuOpen] = React.useState(false);
-  const profileMenuRef = React.useRef<HTMLDivElement>(null);
-
+  
   const activeItem = React.useMemo(
     () => navItems.find((item) => isActive(item.href)) ?? navItems[0],
     [navItems, isActive],
@@ -82,35 +157,6 @@ export function DashboardLayout({
     setProfileMenuOpen(false);
   }, [pathname]);
 
-  React.useEffect(() => {
-    if (!profileMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: PointerEvent) {
-      if (
-        profileMenuRef.current &&
-        !profileMenuRef.current.contains(event.target as Node)
-      ) {
-        setProfileMenuOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setProfileMenuOpen(false);
-      }
-    }
-
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [profileMenuOpen]);
-
   const normalizedFullName = user?.fullName?.trim() || null;
   const dropdownName = normalizedFullName ?? user?.email ?? "No name";
   const showEmailInMenu = Boolean(user?.email && normalizedFullName);
@@ -120,140 +166,171 @@ export function DashboardLayout({
     : "Guest";
 
   return (
-    <div className="dashboard-shell">
-      <aside
-        id={sidebarId}
-        className="dashboard-sidebar"
-        data-open={sidebarOpen}
-      >
-        <div className="dashboard-sidebar__brand">
-          <span className="dashboard-sidebar__brand-badge">FL</span>
-          <div>
-            <p className="dashboard-sidebar__brand-meta">{brand.title}</p>
-            <p className="dashboard-sidebar__brand-title">{brand.subtitle}</p>
-          </div>
-        </div>
-        <nav className="dashboard-sidebar__nav">
-          {navItems.map((item) => {
-            const Icon = resolveNavIcon(item.icon);
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn("dashboard-sidebar__nav-link")}
-                data-active={active}
-                aria-current={active ? "page" : undefined}
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {sidebarOpen ? (
-        <button
-          type="button"
-          aria-hidden="true"
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+    <DashboardProvider>
+      <div className="min-h-screen bg-[var(--background)] flex flex-col">
+        {/* Header - Full Width */}
+        <DashboardHeader
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          brand={brand}
+          sidebarId={sidebarId}
+          activeItem={activeItem}
         />
-      ) : null}
 
-      <div className="dashboard-main">
-        <header className="dashboard-header">
-          <div className="dashboard-header__left">
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={() => setSidebarOpen((prev) => !prev)}
-              className="dashboard-mobile-trigger lg:hidden"
-              aria-label={sidebarOpen ? "Hide menu" : "Open menu"}
-              aria-expanded={sidebarOpen}
-              aria-controls={sidebarId}
-            >
-              <Menu className="h-5 w-5" aria-hidden="true" />
-            </Button>
-            <div className="flex flex-col">
-              <h1 className="dashboard-header__title">
-                {activeItem?.label ?? "Dashboard"}
-              </h1>
-            </div>
-          </div>
-          <div className="dashboard-header__actions" ref={profileMenuRef}>
-            <DropdownMenu open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
-              <DropdownMenuTrigger
-                asChild
-                id={profileMenuId}
-                aria-label="User menu"
-              >
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  className="dashboard-header__profile-trigger"
-                  aria-expanded={profileMenuOpen}
-                  aria-controls={profileMenuId ? `${profileMenuId}-menu` : undefined}
+        <div className="flex flex-1 items-start">
+
+        {/* Desktop Sidebar - Collapsible on Hover */}
+        <aside className="group fixed left-0 top-16 z-40 hidden h-[calc(100vh-4rem)] w-16 flex-col border-r bg-[var(--sidebar)] transition-[width] duration-300 hover:w-64 lg:flex shadow-lg hover:shadow-xl">
+          <nav className="flex-1 flex flex-col gap-1 p-2">
+            {navItems.map((item) => {
+              const Icon = resolveNavIcon(item.icon);
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors overflow-hidden whitespace-nowrap",
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                  )}
+                  data-active={active}
                 >
-                  <CircleUserRound className="h-5 w-5" aria-hidden="true" />
-                  <span className="sr-only">Профиль пользователя</span>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="mt-auto border-t p-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="w-full justify-start gap-3 px-2 h-12">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <CircleUserRound className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex flex-col items-start overflow-hidden whitespace-nowrap opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                    <span className="text-sm font-medium leading-none truncate w-[140px]">{dropdownName}</span>
+                    <span className="text-xs text-muted-foreground truncate w-[140px]">{roleLabel}</span>
+                  </div>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                id={profileMenuId ? `${profileMenuId}-menu` : undefined}
-                align="end"
-                side="bottom"
-                sideOffset={12}
-                className="w-64"
-              >
-                <DropdownMenuLabel className="flex flex-col gap-0.5 text-left">
-                  <span className="font-semibold leading-tight">{dropdownName}</span>
-                  {showEmailInMenu ? (
-                    <span className="text-xs text-muted-foreground">{user?.email}</span>
-                  ) : null}
-                  <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {roleLabel}
-                  </span>
+              <DropdownMenuContent align="start" side="right" className="w-56 ml-2" sideOffset={10}>
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{dropdownName}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {profileHref ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link href={profileHref}>Profile</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                  </>
-                ) : null}
-                <DropdownMenuItem asChild className="justify-between">
-                  <div className="flex w-full items-center justify-between">
-                    <span>Theme</span>
-                    <ThemeToggle />
+                {profileHref && (
+                  <DropdownMenuItem asChild>
+                    <Link href={profileHref} className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Профиль</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem className="justify-between" onSelect={(e) => e.preventDefault()}>
+                  <div className="flex items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Тема</span>
                   </div>
+                  <ThemeToggle />
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <form action={signOutAction}>
+                <form action={signOutAction} className="w-full">
                   <DropdownMenuItem asChild>
-                    <button type="submit" className="w-full text-left">
-                      Sign out
+                    <button type="submit" className="w-full cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Выйти</span>
                     </button>
                   </DropdownMenuItem>
                 </form>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </header>
+        </aside>
 
-        <main className="dashboard-content">
-          <div className="dashboard-content__inner">
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div 
+              className="fixed inset-0 bg-black/80" 
+              onClick={() => setSidebarOpen(false)}
+            />
+            <div className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-background p-4 shadow-lg">
+              <div className="mb-4 flex items-center justify-between">
+                <span className="text-lg font-bold">{brand.title}</span>
+                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
+                  <PanelLeftClose className="h-5 w-5" />
+                </Button>
+              </div>
+              <nav className="flex flex-col gap-2">
+                {navItems.map((item) => {
+                  const Icon = resolveNavIcon(item.icon);
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
+                      )}
+                      onClick={() => setSidebarOpen(false)}
+                    >
+                      <Icon className="h-5 w-5" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <div className="absolute bottom-4 left-4 right-4">
+                 <div className="flex items-center gap-3 rounded-md border p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+                      <CircleUserRound className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="truncate text-sm font-medium">{dropdownName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+                    </div>
+                 </div>
+                 <div className="mt-2 grid grid-cols-2 gap-2">
+                    <form action={signOutAction}>
+                       <Button variant="outline" size="sm" className="w-full">
+                         <LogOut className="mr-2 h-4 w-4" /> Выйти
+                       </Button>
+                    </form>
+                    <div className="flex justify-center">
+                        <ThemeToggle />
+                    </div>
+                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <main className={cn(
+          "flex-1 transition-all duration-300 ease-in-out p-4 md:p-6 lg:ml-16",
+        )}>
+           <div className="mx-auto max-w-7xl">
             <ReadOnlyBanner />
             {children}
-          </div>
+           </div>
         </main>
+        </div>
       </div>
-    </div>
+    </DashboardProvider>
   );
 }
 

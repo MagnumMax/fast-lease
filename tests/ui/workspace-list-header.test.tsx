@@ -26,7 +26,6 @@ describe("WorkspaceListHeader", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Clients" })).toBeInTheDocument();
     expect(screen.getByText("Всего")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("Новые")).toBeInTheDocument();
@@ -42,7 +41,6 @@ describe("WorkspaceListHeader", () => {
     render(<WorkspaceListHeader title="Vehicles" />);
 
     expect(document.querySelector("dl")).toBeNull();
-    expect(screen.queryByText("Vehicles", { exact: false })).toBeInTheDocument();
     expect(screen.queryByText(/используйте/i)).not.toBeInTheDocument();
   });
 });

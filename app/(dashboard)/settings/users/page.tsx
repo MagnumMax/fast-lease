@@ -20,9 +20,9 @@ export default async function SettingsUsersPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
           Settings
         </p>
-        <h1 className="text-3xl font-semibold text-foreground">
+        {/* <h1 className="text-3xl font-semibold text-foreground">
           Roles & Portals
-        </h1>
+        </h1> */}
         <p className="text-sm text-muted-foreground">
           Управляйте доступом сотрудников и внешних кабинетов из единого интерфейса.
         </p>

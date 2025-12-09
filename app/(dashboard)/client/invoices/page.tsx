@@ -61,9 +61,9 @@ export default async function ClientInvoicesPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
               Finance
             </p>
-            <h1 className="text-2xl font-semibold text-foreground">
+            {/* <h1 className="text-2xl font-semibold text-foreground">
               Payment schedule
-            </h1>
+            </h1> */}
             <p className="text-sm text-muted-foreground">
               Upcoming and completed payments for your lease agreement.
             </p>

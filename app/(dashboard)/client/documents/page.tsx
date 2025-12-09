@@ -37,9 +37,9 @@ export default async function ClientDocumentsPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
               Documents
             </p>
-            <h1 className="text-2xl font-semibold text-foreground">
+            {/* <h1 className="text-2xl font-semibold text-foreground">
               Agreements & compliance files
-            </h1>
+            </h1> */}
             <p className="text-sm text-muted-foreground">
               Access agreements, payment schedules, and identity documents submitted during onboarding.
             </p>
