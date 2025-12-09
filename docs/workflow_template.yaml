@@ -492,13 +492,16 @@ statuses:
                 label: "Цена авто продавца"
               - id: seller_vehicle_price_with_vat
                 type: boolean
-                label: "Цена авто продавца с VAT"
+                label: "Авто продается с VAT"
               - id: insurance_amount
                 type: text
-                label: "Страховка на сумму"
+                label: "Стоимость авто от страховой"
               - id: registration_amount
                 type: text
                 label: "Сумма регистрации"
+              - id: technical_inspection_amount
+                type: text
+                label: "Сумма за технический осмотр авто"
               - id: renty_manager_fee
                 type: text
                 label: "Комиссия менеджера RENTY"
@@ -512,6 +515,8 @@ statuses:
             instruction_short: "Подтвердите наличие авто и условия у дилера/брокера."
             seller_vehicle_price_with_vat: false
             seller_vat_payer: false
+            registration_amount: "2500"
+            technical_inspection_amount: "1000"
           bindings:
             deal_id: "{{deal.id}}"
             current_status: "{{deal.status}}"

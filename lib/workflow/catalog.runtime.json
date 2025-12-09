@@ -216,7 +216,14 @@
         {
           "id": "seller_bank_details",
           "type": "text",
-          "label": "Банковские реквизиты продавца"
+          "label": "IBAN"
+        },
+        {
+          "id": "doc_emirates_id_owner",
+          "type": "file",
+          "label": "Emirates ID владельца",
+          "document_type": "emirates_id",
+          "required": false
         },
         {
           "id": "doc_company_license",
@@ -439,6 +446,11 @@
         {
           "value": "preliminary_purchase_agreement",
           "label": "Предварительный договор купли-продажи",
+          "context": "any"
+        },
+        {
+          "value": "authorization_letter",
+          "label": "Authorization Letter",
           "context": "any"
         },
         {
@@ -819,17 +831,22 @@
                 {
                   "id": "seller_vehicle_price_with_vat",
                   "type": "boolean",
-                  "label": "Цена авто продавца с VAT"
+                  "label": "Авто продается с VAT"
                 },
                 {
                   "id": "insurance_amount",
                   "type": "text",
-                  "label": "Страховка на сумму"
+                  "label": "Стоимость авто от страховой"
                 },
                 {
                   "id": "registration_amount",
                   "type": "text",
                   "label": "Сумма регистрации"
+                },
+                {
+                  "id": "technical_inspection_amount",
+                  "type": "text",
+                  "label": "Сумма за технический осмотр авто"
                 },
                 {
                   "id": "renty_manager_fee",
@@ -851,7 +868,9 @@
             "defaults": {
               "instruction_short": "Подтвердите наличие авто и условия у дилера/брокера.",
               "seller_vehicle_price_with_vat": false,
-              "seller_vat_payer": false
+              "seller_vat_payer": false,
+              "registration_amount": "2500",
+              "technical_inspection_amount": "1000"
             },
             "bindings": {
               "deal_id": "{{deal.id}}",
@@ -908,7 +927,6 @@
             },
             "defaults": {
               "instruction_short": "Загрузите подписанное КП покупателя через задачу. Сам документ формируйте в карточке сделки.",
-              "instructions": "Загрузите подписанное КП покупателя через задачу. Сам документ формируйте в карточке сделки.",
               "doc_signed_commercial_offer": ""
             },
             "bindings": {
@@ -1247,7 +1265,14 @@
                 {
                   "id": "seller_bank_details",
                   "type": "text",
-                  "label": "Банковские реквизиты продавца"
+                  "label": "IBAN"
+                },
+                {
+                  "id": "doc_emirates_id_owner",
+                  "type": "file",
+                  "label": "Emirates ID владельца",
+                  "document_type": "emirates_id",
+                  "required": false
                 },
                 {
                   "id": "doc_company_license",
@@ -1264,8 +1289,14 @@
                 {
                   "id": "doc_tax_invoice",
                   "type": "file",
-                  "label": "Tax Invoice",
+                  "label": "Tax Invoice (для VAT-продавцов)",
                   "document_type": "tax_invoice"
+                },
+                {
+                  "id": "doc_invoice",
+                  "type": "file",
+                  "label": "Invoice (без VAT)",
+                  "document_type": "invoice"
                 },
                 {
                   "id": "doc_passing_certificate",
@@ -1310,6 +1341,7 @@
               "seller_contact_email": "",
               "seller_contact_phone": "",
               "seller_bank_details": "",
+              "doc_emirates_id_owner": "",
               "doc_company_license": "",
               "doc_quotation": "",
               "doc_tax_invoice": "",
@@ -1606,17 +1638,17 @@
               "version": "1.0",
               "fields": [
                 {
+                  "id": "doc_purchase_agreement",
+                  "type": "file",
+                  "label": "Договор купли-продажи (продавец)",
+                  "document_type": "purchase_agreement",
+                  "required": true
+                },
+                {
                   "id": "doc_preliminary_purchase_agreement",
                   "type": "file",
                   "label": "Предварительный договор купли-продажи",
                   "document_type": "preliminary_purchase_agreement",
-                  "required": true
-                },
-                {
-                  "id": "doc_purchase_agreement",
-                  "type": "file",
-                  "label": "Договор купли-продажи",
-                  "document_type": "purchase_agreement",
                   "required": true
                 },
                 {
@@ -1639,11 +1671,19 @@
                   "label": "Акт приема-передачи",
                   "document_type": "delivery_act",
                   "required": true
+                },
+                {
+                  "id": "doc_authorization_letter",
+                  "type": "file",
+                  "label": "Authorization Letter",
+                  "document_type": "authorization_letter",
+                  "required": false
                 }
               ]
             },
             "defaults": {
               "doc_preliminary_purchase_agreement": "",
+              "doc_authorization_letter": "",
               "instruction_short": "Сформируйте договор и материалы для подписания."
             }
           }
@@ -1708,11 +1748,19 @@
                   "label": "Подписанный акт приема-передачи",
                   "document_type": "signed_delivery_act",
                   "required": true
+                },
+                {
+                  "id": "doc_authorization_letter",
+                  "type": "file",
+                  "label": "Authorization Letter",
+                  "document_type": "authorization_letter",
+                  "required": false
                 }
               ]
             },
             "defaults": {
-              "instruction_short": "Приложите подписанные документы сделки."
+              "instruction_short": "Приложите подписанные документы сделки.",
+              "doc_authorization_letter": ""
             }
           }
         }
@@ -1791,7 +1839,7 @@
                 {
                   "id": "payment_receipt",
                   "type": "file",
-                  "label": "Платёжка поставщику",
+                  "label": "Payment receipt",
                   "document_type": "payment_receipt",
                   "required": true
                 }
@@ -1849,19 +1897,22 @@
                   "id": "doc_insurance_policy",
                   "type": "file",
                   "label": "Страховка",
-                  "document_type": "insurance_policy"
+                  "document_type": "insurance_policy",
+                  "required": true
                 },
                 {
                   "id": "doc_gps_certificate",
                   "type": "file",
                   "label": "GPS сертификат",
-                  "document_type": "certificate_of_installation"
+                  "document_type": "certificate_of_installation",
+                  "required": true
                 },
                 {
                   "id": "doc_mulkia_certificate",
                   "type": "file",
                   "label": "Mulkia",
-                  "document_type": "mulkia_certificate"
+                  "document_type": "mulkia_certificate",
+                  "required": true
                 },
                 {
                   "id": "registration_salik",
