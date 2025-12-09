@@ -145,14 +145,6 @@ schemas:
         type: file
         label: "Quotation"
         document_type: quotation
-      - id: doc_tax_invoice
-        type: file
-        label: "Tax Invoice (для VAT-продавцов)"
-        document_type: tax_invoice
-      - id: doc_invoice
-        type: file
-        label: "Invoice (без VAT)"
-        document_type: invoice
       - id: doc_passing_certificate
         type: file
         label: "Passing Certificate"
@@ -704,15 +696,13 @@ statuses:
           sla: { hours: 48 }
           schema: *seller_docs_company
           defaults:
-            instruction_short: "Загрузите документы продавца-юрлица и контакты. Прикрепите Tax Invoice (если продавец плательщик VAT) или обычный Invoice."
+            instruction_short: "Загрузите документы продавца-юрлица и контакты."
             seller_contact_email: ""
             seller_contact_phone: ""
             seller_bank_details: ""
             doc_emirates_id_owner: ""
             doc_company_license: ""
             doc_quotation: ""
-            doc_tax_invoice: ""
-            doc_invoice: ""
             doc_passing_certificate: ""
             doc_mulkia_certificate: ""
             doc_hiyaza_certificate: ""
@@ -938,9 +928,33 @@ statuses:
                 label: "Authorization Letter"
                 document_type: authorization_letter
                 required: false
+              - id: doc_tax_invoice
+                type: file
+                label: "Tax Invoice (для VAT-продавцов)"
+                document_type: tax_invoice
+                required: false
+              - id: doc_invoice
+                type: file
+                label: "Invoice (без VAT)"
+                document_type: invoice
+                required: false
+              - id: doc_receipt_voucher
+                type: file
+                label: "Receipt voucher (от продавца)"
+                document_type: payment_receipt
+                required: false
+              - id: doc_payment_order
+                type: file
+                label: "Платежное поручение"
+                document_type: payment_receipt
+                required: false
           defaults:
             instruction_short: "Приложите подписанные документы сделки."
             doc_authorization_letter: ""
+            doc_tax_invoice: ""
+            doc_invoice: ""
+            doc_receipt_voucher: ""
+            doc_payment_order: ""
     exit_requirements:
       - key: contracts.signedUploaded
         rule: "== true"

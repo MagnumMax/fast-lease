@@ -238,18 +238,6 @@
           "document_type": "quotation"
         },
         {
-          "id": "doc_tax_invoice",
-          "type": "file",
-          "label": "Tax Invoice (для VAT-продавцов)",
-          "document_type": "tax_invoice"
-        },
-        {
-          "id": "doc_invoice",
-          "type": "file",
-          "label": "Invoice (без VAT)",
-          "document_type": "invoice"
-        },
-        {
           "id": "doc_passing_certificate",
           "type": "file",
           "label": "Passing Certificate",
@@ -1287,18 +1275,6 @@
                   "document_type": "quotation"
                 },
                 {
-                  "id": "doc_tax_invoice",
-                  "type": "file",
-                  "label": "Tax Invoice (для VAT-продавцов)",
-                  "document_type": "tax_invoice"
-                },
-                {
-                  "id": "doc_invoice",
-                  "type": "file",
-                  "label": "Invoice (без VAT)",
-                  "document_type": "invoice"
-                },
-                {
                   "id": "doc_passing_certificate",
                   "type": "file",
                   "label": "Passing Certificate",
@@ -1337,15 +1313,13 @@
               ]
             },
             "defaults": {
-              "instruction_short": "Загрузите документы продавца-юрлица и контакты. Прикрепите Tax Invoice (если продавец плательщик VAT) или обычный Invoice.",
+              "instruction_short": "Загрузите документы продавца-юрлица и контакты.",
               "seller_contact_email": "",
               "seller_contact_phone": "",
               "seller_bank_details": "",
               "doc_emirates_id_owner": "",
               "doc_company_license": "",
               "doc_quotation": "",
-              "doc_tax_invoice": "",
-              "doc_invoice": "",
               "doc_passing_certificate": "",
               "doc_mulkia_certificate": "",
               "doc_hiyaza_certificate": "",
@@ -1755,12 +1729,44 @@
                   "label": "Authorization Letter",
                   "document_type": "authorization_letter",
                   "required": false
+                },
+                {
+                  "id": "doc_tax_invoice",
+                  "type": "file",
+                  "label": "Tax Invoice (для VAT-продавцов)",
+                  "document_type": "tax_invoice",
+                  "required": false
+                },
+                {
+                  "id": "doc_invoice",
+                  "type": "file",
+                  "label": "Invoice (без VAT)",
+                  "document_type": "invoice",
+                  "required": false
+                },
+                {
+                  "id": "doc_receipt_voucher",
+                  "type": "file",
+                  "label": "Receipt voucher (от продавца)",
+                  "document_type": "payment_receipt",
+                  "required": false
+                },
+                {
+                  "id": "doc_payment_order",
+                  "type": "file",
+                  "label": "Платежное поручение",
+                  "document_type": "payment_receipt",
+                  "required": false
                 }
               ]
             },
             "defaults": {
               "instruction_short": "Приложите подписанные документы сделки.",
-              "doc_authorization_letter": ""
+              "doc_authorization_letter": "",
+              "doc_tax_invoice": "",
+              "doc_invoice": "",
+              "doc_receipt_voucher": "",
+              "doc_payment_order": ""
             }
           }
         }
@@ -1770,52 +1776,6 @@
           "key": "contracts.signedUploaded",
           "rule": "== true",
           "message": "Нет подписанных документов."
-        }
-      ]
-    },
-    "DOC_CHECK_LEGAL": {
-      "title": "Проверка документов юристом",
-      "entry_actions": [
-        {
-          "type": "TASK_CREATE",
-          "task": {
-            "template_id": "check_signed_docs_v1",
-            "type": "CHECK_SIGNED_DOCS",
-            "title": "Проверить подписанные документы клиентом",
-            "assignee_role": "LEGAL",
-            "guard_key": "contracts.legalChecked",
-            "sla": {
-              "hours": 24
-            },
-            "schema": {
-              "version": "1.0",
-              "fields": [
-                {
-                  "id": "documents_verified",
-                  "type": "boolean",
-                  "label": "Документы проверены и подтверждены",
-                  "required": true
-                },
-                {
-                  "id": "comment",
-                  "type": "textarea",
-                  "label": "Комментарий к проверке",
-                  "required": false
-                }
-              ]
-            },
-            "defaults": {
-              "instruction_short": "Проверьте загруженные подписанные документы на корректность.",
-              "documents_verified": false
-            }
-          }
-        }
-      ],
-      "exit_requirements": [
-        {
-          "key": "contracts.legalChecked",
-          "rule": "== true",
-          "message": "Документы не проверены юристом."
         }
       ]
     },
@@ -2144,26 +2104,13 @@
     },
     {
       "from": "DOC_SIGNING",
-      "to": "DOC_CHECK_LEGAL",
+      "to": "SIGNING_FUNDING",
       "by_roles": [
         "OP_MANAGER"
       ],
       "guards": [
         {
           "key": "contracts.signedUploaded",
-          "rule": "== true"
-        }
-      ]
-    },
-    {
-      "from": "DOC_CHECK_LEGAL",
-      "to": "SIGNING_FUNDING",
-      "by_roles": [
-        "LEGAL"
-      ],
-      "guards": [
-        {
-          "key": "contracts.legalChecked",
           "rule": "== true"
         }
       ]
@@ -2272,13 +2219,6 @@
       ]
     },
     {
-      "from": "DOC_CHECK_LEGAL",
-      "to": "CANCELLED",
-      "by_roles": [
-        "OP_MANAGER"
-      ]
-    },
-    {
       "from": "SIGNING_FUNDING",
       "to": "CANCELLED",
       "by_roles": [
@@ -2328,7 +2268,6 @@
             "INVESTOR_PENDING",
             "CONTRACT_PREP",
             "DOC_SIGNING",
-            "DOC_CHECK_LEGAL",
             "SIGNING_FUNDING",
             "VEHICLE_DELIVERY"
           ]
@@ -2362,8 +2301,7 @@
         {
           "role": "LEGAL",
           "allowed_from": [
-            "CONTRACT_PREP",
-            "DOC_CHECK_LEGAL"
+            "CONTRACT_PREP"
           ]
         }
       ]
