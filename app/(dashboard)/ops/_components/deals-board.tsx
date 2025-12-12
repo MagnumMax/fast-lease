@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
   type KeyboardEvent,
 } from "react";
 import {
@@ -106,15 +107,38 @@ type ComboboxFieldProps = {
   onChange: (value: string) => void;
   options: ComboboxOption[];
   disabled?: boolean;
+  action?: ReactNode;
+  onOpen?: () => void;
 };
 
-function ComboboxField({ label, placeholder, value, onChange, options, disabled }: ComboboxFieldProps) {
+function ComboboxField({
+  label,
+  placeholder,
+  value,
+  onChange,
+  options,
+  disabled,
+  action,
+  onOpen,
+}: ComboboxFieldProps) {
   const isDisabled = disabled || options.length === 0;
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground/80">{label}</label>
-      <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-foreground/80">{label}</label>
+        {action ? <div className="flex-shrink-0">{action}</div> : null}
+      </div>
+      <Select
+        value={value}
+        onValueChange={onChange}
+        onOpenChange={(open) => {
+          if (open && onOpen) {
+            onOpen();
+          }
+        }}
+        disabled={isDisabled}
+      >
         <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-left text-sm font-medium">
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -135,6 +159,7 @@ type OpsDealsBoardProps = {
   initialDeals: OpsDealSummary[];
   clientDirectory: OpsClientRecord[];
   vehicleDirectory: OpsCarRecord[];
+  sellerDirectory: OpsClientRecord[];
 };
 
 type VehicleOption = OpsCarRecord & { optionValue: string };
@@ -293,6 +318,7 @@ type DealFormState = {
   companyCode: DealCompanyCode;
   buyerType: "individual" | "company";
   sellerType: "individual" | "company";
+  sellerId: string;
 };
 
 function getPayloadValue(
@@ -401,10 +427,71 @@ const LEASE_ELIGIBLE_VEHICLE_STATUSES = new Set(["draft", "available", "maintena
 
 export function OpsDealsBoard({
   initialDeals,
-  clientDirectory,
-  vehicleDirectory,
+  clientDirectory: clientDirectoryProp,
+  vehicleDirectory: vehicleDirectoryProp,
+  sellerDirectory: sellerDirectoryProp,
 }: OpsDealsBoardProps) {
   const router = useRouter();
+  const [clientDirectory, setClientDirectory] = useState<OpsClientRecord[]>(clientDirectoryProp);
+  const [vehicleDirectory, setVehicleDirectory] = useState<OpsCarRecord[]>(vehicleDirectoryProp);
+  const [sellerDirectory, setSellerDirectory] = useState<OpsClientRecord[]>(sellerDirectoryProp);
+
+  useEffect(() => {
+    setClientDirectory(clientDirectoryProp);
+  }, [clientDirectoryProp]);
+
+  useEffect(() => {
+    setVehicleDirectory(vehicleDirectoryProp);
+  }, [vehicleDirectoryProp]);
+
+  useEffect(() => {
+    setSellerDirectory(sellerDirectoryProp);
+  }, [sellerDirectoryProp]);
+
+  async function refreshClients() {
+    try {
+      const response = await fetch("/api/ops/clients", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Не удалось загрузить покупателей");
+      }
+      const latest = (await response.json()) as OpsClientRecord[];
+      if (Array.isArray(latest)) {
+        setClientDirectory(latest);
+      }
+    } catch (error) {
+      console.error("[workflow] failed to refresh clients", error);
+    }
+  }
+
+  async function refreshVehicles() {
+    try {
+      const response = await fetch("/api/ops/cars", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Не удалось загрузить автомобили");
+      }
+      const latest = (await response.json()) as OpsCarRecord[];
+      if (Array.isArray(latest)) {
+        setVehicleDirectory(latest);
+      }
+    } catch (error) {
+      console.error("[workflow] failed to refresh vehicles", error);
+    }
+  }
+
+  async function refreshSellers() {
+    try {
+      const response = await fetch("/api/ops/sellers", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Не удалось загрузить продавцов");
+      }
+      const latest = (await response.json()) as OpsClientRecord[];
+      if (Array.isArray(latest)) {
+        setSellerDirectory(latest);
+      }
+    } catch (error) {
+      console.error("[workflow] failed to refresh sellers", error);
+    }
+  }
 
   const eligibleVehicles = useMemo(
     () =>
@@ -573,6 +660,37 @@ export function OpsDealsBoard({
       })),
     [clientDropdownOptions],
   );
+  const sellerDropdownOptions = useMemo(() => {
+    if (sellerDirectory.length === 0) {
+      return [] as Array<{ id: string; optionLabel: string; titleLabel: string }>;
+    }
+
+    const normalized = sellerDirectory.map((seller) => ({
+      id: seller.id,
+      name: (seller.name ?? "").trim(),
+      phone: seller.phone?.trim() ?? "",
+    }));
+    const padLength = normalized.reduce((max, item) => Math.max(max, item.name.length), 0) + 3;
+
+    return normalized.map((item) => {
+      const phoneLabel = item.phone.length > 0 ? item.phone : "—";
+      const baseTitle = item.name.length > 0 ? item.name : "—";
+      return {
+        id: item.id,
+        optionLabel: buildPaddedOptionLabel(item.name, phoneLabel, padLength),
+        titleLabel: item.phone.length > 0 ? `${baseTitle} · ${item.phone}` : baseTitle,
+      };
+    });
+  }, [sellerDirectory]);
+  const sellerComboboxOptions = useMemo(
+    () =>
+      sellerDropdownOptions.map((option) => ({
+        value: option.id,
+        label: option.optionLabel,
+        description: option.titleLabel,
+      })),
+    [sellerDropdownOptions],
+  );
   const vehicleDropdownOptions = useMemo(() => {
     if (vehicleOptions.length === 0) {
       return [] as Array<{ optionValue: string; optionLabel: string; titleLabel: string }>;
@@ -630,6 +748,7 @@ export function OpsDealsBoard({
     companyCode: DEFAULT_DEAL_COMPANY_CODE,
     buyerType: "individual",
     sellerType: "individual",
+    sellerId: sellerDirectory[0]?.id ?? "",
   }));
   const [showCustomSource, setShowCustomSource] = useState(false);
 
@@ -677,6 +796,25 @@ export function OpsDealsBoard({
     }));
   }, [defaultSource, formState.source]);
 
+  useEffect(() => {
+    if (sellerDirectory.some((seller) => seller.id === formState.sellerId)) {
+      return;
+    }
+
+    if (sellerDirectory.length === 0) {
+      if (!formState.sellerId) {
+        return;
+      }
+      setFormState((prev) => ({ ...prev, sellerId: "" }));
+      return;
+    }
+
+    setFormState((prev) => ({
+      ...prev,
+      sellerId: sellerDirectory[0]?.id ?? "",
+    }));
+  }, [sellerDirectory, formState.sellerId]);
+
   const selectedClient = useMemo(
     () => clientDirectory.find((client) => client.id === formState.clientId),
     [clientDirectory, formState.clientId],
@@ -685,6 +823,11 @@ export function OpsDealsBoard({
   const selectedVehicle = useMemo(
     () => vehicleOptions.find((vehicle) => vehicle.optionValue === formState.vehicleVin),
     [vehicleOptions, formState.vehicleVin],
+  );
+
+  const selectedSeller = useMemo(
+    () => sellerDirectory.find((seller) => seller.id === formState.sellerId),
+    [sellerDirectory, formState.sellerId],
   );
 
   useEffect(() => {
@@ -858,6 +1001,17 @@ export function OpsDealsBoard({
       return;
     }
 
+    if (!selectedSeller) {
+      setFeedback({
+        type: "error",
+        message:
+          sellerDirectory.length === 0
+            ? "Добавьте продавца в каталог и повторите попытку."
+            : "Выберите продавца из каталога.",
+      });
+      return;
+    }
+
     if (!buyerType || !sellerType) {
       setFeedback({
         type: "error",
@@ -913,6 +1067,7 @@ export function OpsDealsBoard({
         reference,
         buyerType,
         sellerType,
+        sellerId: selectedSeller.userId,
         customer: {
           full_name: selectedClient.name,
           email: selectedClient.email || undefined,
@@ -970,6 +1125,7 @@ export function OpsDealsBoard({
         companyCode: DEFAULT_DEAL_COMPANY_CODE,
         buyerType,
         sellerType,
+        sellerId: sellerDirectory[0]?.id ?? "",
       });
       setIsCreateOpen(false);
       router.refresh();
@@ -1042,26 +1198,78 @@ export function OpsDealsBoard({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80">Тип покупателя</label>
-              <Select
-                value={formState.buyerType}
-                onValueChange={(value) =>
-                  setFormState((prev) => ({ ...prev, buyerType: value as "individual" | "company" }))
+          <div className="space-y-2">
+            <ComboboxField
+              label="Автомобиль"
+              placeholder="Выберите автомобиль"
+              value={formState.vehicleVin}
+              onChange={(value) =>
+                setFormState((prev) => ({ ...prev, vehicleVin: value }))
+              }
+              options={vehicleComboboxOptions}
+              disabled={vehicleOptions.length === 0}
+              onOpen={() => {
+                void refreshVehicles();
+              }}
+              action={
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
+                >
+                  <Link
+                    href="/ops/cars"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1"
+                  >
+                    <Plus className="h-3 w-3" aria-hidden="true" />
+                    </Link>
+                </Button>
+              }
+            />
+          </div>
+
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: "minmax(0, 3fr) minmax(0, 1fr)" }}
+          >
+            <div className="lg:col-span-2">
+              <ComboboxField
+                label="Продавец"
+                placeholder="Выберите продавца"
+                value={formState.sellerId}
+                onChange={(value) =>
+                  setFormState((prev) => ({ ...prev, sellerId: value }))
                 }
-              >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
-                  <SelectValue placeholder="Выберите тип" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">Физлицо</SelectItem>
-                  <SelectItem value="company">Юрлицо</SelectItem>
-                </SelectContent>
-              </Select>
+                options={sellerComboboxOptions}
+                disabled={sellerDirectory.length === 0}
+                onOpen={() => {
+                  void refreshSellers();
+                }}
+                action={
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
+                  >
+                    <Link
+                      href="/ops/sellers"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1"
+                    >
+                      <Plus className="h-3 w-3" aria-hidden="true" />
+                      <span className="sr-only">Добавить продавца</span>
+                    </Link>
+                  </Button>
+                }
+              />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground/80">Тип продавца</label>
+            <div className="lg:col-span-1 space-y-2">
+              <label className="text-sm font-medium text-foreground/80">Тип</label>
               <Select
                 value={formState.sellerType}
                 onValueChange={(value) =>
@@ -1079,30 +1287,60 @@ export function OpsDealsBoard({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <ComboboxField
-              label="Покупатель"
-              placeholder="Выберите покупателя"
-              value={formState.clientId}
-              onChange={(value) =>
-                setFormState((prev) => ({ ...prev, clientId: value }))
-              }
-              options={clientComboboxOptions}
-              disabled={clientDirectory.length === 0}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <ComboboxField
-              label="Автомобиль"
-              placeholder="Выберите автомобиль"
-              value={formState.vehicleVin}
-              onChange={(value) =>
-                setFormState((prev) => ({ ...prev, vehicleVin: value }))
-              }
-              options={vehicleComboboxOptions}
-              disabled={vehicleOptions.length === 0}
-            />
+          <div
+            className="grid gap-3"
+            style={{ gridTemplateColumns: "minmax(0, 3fr) minmax(0, 1fr)" }}
+          >
+            <div className="lg:col-span-2">
+              <ComboboxField
+                label="Покупатель"
+                placeholder="Выберите покупателя"
+                value={formState.clientId}
+                onChange={(value) =>
+                  setFormState((prev) => ({ ...prev, clientId: value }))
+                }
+                options={clientComboboxOptions}
+                disabled={clientDirectory.length === 0}
+                onOpen={() => {
+                  void refreshClients();
+                }}
+                action={
+                  <Button
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
+                  >
+                    <Link
+                      href="/ops/clients"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1"
+                    >
+                      <Plus className="h-3 w-3" aria-hidden="true" />
+                      <span className="sr-only">Добавить покупателя</span>
+                    </Link>
+                  </Button>
+                }
+              />
+            </div>
+            <div className="lg:col-span-1 space-y-2">
+              <label className="text-sm font-medium text-foreground/80">Тип</label>
+              <Select
+                value={formState.buyerType}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({ ...prev, buyerType: value as "individual" | "company" }))
+                }
+              >
+                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
+                  <SelectValue placeholder="Выберите тип" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Физлицо</SelectItem>
+                  <SelectItem value="company">Юрлицо</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
