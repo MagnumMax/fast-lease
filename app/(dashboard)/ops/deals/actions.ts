@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createDealWithWorkflow } from "@/lib/workflow/http/create-deal";
 import type { DealRow } from "@/lib/workflow/http/create-deal";
 import type { CreateDealWithEntitiesRequest } from "@/lib/workflow";
@@ -18,6 +19,7 @@ const inputSchema = z.object({
   companyCode: z.enum(DEAL_COMPANY_CODES).default(DEFAULT_DEAL_COMPANY_CODE),
   buyerType: z.enum(["individual", "company"]),
   sellerType: z.enum(["individual", "company"]),
+  sellerId: z.string().uuid().optional(),
   customer: z.object({
     full_name: z.string().min(1),
     email: z.string().email().optional(),
@@ -60,9 +62,24 @@ export async function createOperationsDeal(
 
   console.log(`[DEBUG] parsed input:`, parsed.data);
 
+  let sellerType = parsed.data.sellerType;
+
+  if (parsed.data.sellerId) {
+    const supabase = await createSupabaseServiceClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("entity_type")
+      .eq("user_id", parsed.data.sellerId)
+      .maybeSingle();
+
+    if (profile?.entity_type) {
+      sellerType = profile.entity_type as "individual" | "company";
+    }
+  }
+
   const partyPayload = {
     buyer_type: parsed.data.buyerType,
-    seller_type: parsed.data.sellerType,
+    seller_type: sellerType,
   } satisfies Record<string, unknown>;
 
   const metadataPayload = parsed.data.reference
@@ -108,6 +125,19 @@ export async function createOperationsDeal(
   }
 
   console.log(`[DEBUG] deal created successfully:`, result.deal.id, `deal_number:`, result.deal.deal_number);
+
+  if (parsed.data.sellerId) {
+    const supabase = await createSupabaseServiceClient();
+    const { error: sellerUpdateError } = await supabase
+      .from("deals")
+      .update({ seller_id: parsed.data.sellerId })
+      .eq("id", result.deal.id);
+
+    if (sellerUpdateError) {
+      console.error("[workflow] failed to assign seller to deal", sellerUpdateError);
+      return { error: "Не удалось закрепить продавца за сделкой." };
+    }
+  }
 
   for (const path of getWorkspacePaths("deals")) {
     revalidatePath(path);

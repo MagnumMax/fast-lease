@@ -29,17 +29,17 @@ import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import {
   CLIENT_DOCUMENT_TYPES,
-  WORKFLOW_ROLE_LABELS,
   WORKFLOW_TASK_TEMPLATES_BY_TYPE,
   getClientDocumentLabel,
   type ClientDocumentTypeValue,
   normalizeClientDocumentType,
 } from "@/lib/supabase/queries/operations";
-import { filterChecklistTypes, type ClientDocumentChecklist } from "@/lib/workflow/documents-checklist";
+import { filterChecklistTypes, type ClientDocumentChecklist, type ClientDocumentSummary } from "@/lib/workflow/documents-checklist";
 import { WorkflowDocuments } from "@/app/(dashboard)/ops/_components/workflow-documents";
 
 import { deleteTaskGuardDocumentAction, getUploadUrlAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
+type ClientDocumentWithUrl = ClientDocumentSummary & { signedUrl: string | null };
 
 type TaskDetailViewProps = {
   task: WorkspaceTask;
@@ -52,9 +52,21 @@ type TaskDetailViewProps = {
     documentType: string | null;
   } | null;
   checklist: ClientDocumentChecklist | null;
-  deal: { id: string; dealNumber: string | null; clientId: string | null; vehicleId: string | null } | null;
+  deal: {
+    id: string;
+    dealNumber: string | null;
+    clientId: string | null;
+    sellerId: string | null;
+    sellerName?: string | null;
+    sellerType?: string | null;
+    vehicleId: string | null;
+    buyerEmail?: string | null;
+    buyerPhone?: string | null;
+    buyerType?: string | null;
+  } | null;
   stageTitle: string | null;
   guardDocuments: GuardDocumentLink[];
+  clientDocuments?: ClientDocumentWithUrl[];
   financeSnapshot?: FinanceReviewSnapshot | null;
   commercialOfferPriceVat?: number | null;
   completeAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
@@ -99,6 +111,10 @@ type DocumentDraft = {
   id: string;
   type: ClientDocumentTypeValue | "";
   file: File | null;
+  prefilledPath?: string | null;
+  prefilledTitle?: string | null;
+  prefilledUrl?: string | null;
+  prefilledId?: string | null;
 };
 
 type PartyTypeValue = "company" | "individual";
@@ -121,6 +137,8 @@ type FinanceEntitySnapshot = {
 };
 type FinanceReviewSnapshot = {
   deal: FinanceEntitySnapshot;
+  vehicle?: FinanceEntitySnapshot | null;
+  client?: FinanceEntitySnapshot | null;
 };
 
 const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
@@ -131,7 +149,6 @@ const COMPRESSION_HINT_LABEL = "20 МБ";
 const MAX_TOTAL_UPLOAD_BYTES = Number.POSITIVE_INFINITY;
 const MAX_TOTAL_UPLOAD_LABEL = "без лимита";
 const AECB_GUARD_KEY = "risk.approved";
-const AECB_CREDIT_REPORT_TYPE: ClientDocumentTypeValue = "aecb_credit_report";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
 const INVESTOR_APPROVAL_TASK_TYPE = "INVESTOR_APPROVAL";
 const BUYER_DOCS_GUARD_KEY = "docs.required.allUploaded";
@@ -181,28 +198,6 @@ const INDIVIDUAL_DOC_LABELS: Record<string, string> = {
   doc_emirates_id_driver: "Emirates ID покупателя",
   doc_driving_license: "Водительские права (UAE) покупателя",
 };
-const HIDE_FOR_INDIVIDUAL = new Set([
-  "buyer_company_email",
-  "buyer_company_phone",
-  "doc_company_license",
-  "doc_emirates_id_manager",
-  "doc_passport_manager",
-  "doc_emirates_id_driver",
-  "doc_passport_driver",
-  "doc_driving_license",
-]);
-const HIDE_FOR_COMPANY = new Set([
-  "doc_passport_buyer",
-  "doc_emirates_id_buyer",
-  "doc_driving_license_buyer",
-  "doc_second_driver_bundle",
-]);
-const INDIVIDUAL_ONLY_FIELDS = new Set([
-  "doc_passport_buyer",
-  "doc_emirates_id_buyer",
-  "doc_driving_license_buyer",
-  "doc_second_driver_bundle",
-]);
 const REOPEN_REASON_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "quality", label: "Качество / ошибка выполнения" },
   { value: "requirements", label: "Уточнены требования" },
@@ -221,18 +216,6 @@ function getFieldDocumentType(field: TaskFieldDefinition): ClientDocumentTypeVal
 }
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
-
-const HINTLESS_FIELD_IDS = new Set([
-  "buyer_type",
-  "seller_type",
-  "buyer_company_email",
-  "buyer_company_phone",
-  "buyer_contact_email",
-  "buyer_contact_phone",
-  "seller_contact_email",
-  "seller_contact_phone",
-  "seller_bank_details",
-]);
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -318,6 +301,7 @@ export function TaskDetailView({
   checklist,
   deal,
   guardDocuments,
+  clientDocuments,
   financeSnapshot,
   commercialOfferPriceVat,
   completeAction,
@@ -332,6 +316,9 @@ export function TaskDetailView({
   const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
   const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([]);
   const [docFieldFiles, setDocFieldFiles] = useState<Record<string, File | null>>({});
+  
+  // Track which prefilled fields were dismissed by the user
+  const [dismissedPrefills, setDismissedPrefills] = useState<Record<string, boolean>>({});
   const [docFieldValues, setDocFieldValues] = useState<Record<string, string>>({});
   const [formResetToken, setFormResetToken] = useState(0);
   const [pendingBuyerType, setPendingBuyerType] = useState<PartyTypeValue | "">("");
@@ -398,7 +385,6 @@ export function TaskDetailView({
   const [sellerType, setSellerType] = useState<PartyTypeValue | "">(() => initialSellerType);
   const buyerChecklist: string[] = [];
   const sellerChecklist: string[] = [];
-  const hasPendingBuyerChange = pendingBuyerType !== "" && pendingBuyerType !== buyerType;
   const [booleanFieldValues, setBooleanFieldValues] = useState<Record<string, boolean>>({});
 
   const schemaFieldsRaw = payload?.schema?.fields;
@@ -442,8 +428,6 @@ export function TaskDetailView({
     }
   }, [task.slaDueAt]);
   const enforcedDocumentType = isVehicleVerificationTask ? TECHNICAL_REPORT_TYPE : null;
-  const buyerDefaultDocType = "";
-  const sellerDefaultDocType = "";
   const requiresDocumentFlag =
     typeof payload?.requires_document === "boolean" ? payload.requires_document : null;
   const requiresDocument = isBuyerDocsTask || isSellerDocsTask
@@ -577,10 +561,25 @@ export function TaskDetailView({
       setDocumentDrafts([]);
       return;
     }
-    setDocumentDrafts((prev) =>
-      prev.length > 0 ? prev : [createDocumentDraft(defaultDocumentType)],
-    );
-  }, [defaultDocumentType, enableDocsSection]);
+
+    setDocumentDrafts((prev) => {
+      if (prev.length > 0) return prev;
+
+      const nextDrafts: DocumentDraft[] = [];
+      
+      // 1. Try to prefill from Client Documents
+      // (Prefilling is now handled in the schema fields directly for COLLECT_ tasks)
+      // We only keep this if we want to support prefilling for generic tasks in the future,
+      // but for now, based on user feedback, we disable it here to avoid duplication/confusion.
+      
+      // 2. If no drafts created (no client docs found), add one empty
+      if (nextDrafts.length === 0) {
+        nextDrafts.push(createDocumentDraft(defaultDocumentType));
+      }
+
+      return nextDrafts;
+    });
+  }, [defaultDocumentType, enableDocsSection, clientDocuments, guardDocuments, task.type]);
 
   const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
   const isCompleted = task.status === "DONE";
@@ -656,6 +655,9 @@ export function TaskDetailView({
   const vehicleSlug = deal?.vehicleId
     ? buildSlugWithId(task.dealVehicleName ?? null, deal.vehicleId) || deal.vehicleId
     : null;
+  const sellerSlug = deal?.sellerId
+    ? buildSlugWithId(task.dealSellerName ?? null, deal.sellerId) || deal.sellerId
+    : null;
   const guardDocumentTypeLabel = guardState?.documentType
     ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
     : null;
@@ -680,7 +682,8 @@ export function TaskDetailView({
       : deadlineInfo
         ? `Проверьте детали, заполните форму ниже и завершите задачу до ${deadlineInfo}.`
         : "Проверьте детали, заполните форму ниже и завершите задачу.";
-  const taskInstruction = instructionShort && instructionShort.trim().length > 0 ? instructionShort : defaultInstruction;
+  const taskInstruction =
+    !isCompleted && (instructionShort && instructionShort.trim().length > 0 ? instructionShort : defaultInstruction);
 
   function handleBackNavigation() {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -912,8 +915,7 @@ export function TaskDetailView({
               className="flex flex-col gap-2 rounded-md border border-border/60 bg-background px-3 py-2 text-xs text-foreground"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="flex items-center gap-2 font-medium text-foreground">
-                  <Paperclip className="h-3 w-3 text-brand-600" />
+                <span className="font-medium text-foreground">
                   {label}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
@@ -945,7 +947,7 @@ export function TaskDetailView({
 
   function renderFinanceSnapshot(snapshot: FinanceReviewSnapshot | null) {
     if (!snapshot) return null;
-    const entities = [snapshot.deal].filter(Boolean) as FinanceEntitySnapshot[];
+    const entities = [snapshot.deal, snapshot.vehicle, snapshot.client].filter(Boolean) as FinanceEntitySnapshot[];
     if (!entities.length) return null;
     const dealEntity = snapshot.deal;
     const financedAmount = (() => {
@@ -1069,7 +1071,7 @@ export function TaskDetailView({
               fileName: file.name,
             });
 
-            if (!urlResult.success) {
+            if ("error" in urlResult) {
               throw new Error(`Не удалось получить ссылку для загрузки файла ${file.name}: ${urlResult.error}`);
             }
 
@@ -1159,21 +1161,8 @@ export function TaskDetailView({
               </Link>
             </div>
           ) : null}
-          {task.isWorkflow && (deal?.clientId || deal?.vehicleId) ? (
+          {task.isWorkflow && (deal?.clientId || deal?.vehicleId || deal?.sellerId) ? (
             <div className="flex flex-col gap-2">
-              {deal?.clientId ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-medium text-foreground/80">Покупатель:</span>
-                  <Link
-                    href={
-                      clientSlug ? `/ops/clients/${clientSlug}` : `/ops/clients/${deal.clientId}`
-                    }
-                    className="text-xs font-semibold uppercase tracking-wide text-brand-600 underline underline-offset-2"
-                  >
-                    {task.dealClientName ?? deal.clientId.slice(0, 8)}
-                  </Link>
-                </div>
-              ) : null}
               {deal?.vehicleId ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-foreground/80">Авто:</span>
@@ -1185,6 +1174,42 @@ export function TaskDetailView({
                   >
                     {task.dealVehicleName ?? deal.vehicleId.slice(0, 8)}
                   </Link>
+                </div>
+              ) : null}
+              {deal?.clientId ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-foreground/80">Покупатель:</span>
+                  <Link
+                    href={
+                      clientSlug ? `/ops/clients/${clientSlug}` : `/ops/clients/${deal.clientId}`
+                    }
+                    className="text-xs font-semibold uppercase tracking-wide text-brand-600 underline underline-offset-2"
+                  >
+                    {task.dealClientName ?? deal.clientId.slice(0, 8)}
+                  </Link>
+                  {deal.buyerType ? (
+                    <span className="text-xs text-muted-foreground">
+                      ({deal.buyerType === "company" ? "Юр. лицо" : deal.buyerType === "individual" ? "Физ. лицо" : deal.buyerType})
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+              {deal?.sellerId ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-medium text-foreground/80">Продавец:</span>
+                  <Link
+                    href={
+                      sellerSlug ? `/ops/clients/${sellerSlug}` : `/ops/clients/${deal.sellerId}`
+                    }
+                    className="text-xs font-semibold uppercase tracking-wide text-brand-600 underline underline-offset-2"
+                  >
+                    {task.dealSellerName ?? deal.sellerName ?? deal.sellerId.slice(0, 8)}
+                  </Link>
+                  {deal.sellerType ? (
+                    <span className="text-xs text-muted-foreground">
+                      ({deal.sellerType === "company" ? "Юр. лицо" : deal.sellerType === "individual" ? "Физ. лицо" : deal.sellerType})
+                    </span>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -1226,12 +1251,6 @@ export function TaskDetailView({
           {guardDocumentTypeLabel ? (
             <p className="text-xs text-muted-foreground">Тип документа: {guardDocumentTypeLabel}</p>
           ) : null}
-          <div className="mt-2 rounded-lg border border-dashed border-border/70 bg-muted/25 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Что сделать</p>
-            <p className="mt-1 text-sm text-foreground/80">
-              {instructionShort && instructionShort.trim().length > 0 ? instructionShort : taskInstruction}
-            </p>
-          </div>
         </CardContent>
       </Card>
 
@@ -1313,12 +1332,6 @@ export function TaskDetailView({
             </div>
           ) : null}
 
-          {isCompleted ? (
-            <div className="mb-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground">
-              Задача завершена. Данные и документы доступны только для просмотра.
-            </div>
-          ) : null}
-
           {hasVisibleGuardDocuments ? (
             <div className="mb-4 rounded-lg border border-border/60 bg-muted/15 p-4 shadow-sm">
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -1346,9 +1359,9 @@ export function TaskDetailView({
             {guardMeta ? <input type="hidden" name="guardKey" value={guardMeta.key} /> : null}
             {guardMeta ? <input type="hidden" name="guardLabel" value={guardMeta.label} /> : null}
 
-            {confirmCarInstructions ? (
+            {taskInstruction ? (
               <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground">
-                {confirmCarInstructions}
+                {taskInstruction}
               </div>
             ) : null}
             {documentActionError ? (
@@ -1376,7 +1389,6 @@ export function TaskDetailView({
                         ? (payload.defaults as Record<string, unknown>)[fieldId]
                         : undefined;
                   const baseLabel = field.label ?? fieldId;
-                  const rawHint = field.hint ?? "";
                   const hint = ""; // хинты скрываем для компактности
                   let label = baseLabel;
                   if (fieldId === "buyer_contact_email" && buyerType === "individual") {
@@ -1626,16 +1638,63 @@ export function TaskDetailView({
                     const effectiveDocType = docFieldType ?? "";
                     const docFieldInputId = `document-field-${fieldId}`;
 
+                    // --- Logic for PREFILLED documents in schema fields ---
+                    const prefilledDoc =
+                      !currentFile && !attachedDoc && !dismissedPrefills[fieldId] && effectiveDocType && clientDocuments
+                        ? clientDocuments.find((d) => d.document_type === effectiveDocType)
+                        : null;
+                    const isPrefilled = Boolean(prefilledDoc);
+                    // -----------------------------------------------------
+
                     const fileControl = (
                       <div className="space-y-2">
                         <input type="hidden" name={`documentFields[${fieldId}][type]`} value={effectiveDocType} />
-                        <input
-                          id={docFieldInputId}
-                          type="file"
-                          name={`documentFields[${fieldId}][file]`}
-                          accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                          className="sr-only"
-                          onChange={(event) => {
+                        {isPrefilled && prefilledDoc ? (
+                          <>
+                            <input
+                              type="hidden"
+                              name={`documentFields[${fieldId}][prefilled_path]`}
+                              value={prefilledDoc.storage_path ?? ""}
+                            />
+                            <input
+                              type="hidden"
+                              name={`documentFields[${fieldId}][prefilled_id]`}
+                              value={prefilledDoc.id}
+                            />
+                            
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="flex items-center gap-2">
+                                {prefilledDoc.signedUrl ? (
+                                  <Button asChild size="sm" variant="outline" className="rounded-lg">
+                                    <Link href={prefilledDoc.signedUrl} target="_blank">
+                                      Открыть
+                                    </Link>
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 px-2 text-xs"
+                                  onClick={() => {
+                                    setDismissedPrefills((prev) => ({ ...prev, [fieldId]: true }));
+                                  }}
+                                  disabled={pending || isReadOnly}
+                                >
+                                  Заменить
+                                </Button>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              id={docFieldInputId}
+                              type="file"
+                              name={`documentFields[${fieldId}][file]`}
+                              accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                              className="sr-only"
+                              onChange={(event) => {
                                 const file = event.currentTarget.files?.[0] ?? null;
                                 const prevFile = docFieldFiles[fieldId] ?? null;
                                 const currentTotal = getTotalUploadSize(docFieldFiles, documentDrafts);
@@ -1663,77 +1722,78 @@ export function TaskDetailView({
                               disabled={pending || isReadOnly}
                             />
                             <input type="hidden" name={`field:${fieldId}`} value={currentValue} />
-                        <div className="flex flex-wrap items-center gap-2 justify-end">
-                          {fileLabel ? (
-                            <span className="text-xs font-medium text-foreground">{fileLabel}</span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">Файл не выбран</span>
-                          )}
-                          <div className="flex items-center gap-2">
-                            {attachedDoc?.url ? (
-                              <Button asChild type="button" variant="outline" size="icon" className="rounded-lg">
-                                <Link href={attachedDoc.url} target="_blank">
-                                  <Paperclip className="h-4 w-4" />
-                                  <span className="sr-only">Открыть файл</span>
-                                </Link>
-                              </Button>
-                            ) : null}
-                            {fileLabel ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-lg"
-                                onClick={() => {
-                                  triggerFilePicker(docFieldInputId);
-                                }}
-                                disabled={pending || isReadOnly}
-                              >
-                                <RefreshCcw className="h-4 w-4" />
-                                <span className="sr-only">Заменить файл</span>
-                              </Button>
-                            ) : (
-                              <Button
-                                type="button"
-                                variant="default"
-                                size="sm"
-                                className="rounded-lg"
-                                onClick={() => {
-                                  triggerFilePicker(docFieldInputId);
-                                }}
-                                disabled={pending || isReadOnly}
-                              >
-                                <Paperclip className="mr-2 h-4 w-4" />
-                                Загрузить
-                              </Button>
-                            )}
-                            {fileLabel ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="rounded-lg text-destructive"
-                                onClick={() => {
-                                  if (attachedDoc && !currentFile) {
-                                    handleDeleteGuardDocument(attachedDoc.id);
-                                  }
-                                  resetFileInputValue(docFieldInputId);
-                                  setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
-                                  setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
-                                  setDocFieldWarning(fieldId, null);
-                                }}
-                                disabled={pending || deletingAttached || isReadOnly}
-                              >
-                                {deletingAttached ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
+                            <div className="flex flex-wrap items-center gap-2 justify-end">
+                              {fileLabel ? (
+                                <span className="text-xs font-medium text-foreground">{fileLabel}</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Файл не выбран</span>
+                              )}
+                              <div className="flex items-center gap-2">
+                                {attachedDoc?.url ? (
+                                  <Button asChild type="button" variant="outline" size="sm" className="rounded-lg">
+                                    <Link href={attachedDoc.url} target="_blank">
+                                      Открыть
+                                    </Link>
+                                  </Button>
+                                ) : null}
+                                {fileLabel ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-lg"
+                                    onClick={() => {
+                                      triggerFilePicker(docFieldInputId);
+                                    }}
+                                    disabled={pending || isReadOnly}
+                                  >
+                                    <RefreshCcw className="h-4 w-4" />
+                                    <span className="sr-only">Заменить файл</span>
+                                  </Button>
                                 ) : (
-                                  <Trash2 className="h-4 w-4" />
+                                  <Button
+                                    type="button"
+                                    variant="default"
+                                    size="sm"
+                                    className="rounded-lg"
+                                    onClick={() => {
+                                      triggerFilePicker(docFieldInputId);
+                                    }}
+                                    disabled={pending || isReadOnly}
+                                  >
+                                    <Paperclip className="mr-2 h-4 w-4" />
+                                    Загрузить
+                                  </Button>
                                 )}
-                                <span className="sr-only">Удалить файл</span>
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
+                                {fileLabel ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="rounded-lg text-destructive"
+                                    onClick={() => {
+                                      if (attachedDoc && !currentFile) {
+                                        handleDeleteGuardDocument(attachedDoc.id);
+                                      }
+                                      resetFileInputValue(docFieldInputId);
+                                      setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
+                                      setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
+                                      setDocFieldWarning(fieldId, null);
+                                    }}
+                                    disabled={pending || deletingAttached || isReadOnly}
+                                  >
+                                    {deletingAttached ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                    <span className="sr-only">Удалить файл</span>
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </>
+                        )}
                         {requiredDocErrors[fieldId] ? (
                           <div className="flex justify-end">
                             <Badge
@@ -1759,12 +1819,22 @@ export function TaskDetailView({
                     return renderRow(fileControl);
                   }
 
+                  // Prefill contact fields from deal/profile data if available and not already set
+                  let prefilledTextValue = effectiveValue;
+                  if (!prefilledTextValue) {
+                    if (fieldId === "buyer_contact_email" && deal?.buyerEmail) {
+                      prefilledTextValue = deal.buyerEmail;
+                    } else if (fieldId === "buyer_contact_phone" && deal?.buyerPhone) {
+                      prefilledTextValue = deal.buyerPhone;
+                    }
+                  }
+
                   const inputControl = (
                     <>
                       <Input
                         id={`field-${fieldId}`}
                         name={`field:${fieldId}`}
-                        defaultValue={effectiveValue ?? ""}
+                        defaultValue={prefilledTextValue ?? ""}
                         required={isRequired}
                         placeholder={hint}
                         className="rounded-lg"
@@ -1806,6 +1876,8 @@ export function TaskDetailView({
                   ) : (
                     documentDrafts.map((draft, index) => {
                       const draftInputId = `document-file-${draft.id}`;
+                      const isPrefilled = Boolean(draft.prefilledPath);
+
                       return (
                         <div
                           key={draft.id}
@@ -1839,7 +1911,7 @@ export function TaskDetailView({
                                       : (nextValue as ClientDocumentTypeValue);
                                   handleDocumentDraftTypeChange(draft.id, normalized);
                                 }}
-                                disabled={pending || isReadOnly}
+                                disabled={pending || isReadOnly || isPrefilled}
                               >
                                 <SelectTrigger className="rounded-lg">
                                   <SelectValue placeholder="Выберите тип документа" />
@@ -1854,100 +1926,160 @@ export function TaskDetailView({
                                 </SelectContent>
                               </Select>
                               <input type="hidden" name={`documents[${draft.id}][type]`} value={draft.type} />
+                              {isPrefilled ? (
+                                <>
+                                  <input type="hidden" name={`documents[${draft.id}][prefilled_path]`} value={draft.prefilledPath ?? ""} />
+                                  <input type="hidden" name={`documents[${draft.id}][prefilled_title]`} value={draft.prefilledTitle ?? ""} />
+                                  <input type="hidden" name={`documents[${draft.id}][prefilled_id]`} value={draft.prefilledId ?? ""} />
+                                </>
+                              ) : null}
                             </div>
                             <div className="flex-1 space-y-2">
-                      <Label htmlFor={draftInputId}>
-                        Файл
-                      </Label>
-                      <input
-                        id={draftInputId}
-                        type="file"
-                        name={`documents[${draft.id}][file]`}
-                        accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                        onChange={(event) => {
-                          const file = event.currentTarget.files?.[0] ?? null;
-                          const currentTotal = getTotalUploadSize(docFieldFiles, documentDrafts);
-                          const prevDraft = documentDrafts.find((entry) => entry.id === draft.id);
-                          const prevSize = getFileSize(prevDraft?.file);
-                          const nextTotal = currentTotal - prevSize + getFileSize(file);
-                          if (nextTotal > MAX_TOTAL_UPLOAD_BYTES) {
-                            handleTotalOversize();
-                          } else {
-                            setUploadValidationError(null);
-                          }
-                          setDraftWarning(draft.id, file && isFileLarge(file) ? buildCompressionWarning() : null);
-                          handleDocumentDraftFileChange(draft.id, file);
-                        }}
-                        className="sr-only"
-                        disabled={pending || isReadOnly}
-                      />
-                      <div className="flex flex-wrap items-center gap-2 justify-end">
-                        <span className="text-xs text-muted-foreground">
-                          {draft.file?.name ? `Выбран файл: ${draft.file.name}` : "Файл не выбран"}
-                        </span>
-                        <div className="flex items-center gap-2">
-                                  {draft.file?.name ? (
+                              <Label htmlFor={draftInputId}>
+                                {isPrefilled ? "Найден в профиле клиента" : "Файл"}
+                              </Label>
+                              
+                              {isPrefilled ? (
+                                <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                                  <div className="flex items-center gap-2 overflow-hidden">
+                                    <Paperclip className="h-4 w-4 text-brand-600 flex-shrink-0" />
+                                    <span className="truncate text-xs font-medium text-foreground" title={draft.prefilledTitle ?? ""}>
+                                      {draft.prefilledTitle || "Документ"}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {draft.prefilledUrl ? (
+                                      <Button asChild size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                        <Link href={draft.prefilledUrl} target="_blank">
+                                          <span className="sr-only">Открыть</span>
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            className="h-4 w-4"
+                                          >
+                                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                            <polyline points="15 3 21 3 21 9" />
+                                            <line x1="10" y1="14" x2="21" y2="3" />
+                                          </svg>
+                                        </Link>
+                                      </Button>
+                                    ) : null}
                                     <Button
                                       type="button"
                                       variant="ghost"
-                                      size="icon"
-                                      className="rounded-lg"
+                                      size="sm"
+                                      className="h-8 px-2 text-xs"
                                       onClick={() => {
-                                        triggerFilePicker(draftInputId);
+                                        // Clear prefilled data to switch to upload mode
+                                        setDocumentDrafts((prev) => prev.map(d => 
+                                          d.id === draft.id 
+                                            ? { ...d, prefilledPath: undefined, prefilledTitle: undefined, prefilledUrl: undefined, prefilledId: undefined, file: null } 
+                                            : d
+                                        ));
                                       }}
-                                      disabled={pending || isReadOnly}
                                     >
-                                      <RefreshCcw className="h-4 w-4" />
-                                      <span className="sr-only">Заменить файл</span>
+                                      Заменить
                                     </Button>
-                                  ) : (
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      className="rounded-lg"
-                                      onClick={() => {
-                                        triggerFilePicker(draftInputId);
-                                      }}
-                                      disabled={pending || isReadOnly}
-                                    >
-                                      <Paperclip className="mr-2 h-4 w-4" />
-                                      Выбрать файл
-                                    </Button>
-                                  )}
-                                  {draft.file?.name ? (
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="rounded-lg text-destructive"
-                                  onClick={() => {
-                                    resetFileInputValue(draftInputId);
-                                    handleDocumentDraftFileChange(draft.id, null);
-                                    setDraftWarning(draft.id, null);
-                                  }}
-                                  disabled={pending || isReadOnly}
-                                >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span className="sr-only">Удалить файл</span>
-                                    </Button>
-                                  ) : null}
+                                  </div>
                                 </div>
+                              ) : (
+                                <>
+                                  <input
+                                    id={draftInputId}
+                                    type="file"
+                                    name={`documents[${draft.id}][file]`}
+                                    accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                                    onChange={(event) => {
+                                      const file = event.currentTarget.files?.[0] ?? null;
+                                      const currentTotal = getTotalUploadSize(docFieldFiles, documentDrafts);
+                                      const prevDraft = documentDrafts.find((entry) => entry.id === draft.id);
+                                      const prevSize = getFileSize(prevDraft?.file);
+                                      const nextTotal = currentTotal - prevSize + getFileSize(file);
+                                      if (nextTotal > MAX_TOTAL_UPLOAD_BYTES) {
+                                        handleTotalOversize();
+                                      } else {
+                                        setUploadValidationError(null);
+                                      }
+                                      setDraftWarning(draft.id, file && isFileLarge(file) ? buildCompressionWarning() : null);
+                                      handleDocumentDraftFileChange(draft.id, file);
+                                    }}
+                                    className="sr-only"
+                                    disabled={pending || isReadOnly}
+                                  />
+                                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                                    <span className="text-xs text-muted-foreground">
+                                      {draft.file?.name ? `Выбран файл: ${draft.file.name}` : "Файл не выбран"}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      {draft.file?.name ? (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="rounded-lg"
+                                          onClick={() => {
+                                            triggerFilePicker(draftInputId);
+                                          }}
+                                          disabled={pending || isReadOnly}
+                                        >
+                                          <RefreshCcw className="h-4 w-4" />
+                                          <span className="sr-only">Заменить файл</span>
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          className="rounded-lg"
+                                          onClick={() => {
+                                            triggerFilePicker(draftInputId);
+                                          }}
+                                          disabled={pending || isReadOnly}
+                                        >
+                                          <Paperclip className="mr-2 h-4 w-4" />
+                                          Выбрать файл
+                                        </Button>
+                                      )}
+                                      {draft.file?.name ? (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="rounded-lg text-destructive"
+                                          onClick={() => {
+                                            resetFileInputValue(draftInputId);
+                                            handleDocumentDraftFileChange(draft.id, null);
+                                            setDraftWarning(draft.id, null);
+                                          }}
+                                          disabled={pending || isReadOnly}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          <span className="sr-only">Удалить файл</span>
+                                        </Button>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            {draftWarnings[draft.id] ? (
+                              <div className="flex justify-end">
+                                <Badge
+                                  variant="secondary"
+                                  className="bg-amber-400 text-amber-950 border-amber-400 text-[11px] font-medium"
+                                >
+                                  {draftWarnings[draft.id]}
+                                </Badge>
+                              </div>
+                            ) : null}
                           </div>
                         </div>
-                        {draftWarnings[draft.id] ? (
-                          <div className="flex justify-end">
-                            <Badge
-                              variant="secondary"
-                              className="bg-amber-400 text-amber-950 border-amber-400 text-[11px] font-medium"
-                            >
-                              {draftWarnings[draft.id]}
-                            </Badge>
-                          </div>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })
+                      );
+                    })
               )}
                 </div>
 

@@ -129,72 +129,23 @@ export function ClientDetailView({
   supportTickets,
   referral,
 }: ClientDetailProps) {
-  const resolveDocumentContext = useCallback((doc: OpsClientDocument): "personal" | "company" => {
-    if (doc.context === "company" || doc.context === "personal") {
-      return doc.context;
-    }
-
-    const documentType = (doc.documentType ?? "").toLowerCase();
-    const category = (doc.category ?? "").toLowerCase();
-    const metadataContext =
-      typeof doc.metadata === "object" && doc.metadata !== null
-        ? String((doc.metadata as Record<string, unknown>)["upload_context"] ?? "").toLowerCase()
-        : "";
-
-    if (metadataContext === "company") {
-      return "company";
-    }
-    if (documentType === "company_license" || category === "company") {
-      return "company";
-    }
-
-    const nameLower = (doc.name ?? "").toLowerCase();
-    if (nameLower.includes("company") || nameLower.includes("license")) {
-      return "company";
-    }
-
-    return "personal";
-  }, []);
-
-  const personalDocuments = useMemo(
-    () => documents.filter((doc) => resolveDocumentContext(doc) === "personal"),
-    [documents, resolveDocumentContext],
-  );
-  const companyDocumentsList = useMemo(
-    () => documents.filter((doc) => resolveDocumentContext(doc) === "company"),
-    [documents, resolveDocumentContext],
-  );
   const hasAnyDocuments = documents.length > 0;
   const companyInfo = profile.company;
   const clientTypeLabel = profile.clientType === "Company" ? "Company" : "Personal";
 
-  const personalEmptyMessage = hasAnyDocuments
-    ? "Документы идентификации не найдены. Загрузите документы через кнопку «Редактировать»."
-    : "Документы покупателя отсутствуют. Нажмите «Редактировать» для загрузки документов идентификации.";
-  const companyEmptyMessage = hasAnyDocuments
-    ? "Документы компании не найдены. Загрузите документы через кнопку «Редактировать»."
-    : "Документы компании отсутствуют. Нажмите «Редактировать» для загрузки документов.";
+  const emptyMessage = hasAnyDocuments
+    ? "Документы не найдены. Загрузите документы через кнопку «Редактировать»."
+    : "Документы отсутствуют. Нажмите «Редактировать» для загрузки документов.";
 
-  const personalDocumentItems = useMemo(
+  const allDocumentItems = useMemo(
     () =>
-      personalDocuments.map((doc) => ({
+      documents.map((doc) => ({
         id: doc.id,
         title: doc.name,
         uploadedAt: doc.uploadedAt,
         url: doc.url ?? null,
       })),
-    [personalDocuments],
-  );
-
-  const companyDocumentItems = useMemo(
-    () =>
-      companyDocumentsList.map((doc) => ({
-        id: doc.id,
-        title: doc.name,
-        uploadedAt: doc.uploadedAt,
-        url: doc.url ?? null,
-      })),
-    [companyDocumentsList],
+    [documents],
   );
 
   const financialHighlights = [
@@ -286,27 +237,14 @@ export function ClientDetailView({
 
           <div className="space-y-4 border-t border-border/40 pt-4">
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Документы покупателя</p>
+              <p className="text-sm font-semibold text-foreground">Документы</p>
             </div>
+
             <DocumentList
-              documents={personalDocumentItems}
-              emptyMessage={personalEmptyMessage}
+              documents={allDocumentItems}
+              emptyMessage={emptyMessage}
             />
           </div>
-
-          {profile.clientType === "Company" ? (
-            <div className="space-y-4 border-t border-border/40 pt-4">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-foreground">
-                  Документы компании и контактного лица
-                </p>
-              </div>
-              <DocumentList
-                documents={companyDocumentItems}
-                emptyMessage={companyEmptyMessage}
-              />
-            </div>
-          ) : null}
         </div>
       </div>
 

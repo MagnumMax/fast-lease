@@ -9,20 +9,20 @@ import {
 describe("documents checklist helpers", () => {
   it("filters out disabled checklist entries", () => {
     const source = [
-      "passport",
+      "doc_passport_buyer",
       "bank_statements",
       "proof_of_income",
       "company_license",
     ];
 
-    expect(filterChecklistTypes(source)).toEqual(["passport", "company_license"]);
+    expect(filterChecklistTypes(source)).toEqual(["doc_passport_buyer", "company_license"]);
   });
 
   it("extracts checklist defaults from task payload when shape is valid", () => {
     const payload = {
       defaults: {
         checklist: [
-          " passport_copy  ",
+          " doc_passport_manager  ",
           "",
           null,
           "bank_statement",
@@ -32,7 +32,7 @@ describe("documents checklist helpers", () => {
     };
 
     expect(extractChecklistFromTaskPayload(payload)).toEqual([
-      " passport_copy  ",
+      " doc_passport_manager  ",
       "bank_statement",
       "salary_certificate",
     ]);
@@ -48,11 +48,11 @@ describe("documents checklist helpers", () => {
   });
 
   it("normalizes document types, labels and fulfillment", () => {
-    const checklist = ["passport_copy", "company_bank_statement", "other"];
+    const checklist = ["doc_passport_buyer", "company_bank_statement", "other"];
     const documents = [
       {
         id: "doc-1",
-        document_type: "passport",
+        document_type: "doc_passport_buyer",
         status: "uploaded",
         title: "Passport",
       },
@@ -70,7 +70,7 @@ describe("documents checklist helpers", () => {
     expect(result.items).toHaveLength(3);
 
     const passportEntry = result.items[0];
-    expect(passportEntry.normalizedType).toBe("passport");
+    expect(passportEntry.normalizedType).toBe("doc_passport_buyer");
     expect(passportEntry.label).toMatch(/паспорт/i);
     expect(passportEntry.fulfilled).toBe(true);
     expect(passportEntry.matches[0]?.id).toBe("doc-1");

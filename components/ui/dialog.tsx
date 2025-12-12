@@ -34,15 +34,15 @@ const DialogContent = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
-    <DialogPrimitive.Content
+  <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-overlay w-[min(calc(100vw-1.5rem),42rem)] max-h-[92vh] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-6 shadow-2xl outline-none overscroll-contain data-[state=open]:animate-dialog-content-show sm:w-[min(calc(100vw-3rem),48rem)] sm:max-h-[88vh] md:max-h-[85vh]",
+        "fixed left-1/2 top-1/2 z-overlay flex w-[min(calc(100vw-1.5rem),42rem)] max-h-[92vh] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-2xl outline-none overscroll-contain data-[state=open]:animate-dialog-content-show sm:w-[min(calc(100vw-3rem),48rem)] sm:max-h-[88vh] md:max-h-[85vh]",
         className,
       )}
       {...props}
     >
-      <div className="max-h-full overflow-y-auto pr-0.5">{children}</div>
+      <div className="max-h-full flex-1 overflow-y-auto pr-0.5">{children}</div>
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full bg-surface-subtle p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
         <span className="sr-only">Close</span>
         ×

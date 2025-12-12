@@ -42,7 +42,7 @@ SELECT
         ELSE 'BREACHED'
     END,
     jsonb_build_object(
-        'document_types', ARRAY['emirates_id', 'passport', 'salary_certificate', 'bank_statement'],
+        'document_types', ARRAY['doc_emirates_id_buyer', 'doc_passport_buyer', 'salary_certificate', 'bank_statement'],
         'verification_stage', CASE WHEN RANDOM() > 0.5 THEN 'kyc' ELSE 'financial' END,
         'priority', CASE WHEN RANDOM() > 0.8 THEN 'high' WHEN RANDOM() > 0.4 THEN 'medium' ELSE 'low' END,
         'estimated_duration', (RANDOM() * 4 + 2)::numeric(3,1)
@@ -860,7 +860,7 @@ SELECT
     'docs_verification_task',
     jsonb_build_object(
         'task_type', 'document_verification',
-        'required_documents', ARRAY['emirates_id', 'passport', 'bank_statement'],
+        'document_types', ARRAY['doc_emirates_id_buyer', 'doc_passport_buyer', 'salary_certificate', 'bank_statement'],
         'sla_hours', 24,
         'assignee_role', 'OP_MANAGER'
     ),

@@ -166,7 +166,14 @@ type VehicleOption = OpsCarRecord & { optionValue: string };
 
 type Feedback = { type: "error"; message: string };
 
-type SortField = "dealId" | "vehicle" | "client" | "status" | "nextAction" | "contractStartDate";
+type SortField =
+  | "dealId"
+  | "vehicle"
+  | "client"
+  | "seller"
+  | "status"
+  | "nextAction"
+  | "contractStartDate";
 type SortDirection = "asc" | "desc";
 type SortState = { field: SortField; direction: SortDirection };
 const DEFAULT_SORT: SortState = { field: "status", direction: "asc" };
@@ -316,8 +323,6 @@ type DealFormState = {
   vehicleVin: string;
   source: string;
   companyCode: DealCompanyCode;
-  buyerType: "individual" | "company";
-  sellerType: "individual" | "company";
   sellerId: string;
 };
 
@@ -418,7 +423,8 @@ function mapDealRowToSummary(
     nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
     slaDueAt,
     guardStatuses,
-    contractStartDate: null,
+    amount: row.total_amount ? `AED ${Number(row.total_amount).toLocaleString("en-US")}` : undefined,
+    contractStartDate: row.contract_start_date ?? null,
     companyCode,
   };
 }
@@ -513,6 +519,10 @@ export function OpsDealsBoard({
 
   const { setHeaderActions, searchQuery } = useDashboard();
   const [deals, setDeals] = useState<OpsDealSummary[]>(() => initialDeals);
+
+  useEffect(() => {
+    setDeals(initialDeals);
+  }, [initialDeals]);
 
   const [view, setView] = useState<"kanban" | "table">("table");
   const [statusFilter, setStatusFilter] = useState<OpsDealStatusKey | "all">("all");
@@ -634,20 +644,32 @@ export function OpsDealsBoard({
       return [] as Array<{ id: string; optionLabel: string; titleLabel: string }>;
     }
 
-    const normalized = clientDirectory.map((client) => ({
-      id: client.id,
-      name: (client.name ?? "").trim(),
-      phone: client.phone?.trim() ?? "",
-    }));
+    const normalized = clientDirectory.map((client) => {
+      const entityType = client.entityType;
+      const typeLabel =
+        entityType === "company"
+          ? "Юрлицо"
+          : entityType === "individual"
+            ? "Физлицо"
+            : undefined;
+      return {
+        id: client.id,
+        name: (client.name ?? "").trim(),
+        phone: client.phone?.trim() ?? "",
+        typeLabel,
+      };
+    });
     const padLength = normalized.reduce((max, item) => Math.max(max, item.name.length), 0) + 3;
 
     return normalized.map((item) => {
       const phoneLabel = item.phone.length > 0 ? item.phone : "—";
+      const typeSuffix = item.phone.length > 0 && item.typeLabel ? ` (${item.typeLabel})` : "";
+      const phoneWithType = `${phoneLabel}${typeSuffix}`;
       const baseTitle = item.name.length > 0 ? item.name : "—";
       return {
         id: item.id,
-        optionLabel: buildPaddedOptionLabel(item.name, phoneLabel, padLength),
-        titleLabel: item.phone.length > 0 ? `${baseTitle} · ${item.phone}` : baseTitle,
+        optionLabel: buildPaddedOptionLabel(item.name, phoneWithType, padLength),
+        titleLabel: item.phone.length > 0 ? `${baseTitle} · ${phoneWithType}` : baseTitle,
       };
     });
   }, [clientDirectory]);
@@ -665,20 +687,28 @@ export function OpsDealsBoard({
       return [] as Array<{ id: string; optionLabel: string; titleLabel: string }>;
     }
 
-    const normalized = sellerDirectory.map((seller) => ({
-      id: seller.id,
-      name: (seller.name ?? "").trim(),
-      phone: seller.phone?.trim() ?? "",
-    }));
-    const padLength = normalized.reduce((max, item) => Math.max(max, item.name.length), 0) + 3;
+    const normalized = sellerDirectory.map((seller) => {
+      const typeLabel =
+        seller.entityType === "company"
+          ? "(Юрлицо)"
+          : seller.entityType === "individual"
+            ? "(Физлицо)"
+            : "";
+      const baseName = (seller.name ?? "").trim();
+      const nameWithType = typeLabel ? `${baseName} ${typeLabel}` : baseName;
 
+      return {
+        id: seller.id,
+        name: nameWithType,
+        phone: seller.phone?.trim() ?? "",
+      };
+    });
     return normalized.map((item) => {
-      const phoneLabel = item.phone.length > 0 ? item.phone : "—";
       const baseTitle = item.name.length > 0 ? item.name : "—";
       return {
         id: item.id,
-        optionLabel: buildPaddedOptionLabel(item.name, phoneLabel, padLength),
-        titleLabel: item.phone.length > 0 ? `${baseTitle} · ${item.phone}` : baseTitle,
+        optionLabel: baseTitle,
+        titleLabel: baseTitle,
       };
     });
   }, [sellerDirectory]);
@@ -746,8 +776,6 @@ export function OpsDealsBoard({
     vehicleVin: vehicleOptions[0]?.optionValue ?? "",
     source: defaultSource,
     companyCode: DEFAULT_DEAL_COMPANY_CODE,
-    buyerType: "individual",
-    sellerType: "individual",
     sellerId: sellerDirectory[0]?.id ?? "",
   }));
   const [showCustomSource, setShowCustomSource] = useState(false);
@@ -840,7 +868,7 @@ export function OpsDealsBoard({
     const query = searchQuery.trim().toLowerCase();
     const normalizedVinQuery = normalizeVin(searchQuery);
     return deals.filter((deal) => {
-      const searchableText = `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.vehicleRegistration ?? ""} ${deal.source} ${deal.contractStartDate ?? ""} ${deal.vehicleVin ?? ""}`
+      const searchableText = `${deal.dealId} ${deal.client} ${deal.vehicle} ${deal.sellerName ?? ""} ${deal.vehicleRegistration ?? ""} ${deal.source} ${deal.contractStartDate ?? ""} ${deal.vehicleVin ?? ""}`
         .toLowerCase();
       const matchesText = !query || searchableText.includes(query);
       const matchesVin =
@@ -883,6 +911,11 @@ export function OpsDealsBoard({
         }
         case "client":
           comparison = (a.client ?? "").localeCompare(b.client ?? "", undefined, {
+            sensitivity: "base",
+          });
+          break;
+        case "seller":
+          comparison = (a.sellerName ?? "").localeCompare(b.sellerName ?? "", undefined, {
             sensitivity: "base",
           });
           break;
@@ -982,9 +1015,6 @@ export function OpsDealsBoard({
       return;
     }
 
-    const buyerType = formState.buyerType;
-    const sellerType = formState.sellerType;
-
     if (!selectedClient) {
       setFeedback({
         type: "error",
@@ -992,6 +1022,8 @@ export function OpsDealsBoard({
       });
       return;
     }
+
+    const buyerType = selectedClient.entityType ?? "individual";
 
     if (!selectedVehicle) {
       setFeedback({
@@ -1012,13 +1044,7 @@ export function OpsDealsBoard({
       return;
     }
 
-    if (!buyerType || !sellerType) {
-      setFeedback({
-        type: "error",
-        message: "Укажите тип покупателя и тип продавца.",
-      });
-      return;
-    }
+    const sellerType = selectedSeller.entityType ?? "individual";
 
     setIsSubmitting(true);
     setFeedback(null);
@@ -1123,8 +1149,6 @@ export function OpsDealsBoard({
         vehicleVin: vehicleOptions[0]?.optionValue ?? "",
         source: resetSource,
         companyCode: DEFAULT_DEAL_COMPANY_CODE,
-        buyerType,
-        sellerType,
         sellerId: sellerDirectory[0]?.id ?? "",
       });
       setIsCreateOpen(false);
@@ -1231,116 +1255,72 @@ export function OpsDealsBoard({
             />
           </div>
 
-          <div
-            className="grid gap-3"
-            style={{ gridTemplateColumns: "minmax(0, 3fr) minmax(0, 1fr)" }}
-          >
-            <div className="lg:col-span-2">
-              <ComboboxField
-                label="Продавец"
-                placeholder="Выберите продавца"
-                value={formState.sellerId}
-                onChange={(value) =>
-                  setFormState((prev) => ({ ...prev, sellerId: value }))
-                }
-                options={sellerComboboxOptions}
-                disabled={sellerDirectory.length === 0}
-                onOpen={() => {
-                  void refreshSellers();
-                }}
-                action={
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
+          <div className="space-y-2">
+            <ComboboxField
+              label="Продавец"
+              placeholder="Выберите продавца"
+              value={formState.sellerId}
+              onChange={(value) =>
+                setFormState((prev) => ({ ...prev, sellerId: value }))
+              }
+              options={sellerComboboxOptions}
+              disabled={sellerDirectory.length === 0}
+              onOpen={() => {
+                void refreshSellers();
+              }}
+              action={
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
+                >
+                  <Link
+                    href="/ops/sellers"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1"
                   >
-                    <Link
-                      href="/ops/sellers"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1"
-                    >
-                      <Plus className="h-3 w-3" aria-hidden="true" />
-                      <span className="sr-only">Добавить продавца</span>
-                    </Link>
-                  </Button>
-                }
-              />
-            </div>
-            <div className="lg:col-span-1 space-y-2">
-              <label className="text-sm font-medium text-foreground/80">Тип</label>
-              <Select
-                value={formState.sellerType}
-                onValueChange={(value) =>
-                  setFormState((prev) => ({ ...prev, sellerType: value as "individual" | "company" }))
-                }
-              >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
-                  <SelectValue placeholder="Выберите тип" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">Физлицо</SelectItem>
-                  <SelectItem value="company">Юрлицо</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                    <Plus className="h-3 w-3" aria-hidden="true" />
+                    <span className="sr-only">Добавить продавца</span>
+                  </Link>
+                </Button>
+              }
+            />
           </div>
 
-          <div
-            className="grid gap-3"
-            style={{ gridTemplateColumns: "minmax(0, 3fr) minmax(0, 1fr)" }}
-          >
-            <div className="lg:col-span-2">
-              <ComboboxField
-                label="Покупатель"
-                placeholder="Выберите покупателя"
-                value={formState.clientId}
-                onChange={(value) =>
-                  setFormState((prev) => ({ ...prev, clientId: value }))
-                }
-                options={clientComboboxOptions}
-                disabled={clientDirectory.length === 0}
-                onOpen={() => {
-                  void refreshClients();
-                }}
-                action={
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
+          <div className="space-y-2">
+            <ComboboxField
+              label="Покупатель"
+              placeholder="Выберите покупателя"
+              value={formState.clientId}
+              onChange={(value) =>
+                setFormState((prev) => ({ ...prev, clientId: value }))
+              }
+              options={clientComboboxOptions}
+              disabled={clientDirectory.length === 0}
+              onOpen={() => {
+                void refreshClients();
+              }}
+              action={
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
+                >
+                  <Link
+                    href="/ops/clients"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1"
                   >
-                    <Link
-                      href="/ops/clients"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1"
-                    >
-                      <Plus className="h-3 w-3" aria-hidden="true" />
-                      <span className="sr-only">Добавить покупателя</span>
-                    </Link>
-                  </Button>
-                }
-              />
-            </div>
-            <div className="lg:col-span-1 space-y-2">
-              <label className="text-sm font-medium text-foreground/80">Тип</label>
-              <Select
-                value={formState.buyerType}
-                onValueChange={(value) =>
-                  setFormState((prev) => ({ ...prev, buyerType: value as "individual" | "company" }))
-                }
-              >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background text-sm shadow-sm focus-visible:ring-2 focus-visible:ring-brand-500">
-                  <SelectValue placeholder="Выберите тип" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="individual">Физлицо</SelectItem>
-                  <SelectItem value="company">Юрлицо</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                    <Plus className="h-3 w-3" aria-hidden="true" />
+                    <span className="sr-only">Добавить покупателя</span>
+                  </Link>
+                </Button>
+              }
+            />
           </div>
 
           <div className="space-y-2">
@@ -1588,18 +1568,29 @@ export function OpsDealsBoard({
                   <TableHead aria-sort={getAriaSort("client")}>
                     {renderSortButton("client", "Client")}
                   </TableHead>
-              <TableHead aria-sort={getAriaSort("status")}>
-                {renderSortButton("status", "Status")}
-              </TableHead>
-              <TableHead aria-sort={getAriaSort("contractStartDate")}>
-                {renderSortButton("contractStartDate", "Contract start")}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedDeals.map((deal) => {
-              const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
+                  <TableHead aria-sort={getAriaSort("seller")}>
+                    {renderSortButton("seller", "Seller")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("status")}>
+                    {renderSortButton("status", "Status")}
+                  </TableHead>
+                  <TableHead aria-sort={getAriaSort("contractStartDate")}>
+                    {renderSortButton("contractStartDate", "Contract start")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedDeals.map((deal) => {
+                  const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
                   const registrationLabel = deal.vehicleRegistration ?? deal.vehicleVin ?? null;
+                  const clientLinkHref = deal.clientId
+                    ? `/ops/clients/${buildSlugWithId(deal.client, deal.clientId) || deal.clientId}`
+                    : null;
+                  const sellerLabel = deal.sellerName ?? "—";
+                  const sellerLinkHref =
+                    deal.sellerId && deal.sellerName
+                      ? `/ops/sellers/${buildSlugWithId(deal.sellerName, deal.sellerId) || deal.sellerId}`
+                      : null;
                   return (
                     <TableRow key={deal.id}>
                       <TableCell className="font-medium">
@@ -1618,18 +1609,44 @@ export function OpsDealsBoard({
                           ) : null}
                         </div>
                       </TableCell>
-                      <TableCell>{deal.client}</TableCell>
-                  <TableCell>
-                    <Badge variant={DEAL_STATUS_BADGE_VARIANTS[deal.statusKey]} className="rounded-lg">
-                      {STATUS_LABELS[deal.statusKey]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                      <TableCell>
+                        {clientLinkHref ? (
+                          <Link
+                            className="text-foreground underline-offset-2 hover:underline"
+                            href={clientLinkHref}
+                          >
+                            {deal.client}
+                          </Link>
+                        ) : (
+                          deal.client
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {sellerLinkHref ? (
+                          <Link
+                            className="text-foreground underline-offset-2 hover:underline"
+                            href={sellerLinkHref}
+                          >
+                            {sellerLabel}
+                          </Link>
+                        ) : (
+                          sellerLabel
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={DEAL_STATUS_BADGE_VARIANTS[deal.statusKey]}
+                          className="rounded-lg"
+                        >
+                          {STATUS_LABELS[deal.statusKey]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

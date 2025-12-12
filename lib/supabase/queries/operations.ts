@@ -181,6 +181,17 @@ export type SupabaseDealRow = {
   payload: Record<string, unknown> | null;
 };
 
+export type OpsSellerDealSummary = {
+  id: string;
+  number: string;
+  vehicle: string;
+  vin?: string | null;
+  amount: string;
+  amountValue: number | null;
+  since: string;
+  href: string;
+};
+
 
 // Типы для операций
 export type OpsClientRecord = {
@@ -204,6 +215,8 @@ export type OpsClientRecord = {
     overdue: string;
   };
   residencyStatus?: string | null;
+  entityType?: "individual" | "company" | null;
+  deals?: OpsSellerDealSummary[];
   leasing?: {
     vehicle: string;
     amount: string;
@@ -215,6 +228,35 @@ export type OpsClientRecord = {
 };
 
 export type OpsClientType = "Personal" | "Company";
+
+export type OpsClientEntityType = "individual" | "company";
+
+export function normalizeOpsEntityType(value: string | null | undefined): OpsClientEntityType | null {
+  if (!value) {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized === "company") {
+    return "company";
+  }
+  if (normalized === "individual" || normalized === "personal") {
+    return "individual";
+  }
+  return null;
+}
+
+export function getOpsClientTypeLabel(entityType: OpsClientEntityType | null): OpsClientType | null {
+  if (!entityType) {
+    return null;
+  }
+  if (entityType === "company") {
+    return "Company";
+  }
+  return "Personal";
+}
 
 export type OpsClientCompanyProfile = {
   contactName: string | null;
@@ -322,6 +364,8 @@ export type OpsDealSummary = {
   amount?: string;
   contractStartDate?: string | null;
   companyCode?: DealCompanyCode | null;
+  sellerId?: string | null;
+  sellerName?: string | null;
 };
 
 export type OpsDealGuardStatus = {
@@ -379,6 +423,26 @@ export type OpsSellerDocument = {
   storagePath?: string | null;
 };
 
+export type OpsSellerProfile = {
+  userId: string;
+  fullName: string;
+  status: string;
+  email: string | null;
+  phone: string | null;
+  nationality: string | null;
+  source: string | null;
+  createdAt: string | null;
+  metadata: Record<string, unknown> | null;
+  entityType: "individual" | "company" | null;
+  sellerDetails: Record<string, unknown> | null;
+};
+
+export type OpsSellerDetail = {
+  profile: OpsSellerProfile;
+  deals: OpsClientDeal[]; // Sellers can be associated with deals just like clients
+  documents: OpsSellerDocument[];
+};
+
 export type OpsDealInvoice = {
   id: string;
   invoiceNumber: string;
@@ -406,11 +470,13 @@ export type OpsDealClientProfile = {
   name: string;
   phone: string;
   email: string;
+  type?: string | null;
   scoring: string;
   source: string;
   notes: string;
   userId?: string | null;
   detailHref?: string | null;
+  documents?: OpsClientDocument[];
 };
 
 export type OpsDealCompany = {
@@ -1073,6 +1139,7 @@ export type OpsDealDetail = {
   profile: OpsDealProfile;
   company: OpsDealCompany | null;
   client: OpsDealClientProfile;
+  seller?: OpsDealClientProfile | null;
   keyInformation: OpsDealKeyInfoEntry[];
   overview: OpsDealDetailsEntry[];
   financials: OpsDealDetailsEntry[];

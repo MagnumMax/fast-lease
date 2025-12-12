@@ -153,11 +153,11 @@ begin
   values
     (
       application_id,
-      'passport',
+      'doc_passport_buyer',
       'identity',
-      'passport.pdf',
-      'passport.pdf',
-      'applications/a0000000/passport.pdf',
+      'doc_passport_buyer.pdf',
+      'doc_passport_buyer.pdf',
+      'applications/a0000000/doc_passport_buyer.pdf',
       'application/pdf',
       524288,
       'verified',

@@ -24,8 +24,11 @@ with deal_docs as (
       when doc_type_slug = '' then null
       when doc_type_slug = 'insurance_policy_tax_invoice' then 'insurance_policy_with_tax_invoice'
       when doc_type_slug = 'id_card' then 'identity_card'
+      when doc_type_slug = 'passport' then 'doc_passport_buyer'
+      when doc_type_slug = 'emirates_id' then 'doc_emirates_id_buyer'
+      when doc_type_slug = 'driving_license' then 'doc_driving_license_buyer'
       when doc_type_slug in ('commercial_license', 'business_registration_documents', 'company_registration_documents', 'corporate_documents', 'company_and_transaction_documents')
-        then 'company_license'
+        then 'doc_company_license'
       else doc_type_slug
     end as canonical_type
   from deal_docs
@@ -54,10 +57,10 @@ with deal_docs as (
   from normalized
   where client_id is not null
     and canonical_type = any (array[
-      'emirates_id',
-      'passport',
+      'doc_emirates_id_buyer',
+      'doc_passport_buyer',
+      'doc_driving_license_buyer',
       'visa',
-      'driving_license',
       'id_card',
       'identity_card',
       'identity_document',
@@ -66,7 +69,7 @@ with deal_docs as (
       'identification_document',
       'identification_documents',
       'personal_identification',
-      'company_license'
+      'doc_company_license'
     ])
     and canonical_type is not null
 ), inserted_vehicle as (

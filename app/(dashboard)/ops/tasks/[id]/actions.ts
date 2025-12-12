@@ -796,6 +796,107 @@ export async function getUploadUrlAction(input: {
   return { success: true, url: data.signedUrl, path: data.path, token: data.token };
 }
 
+async function getTaskDefinition(
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceClient>>,
+  workflowVersionId: string,
+  taskType: string
+) {
+  const { data } = await supabase
+    .from("workflow_versions")
+    .select("template")
+    .eq("id", workflowVersionId)
+    .single();
+
+  if (!data?.template) return null;
+
+  const template = data.template as any;
+  if (template.statuses) {
+    for (const statusKey in template.statuses) {
+      const status = template.statuses[statusKey];
+      if (status.entry_actions) {
+        for (const action of status.entry_actions) {
+          if (action.type === "TASK_CREATE" && action.task?.type === taskType) {
+            return action.task;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
+type PersistTaskDataOptions = {
+  supabase: Awaited<ReturnType<typeof createSupabaseServiceClient>>;
+  clientId: string;
+  data: Record<string, unknown>;
+  buyerFields?: string[];
+  sellerFields?: string[];
+  clientFields?: string[];
+};
+
+async function persistTaskDataToProfile(options: PersistTaskDataOptions) {
+  const { supabase, clientId, data, buyerFields = [], sellerFields = [], clientFields = [] } = options;
+  if (buyerFields.length === 0 && sellerFields.length === 0 && clientFields.length === 0) return;
+
+  const metadataUpdates: Record<string, any> = {};
+  const sellerUpdates: Record<string, any> = {};
+  let hasUpdates = false;
+
+  // Process buyer fields -> metadata
+  for (const fieldId of buyerFields) {
+    const value = data[fieldId];
+    if (value !== undefined && value !== null && value !== "") {
+      metadataUpdates[fieldId] = value;
+      hasUpdates = true;
+    }
+  }
+
+  // Process seller fields -> seller_details
+  for (const fieldId of sellerFields) {
+    const value = data[fieldId];
+    if (value !== undefined && value !== null && value !== "") {
+      sellerUpdates[fieldId] = value;
+      hasUpdates = true;
+    }
+  }
+
+  // Process generic fields -> heuristic
+  for (const fieldId of clientFields) {
+    const value = data[fieldId];
+    if (value !== undefined && value !== null && value !== "") {
+      if (fieldId.startsWith("seller_")) {
+        sellerUpdates[fieldId] = value;
+      } else {
+        metadataUpdates[fieldId] = value;
+      }
+      hasUpdates = true;
+    }
+  }
+
+  if (!hasUpdates) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("metadata, seller_details")
+    .eq("user_id", clientId)
+    .single();
+
+  const finalMetadata = { ...(profile?.metadata || {}), ...metadataUpdates };
+  const finalSellerDetails = { ...(profile?.seller_details || {}), ...sellerUpdates };
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      metadata: finalMetadata,
+      seller_details: finalSellerDetails,
+    })
+    .eq("user_id", clientId);
+
+  if (error) {
+    console.error("[workflow] Failed to update client profile from task data", error);
+  }
+}
+
 export async function completeTaskFormAction(
   _prevState: FormStatus,
   formData: FormData,
@@ -1164,6 +1265,25 @@ export async function completeTaskFormAction(
       status: "error",
       message: completionResult.error ?? "Не удалось завершить задачу",
     };
+  }
+
+  if (clientId && dealRow.workflow_version_id) {
+    try {
+      const taskDef = await getTaskDefinition(supabase, dealRow.workflow_version_id, existing.type);
+      if (taskDef) {
+        const currentFields = (mergedPayload.fields as Record<string, unknown>) || {};
+        await persistTaskDataToProfile({
+          supabase,
+          clientId,
+          data: currentFields,
+          buyerFields: Array.isArray(taskDef.save_to_buyer_profile) ? taskDef.save_to_buyer_profile : [],
+          sellerFields: Array.isArray(taskDef.save_to_seller_profile) ? taskDef.save_to_seller_profile : [],
+          clientFields: Array.isArray(taskDef.save_to_client_profile) ? taskDef.save_to_client_profile : [],
+        });
+      }
+    } catch (err) {
+      console.error("[workflow] failed to persist client profile data", err);
+    }
   }
 
   if (!completionResult.transitionAttempted) {

@@ -109,7 +109,7 @@ function FormSection({ title, description, children, columns = 2 }: FormSectionP
   const gridClass = columns === 1 ? "" : `sm:grid-cols-${columns}`;
   return (
     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description ? (
           <p className="text-xs text-muted-foreground">{description}</p>
@@ -417,7 +417,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   }) {
     return (
       <div className="sm:col-span-2 space-y-4 border-t border-border/40 pt-4">
-        <div className="space-y-1">
+        <div className="space-y-2">
           <p className="text-sm font-semibold text-foreground">{title}</p>
           {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
         </div>
@@ -443,7 +443,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                       key={doc.id}
                       className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         <p className="text-sm font-semibold text-foreground">{doc.name}</p>
                         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                           {doc.documentType ? <span>Тип: {typeLabel}</span> : null}
@@ -503,7 +503,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
               className="space-y-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-3"
             >
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <Label>Тип документа</Label>
                     <Select
                       value={draft.type || EMPTY_SELECT_VALUE}
@@ -527,7 +527,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-2">
                     <Label>Файл</Label>
                     <Input
                       type="file"
@@ -1126,7 +1126,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                   Вы уверены, что хотите удалить покупателя <strong>{profile.fullName}</strong>? Это действие
                   необратимо.
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <p className="text-xs">Будут удалены:</p>
                   <ul className="text-xs mt-1 list-disc list-inside">
                     <li>Профиль покупателя</li>

@@ -402,11 +402,11 @@ SELECT
     gen_random_uuid(),
     a.id,
     CASE 
-        WHEN RANDOM() > 0.8 THEN 'emirates_id'
-        WHEN RANDOM() > 0.6 THEN 'passport'
+        WHEN RANDOM() > 0.8 THEN 'doc_emirates_id_buyer'
+        WHEN RANDOM() > 0.6 THEN 'doc_passport_buyer'
         WHEN RANDOM() > 0.4 THEN 'salary_certificate'
         WHEN RANDOM() > 0.2 THEN 'bank_statement'
-        ELSE 'driving_license'
+        ELSE 'doc_driving_license_buyer'
     END,
     CASE 
         WHEN RANDOM() > 0.5 THEN 'identity'

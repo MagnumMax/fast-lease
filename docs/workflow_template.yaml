@@ -56,6 +56,17 @@ kanban_order:
 schemas:
   buyer_docs_company: &buyer_docs_company
     version: "1.0"
+    save_to_buyer_profile:
+      - buyer_company_email
+      - buyer_company_phone
+      - buyer_contact_email
+      - buyer_contact_phone
+      - doc_company_license
+      - doc_emirates_id_manager
+      - doc_passport_manager
+      - doc_emirates_id_driver
+      - doc_passport_driver
+      - doc_driving_license
     fields:
       - id: buyer_company_email
         type: text
@@ -76,26 +87,33 @@ schemas:
       - id: doc_emirates_id_manager
         type: file
         label: "Emirates ID менеджера лицензии"
-        document_type: emirates_id
+        document_type: doc_emirates_id_manager
       - id: doc_passport_manager
         type: file
         label: "Паспорт менеджера лицензии"
-        document_type: passport
+        document_type: doc_passport_manager
       - id: doc_emirates_id_driver
         type: file
         label: "Emirates ID водителя"
-        document_type: emirates_id
+        document_type: doc_emirates_id_driver
       - id: doc_passport_driver
         type: file
         label: "Паспорт водителя"
-        document_type: passport
+        document_type: doc_passport_driver
       - id: doc_driving_license
         type: file
         label: "Водительские права (UAE) покупателя/водителя"
-        document_type: driving_license
+        document_type: doc_driving_license
 
   buyer_docs_individual: &buyer_docs_individual
     version: "1.0"
+    save_to_buyer_profile:
+      - buyer_contact_email
+      - buyer_contact_phone
+      - doc_passport_buyer
+      - doc_emirates_id_buyer
+      - doc_driving_license_buyer
+      - doc_second_driver_bundle
     fields:
       - id: buyer_contact_email
         type: text
@@ -106,22 +124,29 @@ schemas:
       - id: doc_passport_buyer
         type: file
         label: "Паспорт покупателя"
-        document_type: passport
+        document_type: doc_passport_buyer
       - id: doc_emirates_id_buyer
         type: file
         label: "Emirates ID покупателя"
-        document_type: emirates_id
+        document_type: doc_emirates_id_buyer
       - id: doc_driving_license_buyer
         type: file
         label: "Водительские права (UAE) покупателя"
-        document_type: driving_license
+        document_type: doc_driving_license_buyer
       - id: doc_second_driver_bundle
         type: file
         label: "Комплект документов второго водителя"
-        document_type: other
+        document_type: doc_second_driver_bundle
 
   seller_docs_company: &seller_docs_company
     version: "1.0"
+    save_to_seller_profile:
+      - seller_contact_email
+      - seller_contact_phone
+      - seller_bank_details
+      - doc_emirates_id_owner
+      - doc_company_license
+      - doc_trn_certificate
     fields:
       - id: seller_contact_email
         type: text
@@ -135,7 +160,7 @@ schemas:
       - id: doc_emirates_id_owner
         type: file
         label: "Emirates ID владельца"
-        document_type: emirates_id
+        document_type: doc_emirates_id_owner
         required: false
       - id: doc_company_license
         type: file
@@ -159,19 +184,23 @@ schemas:
         document_type: hiyaza_certificate
       - id: doc_noc_company_letter
         type: file
-        label: "NOC letter from company"
+        label: "NOC letter от компании"
         document_type: noc_company_letter
       - id: doc_noc_gps_letter
         type: file
-        label: "NOC letter for GPS removal"
+        label: "NOC letter от GPS"
         document_type: noc_gps_letter
       - id: doc_trn_certificate
         type: file
-        label: "TRN certificate"
+        label: "TRN-сертификат"
         document_type: trn_certificate
 
   seller_docs_individual: &seller_docs_individual
     version: "1.0"
+    save_to_seller_profile:
+      - seller_contact_email
+      - seller_contact_phone
+      - doc_emirates_id_seller
     fields:
       - id: seller_contact_email
         type: text
@@ -181,7 +210,7 @@ schemas:
         label: "Телефон продавца"
       - id: doc_vcc_certificate
         type: file
-        label: "VCC certificate"
+        label: "VCC (Vehicle Certificate of Conformity)"
         document_type: vcc_certificate
       - id: doc_vehicle_possession_certificate
         type: file
@@ -202,7 +231,7 @@ schemas:
       - id: doc_emirates_id_seller
         type: file
         label: "Emirates ID продавца"
-        document_type: emirates_id
+        document_type: doc_emirates_id_seller
       - id: doc_spa_invoice
         type: file
         label: "SPA Invoice"
@@ -211,15 +240,18 @@ schemas:
 document_types:
   client:
     registry:
-      - value: emirates_id
-        label: "Emirates ID"
-        context: personal
-      - value: passport
-        label: "Паспорт"
-        context: personal
-      - value: driving_license
-        label: "Водительские права (UAE)"
-        context: personal
+      - value: doc_emirates_id_manager
+        label: "Emirates ID менеджера лицензии"
+        context: company
+      - value: doc_passport_manager
+        label: "Паспорт менеджера лицензии"
+        context: company
+      - value: doc_emirates_id_driver
+        label: "Emirates ID водителя"
+        context: company
+      - value: doc_passport_driver
+        label: "Паспорт водителя"
+        context: company
       - value: identity_document
         label: "Документ, удостоверяющий личность"
         context: personal
@@ -245,7 +277,7 @@ document_types:
         label: "Mulkia"
         context: any
       - value: passing_certificate
-        label: "Passing"
+        label: "Passing Certificate"
         context: any
       - value: company_license
         label: "Лицензия компании"
@@ -257,16 +289,16 @@ document_types:
         label: "Банковская выписка компании"
         context: company
       - value: lease_agreement
-        label: "Договор аренды"
+        label: "Договор лизинга"
         context: any
       - value: signed_lease_agreement
-        label: "Договор аренды (подписанный)"
+        label: "Подписанный договор лизинга"
         context: any
       - value: purchase_agreement
-        label: "Договор покупки"
+        label: "Договор купли-продажи"
         context: any
       - value: signed_purchase_agreement
-        label: "Договор покупки (подписанный)"
+        label: "Подписанный договор купли-продажи"
         context: any
       - value: preliminary_purchase_agreement
         label: "Предварительный договор купли-продажи"
@@ -275,28 +307,28 @@ document_types:
         label: "Authorization Letter"
         context: any
       - value: payment_schedule
-        label: "Платёжный график"
+        label: "График платежей"
         context: any
       - value: signed_payment_schedule
-        label: "Платёжный график (подписанный)"
+        label: "Подписанный график платежей"
         context: any
       - value: tax_invoice
-        label: "Tax invoice"
+        label: "Tax Invoice"
         context: any
       - value: invoice
         label: "Invoice (без VAT)"
         context: any
       - value: delivery_act
-        label: "Акт приёма-передачи"
+        label: "Акт приема-передачи"
         context: any
       - value: signed_delivery_act
-        label: "Акт приёма-передачи (подписанный)"
+        label: "Подписанный акт приема-передачи"
         context: any
       - value: technical_report
         label: "Технический отчёт"
         context: any
       - value: aecb_credit_report
-        label: "AECB credit report"
+        label: "AECB Credit Report"
         context: any
       - value: commercial_offer
         label: "Коммерческое предложение"
@@ -308,7 +340,7 @@ document_types:
         label: "Quotation"
         context: any
       - value: payment_receipt
-        label: "Платёжка"
+        label: "Подтверждение оплаты"
         context: any
       - value: spa_invoice
         label: "SPA Invoice"
@@ -325,97 +357,28 @@ document_types:
       - value: other
         label: "Другой документ"
         context: any
-    aliases:
-      - alias: id_card
-        target: identity_document
-      - alias: identity_card
-        target: identity_document
-      - alias: identity_documents
-        target: identity_document
-      - alias: identification
-        target: identity_document
-      - alias: identification_document
-        target: identity_document
-      - alias: identification_documents
-        target: identity_document
-      - alias: personal_identification
-        target: identity_document
-      - alias: national_id
-        target: identity_document
-      - alias: passport_copy
-        target: passport
-      - alias: driver_license
-        target: driving_license
-      - alias: drivers_license
-        target: driving_license
-      - alias: bank_statements
-        target: bank_statement
-      - alias: proof_of_income
-        target: salary_certificate
-      - alias: salary_cert
-        target: salary_certificate
-      - alias: eid
-        target: emirates_id
-      - alias: emirates_id_card
-        target: emirates_id
-      - alias: tax invoice
-        target: tax_invoice
-      - alias: invoice
-        target: invoice
-      - alias: trade_license
-        target: company_license
-      - alias: commercial_license
-        target: company_license
-      - alias: company_registration_documents
-        target: corporate_documents
-      - alias: business_registration_documents
-        target: corporate_documents
-      - alias: company_and_transaction_documents
-        target: corporate_documents
-      - alias: company_documents
-        target: corporate_documents
-      - alias: company_corporate_documents
-        target: corporate_documents
-      - alias: corporate_document
-        target: corporate_documents
-      - alias: company_bank_statements
-        target: company_bank_statement
-      - alias: quote
-        target: quotation
-      - alias: quotation_doc
-        target: quotation
-      - alias: supplier_quotation
-        target: quotation
-      - alias: payment_receipt_doc
-        target: payment_receipt
-      - alias: payment_receipt_supplier
-        target: payment_receipt
-      - alias: payment_order
-        target: payment_receipt
-      - alias: vcc
-        target: vcc_certificate
-      - alias: vehicle_certificate_of_conformity
-        target: vcc_certificate
-      - alias: hiyaza
-        target: hiyaza_certificate
-      - alias: vehicle_possession_certificate/hiyaza
-        target: vehicle_possession_certificate
-      - alias: mulkia
-        target: mulkia_certificate
-      - alias: passing
-        target: passing_certificate
-      - alias: spa
-        target: spa_invoice
-      - alias: spa_contract
-        target: spa_invoice
-      - alias: noc
-        target: noc_company_letter
-      - alias: noc_letter
-        target: noc_company_letter
-      - alias: noc_gps
-        target: noc_gps_letter
-      - alias: trn
-        target: trn_certificate
+      - value: doc_passport_buyer
+        label: "Паспорт покупателя"
+        context: personal
+      - value: doc_emirates_id_buyer
+        label: "Emirates ID покупателя"
+        context: personal
+      - value: doc_driving_license_buyer
+        label: "Водительские права (UAE) покупателя"
+        context: personal
+      - value: doc_second_driver_bundle
+        label: "Комплект документов второго водителя"
+        context: personal
+      - value: doc_emirates_id_owner
+        label: "Emirates ID владельца"
+        context: company
+      - value: doc_emirates_id_seller
+        label: "Emirates ID продавца"
+        context: personal
+      - value: doc_driving_license
+        label: "Водительские права (UAE) покупателя/водителя"
+        context: company
+
   vehicle:
     registry:
       - value: vehicle_registration
@@ -431,7 +394,7 @@ document_types:
         label: "Сертификат передачи транспортного средства"
         context: vehicle
       - value: certificate_of_installation
-        label: "Сертификат установки"
+        label: "Сертификат установки (GPS)"
         context: vehicle
       - value: delivery_form
         label: "Акт приёма-передачи"
@@ -445,17 +408,7 @@ document_types:
       - value: other
         label: "Другой документ"
         context: vehicle
-    aliases:
-      - alias: vehicle_license
-        target: vehicle_registration
-      - alias: vehicle_test_certificate
-        target: vehicle_inspection_certificate
-      - alias: certificate
-        target: vehicle_inspection_certificate
-      - alias: motor_insurance_policy
-        target: insurance_policy
-      - alias: motor_insurance_policy_schedule
-        target: insurance_policy
+
 
 statuses:
   NEW:
@@ -794,7 +747,7 @@ statuses:
             fields:
               - id: deal_id
                 type: badge
-                label: "Сделка"
+                label: "ID сделки"
           bindings:
             deal_id: "{{deal.id}}"
     exit_requirements:
@@ -820,7 +773,7 @@ statuses:
             fields:
               - id: deal_id
                 type: badge
-                label: "Сделка"
+                label: "ID сделки"
           bindings:
             deal_id: "{{deal.id}}"
       - type: NOTIFY
@@ -847,7 +800,7 @@ statuses:
             fields:
               - id: doc_purchase_agreement
                 type: file
-                label: "Договор купли-продажи (продавец)"
+                label: "Договор купли-продажи"
                 document_type: purchase_agreement
                 required: true
               - id: doc_preliminary_purchase_agreement
@@ -974,7 +927,7 @@ statuses:
         task:
           template_id: receive_advance_v1
           type: RECEIVE_ADVANCE
-          title: "Создание инвойса на оплату аванса"
+          title: "Создание инвойса на оплату аванса клиенту"
           assignee_role: FINANCE
           guard_key: "payments.advanceReceived"
           sla: { hours: 24 }
@@ -1006,7 +959,7 @@ statuses:
                 required: false
               - id: payment_receipt
                 type: file
-                label: "Payment receipt"
+                label: "Подтверждение оплаты"
                 document_type: payment_receipt
                 required: true
           defaults:
@@ -1039,17 +992,17 @@ statuses:
             fields:
               - id: doc_rental_contract
                 type: file
-                label: "Контракт аренды"
+                label: "Договор лизинга"
                 document_type: lease_agreement
                 required: true
               - id: doc_insurance_policy
                 type: file
-                label: "Страховка"
+                label: "Страховой полис"
                 document_type: insurance_policy
                 required: true
               - id: doc_gps_certificate
                 type: file
-                label: "GPS сертификат"
+                label: "Сертификат установки (GPS)"
                 document_type: certificate_of_installation
                 required: true
               - id: doc_mulkia_certificate

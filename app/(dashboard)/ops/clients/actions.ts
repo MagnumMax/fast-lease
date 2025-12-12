@@ -77,7 +77,6 @@ const CLIENT_DOCUMENT_CATEGORY_MAP: Record<ClientDocumentTypeValue, string> =
 type ProfileMetadata = Record<string, unknown> & {
   ops_email?: string;
   ops_phone?: string;
-  client_type?: OpsClientType;
   company_contact_name?: string;
   company_contact_emirates_id?: string;
   company_trn?: string;
@@ -686,7 +685,7 @@ export async function updateOperationsClient(
       delete metadata.company_license_number;
     }
 
-    metadata.client_type = clientType;
+    const entityType = clientType === "Company" ? "company" : "individual";
 
     const employmentPayload = {
       employer: normalizeOptionalString(employment?.employer),
@@ -716,6 +715,7 @@ export async function updateOperationsClient(
         date_of_birth: dateOfBirth ? dateOfBirth : null,
         employment_info: employmentPayload,
         financial_profile: financialPayload,
+        entity_type: entityType,
         metadata,
       })
       .eq("user_id", userId);

@@ -67,6 +67,9 @@ const rawTaskFieldSchema = z.object({
 const rawTaskSchemaSchema = z.object({
   version: z.string().min(1).optional(),
   fields: z.array(rawTaskFieldSchema).min(1),
+  save_to_buyer_profile: z.array(z.string()).optional(),
+  save_to_seller_profile: z.array(z.string()).optional(),
+  save_to_client_profile: z.array(z.string()).optional(),
 });
 
 const rawTaskDefinitionSchema = z.object({
@@ -177,6 +180,9 @@ const mapTaskDefinition = (task: RawTaskDefinition): WorkflowTaskDefinition => (
     ? {
         version: task.schema.version ?? "1.0",
         fields: task.schema.fields,
+        save_to_buyer_profile: task.schema.save_to_buyer_profile,
+        save_to_seller_profile: task.schema.save_to_seller_profile,
+        save_to_client_profile: task.schema.save_to_client_profile,
       }
     : undefined,
   bindings: task.bindings,

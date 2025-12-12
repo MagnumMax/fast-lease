@@ -42,17 +42,17 @@ export const applicationDocuments: Record<
 > = {
   resident: [
     {
-      id: "passport",
+      id: "doc_passport_buyer",
       title: "Passport (photo and registration pages)",
       description: "Color file, PDF or JPG format, size up to 10 MB.",
     },
     {
-      id: "eid",
+      id: "doc_emirates_id_buyer",
       title: "Emirates ID (both sides)",
       description: "Photo or high-resolution scan.",
     },
     {
-      id: "license",
+      id: "doc_driving_license_buyer",
       title: "UAE Driving License",
       description: "We verify minimum 12 months experience.",
     },
@@ -64,12 +64,12 @@ export const applicationDocuments: Record<
   ],
   nonresident: [
     {
-      id: "passport",
+      id: "doc_passport_buyer",
       title: "International Passport",
       description: "Color copy, page with photo and signature.",
     },
     {
-      id: "license",
+      id: "doc_driving_license_buyer",
       title: "UAE Driving License",
       description: "Must be UAE-issued; add an international licence copy if available.",
     },

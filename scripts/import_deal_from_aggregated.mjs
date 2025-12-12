@@ -53,6 +53,24 @@ function trimString(value) {
   return typeof value === "string" ? value.trim() || null : null;
 }
 
+function mapDocumentType(type) {
+  if (!type) return null;
+  const t = type.toLowerCase().trim();
+  // Role-specific mappings (defaulting to buyer for generic types)
+  if (t === 'passport') return 'doc_passport_buyer';
+  if (t === 'emirates_id' || t === 'emirates id') return 'doc_emirates_id_buyer';
+  if (t === 'driving_license' || t === 'driver_license' || t === 'driving license') return 'doc_driving_license_buyer';
+  
+  // Vehicle/Seller docs
+  if (t === 'mulkia') return 'mulkia_certificate';
+  if (t === 'passing' || t === 'passing_certificate') return 'passing_certificate';
+  if (t === 'quotation') return 'quotation';
+  if (t === 'trade_license' || t === 'company_license') return 'company_license';
+  if (t === 'vat_certificate' || t === 'trn_certificate') return 'trn_certificate';
+  
+  return type;
+}
+
 function stripBucketPrefix(storagePath, bucket) {
   if (typeof storagePath !== "string" || storagePath.length === 0) {
     return null;
@@ -230,7 +248,10 @@ function normalizeAggregated(raw) {
       annualRevenue: normalizeNumber(client.company.annual_revenue),
       contactPerson: trimString(client.company.contact_person)
     } : null,
-    documents: client.documents || null,
+    documents: client.documents?.map(doc => ({
+      ...doc,
+      documentType: mapDocumentType(doc.documentType || doc.document_type || doc.type)
+    })) || null,
     raw: client,
   };
 
@@ -305,7 +326,7 @@ function normalizeAggregated(raw) {
       storageJson,
       category,
       analysis,
-      documentType: trimString(analysis?.document_type),
+      documentType: mapDocumentType(trimString(analysis?.document_type)),
       title: trimString(analysis?.title) ?? trimString(doc.filename),
       summary: trimString(analysis?.summary),
       parties: analysis?.parties || null,

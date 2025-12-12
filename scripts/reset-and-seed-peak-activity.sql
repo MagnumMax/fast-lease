@@ -522,7 +522,7 @@ begin
       select
         application_id,
         doc_kind,
-        case doc_kind when 'passport' then 'identity' when 'salary_certificate' then 'income' else 'banking' end,
+        case doc_kind when 'doc_passport_buyer' then 'identity' when 'salary_certificate' then 'income' else 'banking' end,
         doc_kind || '.pdf',
         format('%s-%s.pdf', doc_kind, application_id),
         format('applications/%s/%s.pdf', application_id, doc_kind),
@@ -533,7 +533,7 @@ begin
         now() - interval '7 days',
         case when doc_kind = 'bank_statement' and app_status = 'on_hold' then null else now() - interval '6 days' end,
         assigned_ops
-      from unnest(array['passport','salary_certificate','bank_statement']) as doc_kind;
+      from unnest(array['doc_passport_buyer','salary_certificate','bank_statement']) as doc_kind;
     end loop;
   end loop;
 end $$;

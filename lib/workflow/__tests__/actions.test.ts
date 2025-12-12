@@ -29,6 +29,10 @@ const createSupabaseMock = () => {
     op_manager_id: "user-ops",
   });
   const notificationChain = createUpsertChain({ id: "notif-1" });
+  const profilesChain = createSelectChain({
+    seller_details: { seller_contact_email: "seller@example.com" },
+    entity_type: "company",
+  });
   const auditInsert = vi.fn().mockResolvedValue({ error: null });
 
   const fromMock = vi.fn((table: string) => {
@@ -37,6 +41,8 @@ const createSupabaseMock = () => {
         return { upsert: tasksChain.upsert };
       case "deals":
         return { select: dealsChain.select };
+      case "profiles":
+        return { select: profilesChain.select };
       case "workflow_notification_queue":
         return { upsert: notificationChain.upsert };
       case "audit_log":
@@ -55,12 +61,67 @@ const createSupabaseMock = () => {
     fromMock,
     tasksChain,
     dealsChain,
+    profilesChain,
     notificationChain,
     auditInsert,
   };
 };
 
 describe("workflow action executor", () => {
+  it("pre-fills task fields from seller profile", async () => {
+    const { client, tasksChain, dealsChain } = createSupabaseMock();
+    
+    // Update deal mock to include seller_id
+    dealsChain.maybeSingle.mockResolvedValue({
+      data: {
+        id: "deal-1",
+        payload: { finance: { monthly_payment: 1200 } },
+        client_id: "client-1",
+        seller_id: "seller-1",
+        asset_id: "asset-1",
+        source: "web",
+        op_manager_id: "user-ops",
+      },
+      error: null,
+    });
+
+    const executor = createWorkflowActionExecutor(client);
+
+    await executor(
+      {
+        type: "TASK_CREATE",
+        task: {
+          templateId: "collect_seller_docs",
+          type: "COLLECT_DOCS",
+          title: "Collect Docs",
+          assigneeRole: "OP_MANAGER",
+          schema: {
+            version: "1.0",
+            fields: [{ id: "seller_contact_email", type: "string" }],
+          },
+        },
+      },
+      {
+        actorRole: "OP_MANAGER",
+        transition: { from: "A", to: "B" },
+        template: {
+          workflow: { id: "wf-1" },
+        } as any,
+        dealId: "deal-1",
+        payload: {},
+      },
+    );
+
+    const [taskPayload] = tasksChain.upsert.mock.calls[0];
+    expect(taskPayload).toMatchObject({
+      payload: expect.objectContaining({
+        fields: expect.objectContaining({
+          seller_contact_email: "seller@example.com",
+        }),
+      }),
+    });
+  });
+
   it("создает задачу при TASK_CREATE", async () => {
     const { client, fromMock, tasksChain, dealsChain, auditInsert } = createSupabaseMock();
     const executor = createWorkflowActionExecutor(client);

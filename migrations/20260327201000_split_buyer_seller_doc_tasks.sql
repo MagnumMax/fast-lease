@@ -16,12 +16,12 @@ WITH buyer_tasks AS (
     CASE WHEN buyer_type = 'company' THEN 'collect_buyer_docs_company_v1' ELSE 'collect_buyer_docs_individual_v1' END AS new_template,
     ARRAY[
       'buyer_type','buyer_company_email','buyer_company_phone','buyer_contact_email','buyer_contact_phone',
-      'doc_company_license','doc_emirates_id_manager','doc_visa_manager','doc_passport_manager',
-      'doc_emirates_id_driver','doc_visa_driver','doc_passport_driver','doc_driving_license'
+      'doc_company_license','doc_emirates_id_manager','doc_passport_manager',
+      'doc_emirates_id_driver','doc_passport_driver','doc_driving_license'
     ] AS allow_company,
     ARRAY[
       'buyer_type','buyer_contact_email','buyer_contact_phone',
-      'doc_passport_buyer','doc_visa_buyer','doc_emirates_id_buyer','doc_driving_license_buyer','doc_second_driver_bundle'
+      'doc_passport_buyer','doc_emirates_id_buyer','doc_driving_license_buyer','doc_second_driver_bundle'
     ] AS allow_individual,
     payload
   FROM buyer_tasks
@@ -65,12 +65,12 @@ WITH seller_tasks AS (
     ARRAY[
       'seller_type','seller_contact_email','seller_contact_phone','seller_bank_details',
       'doc_company_license','doc_quotation','doc_tax_invoice','doc_passing_certificate','doc_mulkia_certificate','doc_hiyaza_certificate',
-      'doc_noc_company_letter','doc_noc_gps_letter','doc_trn_certificate'
+      'doc_noc_company_letter','doc_noc_gps_letter','doc_trn_certificate','doc_emirates_id_owner'
     ] AS allow_company,
     ARRAY[
       'seller_type','seller_contact_email','seller_contact_phone',
       'doc_vcc_certificate','doc_vehicle_possession_certificate','doc_hiyaza_certificate','doc_mulkia_certificate','doc_passing_certificate',
-      'doc_emirates_id_seller','doc_spa_invoice'
+      'doc_emirates_id_seller','doc_emirates_id_owner','doc_spa_invoice'
     ] AS allow_individual,
     payload
   FROM seller_tasks

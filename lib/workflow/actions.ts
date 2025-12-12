@@ -53,6 +53,7 @@ type DealSnapshot = {
   id: string;
   payload: Record<string, unknown> | null;
   client_id: string | null;
+  seller_id: string | null;
   asset_id: string | null;
   source: string | null;
   op_manager_id: string | null;
@@ -62,7 +63,7 @@ async function loadDealSnapshot(client: SupabaseClient, dealId: string): Promise
   const { data, error } = await client
     .from("deals")
     .select(
-      "id, payload, client_id, asset_id, source, op_manager_id",
+      "id, payload, client_id, seller_id, asset_id, source, op_manager_id",
     )
     .eq("id", dealId)
     .maybeSingle();
@@ -182,6 +183,7 @@ function buildTaskPayload(
     contextPayload: Record<string, unknown>;
     status: { key: string; title: string };
     workflow: { id: string; title: string };
+    sellerProfile?: Record<string, unknown> | null;
   },
   bindings: Record<string, string> | undefined,
 ): Record<string, unknown> {
@@ -191,19 +193,25 @@ function buildTaskPayload(
     context: options.contextPayload,
     status: options.status,
     workflow: options.workflow,
+    seller: options.sellerProfile ?? null,
     now: new Date().toISOString(),
   };
 
   const evaluatedBindings = evaluateBindings(bindings, bindingContext);
 
   // Auto-populate fields from deal payload if they exist in the schema
-  const dealFields = (options.deal?.payload as any)?.fields ?? {};
+  const payloadFields = (options.deal?.payload as Record<string, unknown>) ?? {};
+  const legacyFields = (payloadFields.fields as Record<string, unknown>) ?? {};
+  const sellerFields = (options.sellerProfile?.seller_details as Record<string, unknown>) ?? {};
+
+  const sourceData = { ...payloadFields, ...legacyFields, ...sellerFields };
+
   const schemaFields = definition.schema?.fields ?? [];
   const prefilledFields: Record<string, unknown> = {};
 
   for (const field of schemaFields) {
-    if (field.id in dealFields) {
-      prefilledFields[field.id] = dealFields[field.id];
+    if (field.id in sourceData) {
+      prefilledFields[field.id] = sourceData[field.id];
     }
   }
 
@@ -253,6 +261,19 @@ async function handleTaskCreate(
     return;
   }
   console.log("[workflow] deal snapshot loaded");
+
+  let sellerProfile: Record<string, unknown> | null = null;
+  if (dealSnapshot.seller_id) {
+    const { data } = await client
+      .from("profiles")
+      .select("seller_details, entity_type")
+      .eq("user_id", dealSnapshot.seller_id)
+      .maybeSingle();
+
+    if (data) {
+      sellerProfile = data as Record<string, unknown>;
+    }
+  }
 
   const conditionContext = buildActionConditionContext({
     deal: dealSnapshot,
@@ -305,6 +326,7 @@ async function handleTaskCreate(
         id: context.template.workflow.id,
         title: context.template.workflow.title,
       },
+      sellerProfile,
     },
     action.task.bindings ?? undefined,
   );

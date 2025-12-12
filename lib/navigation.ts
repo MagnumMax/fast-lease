@@ -41,6 +41,7 @@ const workspaceNavItems: NavItem[] = [
   { label: "Tasks", href: "/workspace/tasks", icon: "ListChecks" },
   { label: "Deals", href: "/workspace/deals", icon: "KanbanSquare" },
   { label: "Clients", href: "/workspace/clients", icon: "Users" },
+  { label: "Sellers", href: "/workspace/sellers", icon: "UserCircle" },
   { label: "Cars", href: "/workspace/cars", icon: "Car" },
 ];
 

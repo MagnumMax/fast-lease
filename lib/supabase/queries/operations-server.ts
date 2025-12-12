@@ -19,8 +19,10 @@ import {
   getClientDocumentLabel,
   getDealDocumentLabel,
   getVehicleDocumentLabel,
+  getOpsClientTypeLabel,
   normalizeClientDocumentType,
   normalizeDealDocumentType,
+  normalizeOpsEntityType,
   normalizeVehicleDocumentType,
 } from "@/lib/supabase/queries/operations";
 import type {
@@ -50,6 +52,8 @@ import type {
   OpsInsuranceInfo,
   OpsInsuranceEditDefaults,
   OpsSellerDocument,
+  OpsSellerDetail,
+  OpsSellerProfile,
   CarDetailResult,
   OpsCarRecord,
   OpsTone,
@@ -58,6 +62,7 @@ import type {
   OpsVehicleDeal,
   OpsVehicleProfile,
   OpsVehicleServiceLogEntry,
+  OpsSellerDealSummary,
 } from "@/lib/supabase/queries/operations";
 import { hydrateTaskAssigneeNames, mapTaskRow, TASK_SELECT } from "@/lib/supabase/queries/tasks";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
@@ -191,6 +196,7 @@ export type SupabaseClientData = {
   email: string | null;
   status: string | null;
   nationality: string | null;
+  entity_type: string | null;
   metadata: Record<string, unknown> | null;
 };
 
@@ -260,19 +266,60 @@ export type SupabaseInvoice = {
 export type SupabaseDealRow = {
   id: string;
   deal_number: string | null;
-  status: string;
+  status: string | null;
   updated_at: string | null;
   created_at: string | null;
-  client_id: string;
-  application_id: string;
-  vehicle_id: string;
+  client_id?: string;
+  application_id?: string;
+  vehicle_id?: string | null;
   contract_start_date?: string | null;
+  contract_end_date?: string | null;
   assigned_account_manager?: string | null;
   principal_amount?: number | null;
   total_amount?: number | null;
   monthly_payment?: number | null;
+  term_months?: number | null;
+  first_payment_date?: string | null;
   source?: string | null;
-  payload: Record<string, unknown> | null;
+  payload?: Record<string, unknown> | null;
+  vehicles?:
+    | Array<{
+        id: string;
+        vin: string | null;
+        make: string | null;
+        model: string | null;
+        year: number | null;
+      }>
+    | {
+        id: string;
+        vin: string | null;
+        make: string | null;
+        model: string | null;
+        year: number | null;
+      }
+    | null;
+};
+
+export type SupabaseScheduleRow = {
+  id: string;
+  deal_id: string;
+  due_date: string | null;
+  amount: number | null;
+  status: string | null;
+};
+
+export type SupabaseClientProfileRow = {
+  user_id: string;
+  full_name: string | null;
+  status: string | null;
+  phone: string | null;
+  nationality: string | null;
+  residency_status: string | null;
+  entity_type: string | null;
+  created_at: string | null;
+  metadata: unknown;
+  source?: string | null;
+  seller_details?: unknown;
 };
 
 // Вспомогательные функции
@@ -1239,6 +1286,7 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
       updated_at,
       client_id,
       vehicle_id,
+      seller_id,
       contract_start_date,
       total_amount,
       payload,
@@ -1277,7 +1325,7 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
   console.log(`[DEBUG] Loading clients for IDs:`, uniqueClientIds.slice(0, 5), `... (total: ${uniqueClientIds.length})`);
   const { data: clientsData, error: clientsError } = await supabase
     .from("profiles")
-    .select("user_id, full_name, phone, status, nationality, metadata")
+    .select("user_id, full_name, phone, status, nationality, entity_type, metadata")
     .in("user_id", uniqueClientIds);
 
   console.log(`[DEBUG] Clients query result:`, {
@@ -1293,6 +1341,7 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
     phone: string | null;
     status: string | null;
     nationality: string | null;
+    entity_type: string | null;
     metadata: Record<string, unknown> | null;
   };
 
@@ -1304,6 +1353,39 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
   console.log(`[DEBUG] Clients loaded: ${clientsData?.length || 0}`);
   console.log(`[DEBUG] Unique client IDs from deals: ${uniqueClientIds.length}`);
   console.log(`[DEBUG] Sample client data:`, clientsData?.slice(0, 3));
+
+  type SellerProfileRow = {
+    user_id: string;
+    full_name: string | null;
+  };
+
+  const uniqueSellerIds = [
+    ...new Set(
+      data
+        .map((deal) => {
+          const sellerId = (deal as Record<string, unknown>).seller_id;
+          return typeof sellerId === "string" && sellerId.trim().length > 0 ? sellerId : null;
+        })
+        .filter(Boolean) as string[],
+    ),
+  ];
+
+  const sellerNameMap = new Map<string, string | null>();
+
+  if (uniqueSellerIds.length > 0) {
+    const { data: sellerProfiles, error: sellerProfilesError } = await supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .in("user_id", uniqueSellerIds);
+
+    if (sellerProfilesError) {
+      console.error("[SERVER-OPS] failed to load seller profiles:", sellerProfilesError);
+    } else {
+      (sellerProfiles ?? []).forEach((seller: SellerProfileRow) => {
+        sellerNameMap.set(seller.user_id, seller.full_name);
+      });
+    }
+  }
 
   const dealIds = data.map((deal) => deal.id as string).filter(Boolean);
   const fallbackOwnerIds = new Set<string>();
@@ -1440,6 +1522,16 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
       typeof row.client_id === "string" && row.client_id.trim().length > 0
         ? (row.client_id as string)
         : null;
+    const rawSellerId = (row as Record<string, unknown>)["seller_id"];
+    const resolvedSellerId =
+      typeof rawSellerId === "string" && rawSellerId.trim().length > 0
+        ? rawSellerId
+        : null;
+
+    const sellerName =
+      resolvedSellerId && sellerNameMap.has(resolvedSellerId)
+        ? sellerNameMap.get(resolvedSellerId) ?? null
+        : null;
 
     const clientName =
       clientData?.full_name ||
@@ -1496,6 +1588,8 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
       amount: row.total_amount ? `AED ${Number(row.total_amount).toLocaleString("en-US")}` : undefined,
       contractStartDate: getString((row as Record<string, unknown>).contract_start_date),
       companyCode,
+      sellerId: resolvedSellerId,
+      sellerName,
     } satisfies OpsDealSummary;
     if (index < 3) {
       console.log("[SERVER-OPS] deal assignment snapshot:", {
@@ -1509,24 +1603,13 @@ export async function getOperationsDeals(): Promise<OpsDealSummary[]> {
   });
 }
 
-type SupabaseClientProfileRow = {
-  user_id: string;
-  full_name: string | null;
-  status: string | null;
-  phone: string | null;
-  nationality: string | null;
-  residency_status: string | null;
-  created_at: string | null;
-  metadata: unknown;
-};
-
 export async function getOperationsClients(): Promise<OpsClientRecord[]> {
   console.log("[SERVER-OPS] getOperationsClients called");
 
   const supabase = await createSupabaseServerClient();
 
   const profileSelect =
-    "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata, source";
+    "user_id, full_name, status, phone, nationality, residency_status, entity_type, created_at, metadata, source";
 
   let profilesData: SupabaseClientProfileRow[] | null = null;
   let profilesError: unknown = null;
@@ -1565,7 +1648,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     const response = await supabase
       .from("profiles")
       .select(
-        "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata",
+        "user_id, full_name, status, phone, nationality, residency_status, entity_type, created_at, metadata",
       )
       .in("user_id", clientUserIds)
       .order("full_name", { ascending: true });
@@ -1647,6 +1730,8 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
     const metadata = isRecord(profile.metadata)
       ? (profile.metadata as Record<string, unknown>)
       : {};
+    const sellerDetails =
+      isRecord(profile.seller_details) ? (profile.seller_details as Record<string, unknown>) : null;
     const statusInfo = normalizeClientStatus(profile.status);
     const rawClient = isRecord(metadata?.["raw_client"])
       ? (metadata["raw_client"] as Record<string, unknown>)
@@ -1659,7 +1744,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         getString(metadata?.["contact_email"]),
         getString(metadata?.["primary_email"]),
         getString(rawClient?.["email"]),
-      ].find(Boolean) ?? null;
+      ].find((v): v is string => Boolean(v)) ?? null;
 
     const phoneFromMetadata =
       [
@@ -1669,16 +1754,15 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         getString(metadata?.["contact_phone"]),
         getString(metadata?.["primary_phone"]),
         getString(rawClient?.["phone"]),
-      ].find(Boolean) ?? null;
+      ].find((v): v is string => Boolean(v)) ?? null;
     const rawSegment =
       getString(metadata?.["segment"]) ??
       getString(metadata?.["client_segment"]) ??
       getString(metadata?.["customer_segment"]) ??
       null;
-    const clientTypeValue = getString(metadata?.["client_type"]);
-    const clientType =
-      clientTypeValue === "Company" || clientTypeValue === "Personal" ? clientTypeValue : null;
-    const segment = rawSegment ?? clientType;
+    const entityType = normalizeOpsEntityType(getString(profile.entity_type));
+    const entityTypeLabel = getOpsClientTypeLabel(entityType);
+    const segment = rawSegment ?? null;
 
     const rawMemberSince = profile.created_at
       ? formatDate(profile.created_at as string, { month: "long", year: "numeric" })
@@ -1693,7 +1777,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         [
           statusInfo.display,
           getString(profile.residency_status),
-          clientType,
+          entityTypeLabel,
           segment,
           getString(profile.nationality),
         ]
@@ -1734,6 +1818,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         overdue: overdueSummary,
       },
       residencyStatus: getString(profile.residency_status),
+      entityType,
       leasing:
         leasing
           ? {
@@ -1813,7 +1898,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   }
 
   const profileSelect = `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
-       employment_info, financial_profile, metadata, created_at, last_login_at, source`;
+       employment_info, financial_profile, metadata, created_at, last_login_at, source, entity_type`;
 
   let {
     data: profileRow,
@@ -1923,10 +2008,9 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     getString(metadata?.client_segment) ??
     getString(metadata?.customer_segment) ??
     null;
-  const clientTypeValue = getString(metadata?.client_type);
-  const clientType =
-    clientTypeValue === "Company" || clientTypeValue === "Personal" ? clientTypeValue : null;
-  const segment = rawSegment ?? clientType;
+  const entityType = normalizeOpsEntityType(getString(profileRow.entity_type));
+  const entityTypeLabel = getOpsClientTypeLabel(entityType);
+  const segment = rawSegment ?? null;
 
   const statusInfo = normalizeClientStatus(profileRow.status);
 
@@ -1940,7 +2024,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   const tagSource = [
     statusInfo.display,
     getString(profileRow.residency_status),
-    clientType,
+    entityTypeLabel,
     segment,
     getString(profileRow.nationality),
   ];
@@ -1954,7 +2038,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     fullName: getString(profileRow.full_name) ?? "Без имени",
     status: statusInfo.display,
     segment,
-    clientType,
+    clientType: entityTypeLabel,
     memberSince: profileRow.created_at ? formatDate(profileRow.created_at, { month: "long", year: "numeric" }) : null,
     source: resolvedSource,
     email: authEmail,
@@ -1978,41 +2062,6 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
       activeDeals: 0,
     },
     tags,
-  };
-
-  type SupabaseDealRow = {
-    id: string;
-    deal_number: string | null;
-    status: string | null;
-    created_at: string | null;
-    updated_at: string | null;
-    monthly_payment: number | null;
-    total_amount: number | null;
-    principal_amount: number | null;
-    term_months: number | null;
-    contract_start_date: string | null;
-    contract_end_date: string | null;
-    first_payment_date: string | null;
-    source: string | null;
-    assigned_account_manager: string | null;
-    vehicle_id: string | null;
-    vehicles?:
-      | Array<{
-          id: string;
-          vin: string | null;
-          make: string | null;
-          model: string | null;
-          year: number | null;
-        }>
-      | null;
-  };
-
-  type SupabaseScheduleRow = {
-    id: string;
-    deal_id: string;
-    due_date: string | null;
-    amount: number | null;
-    status: string | null;
   };
 
   const [
@@ -2383,6 +2432,315 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
   return detail;
 }
 
+export async function getOperationsSellerDetail(identifier: string): Promise<OpsSellerDetail | null> {
+  const trimmedInput = (identifier ?? "").trim();
+  if (!trimmedInput) {
+    console.warn("[SERVER-OPS] getOperationsSellerDetail called with empty identifier");
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  const { id: extractedUuid, slug: slugRemainder } = extractIdFromSlug(trimmedInput);
+  const normalizedIdentifier = slugRemainder || trimmedInput;
+
+  let userId: string | null = null;
+
+  if (extractedUuid && isUuid(extractedUuid)) {
+    userId = extractedUuid;
+  } else if (isUuid(trimmedInput)) {
+    userId = trimmedInput;
+  }
+
+  if (!userId) {
+    const slugCandidate = toSlug(normalizedIdentifier);
+    const nameSearch = normalizedIdentifier.replace(/[-_]+/g, " ").trim();
+
+    let profileQuery = supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .order("full_name", { ascending: true })
+      .limit(50);
+
+    if (nameSearch) {
+      const pattern = `%${nameSearch.replace(/\s+/g, "%")}%`;
+      profileQuery = profileQuery.ilike("full_name", pattern);
+    }
+
+    const { data: profileCandidates, error: profileSearchError } = await profileQuery;
+    if (profileSearchError) {
+      console.error("[SERVER-OPS] failed to search profile by slug", {
+        identifier,
+        error: profileSearchError,
+      });
+    } else if (profileCandidates?.length) {
+      const match = profileCandidates.find((candidate) => {
+        const candidateName = getString(candidate.full_name);
+        if (!candidateName) return false;
+        return toSlug(candidateName) === slugCandidate;
+      });
+      userId = match?.user_id ?? null;
+    }
+  }
+
+  if (!userId) {
+    console.warn("[SERVER-OPS] seller detail user id not resolved", { identifier });
+    return null;
+  }
+
+  const profileSelect = `user_id, full_name, status, phone, nationality, metadata, created_at, source, entity_type, seller_details`;
+
+  let { data: profileRow, error: profileError } = await supabase
+    .from("profiles")
+    .select(profileSelect)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (profileError && isMissingColumnError(profileError, "source")) {
+    console.warn("[SERVER-OPS] profiles.source column missing, retrying seller profile without it", {
+      userId,
+    });
+    ({ data: profileRow, error: profileError } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, status, phone, nationality, metadata, created_at, entity_type, seller_details")
+      .eq("user_id", userId)
+      .maybeSingle());
+  }
+
+  if (profileError) {
+    console.error("[SERVER-OPS] failed to load seller profile", { userId, error: profileError });
+    return null;
+  }
+
+  if (!profileRow) {
+    console.warn("[SERVER-OPS] profile not found for seller", { userId });
+    return null;
+  }
+
+  let authEmail: string | null = null;
+  let authPhone: string | null = null;
+
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+    const { data: authData, error: authError } = await serviceClient.auth.admin.getUserById(userId);
+    if (authError) {
+      console.warn("[SERVER-OPS] auth user not available for seller", {
+        userId,
+        error: authError.message ?? authError,
+      });
+    } else if (authData?.user) {
+      authEmail = authData.user.email ?? null;
+      authPhone = authData.user.phone ?? null;
+    }
+  } catch (error) {
+    console.warn("[SERVER-OPS] auth lookup skipped (service key not configured?)", { userId, error });
+  }
+
+  const metadata = isRecord(profileRow.metadata) ? (profileRow.metadata as Record<string, unknown>) : {};
+  
+  // Resolve Email
+  const metadataEmailCandidates = ["ops_email", "work_email", "email", "contact_email"];
+  for (const key of metadataEmailCandidates) {
+    const candidateEmail = getString(metadata[key]);
+    if (candidateEmail) {
+      authEmail = authEmail ?? candidateEmail;
+      break;
+    }
+  }
+
+  // Resolve Phone
+  const metadataPhoneCandidates = ["ops_phone", "work_phone", "phone"];
+  for (const key of metadataPhoneCandidates) {
+    const candidatePhone = getString(metadata[key]);
+    if (candidatePhone) {
+      authPhone = authPhone ?? candidatePhone;
+      break;
+    }
+  }
+
+  const profileSourceRaw = getString(profileRow.source);
+  const metadataSourceCandidates = [
+    getString(metadata?.["lead_source"]),
+    getString(metadata?.["source_label"]),
+    getString(metadata?.["source"]),
+  ];
+  const resolvedSource =
+    (profileSourceRaw && profileSourceRaw.trim().length > 0 ? profileSourceRaw.trim() : null) ??
+    metadataSourceCandidates.find(
+      (value): value is string => typeof value === "string" && value.trim().length > 0,
+    ) ??
+    null;
+
+  const statusInfo = normalizeClientStatus(profileRow.status);
+
+  const profile: OpsSellerProfile = {
+    userId,
+    fullName: getString(profileRow.full_name) ?? "Без имени",
+    status: statusInfo.display,
+    source: resolvedSource,
+    email: authEmail,
+    phone: getString(profileRow.phone) ?? authPhone,
+    nationality: getString(profileRow.nationality),
+    createdAt: profileRow.created_at ?? null,
+    metadata,
+    entityType: getString(profileRow.entity_type) as "individual" | "company" | null,
+    sellerDetails: isRecord(profileRow.seller_details) ? (profileRow.seller_details as Record<string, unknown>) : null,
+  };
+
+  // Fetch related deals where this user is the seller
+  // Note: currently deals table has seller_id? No, it has client_id.
+  // But we have seller_id in deal summary?
+  // Let's check the schema or query.
+  // In getOperationsDealDetail, we saw `sellerId` being derived from `dealRow.seller_id`.
+  // Wait, does `deals` table have `seller_id`?
+  // In `getOperationsDeals`, we select:
+  // id, deal_number, company_code, op_manager_id, status, created_at, updated_at, client_id, vehicle_id...
+  // I don't see seller_id in the select list in `getOperationsDeals`.
+  // However, I recall fixing `dealSummary` to include `sellerId`.
+  
+  // Let's assume there is a `seller_id` column or it's stored in payload?
+  // I'll check `getOperationsDealDetail` logic again, but it wasn't fully visible in the chunks I read.
+  // But wait, if I am implementing `getOperationsSellerDetail`, I want to find deals where `seller_id` matches.
+  // If `seller_id` is not a column, I might have to look into payload or a junction table.
+  // But the user asked to assign seller to deal, implying a relationship.
+  // Let's assume for now we look for deals where `seller_id` matches.
+  // If the column doesn't exist, I'll catch the error.
+  
+  // Wait, if I am not sure about `seller_id` column, I should check.
+  // `getOperationsDeals` didn't select it.
+  
+  // Let's try to select `seller_id` from deals.
+  
+  const { data: dealsData, error: dealsError } = await supabase
+    .from("deals")
+    .select(
+      `id, deal_number, company_code, status, created_at, updated_at, monthly_payment, total_amount,
+       principal_amount, term_months, contract_start_date, contract_end_date, first_payment_date,
+       source, assigned_account_manager, vehicle_id,
+       vehicles!vehicle_id (id, vin, make, model, year)`
+    )
+    .eq("seller_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (dealsError) {
+     console.error("[SERVER-OPS] failed to load seller deals", { userId, error: dealsError });
+  }
+
+  // Fetch documents from profile_documents
+  const { data: profileDocumentsData, error: profileDocumentsError } = await supabase
+    .from("profile_documents")
+    .select("*")
+    .eq("profile_id", userId)
+    .order("uploaded_at", { ascending: false });
+
+  if (profileDocumentsError) {
+    console.error("[SERVER-OPS] failed to load seller documents", { userId, error: profileDocumentsError });
+  }
+
+  // Process Deals
+  const deals = ((dealsData && !dealsError) ? dealsData : []) as SupabaseDealRow[];
+  const dealIds = deals.map((deal) => deal.id);
+  
+  // Fetch payment schedules for these deals (similar to client detail)
+  const { data: schedulesData } = dealIds.length
+      ? await supabase
+          .from("payment_schedules")
+          .select("id, deal_id, due_date, amount, status")
+          .in("deal_id", dealIds)
+      : { data: [] };
+
+  const schedules = (schedulesData ?? []) as SupabaseScheduleRow[];
+  const schedulesByDeal = schedules.reduce<Map<string, SupabaseScheduleRow[]>>((acc, schedule) => {
+    if (!schedule.deal_id) return acc;
+    const list = acc.get(schedule.deal_id) ?? [];
+    list.push(schedule);
+    acc.set(schedule.deal_id, list);
+    return acc;
+  }, new Map());
+
+  const scheduleNow = new Date();
+  scheduleNow.setHours(0, 0, 0, 0);
+
+  const sellerDeals: OpsClientDeal[] = deals.map((deal) => {
+    const vehicleCandidates = Array.isArray(deal.vehicles)
+      ? deal.vehicles
+      : deal.vehicles
+        ? [deal.vehicles]
+        : [];
+    const vehicle = vehicleCandidates[0] ?? null;
+    const statusKey = mapStatusToWorkflow(deal.status ?? null);
+    const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
+
+    const dealSchedules = schedulesByDeal.get(deal.id) ?? [];
+    let nextPaymentDue: string | null = null;
+    let overdueAmount: number | null = null;
+
+    if (dealSchedules.length) {
+      const upcoming = dealSchedules
+        .filter((schedule) => schedule.status?.toLowerCase() !== "paid" && schedule.due_date)
+        .map((schedule) => ({
+          ...schedule,
+          dueDate: new Date(schedule.due_date as string),
+        }))
+        .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+      const next = upcoming.find((item) => item.dueDate.getTime() >= scheduleNow.getTime());
+      if (next) {
+        nextPaymentDue = formatShortDate(next.due_date ?? null);
+      }
+
+      const overdueSchedules = upcoming.filter((item) => item.dueDate.getTime() < scheduleNow.getTime());
+      if (overdueSchedules.length) {
+        const sum = overdueSchedules.reduce((acc, schedule) => acc + (Number(schedule.amount) || 0), 0);
+        overdueAmount = sum > 0 ? sum : null;
+      }
+    }
+
+    const companyCode =
+      toDealCompanyCode((deal as { company_code?: string | null }).company_code ?? null) ?? null;
+
+    return {
+      id: deal.id,
+      dealNumber:
+        deal.deal_number ??
+        formatFallbackDealNumber({
+          id: deal.id,
+          createdAt: deal.created_at,
+          prefix: getDealCompanyPrefix(companyCode),
+        }),
+      status: (deal.status ?? "unknown").toUpperCase(),
+      statusKey,
+      stageLabel: statusMeta?.title ?? null,
+      createdAt: deal.created_at,
+      updatedAt: deal.updated_at,
+      vehicleId: deal.vehicle_id ?? vehicle?.id ?? null,
+      vehicleName: vehicle ? `${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim() || "Авто не выбрано" : "Авто не выбрано",
+      vehicleVin: vehicle?.vin ?? null,
+      monthlyPayment: formatCurrency(deal.monthly_payment),
+      totalAmount: formatCurrency(deal.total_amount),
+      principalAmount: formatCurrency(deal.principal_amount),
+      termMonths: deal.term_months ?? null,
+      contractStartDate: formatShortDate(deal.contract_start_date),
+      contractEndDate: formatShortDate(deal.contract_end_date),
+      nextPaymentDue,
+      overdueAmount: overdueAmount != null ? formatCurrency(overdueAmount) : null,
+      assignedManagerId: deal.assigned_account_manager ?? null,
+      source: getString(deal.source),
+    } satisfies OpsClientDeal;
+  });
+
+  // Process Documents
+  // profile_documents table structure:
+  // id, profile_id, document_type, title, storage_path, bucket_id, file_size, content_type, metadata, created_at, updated_at
+  const sellerDocuments = await buildSellerDocumentList(profileDocumentsData ?? []);
+
+  return {
+    profile,
+    deals: sellerDeals,
+    documents: sellerDocuments,
+  };
+}
+
 type OperationsCar = OpsCarRecord;
 
 type VehicleHighlight = NonNullable<OpsVehicleProfile["highlights"]>[number];
@@ -2509,6 +2867,7 @@ type DealDetailResult = {
   profile: OpsDealProfile;
   company: OpsDealCompany;
   client: OpsDealClientProfile;
+  seller?: OpsDealClientProfile | null;
   keyInformation: OpsDealKeyInfoEntry[];
   overview: OpsDealDetailsEntry[];
   financials: OpsDealDetailsEntry[];
@@ -2563,6 +2922,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     contract_terms,
     insurance_details,
     client_id,
+    seller_id,
     term_months,
     contract_start_date,
     contract_end_date,
@@ -2596,6 +2956,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     contract_terms: Record<string, unknown> | null;
     insurance_details: Record<string, unknown> | null;
     client_id: string;
+    seller_id?: string | null;
     term_months: number | null;
     contract_start_date: string | null;
     contract_end_date: string | null;
@@ -2788,13 +3149,14 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     nationality?: string | null;
     metadata?: unknown;
     source?: string | null;
+    entity_type?: string | null;
   } | null = null;
   let clientError: unknown = null;
 
   if (clientId) {
-    ({ data: clientData, error: clientError } = await supabase
+    ({ data: clientData, error: clientError } = await supabaseService
       .from("profiles")
-      .select("id, user_id, full_name, phone, status, nationality, metadata, source")
+      .select("id, user_id, full_name, phone, status, nationality, metadata, source, entity_type")
       .eq("user_id", clientId)
       .maybeSingle());
 
@@ -2802,9 +3164,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       console.warn("[SERVER-OPS] profiles.source column missing, retrying client lookup without it", {
         clientId,
       });
-      ({ data: clientData, error: clientError } = await supabase
+      ({ data: clientData, error: clientError } = await supabaseService
         .from("profiles")
-        .select("id, user_id, full_name, phone, status, nationality, metadata")
+        .select("id, user_id, full_name, phone, status, nationality, metadata, entity_type")
         .eq("user_id", clientId)
         .maybeSingle());
     }
@@ -2822,6 +3184,37 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     });
   }
 
+  // Загружаем данные продавца (если есть)
+  const sellerIdRaw = typeof dealRow.seller_id === "string" ? dealRow.seller_id.trim() : "";
+  const sellerId = sellerIdRaw.length > 0 ? sellerIdRaw : null;
+  let sellerData: {
+    id?: string | null;
+    user_id?: string | null;
+    full_name?: string | null;
+    phone?: string | null;
+    status?: string | null;
+    nationality?: string | null;
+    metadata?: unknown;
+    source?: string | null;
+    entity_type?: string | null;
+  } | null = null;
+  let sellerError: unknown = null;
+
+  if (sellerId) {
+    ({ data: sellerData, error: sellerError } = await supabaseService
+      .from("profiles")
+      .select("id, user_id, full_name, phone, status, nationality, metadata, source, entity_type")
+      .eq("user_id", sellerId)
+      .maybeSingle());
+
+    if (sellerError) {
+      console.error("[SERVER-OPS] failed to load seller profile for deal", {
+        dealId: dealRow.id,
+        sellerId,
+        error: sellerError,
+      });
+    }
+  }
 
   // Загружаем email из auth.users (если есть покупатель)
   let authUser: Awaited<ReturnType<typeof supabaseService.auth.admin.getUserById>>["data"] | null = null;
@@ -2933,6 +3326,76 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     );
 
     clientDocuments = mappedClientDocuments.sort((left, right) => {
+      const leftUploaded = left.uploadedAt ?? "";
+      const rightUploaded = right.uploadedAt ?? "";
+      return rightUploaded.localeCompare(leftUploaded);
+    });
+  }
+
+  let sellerDocumentsFromDb: OpsClientDocument[] = [];
+  if (sellerId) {
+    const { data: sellerDocumentsRows, error: sellerDocumentsError } = await supabase
+      .from("client_documents")
+      .select(
+        "id, document_type, document_category, title, storage_path, status, uploaded_at, verified_at, metadata",
+      )
+      .eq("client_id", sellerId)
+      .order("uploaded_at", { ascending: false });
+
+    if (sellerDocumentsError) {
+      console.error("[SERVER-OPS] failed to load seller documents for deal", {
+        dealId: dealRow.id,
+        sellerId,
+        error: sellerDocumentsError,
+      });
+    }
+
+    const mappedSellerDocuments = await Promise.all(
+      (sellerDocumentsRows ?? []).map(async (document: SupabaseClientDocumentRow) => {
+        const signedUrl = document.storage_path
+          ? await createSignedStorageUrl({ bucket: "client-documents", path: document.storage_path })
+          : null;
+        const metadata = (document.metadata ?? {}) as Record<string, unknown>;
+        const rawDocumentType = getString(document.document_type);
+        const normalizedDocumentType = normalizeClientDocumentType(rawDocumentType);
+        const typeLabel = getClientDocumentLabel(rawDocumentType);
+        const preferredName =
+          getString(document.title) ??
+          getString(metadata?.["label"]) ??
+          typeLabel ??
+          normalizedDocumentType ??
+          rawDocumentType ??
+          "Документ";
+
+        const contextRaw = getString(metadata?.["upload_context"]);
+        const context =
+          contextRaw === "company"
+            ? ("company" as const)
+            : contextRaw === "personal"
+              ? ("personal" as const)
+              : normalizedDocumentType === "company_license" || normalizedDocumentType === "corporate_documents"
+                ? ("company" as const)
+                : ("personal" as const);
+
+        return {
+          id: document.id,
+          name: preferredName,
+          status: getString(document.status) ?? "uploaded",
+          documentType: normalizedDocumentType ?? rawDocumentType,
+          category: getString(document.document_category),
+          source: "client" as const,
+          bucket: "client-documents",
+          storagePath: document.storage_path ?? null,
+          uploadedAt: document.uploaded_at ?? null,
+          signedAt: document.verified_at ?? null,
+          metadata,
+          context,
+          url: signedUrl,
+        } satisfies OpsClientDocument;
+      }),
+    );
+
+    sellerDocumentsFromDb = mappedSellerDocuments.sort((left, right) => {
       const leftUploaded = left.uploadedAt ?? "";
       const rightUploaded = right.uploadedAt ?? "";
       return rightUploaded.localeCompare(leftUploaded);
@@ -3432,7 +3895,46 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     notes: clientNotesParts.length > 0 ? clientNotesParts.join(" • ") : "—",
     userId: clientId,
     detailHref: clientDetailHref,
+    documents: clientDocuments,
+    type: clientData?.entity_type ?? null,
   };
+
+  let authSeller: Awaited<ReturnType<typeof supabaseService.auth.admin.getUserById>>["data"] | null = null;
+  if (sellerId) {
+    try {
+      const { data: fetchedAuthSeller, error: authSellerError } = await supabaseService.auth.admin.getUserById(
+        sellerId,
+      );
+      if (!authSellerError) {
+        authSeller = fetchedAuthSeller;
+      }
+    } catch (error) {
+      console.warn("[SERVER-OPS] auth seller lookup threw", {
+        dealId: dealRow.id,
+        sellerId,
+        error,
+      });
+    }
+  }
+
+  const resolvedSellerName = getString(sellerData?.full_name);
+  const resolvedSellerPhone = getString(sellerData?.phone);
+  const resolvedSellerEmail = authSeller?.user?.email ?? "—";
+
+  const sellerProfile: DealDetailResult["seller"] = sellerId
+    ? {
+        name: resolvedSellerName ?? "—",
+        phone: resolvedSellerPhone ?? "—",
+        email: resolvedSellerEmail,
+        scoring: "—",
+        source: getString(sellerData?.source) ?? "—",
+        notes: "—",
+        userId: sellerId,
+        detailHref: null,
+        documents: sellerDocumentsFromDb,
+        type: sellerData?.entity_type ?? null,
+      }
+    : null;
 
   logOpsDealDetailDebug(`[DEBUG] Final client profile:`, {
     name: clientProfile.name,
@@ -3885,6 +4387,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     profile,
     company: dealCompany,
     client: clientProfile,
+    seller: sellerProfile,
     keyInformation,
     overview,
     financials,
@@ -4714,4 +5217,284 @@ export async function getOperationsCarDetail(slug: string): Promise<CarDetailRes
     serviceLog,
     insurance: activeDealInsurance,
   };
+}
+
+export async function getOperationsSellers(): Promise<OpsClientRecord[]> {
+  console.log("[SERVER-OPS] getOperationsSellers called");
+
+  const supabase = await createSupabaseServerClient();
+
+  const profileBaseColumns =
+    "user_id, full_name, status, phone, nationality, residency_status, entity_type, created_at, metadata";
+  const baseColumnList = profileBaseColumns.split(", ").map((column) => column.trim());
+  let profileSelectColumns = [...baseColumnList, "source", "seller_details"];
+  let profilesData: SupabaseClientProfileRow[] | null = null;
+  let profilesError: unknown = null;
+
+  const executeProfileQuery = async (columns: string[]) =>
+    supabase.from("profiles").select(columns.join(", ")).in("user_id", clientUserIds).order("full_name", { ascending: true });
+
+  const { data: clientRoleRows, error: clientRolesError } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "SELLER");
+
+  if (clientRolesError) {
+    console.error("[SERVER-OPS] failed to load seller roles:", clientRolesError);
+    return [];
+  }
+
+  const clientUserIds = (clientRoleRows ?? [])
+    .map((row) => row.user_id)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  if (clientUserIds.length === 0) {
+    console.log("[SERVER-OPS] no SELLER role users found");
+    return [];
+  }
+
+  while (true) {
+    const response = await executeProfileQuery(profileSelectColumns);
+    profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
+    profilesError = response.error;
+    if (!profilesError) {
+      break;
+    }
+
+    const missingSource = isMissingColumnError(profilesError, "source");
+    const missingSellerDetails = isMissingColumnError(profilesError, "seller_details");
+    const columnsToDrop: string[] = [];
+
+    if (missingSource && profileSelectColumns.includes("source")) {
+      console.warn("[SERVER-OPS] profiles.source column missing, retrying without it");
+      columnsToDrop.push("source");
+    }
+    if (missingSellerDetails && profileSelectColumns.includes("seller_details")) {
+      console.warn("[SERVER-OPS] profiles.seller_details column missing, retrying without it");
+      columnsToDrop.push("seller_details");
+    }
+
+    if (!columnsToDrop.length) {
+      break;
+    }
+
+    profileSelectColumns = profileSelectColumns.filter((column) => !columnsToDrop.includes(column));
+  }
+
+  if (profilesError) {
+    console.error("[SERVER-OPS] failed to load sellers:", profilesError);
+    return [];
+  }
+
+  const profiles = profilesData ?? [];
+
+  console.log(`[SERVER-OPS] loaded ${profiles.length} sellers`);
+
+  if (!profiles.length) {
+    return [];
+  }
+
+  const clientIds = profiles.map((profile) => profile.user_id);
+
+  let leasingRows: Array<{
+    seller_id: string;
+    deal_id: string;
+    deal_number: string | null;
+    company_code: string | null;
+    vehicle_name: string | null;
+    vehicle_vin: string | null;
+    total_amount: number | null;
+    contract_start_date: string | null;
+  }> = [];
+
+  let dealsBySeller: Map<string, OpsSellerDealSummary[]> = new Map();
+
+  if (clientIds.length) {
+    const leasingResult = await supabase
+      .from("deals")
+      .select(
+        "id, seller_id, deal_number, company_code, total_amount, contract_start_date, vehicles:vehicle_id(make, model, vin)",
+      )
+      .in("seller_id", clientIds)
+      .order("contract_start_date", { ascending: false, nullsFirst: false });
+
+    if (leasingResult.error) {
+      console.error("[SERVER-OPS] failed to load leasing aggregates for sellers", leasingResult.error);
+    } else {
+      leasingRows = (leasingResult.data ?? []).map((row) => {
+        const vehicle = Array.isArray(row.vehicles) ? row.vehicles[0] : row.vehicles;
+        const vehicleName =
+          vehicle && typeof vehicle === "object"
+            ? `${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
+            : null;
+        const vehicleVin =
+          vehicle && typeof vehicle === "object"
+            ? getString((vehicle as { vin?: string | null }).vin)
+            : null;
+        return {
+          seller_id: row.seller_id as string,
+          deal_id: row.id as string,
+          deal_number: getString(row.deal_number),
+          company_code: getString(row.company_code),
+          total_amount: typeof row.total_amount === "number" ? row.total_amount : null,
+          contract_start_date: getString(row.contract_start_date),
+          vehicle_name: vehicleName && vehicleName.length ? vehicleName : null,
+          vehicle_vin: vehicleVin,
+        };
+      });
+    }
+
+    // Build deals map per seller for UI
+    dealsBySeller = leasingRows.reduce<Map<string, OpsSellerDealSummary[]>>((acc, row) => {
+      const vehicle = row.vehicle_name ?? "Автомобиль";
+      const number = row.deal_number || formatFallbackDealNumber({
+        id: row.deal_id,
+        createdAt: row.contract_start_date,
+        prefix: getDealCompanyPrefix(resolveDealCompanyCode(row.company_code) ?? DEFAULT_DEAL_COMPANY_CODE),
+      });
+
+      const amountValue = typeof row.total_amount === "number" ? row.total_amount : null;
+      const amount = amountValue != null ? formatCurrency(amountValue) : "—";
+      const since = row.contract_start_date
+        ? formatDate(row.contract_start_date, { day: "2-digit", month: "2-digit", year: "numeric" })
+        : "—";
+
+      const entry: OpsSellerDealSummary = {
+        id: row.deal_id,
+        number,
+        vehicle,
+        vin: row.vehicle_vin,
+        amount,
+        amountValue,
+        since,
+        href: `/ops/deals/${buildSlugWithId(number, row.deal_id) || row.deal_id}`,
+      };
+
+      const list = acc.get(row.seller_id) ?? [];
+      list.push(entry);
+      acc.set(row.seller_id, list);
+      return acc;
+    }, new Map());
+  }
+
+  const leasingMap = leasingRows.reduce<Map<string, typeof leasingRows[number]>>((acc, row) => {
+    if (!row.seller_id) return acc;
+    if (!acc.has(row.seller_id)) {
+      acc.set(row.seller_id, row);
+    }
+    return acc;
+  }, new Map());
+
+  return profiles.map((profile, index) => {
+    const metadata = isRecord(profile.metadata)
+      ? (profile.metadata as Record<string, unknown>)
+      : {};
+    const sellerDetails =
+      isRecord(profile.seller_details) ? (profile.seller_details as Record<string, unknown>) : null;
+    const statusInfo = normalizeClientStatus(profile.status);
+    const rawClient = isRecord(metadata?.["raw_client"])
+      ? (metadata["raw_client"] as Record<string, unknown>)
+      : null;
+    const emailFromMetadata =
+      [
+        getString(metadata?.["ops_email"]),
+        getString(metadata?.["work_email"]),
+        getString(metadata?.["email"]),
+        getString(metadata?.["contact_email"]),
+        getString(metadata?.["primary_email"]),
+        getString(rawClient?.["email"]),
+      ].find((v): v is string => Boolean(v)) ?? null;
+
+    const phoneFromMetadata =
+      [
+        getString(metadata?.["ops_phone"]),
+        getString(metadata?.["work_phone"]),
+        getString(metadata?.["phone"]),
+        getString(metadata?.["contact_phone"]),
+        getString(metadata?.["primary_phone"]),
+        getString(rawClient?.["phone"]),
+      ].find((v): v is string => Boolean(v)) ?? null;
+    const sellerContactEmail = getString(sellerDetails?.["seller_contact_email"]);
+    const sellerContactPhone = getString(sellerDetails?.["seller_contact_phone"]);
+    const rawSegment =
+      getString(metadata?.["segment"]) ??
+      getString(metadata?.["client_segment"]) ??
+      getString(metadata?.["customer_segment"]) ??
+      null;
+    const entityType = normalizeOpsEntityType(getString(profile.entity_type));
+    const entityTypeLabel = getOpsClientTypeLabel(entityType);
+    const segment = rawSegment ?? null;
+
+    const rawMemberSince = profile.created_at
+      ? formatDate(profile.created_at as string, { month: "long", year: "numeric" })
+      : null;
+    const memberSince = rawMemberSince && rawMemberSince !== "—" ? rawMemberSince : null;
+
+    const overdueCount = 0;
+    const overdueSummary = "Нет просрочек";
+
+    const tags = Array.from(
+      new Set(
+        [
+          statusInfo.display,
+          getString(profile.residency_status),
+          entityTypeLabel,
+          segment,
+          getString(profile.nationality),
+        ]
+          .filter((value): value is string => Boolean(value))
+          .map((value) => value.trim()),
+      ),
+    );
+
+    const leasing = leasingMap.get(profile.user_id as string) ?? null;
+    const sellerDeals = dealsBySeller.get(profile.user_id as string) ?? [];
+    const leasingAmount = leasing?.total_amount != null ? formatCurrency(leasing.total_amount) : "—";
+    const leasingStart = leasing?.contract_start_date
+      ? formatDate(leasing.contract_start_date, { day: "2-digit", month: "2-digit", year: "numeric" })
+      : "—";
+    const leasingVehicle = leasing?.vehicle_name ?? "—";
+    const leasingVin = leasing?.vehicle_vin ?? null;
+
+    const userId = (profile.user_id as string) ?? "";
+    const clientName = (profile.full_name as string) ?? "";
+    const detailSlug = buildSlugWithId(clientName, userId) || userId;
+    return {
+      userId,
+      entityType,
+      id: `SL-${(101 + index).toString().padStart(4, "0")}`,
+      name: clientName || "Seller",
+      email: (sellerContactEmail ?? emailFromMetadata) ?? "",
+      phone:
+        (sellerContactPhone ?? phoneFromMetadata ?? getString(profile.phone)) ??
+        "+971 50 000 0000",
+      status: statusInfo.filter,
+      statusLabel: statusInfo.display,
+      scoring: "90/100",
+      overdue: overdueCount,
+      limit: "AED 350,000",
+      detailHref: `/ops/sellers/${detailSlug}`,
+      memberSince,
+      segment,
+      tags,
+      metricsSummary: {
+        scoring: "90/100",
+        limit: "AED 350,000",
+        overdue: overdueSummary,
+      },
+      residencyStatus: getString(profile.residency_status),
+      leasing:
+        leasing
+          ? {
+              vehicle: leasingVehicle,
+              amount: leasingAmount,
+              since: leasingStart,
+              dealNumber: leasing.deal_number ?? undefined,
+              dealId: leasing.deal_id,
+              vin: leasingVin,
+            }
+          : undefined,
+      deals: sellerDeals,
+    } satisfies OpsClientRecord;
+  });
 }

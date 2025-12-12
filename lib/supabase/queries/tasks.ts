@@ -22,7 +22,10 @@ export type WorkspaceTask = {
   reopenComment: string | null;
   dealId: string | null;
   dealNumber: string | null;
+  dealClientId: string | null;
+  dealSellerId: string | null;
   dealClientName: string | null;
+  dealSellerName: string | null;
   dealVehicleName: string | null;
   isWorkflow: boolean;
   workflowStageKey: string | null;
@@ -36,6 +39,8 @@ export type WorkspaceTask = {
 type TaskDealRelation = {
   id: string;
   deal_number: string | null;
+  client_id: string | null;
+  seller_id: string | null;
   payload: Record<string, unknown> | null;
 };
 
@@ -62,7 +67,7 @@ type TaskRow = {
 };
 
 export const TASK_SELECT =
-  "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, reopened_at, reopen_count, reopen_reason, reopen_comment, sla_status, payload, action_hash, created_at, updated_at, deals:deal_id (id, deal_number, payload)";
+  "id, deal_id, type, title, status, assignee_role, assignee_user_id, sla_due_at, completed_at, reopened_at, reopen_count, reopen_reason, reopen_comment, sla_status, payload, action_hash, created_at, updated_at, deals:deal_id (id, deal_number, client_id, seller_id, payload)";
 
 function resolveDealCustomerName(payload: Record<string, unknown> | null | undefined): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -74,6 +79,24 @@ function resolveDealCustomerName(payload: Record<string, unknown> | null | undef
     const keys = ["full_name", "name", "title"];
     for (const key of keys) {
       const value = customerRecord[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value;
+      }
+    }
+  }
+  return null;
+}
+
+function resolveDealSellerName(payload: Record<string, unknown> | null | undefined): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  const seller = payload["seller"];
+  if (seller && typeof seller === "object" && !Array.isArray(seller)) {
+    const sellerRecord = seller as Record<string, unknown>;
+    const keys = ["full_name", "name", "title"];
+    for (const key of keys) {
+      const value = sellerRecord[key];
       if (typeof value === "string" && value.trim().length > 0) {
         return value;
       }
@@ -159,7 +182,10 @@ export function mapTaskRow(row: TaskRow): WorkspaceTask {
     reopenComment: row.reopen_comment,
     dealId: row.deal_id,
     dealNumber: dealRef?.deal_number ?? null,
+    dealClientId: dealRef?.client_id ?? null,
+    dealSellerId: dealRef?.seller_id ?? null,
     dealClientName: resolveDealCustomerName(dealPayload),
+    dealSellerName: resolveDealSellerName(dealPayload),
     dealVehicleName: resolveDealVehicleName(dealPayload),
     isWorkflow: Boolean(row.action_hash),
     workflowStageKey,

@@ -139,7 +139,7 @@ function FormSection({ title, description, columns = 2, children }: FormSectionP
   const gridClass = columns === 1 ? "" : `sm:grid-cols-${columns}`;
   return (
     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
       </div>
@@ -883,7 +883,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5">
             <FormSection title="Основная информация" columns={2}>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>VIN</Label>
                 <Input
                   value={form.vin}
@@ -892,7 +892,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                   className="rounded-lg uppercase"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Госномер</Label>
                 <Input
                   value={form.licensePlate}
@@ -901,43 +901,43 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Марка</Label>
                 <Input value={form.make} onChange={handleChange("make")} placeholder="Rolls-Royce" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Модель</Label>
                 <Input value={form.model} onChange={handleChange("model")} placeholder="Cullinan" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Комплектация</Label>
                 <Input value={form.variant} onChange={handleChange("variant")} placeholder="Black Badge" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Год выпуска</Label>
                 <Input value={form.year} onChange={handleChange("year")} placeholder="2024" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Тип кузова</Label>
                 <Input value={form.bodyType} onChange={handleChange("bodyType")} placeholder="SUV" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Тип топлива</Label>
                 <Input value={form.fuelType} onChange={handleChange("fuelType")} placeholder="petrol" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Трансмиссия</Label>
                 <Input value={form.transmission} onChange={handleChange("transmission")} placeholder="automatic" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Объём двигателя (л)</Label>
                 <Input value={form.engineCapacity} onChange={handleChange("engineCapacity")} placeholder="4.0" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Пробег (км)</Label>
                 <Input value={form.mileage} onChange={handleChange("mileage")} placeholder="1200" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Статус</Label>
                 <Select
                   value={form.status}
@@ -964,18 +964,18 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
             </FormSection>
 
             <FormSection title="Внешний вид" columns={2}>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Цвет кузова</Label>
                 <Input value={form.colorExterior} onChange={handleChange("colorExterior")} placeholder="Arctic White" className="rounded-lg" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Цвет салона</Label>
                 <Input value={form.colorInterior} onChange={handleChange("colorInterior")} placeholder="Black" className="rounded-lg" />
               </div>
             </FormSection>
 
             <FormSection title="Особенности" columns={1}>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Особенности</Label>
                 <Textarea
                   value={form.features}
@@ -1032,7 +1032,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                               ) : null}
                             </div>
                             <div className="space-y-2">
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 <Label
                                   htmlFor={`image-label-${image.id}`}
                                   className="text-xs font-medium text-muted-foreground"
@@ -1189,7 +1189,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                             className="space-y-3 rounded-xl border border-border/60 bg-background/50 p-4"
                           >
                             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,220px)]">
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 <p className="text-sm font-semibold text-foreground" title={heading}>
                                   {heading}
                                 </p>
@@ -1197,7 +1197,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                                   {doc.date ? `Загружен: ${doc.date}` : "Дата не указана"}
                                 </p>
                                 {requiresTitle ? (
-                                  <div className="space-y-1 pt-2">
+                                  <div className="space-y-2 pt-2">
                                     <Label htmlFor={`document-title-${doc.id}`}>Название</Label>
                                     <Input
                                       id={`document-title-${doc.id}`}
@@ -1211,7 +1211,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                                   </div>
                                 ) : null}
                               </div>
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 <Label htmlFor={`document-type-${doc.id}`}>Тип документа</Label>
                                 <Select
                                   value={edit.type || EMPTY_SELECT_VALUE}
@@ -1305,7 +1305,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                           key={draft.id}
                           className="grid gap-3 rounded-xl border border-border/60 bg-background/50 p-3 sm:grid-cols-[200px_1fr_auto]"
                         >
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             <Label htmlFor={`document-type-${draft.id}`}>Тип документа</Label>
                             <Select
                               value={draft.type || EMPTY_SELECT_VALUE}
@@ -1332,7 +1332,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                               </SelectContent>
                             </Select>
                             {draft.type === "other" ? (
-                              <div className="space-y-1 pt-2">
+                              <div className="space-y-2 pt-2">
                                 <Label htmlFor={`document-title-draft-${draft.id}`}>Название</Label>
                                 <Input
                                   id={`document-title-draft-${draft.id}`}
@@ -1346,7 +1346,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                               </div>
                             ) : null}
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             <Label htmlFor={`document-file-${draft.id}`}>Файл</Label>
                             <Input
                               id={`document-file-${draft.id}`}
@@ -1459,7 +1459,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
                 Подтвердите удаление автомобиля <strong>{vehicleName}</strong>. Все связанные документы будут
                 удалены безвозвратно.
               </p>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <p className="text-xs">Будут удалены:</p>
                 <ul className="text-xs mt-1 list-disc list-inside">
                   <li>Информация об автомобиле</li>

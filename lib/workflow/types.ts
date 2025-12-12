@@ -73,6 +73,9 @@ export type WorkflowTaskFieldSchema = {
 export type WorkflowTaskSchema = {
   version: string;
   fields: WorkflowTaskFieldSchema[];
+  save_to_buyer_profile?: string[];
+  save_to_seller_profile?: string[];
+  save_to_client_profile?: string[];
 };
 
 export type WorkflowTaskDefinition = {

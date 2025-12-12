@@ -35,7 +35,7 @@ const inputSchema = z.object({
 });
 
 const STORAGE_BUCKET = "deal-documents";
-const SELLER_DOCUMENTS_BUCKET = "seller-documents";
+const SELLER_DOCUMENTS_BUCKET = "client-documents";
 
 const DEAL_DOCUMENT_TYPE_META: Record<DealDocumentTypeValue, { title: string; category: DealDocumentCategory }> =
   DEAL_DOCUMENT_TYPES.reduce(
@@ -631,6 +631,9 @@ const updateDealSchema = z.object({
   companyCode: z.enum(DEAL_COMPANY_CODES).optional(),
   buyerType: z.enum(["individual", "company"]).optional(),
   sellerType: z.enum(["individual", "company"]).optional(),
+  sellerName: z.string().optional(),
+  sellerPhone: z.string().optional(),
+  sellerEmail: z.string().optional(),
   principalAmount: z.string().optional(),
   totalAmount: z.string().optional(),
   monthlyPayment: z.string().optional(),
@@ -1028,6 +1031,9 @@ export async function updateOperationsDeal(
     completedAt,
     buyerType,
     sellerType,
+    sellerName,
+    sellerPhone,
+    sellerEmail,
     insuranceProvider,
     insurancePolicyNumber,
     insurancePolicyType,
@@ -1068,7 +1074,7 @@ export async function updateOperationsDeal(
 
     const { data: dealRow, error: dealLoadError } = await supabase
       .from("deals")
-      .select("payload, insurance_details")
+      .select("payload, insurance_details, seller_id")
       .eq("id", dealId)
       .maybeSingle();
 
@@ -1079,6 +1085,74 @@ export async function updateOperationsDeal(
 
     if (!dealRow) {
       return { success: false, error: "Сделка не найдена." };
+    }
+
+    if (dealRow.seller_id) {
+      const sellerUpdates: Record<string, unknown> = {};
+      if (sellerName !== undefined) sellerUpdates.full_name = sellerName;
+      if (sellerPhone !== undefined) sellerUpdates.phone = sellerPhone;
+
+      if (Object.keys(sellerUpdates).length > 0) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update(sellerUpdates)
+          .eq("user_id", dealRow.seller_id);
+
+        if (profileError) {
+          console.error("[operations] failed to update seller profile", profileError);
+        }
+      }
+
+      if (sellerEmail) {
+        const { error: authError } = await supabase.auth.admin.updateUserById(dealRow.seller_id, {
+          email: sellerEmail,
+        });
+        if (authError) {
+          console.error("[operations] failed to update seller email", authError);
+        }
+      }
+
+      if (sellerDocuments && sellerDocuments.length > 0) {
+        const docIds = sellerDocuments
+          .map((d) => d.id)
+          .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+        const { data: existingDocs } = await supabase
+          .from("client_documents")
+          .select("id, document_type, document_category, storage_path")
+          .in("id", docIds);
+
+        const existingDocsMap = new Map((existingDocs ?? []).map((d) => [d.id, d]));
+
+        for (const doc of sellerDocuments) {
+          if (!doc.title) continue;
+
+          const existing = doc.id ? existingDocsMap.get(doc.id) : null;
+          const resolvedStoragePath = doc.storagePath ?? existing?.storage_path ?? null;
+          
+          // Only sync if we have a valid storage path
+          if (!resolvedStoragePath) continue;
+
+          const upsertData = {
+            client_id: dealRow.seller_id,
+            title: doc.title,
+            storage_path: resolvedStoragePath,
+            status: doc.status || "uploaded",
+            document_type: existing?.document_type ?? "other",
+            document_category: existing?.document_category ?? "personal",
+            metadata: { label: doc.title },
+          };
+
+          if (doc.id) {
+            await supabase.from("client_documents").upsert({
+              id: doc.id,
+              ...upsertData,
+            });
+          } else {
+            await supabase.from("client_documents").insert(upsertData);
+          }
+        }
+      }
     }
 
     const nextPayload = isPlainRecord(dealRow.payload) ? structuredClone(dealRow.payload) : {};

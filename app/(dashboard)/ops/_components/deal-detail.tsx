@@ -380,7 +380,8 @@ export function DealDetailView({ detail }: DealDetailProps) {
     profile,
   company,
   client,
-  documents,
+    seller,
+    documents,
   clientDocuments,
   keyInformation,
   overview = [],
@@ -482,6 +483,19 @@ export function DealDetailView({ detail }: DealDetailProps) {
         : client.name
           ? `/ops/clients/${slugifyRouteSegment(client.name)}`
           : "/ops/clients";
+  const computedSellerSlug = seller?.userId
+    ? buildSlugWithId(seller.name ?? null, seller.userId) || seller.userId
+    : null;
+  const sellerHref = seller?.detailHref
+    ? seller.detailHref
+    : computedSellerSlug
+      ? `/ops/sellers/${computedSellerSlug}`
+      : seller?.userId
+        ? `/ops/sellers/${seller.userId}`
+        : seller?.name
+          ? `/ops/sellers/${slugifyRouteSegment(seller.name)}`
+          : "/ops/sellers";
+  const sellerLine = seller?.name ?? "—";
   const computedVehicleSlug = profile.vehicleId
     ? buildSlugWithId(profile.vehicleName ?? null, profile.vehicleId) || profile.vehicleId
     : null;
@@ -811,16 +825,6 @@ export function DealDetailView({ detail }: DealDetailProps) {
               </div>
               <div className="grid gap-1 text-sm text-foreground">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Покупатель</span>
-                  {clientHref ? (
-                    <Link href={clientHref} className="font-semibold text-brand-600 underline underline-offset-2">
-                      {buyerLine}
-                    </Link>
-                  ) : (
-                    <span className="font-semibold">{buyerLine}</span>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Авто</span>
                   {vehicleHref ? (
                     <Link href={vehicleHref} className="font-semibold text-brand-600 underline underline-offset-2">
@@ -829,6 +833,36 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   ) : (
                     <span className="font-semibold">{vehicleLine}</span>
                   )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Покупатель</span>
+                  {clientHref ? (
+                    <Link href={clientHref} className="font-semibold text-brand-600 underline underline-offset-2">
+                      {buyerLine}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold">{buyerLine}</span>
+                  )}
+                  {client.type ? (
+                    <span className="text-xs text-muted-foreground">
+                      ({client.type === "company" ? "Юр. лицо" : client.type === "individual" ? "Физ. лицо" : client.type})
+                    </span>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Продавец</span>
+                  {sellerHref ? (
+                    <Link href={sellerHref} className="font-semibold text-brand-600 underline underline-offset-2">
+                      {sellerLine}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold">{sellerLine}</span>
+                  )}
+                  {seller?.type ? (
+                    <span className="text-xs text-muted-foreground">
+                      ({seller.type === "company" ? "Юр. лицо" : seller.type === "individual" ? "Физ. лицо" : seller.type})
+                    </span>
+                  ) : null}
                 </div>
               </div>
               {summaryCards.length ? (

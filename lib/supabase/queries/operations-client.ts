@@ -26,6 +26,8 @@ import {
   type OpsDashboardSnapshotSet,
   type OpsDashboardPeriodOption,
   type OpsDashboardPeriodKey,
+  getOpsClientTypeLabel,
+  normalizeOpsEntityType,
 } from "./operations";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 
@@ -920,6 +922,7 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
         updated_at,
         client_id,
         vehicle_id,
+        seller_id,
         payload,
         vehicles!vehicle_id(id, vin, license_plate, make, model, year, body_type, mileage, status)
       `,
@@ -951,6 +954,39 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
   (clientsData || []).forEach(client => {
     clientsMap.set(client.user_id, client as SupabaseClientData);
   });
+
+  type SellerProfileRow = {
+    user_id: string;
+    full_name: string | null;
+  };
+
+  const uniqueSellerIds = [
+    ...new Set(
+      data
+        .map((deal) => {
+          const sellerId = (deal as Record<string, unknown>).seller_id;
+          return typeof sellerId === "string" && sellerId.trim().length > 0 ? sellerId : null;
+        })
+        .filter(Boolean) as string[],
+    ),
+  ];
+
+  const sellerNameMap = new Map<string, string | null>();
+
+  if (uniqueSellerIds.length > 0) {
+    const { data: sellerProfiles, error: sellerProfilesError } = await supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .in("user_id", uniqueSellerIds);
+
+    if (sellerProfilesError) {
+      console.error("[operations] failed to load seller profiles", sellerProfilesError);
+    } else {
+      (sellerProfiles ?? []).forEach((seller: SellerProfileRow) => {
+        sellerNameMap.set(seller.user_id, seller.full_name);
+      });
+    }
+  }
 
   return data.map((row) => {
     const companyCode =
@@ -986,6 +1022,18 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
     const clientName = clientData?.full_name ||
       `Client ${(row.client_id as string)?.slice(-4) ?? "0000"}`;
 
+    const rowRecord = row as Record<string, unknown>;
+    const rawSellerId = rowRecord.seller_id;
+    const resolvedSellerId =
+      typeof rawSellerId === "string" && rawSellerId.trim().length > 0
+        ? rawSellerId
+        : null;
+
+    const sellerName =
+      resolvedSellerId && sellerNameMap.has(resolvedSellerId)
+        ? sellerNameMap.get(resolvedSellerId) ?? null
+        : null;
+
     // Формируем название автомобиля
     const vehicleName = vehicleData?.make && vehicleData?.model
       ? `${vehicleData.make} ${vehicleData.model}`
@@ -1012,6 +1060,8 @@ export async function getOperationsDealsClient(): Promise<OpsDealSummary[]> {
       ownerRoleLabel,
       ownerName: null,
       ownerUserId: null,
+      sellerId: resolvedSellerId,
+      sellerName,
       source,
       nextAction: statusMeta.entryActions[0] ?? "Проверить текущий этап",
       guardStatuses: [],
@@ -1125,7 +1175,7 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
   const supabase = await createSupabaseServerClient();
 
   const profileSelect =
-    "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata, source";
+    "user_id, full_name, status, phone, nationality, residency_status, created_at, metadata, source, entity_type";
   let profilesData: SupabaseClientProfileRow[] | null = null;
   let profilesError: unknown = null;
 
@@ -1142,7 +1192,7 @@ export async function getOperationsClientsClient(): Promise<OpsClientRecord[]> {
     console.warn("[operations-client] profiles.source column missing, retrying without it");
     const response = await supabase
       .from("profiles")
-      .select("user_id, full_name, status, phone, nationality, residency_status, created_at, metadata")
+      .select("user_id, full_name, status, phone, nationality, residency_status, created_at, metadata, entity_type")
       .order("full_name", { ascending: true });
     profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
     profilesError = response.error;
@@ -1162,6 +1212,7 @@ type SupabaseClientProfileRow = {
   residency_status: string | null;
   created_at: string | null;
   metadata: unknown;
+  entity_type: string | null;
 };
 
   const profiles = profilesData ?? [];
@@ -1184,10 +1235,9 @@ type SupabaseClientProfileRow = {
       getString(metadata?.["client_segment"]) ??
       getString(metadata?.["customer_segment"]) ??
       null;
-    const clientTypeValue = getString(metadata?.["client_type"]);
-    const clientType =
-      clientTypeValue === "Company" || clientTypeValue === "Personal" ? clientTypeValue : null;
-    const segment = rawSegment ?? clientType;
+    const entityType = normalizeOpsEntityType(getString(profile.entity_type));
+    const entityTypeLabel = getOpsClientTypeLabel(entityType);
+    const segment = rawSegment ?? entityTypeLabel;
 
     const memberSince = profile.created_at
       ? new Intl.DateTimeFormat("ru-RU", { month: "long", year: "numeric" }).format(
@@ -1202,7 +1252,7 @@ type SupabaseClientProfileRow = {
         [
           statusInfo.display,
           getString(profile.residency_status),
-          clientType,
+          entityTypeLabel,
           segment,
           getString(profile.nationality),
         ]

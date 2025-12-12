@@ -37,6 +37,8 @@ export type DealRow = {
   op_manager_id: string | null;
   deal_number: string | null;
   company_code: string | null;
+  total_amount: number | null;
+  contract_start_date: string | null;
   created_at: string;
   updated_at: string;
   payload: Record<string, unknown> | null;
@@ -765,10 +767,11 @@ export async function createDealWithWorkflow(
         op_manager_id: payload.op_manager_id ?? null,
         deal_number: dealNumber,
         company_code: companyMeta.code,
+        total_amount: assetSnapshot?.price ?? null,
         payload: enrichedPayload,
       })
       .select(
-        "id, workflow_id, workflow_version_id, client_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, company_code, created_at, updated_at, payload",
+        "id, workflow_id, workflow_version_id, client_id, asset_id, vehicle_id, source, status, op_manager_id, deal_number, company_code, total_amount, contract_start_date, created_at, updated_at, payload",
       )
       .single<DealRow>();
 

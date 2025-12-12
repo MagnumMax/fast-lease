@@ -83,6 +83,9 @@ type FormState = {
   insuranceNotes: string;
   buyerType: "individual" | "company" | "";
   sellerType: "individual" | "company" | "";
+  sellerName: string;
+  sellerPhone: string;
+  sellerEmail: string;
 };
 
 type FormSectionProps = {
@@ -195,7 +198,7 @@ function FormSection({ title, description, columns = 2, children }: FormSectionP
   const gridClass = columns === 1 ? "" : columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   return (
     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
-      <div className="space-y-1">
+      <div className="space-y-2">
         <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
       </div>
@@ -277,8 +280,11 @@ export function DealEditDialog({
       insuranceLastPaymentStatus: insuranceDefaults?.lastPaymentStatus ?? "",
       insuranceLastPaymentDate: formatDateInput(insuranceDefaults?.lastPaymentDate),
       insuranceNotes: insuranceDefaults?.notes ?? "",
+      sellerName: detail.seller?.name ?? "",
+      sellerPhone: detail.seller?.phone ?? "",
+      sellerEmail: detail.seller?.email ?? "",
     };
-  }, [detail.editDefaults]);
+  }, [detail.editDefaults, detail.seller]);
 
   const [form, setForm] = useState<FormState>(initialState);
 
@@ -595,6 +601,9 @@ export function DealEditDialog({
         companyCode: form.companyCode,
         buyerType: form.buyerType || undefined,
         sellerType: form.sellerType || undefined,
+        sellerName: form.sellerName,
+        sellerPhone: form.sellerPhone,
+        sellerEmail: form.sellerEmail,
         principalAmount: form.principalAmount,
         totalAmount: form.totalAmount,
         monthlyPayment: form.monthlyPayment,
@@ -679,7 +688,7 @@ export function DealEditDialog({
 
           <div className="space-y-4">
             <FormSection title="Сведения о сделке" description="Основная информация для идентификации" columns={1}>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Номер сделки</Label>
                 <Input
                   value={form.dealNumber}
@@ -688,7 +697,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Компания</Label>
                 <Select value={form.companyCode} onValueChange={(value) => handleCompanyChange(value as DealCompanyCode)}>
                   <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background text-sm">
@@ -704,7 +713,7 @@ export function DealEditDialog({
                 </Select>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип покупателя</Label>
                   <Select
                     value={form.buyerType || EMPTY_SELECT_VALUE}
@@ -725,7 +734,7 @@ export function DealEditDialog({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип продавца</Label>
                   <Select
                     value={form.sellerType || EMPTY_SELECT_VALUE}
@@ -746,6 +755,40 @@ export function DealEditDialog({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            </FormSection>
+
+            <FormSection
+              title="Данные продавца"
+              description="Контактная информация продавца"
+              columns={3}
+            >
+              <div className="space-y-2">
+                <Label>Имя / Название</Label>
+                <Input
+                  value={form.sellerName}
+                  onChange={handleChange("sellerName")}
+                  placeholder="Имя продавца"
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Телефон</Label>
+                <Input
+                  value={form.sellerPhone}
+                  onChange={handleChange("sellerPhone")}
+                  placeholder="+971..."
+                  className="rounded-lg"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  value={form.sellerEmail}
+                  onChange={handleChange("sellerEmail")}
+                  placeholder="example@mail.com"
+                  className="rounded-lg"
+                />
               </div>
             </FormSection>
 
@@ -816,7 +859,7 @@ export function DealEditDialog({
                   {dealDocumentDrafts.map((draft) => (
                     <div key={draft.id} className="space-y-3 rounded-xl border border-border/50 bg-background/60 p-3">
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <Label>Тип документа</Label>
                           <Select
                             value={draft.type || EMPTY_SELECT_VALUE}
@@ -840,7 +883,7 @@ export function DealEditDialog({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <Label>Файл</Label>
                           <Input
                             type="file"
@@ -948,7 +991,7 @@ export function DealEditDialog({
                     return (
                       <div key={doc.id} className="space-y-3 rounded-xl border border-border/50 bg-background/60 p-3">
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             <Label>Название документа</Label>
                             <Input
                               value={doc.title}
@@ -959,7 +1002,7 @@ export function DealEditDialog({
                               className="rounded-lg"
                             />
                           </div>
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             <Label>Файл</Label>
                             <Input
                               type="file"
@@ -1017,7 +1060,7 @@ export function DealEditDialog({
             </FormSection>
 
             <FormSection title="Страховка" description="Данные полиса и платежей" columns={2}>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Провайдер</Label>
                 <Input
                   value={form.insuranceProvider}
@@ -1026,7 +1069,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Номер полиса</Label>
                 <Input
                   value={form.insurancePolicyNumber}
@@ -1035,7 +1078,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип покрытия</Label>
                 <Input
                   value={form.insurancePolicyType}
@@ -1044,7 +1087,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Премия</Label>
                 <Input
                   value={form.insurancePremiumAmount}
@@ -1053,7 +1096,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Частота платежей</Label>
                 <Input
                   value={form.insurancePaymentFrequency}
@@ -1062,7 +1105,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Следующий платёж</Label>
                 <DatePickerInput
                   id="insurance-next-payment"
@@ -1072,7 +1115,7 @@ export function DealEditDialog({
                   placeholder="Выберите дату"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Начало покрытия</Label>
                 <DatePickerInput
                   id="insurance-coverage-start"
@@ -1082,7 +1125,7 @@ export function DealEditDialog({
                   placeholder="Выберите дату"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Окончание покрытия</Label>
                 <DatePickerInput
                   id="insurance-coverage-end"
@@ -1092,7 +1135,7 @@ export function DealEditDialog({
                   placeholder="Выберите дату"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Франшиза</Label>
                 <Input
                   value={form.insuranceDeductible}
@@ -1101,7 +1144,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Статус последнего платежа</Label>
                 <Input
                   value={form.insuranceLastPaymentStatus}
@@ -1110,7 +1153,7 @@ export function DealEditDialog({
                   className="rounded-lg"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Дата последнего платежа</Label>
                 <DatePickerInput
                   id="insurance-last-payment-date"
@@ -1120,7 +1163,7 @@ export function DealEditDialog({
                   placeholder="Выберите дату"
                 />
               </div>
-              <div className="space-y-1 sm:col-span-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Примечание</Label>
                 <Textarea
                   value={form.insuranceNotes}
@@ -1184,7 +1227,7 @@ export function DealEditDialog({
                   Вы уверены, что хотите удалить сделку <strong>{deleteTargetLabel}</strong>? Это действие
                   необратимо.
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <p className="text-xs">Будут удалены:</p>
                   <ul className="mt-1 list-disc list-inside text-xs">
                     <li>Все финансовые документы и платежи сделки</li>

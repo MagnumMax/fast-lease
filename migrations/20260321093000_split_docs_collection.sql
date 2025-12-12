@@ -65,9 +65,9 @@ WITH buyer_stage AS (
           },
           "defaults": {
             "checklist": [
-              "passport",
-              "emirates_id",
-              "driver_license",
+              "doc_passport_buyer",
+              "doc_emirates_id_buyer",
+              "doc_driving_license_buyer",
               "preliminary_purchase_agreement"
             ]
           }

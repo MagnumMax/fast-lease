@@ -16,7 +16,7 @@ import {
   type ClientDocumentTypeValue,
 } from "@/lib/supabase/queries/operations";
 import { getWorkspaceTaskById } from "@/lib/supabase/queries/tasks";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 import { completeTaskFormAction, reopenTaskAction } from "./actions";
@@ -83,6 +83,8 @@ type FinanceEntitySnapshot = {
 };
 type FinanceReviewSnapshot = {
   deal: FinanceEntitySnapshot;
+  vehicle?: FinanceEntitySnapshot | null;
+  client?: FinanceEntitySnapshot | null;
 };
 type CommercialOfferExtract = {
   priceVat: number | null;
@@ -643,16 +645,29 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     attachmentUrl: string | null;
     documentType: string | null;
   } | null = null;
-  let dealSummary: { id: string; dealNumber: string | null; clientId: string | null; vehicleId: string | null } | null = null;
+  let dealSummary: {
+    id: string;
+    dealNumber: string | null;
+    clientId: string | null;
+    sellerId: string | null;
+    sellerName?: string | null;
+    sellerType?: string | null;
+    vehicleId: string | null;
+    buyerEmail?: string | null;
+    buyerPhone?: string | null;
+    buyerType?: string | null;
+  } | null = null;
   let clientChecklist: ClientDocumentChecklist | null = null;
   let guardDocuments: GuardDocumentLink[] = [];
   let financeSnapshot: FinanceReviewSnapshot | null = null;
   let dealDocuments: DealDocumentWithUrl[] = [];
+  let clientDocuments: ClientDocumentWithUrl[] = [];
   let relatedTasks: DealTaskSnapshot[] = [];
   let commercialOffer: CommercialOfferExtract | null = null;
 
   if (task.dealId) {
     const supabase = await createSupabaseServerClient();
+    const serviceClient = await createSupabaseServiceClient();
     const { data: dealRow, error: dealError } = await supabase
       .from("deals")
       .select(
@@ -660,6 +675,8 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           id,
           deal_number,
           client_id,
+          seller_id,
+          seller:profiles!deals_seller_id_fkey(full_name, entity_type),
           vehicle_id,
           status,
           monthly_payment,
@@ -693,11 +710,74 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
 
     if (dealRow) {
       const effectiveClientId = (dealRow.client_id as string | null) ?? null;
+
+      let buyerEmail: string | null = null;
+      let buyerPhone: string | null = null;
+      let buyerType: string | null = null;
+
+      // Try fetching from profiles (using client_id)
+      if (effectiveClientId) {
+        const { data: profileData } = await serviceClient
+          .from("profiles")
+          .select("phone, metadata, entity_type")
+          .eq("user_id", effectiveClientId)
+          .maybeSingle();
+
+        if (profileData) {
+          buyerType = profileData.entity_type;
+          if (!buyerPhone) buyerPhone = profileData.phone;
+          // Try to get email from metadata if not found
+          if (
+            !buyerEmail &&
+            profileData.metadata &&
+            typeof profileData.metadata === "object" &&
+            profileData.metadata !== null &&
+            "email" in profileData.metadata
+          ) {
+            buyerEmail = (profileData.metadata as { email?: string }).email ?? null;
+          }
+        }
+
+        // 3. Last resort: Fetch email from auth.users using service client
+        if (!buyerEmail && effectiveClientId) {
+          try {
+            const { data: userData, error: userError } = await serviceClient.auth.admin.getUserById(
+              effectiveClientId,
+            );
+            if (!userError && userData?.user?.email) {
+              buyerEmail = userData.user.email;
+            } else if (userError) {
+              console.warn("[workflow] failed to fetch user email from auth", userError);
+            }
+          } catch (err) {
+            console.warn("[workflow] failed to fetch user email", err);
+          }
+        }
+      }
+
+      let sellerType = ((dealRow.seller as unknown) as { entity_type: string | null } | null)?.entity_type ?? null;
+      if (!sellerType && dealRow.seller_id) {
+        const { data: sellerData } = await serviceClient
+          .from("profiles")
+          .select("entity_type")
+          .eq("user_id", dealRow.seller_id)
+          .maybeSingle();
+        if (sellerData) {
+          sellerType = sellerData.entity_type;
+        }
+      }
+
       dealSummary = {
         id: dealRow.id,
         dealNumber: dealRow.deal_number ?? null,
         clientId: effectiveClientId,
+        sellerId: (dealRow.seller_id as string | null) ?? null,
+        sellerName: ((dealRow.seller as unknown) as { full_name: string | null } | null)?.full_name ?? null,
+        sellerType,
         vehicleId: dealRow.vehicle_id ?? null,
+        buyerEmail,
+        buyerPhone,
+        buyerType,
       };
       commercialOffer = extractCommercialOfferFromPayload(dealRow.payload ?? null);
       const { data: tasksData, error: tasksError } = await supabase
@@ -807,7 +887,6 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         })),
       );
 
-      let clientDocuments: ClientDocumentWithUrl[] = [];
       if (effectiveClientId) {
         const { data: clientDocsData, error: clientDocsError } = await supabase
           .from("client_documents")
@@ -1013,7 +1092,6 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         task.type === INVESTOR_APPROVAL_TASK_TYPE ||
         task.type === PREPARE_CONTRACT_TASK_TYPE
       ) {
-        const workflowStageTitle = stageMeta?.title ?? null;
         const dealDataPoints: SummaryDataPoint[] = [];
         commercialOffer = commercialOffer ?? extractCommercialOfferFromPayload(dealRow.payload ?? null);
         if (commercialOffer) {
@@ -1272,6 +1350,8 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             workflowDocuments,
             additionalDocuments,
           },
+          vehicle: vehicleSnapshot,
+          client: clientSnapshot,
         };
       }
     }
@@ -1295,6 +1375,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       deal={dealSummary}
       stageTitle={stageMeta?.title ?? null}
       guardDocuments={guardDocuments}
+      clientDocuments={clientDocuments}
       financeSnapshot={financeSnapshot}
       commercialOfferPriceVat={commercialOffer?.priceVat ?? null}
       completeAction={completeTaskFormAction}

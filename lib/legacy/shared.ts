@@ -149,6 +149,7 @@ export function mountHeader({ containerId, title, breadcrumbs = [], basePath = "
           const maps = [
             { startsWith: "/ops/clients/", root: "/ops/clients/index.html" },
             { startsWith: "/ops/deals/", root: "/ops/deals/index.html" },
+            { startsWith: "/ops/sellers/", root: "/ops/sellers/index.html" },
             { startsWith: "/ops/cars/", root: "/ops/cars/index.html" },
             { startsWith: "/client/deals/", root: "/client/deals/index.html" },
             { startsWith: "/client/invoices/", root: "/client/invoices/index.html" },
