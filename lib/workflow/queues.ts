@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createWorkflowService } from "./factory";
 import { resolveTaskAssigneeUserId } from "./task-assignees";
+import { ProfileSyncService } from "./profile-sync";
 import type { WorkflowTaskDefinition } from "./types";
 
 type NotificationQueueRow = {
@@ -377,6 +378,16 @@ export class WorkflowQueueProcessor {
         payloadSources: [dealPayload, row.context ?? null],
       });
       const payload = this.buildTaskPayload(row, deal);
+
+      // Pre-fill task from profile
+      const syncService = new ProfileSyncService(this.client);
+      const prefilled = await syncService.prefillTask(row.deal_id, definition);
+      if (Object.keys(prefilled).length > 0) {
+        payload.fields = {
+          ...(payload.fields as Record<string, unknown>),
+          ...prefilled,
+        };
+      }
 
       const result = await this.client
         .from("tasks")

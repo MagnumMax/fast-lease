@@ -9,6 +9,7 @@ import type {
   WorkflowDocumentTypeEntry,
   WorkflowDocumentTypeAlias,
   WorkflowDocumentTypesConfig,
+  WorkflowTaskSchema,
 } from "@/lib/workflow/types";
 
 type TaskTemplate = WorkflowTaskDefinition & {
@@ -32,6 +33,7 @@ export type WorkflowCatalog = {
   taskTemplatesByType: Record<string, TaskTemplate[]>;
   exitRequirementsByStatus: Record<string, WorkflowRequirement[] | undefined>;
   transitionsByFrom: Record<string, WorkflowTransition[]>;
+  schemas?: Record<string, WorkflowTaskSchema>;
 };
 
 function collectTaskTemplates(
@@ -166,5 +168,6 @@ export function buildWorkflowCatalog(template: WorkflowTemplate): WorkflowCatalo
     taskTemplatesByType,
     exitRequirementsByStatus,
     transitionsByFrom,
+    schemas: template.schemas,
   };
 }

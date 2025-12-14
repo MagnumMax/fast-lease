@@ -887,6 +887,38 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         })),
       );
 
+      if (dealRow.seller_id) {
+        const { data: sellerDocsData, error: sellerDocsError } = await serviceClient
+          .from("profile_documents")
+          .select("id, document_type, title, status, storage_path, metadata, uploaded_at")
+          .eq("profile_id", dealRow.seller_id);
+
+        if (sellerDocsError) {
+          console.error("[workflow] failed to load seller documents", sellerDocsError);
+        } else if (Array.isArray(sellerDocsData)) {
+          const sellerDocs = await Promise.all(
+            sellerDocsData.map(async (doc) => {
+              const bucket = "profile-documents";
+              const signedUrl = doc.storage_path
+                ? await createSignedStorageUrl({ bucket, path: doc.storage_path })
+                : null;
+
+              return {
+                id: doc.id,
+                document_type: doc.document_type,
+                title: doc.title,
+                status: doc.status,
+                storage_path: doc.storage_path,
+                created_at: doc.uploaded_at,
+                metadata: doc.metadata,
+                signedUrl,
+              };
+            }),
+          );
+          dealDocuments = [...dealDocuments, ...sellerDocs];
+        }
+      }
+
       if (effectiveClientId) {
         const { data: clientDocsData, error: clientDocsError } = await supabase
           .from("client_documents")

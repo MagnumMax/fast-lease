@@ -35,7 +35,7 @@ const inputSchema = z.object({
 });
 
 const STORAGE_BUCKET = "deal-documents";
-const SELLER_DOCUMENTS_BUCKET = "client-documents";
+const SELLER_DOCUMENTS_BUCKET = "profile-documents";
 
 const DEAL_DOCUMENT_TYPE_META: Record<DealDocumentTypeValue, { title: string; category: DealDocumentCategory }> =
   DEAL_DOCUMENT_TYPES.reduce(

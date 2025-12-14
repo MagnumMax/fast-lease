@@ -250,7 +250,7 @@ export type DeleteOperationsSellerResult =
   | { success: true }
   | { success: false; error: string; dealsCount?: number };
 
-const SELLER_DOCUMENT_BUCKET = "seller-documents";
+const SELLER_DOCUMENT_BUCKET = "profile-documents";
 const SELLER_DOCUMENT_TYPE_VALUES = new Set(
   CLIENT_DOCUMENT_TYPES.map((entry) => entry.value),
 );
@@ -542,6 +542,20 @@ export async function uploadOperationsSellerDocuments(
   const supabase = await createSupabaseServerClient();
   const uploadedBy = sessionUser.user.id;
 
+  // Resolve profile.id from user_id (sellerId)
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("user_id", sellerId)
+    .maybeSingle();
+
+  if (profileError || !profileData) {
+    console.error("[operations] failed to resolve profile id for upload", { sellerId, error: profileError });
+    return { success: false, error: "Не удалось определить профиль продавца." };
+  }
+
+  const profileId = profileData.id;
+
   // We need to map files to candidates with types
   const candidates: DocumentUploadCandidate[] = files.map((file, index) => {
     const typeValue = types[index] || "other";
@@ -564,7 +578,7 @@ export async function uploadOperationsSellerDocuments(
     bucket: SELLER_DOCUMENT_BUCKET,
     table: "profile_documents",
     entityColumn: "profile_id",
-    entityId: sellerId,
+    entityId: profileId,
     storagePathPrefix: `sellers/${sellerId}`,
     allowedTypes: SELLER_DOCUMENT_TYPE_VALUES,
     typeLabelMap: CLIENT_DOCUMENT_TYPE_LABEL_MAP,
@@ -607,6 +621,19 @@ export async function deleteOperationsSellerDocument(
 
   try {
     const serviceClient = await createSupabaseServiceClient();
+
+    // Resolve profile.id from user_id (sellerId)
+    const { data: profileData, error: profileError } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", sellerId)
+      .maybeSingle();
+
+    if (profileError || !profileData) {
+        console.error("[operations] failed to resolve profile id for delete", { sellerId, error: profileError });
+        return { success: false, error: "Не удалось определить профиль продавца." };
+    }
+    const profileId = profileData.id;
 
     const { data: documentRecord, error: lookupError } = await serviceClient
       .from("profile_documents")

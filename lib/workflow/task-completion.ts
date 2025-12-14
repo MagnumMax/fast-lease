@@ -1,11 +1,25 @@
 import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createWorkflowService } from "@/lib/workflow";
+import { ProfileSyncService } from "./profile-sync";
 import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
-import type { WorkflowTemplate } from "@/lib/workflow/types";
+import type { WorkflowTemplate, WorkflowTaskDefinition } from "@/lib/workflow/types";
 
 type TraceContext = Record<string, unknown>;
+
+function findTaskDefinition(template: WorkflowTemplate, taskType: string): WorkflowTaskDefinition | null {
+  for (const stage of Object.values(template.stages)) {
+    if (stage.entryActions) {
+      for (const action of stage.entryActions) {
+        if (action.type === "TASK_CREATE" && (action as any).task?.type === taskType) {
+          return (action as any).task as WorkflowTaskDefinition;
+        }
+      }
+    }
+  }
+  return null;
+}
 
 function createTracer(scope: string, baseContext: TraceContext) {
   const startedAt = Date.now();
@@ -353,6 +367,32 @@ export async function handleTaskCompletion(
     }
     const taskSnapshot = updatedTask as TaskCompletionSnapshot;
     trace("task-updated", { status: updatedTask.status, slaStatus: updatedTask.sla_status ?? null });
+
+    // Sync back to profile
+    if (context.taskPayload && context.taskType) {
+      try {
+        const loadedTemplate = await loadWorkflowTemplateForDeal(supabase, context.dealId, {
+          workflowId: context.workflowId,
+          workflowVersionId: context.workflowVersionId,
+          workflowTemplate: context.workflowTemplate,
+        });
+
+        if (loadedTemplate?.template) {
+          const taskDef = findTaskDefinition(loadedTemplate.template, context.taskType);
+          if (taskDef && taskDef.schema) {
+            const syncService = new ProfileSyncService(supabase);
+            await syncService.saveTaskDataToProfile(
+              context.dealId,
+              context.taskPayload,
+              taskDef.schema
+            );
+          }
+        }
+      } catch (syncError) {
+        console.error("[workflow] failed to sync task data to profile", syncError);
+        // We don't block completion on sync failure
+      }
+    }
 
     // Получаем guard key для задачи
     const guardKey = resolveGuardKey(context.taskType, context.taskPayload);

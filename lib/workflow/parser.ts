@@ -421,6 +421,7 @@ const templateSchema = z.object({
   integrations: integrationsSchema,
   metrics: metricsSchema,
   notifications: notificationsSchema,
+  schemas: z.record(z.string(), rawTaskSchemaSchema).optional(),
 });
 
 type TemplateSchemaResult = z.infer<typeof templateSchema>;
@@ -515,6 +516,15 @@ const normalizeTemplate = (result: TemplateSchemaResult): WorkflowTemplate => {
     integrations: result.integrations,
     metrics: result.metrics,
     notifications: result.notifications,
+    schemas: result.schemas
+      ? Object.entries(result.schemas).reduce<Record<string, any>>((acc, [key, schema]) => {
+          acc[key] = {
+            ...schema,
+            version: schema.version ?? "1.0",
+          };
+          return acc;
+        }, {})
+      : undefined,
   };
 };
 

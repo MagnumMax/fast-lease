@@ -42,7 +42,7 @@ export type CreateOperationsClientResult =
   | { data: OpsClientRecord; error?: undefined }
   | { data?: undefined; error: string };
 
-const CLIENT_DOCUMENT_BUCKET = "client-documents";
+const CLIENT_DOCUMENT_BUCKET = "profile-documents";
 const CLIENT_DOCUMENT_TYPE_VALUES = new Set(
   CLIENT_DOCUMENT_TYPES.map((entry) => entry.value),
 );
@@ -850,6 +850,18 @@ export async function uploadClientDocuments(
     const { data: authData } = await supabase.auth.getUser();
     const uploadedBy = authData?.user?.id ?? null;
 
+    const serviceClient = await createSupabaseServiceClient();
+    const { data: profileData } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", clientId)
+      .maybeSingle();
+
+    const profileId = profileData?.id;
+    if (!profileId) {
+      return { success: false, error: "Не удалось найти профиль покупателя." };
+    }
+
     const candidates: DocumentUploadCandidate<ClientDocumentTypeValue>[] = documents.map((doc) => {
       const category =
         CLIENT_DOCUMENT_CATEGORY_MAP[doc.type] ?? (doc.context === "company" ? "company" : "identity");
@@ -872,9 +884,10 @@ export async function uploadClientDocuments(
     const uploadResult = await uploadDocumentsBatch<ClientDocumentTypeValue>(candidates, {
       supabase,
       bucket: CLIENT_DOCUMENT_BUCKET,
-      table: "client_documents",
-      entityColumn: "client_id",
-      entityId: clientId,
+      table: "profile_documents",
+      entityColumn: "profile_id",
+      entityId: profileId,
+      storagePathPrefix: `clients/${clientId}`,
       allowedTypes: CLIENT_DOCUMENT_TYPE_VALUES,
       typeLabelMap: CLIENT_DOCUMENT_TYPE_LABEL_MAP,
       categoryColumn: "document_category",
@@ -925,9 +938,20 @@ export async function deleteClientDocument(
   try {
     const serviceClient = await createSupabaseServiceClient();
 
+    const { data: profileData } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", clientId)
+      .maybeSingle();
+
+    const profileId = profileData?.id;
+    if (!profileId) {
+      return { success: false, error: "Не удалось найти профиль покупателя." };
+    }
+
     const { data: documentRecord, error: lookupError } = await serviceClient
-      .from("client_documents")
-      .select("id, client_id, storage_path")
+      .from("profile_documents")
+      .select("id, profile_id, storage_path")
       .eq("id", documentId)
       .maybeSingle();
 
@@ -936,7 +960,7 @@ export async function deleteClientDocument(
       return { success: false, error: "Не удалось найти документ покупателя." };
     }
 
-    if (!documentRecord || String(documentRecord.client_id) !== clientId) {
+    if (!documentRecord || documentRecord.profile_id !== profileId) {
       return { success: false, error: "Документ не найден или принадлежит другому покупателю." };
     }
 
@@ -957,10 +981,10 @@ export async function deleteClientDocument(
     }
 
     const { error: deleteError } = await serviceClient
-      .from("client_documents")
+      .from("profile_documents")
       .delete()
       .eq("id", documentId)
-      .eq("client_id", clientId);
+      .eq("profile_id", profileId);
 
     if (deleteError) {
       console.error("[operations] failed to delete client document", deleteError);

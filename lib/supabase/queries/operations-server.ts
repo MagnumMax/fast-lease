@@ -247,6 +247,7 @@ export type SupabaseClientDocumentRow = {
   document_category: string | null;
   title: string | null;
   storage_path: string | null;
+  bucket_id?: string | null;
   status: string | null;
   uploaded_at: string | null;
   verified_at: string | null;
@@ -886,20 +887,40 @@ async function buildSellerDocumentList(
         getString(metadata?.storage_path) ??
         getString(metadata?.path) ??
         null;
-      const bucketCandidate =
+      let bucketCandidate =
         getString(candidate["bucket"]) ??
+        getString(candidate["bucket_id"]) ??
         getString(metadata?.bucket) ??
         getString(metadata?.storage_bucket) ??
         getString(metadata?.bucket_id) ??
-        (storagePath ? "seller-documents" : null);
-      if (!url && storagePath && bucketCandidate) {
-        try {
-          url = await createSignedStorageUrl({ bucket: bucketCandidate, path: storagePath });
-        } catch (error) {
+        (storagePath ? "profile-documents" : null);
+
+      if (!url && storagePath) {
+        const bucketsToTry = new Set<string>();
+        if (bucketCandidate) bucketsToTry.add(bucketCandidate);
+        // Add fallback buckets for legacy/migrated documents
+        bucketsToTry.add("client-documents");
+        bucketsToTry.add("deal-documents");
+        bucketsToTry.add("profile-documents");
+
+        for (const bucket of bucketsToTry) {
+          try {
+            const signed = await createSignedStorageUrl({ bucket, path: storagePath });
+            if (signed) {
+              url = signed;
+              bucketCandidate = bucket;
+              break;
+            }
+          } catch (error) {
+            // Ignore errors and try next bucket
+          }
+        }
+
+        if (!url) {
           console.error("[SERVER-OPS] failed to sign seller document", {
             bucket: bucketCandidate,
             storagePath,
-            error,
+            tried: Array.from(bucketsToTry),
           });
         }
       }
@@ -1897,7 +1918,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     return null;
   }
 
-  const profileSelect = `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
+  const profileSelect = `id, user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
        employment_info, financial_profile, metadata, created_at, last_login_at, source, entity_type`;
 
   let {
@@ -1916,7 +1937,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     ({ data: profileRow, error: profileError } = await supabase
       .from("profiles")
       .select(
-        `user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
+        `id, user_id, full_name, status, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth,
          employment_info, financial_profile, metadata, created_at, last_login_at`
       )
       .eq("user_id", userId)
@@ -2117,11 +2138,11 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
       .order("created_at", { ascending: false })
       .limit(1),
     supabase
-      .from("client_documents")
+      .from("profile_documents")
       .select(
-        "id, document_type, document_category, title, storage_path, status, uploaded_at, verified_at, metadata",
+        "id, document_type, document_category, title, storage_path, bucket_id, status, uploaded_at, verified_at, metadata",
       )
-      .eq("client_id", userId)
+      .eq("profile_id", profileRow.id)
       .order("uploaded_at", { ascending: false }),
   ]);
 
@@ -2313,10 +2334,33 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
 
   const clientDocumentsRows = (clientDocumentsData ?? []) as SupabaseClientDocumentRow[];
 
+  // Filter documents based on workflow template configuration
+  const workflowCatalog = getWorkflowCatalogSync();
+  const schemaKey = entityType === "company" ? "buyer_docs_company" : "buyer_docs_individual";
+  const schema = (workflowCatalog.schemas as Record<string, any>)?.[schemaKey];
+
+  let filteredDocs = clientDocumentsRows;
+
+  if (schema && Array.isArray(schema.save_to_buyer_profile) && Array.isArray(schema.fields)) {
+    const allowedFieldIds = new Set(schema.save_to_buyer_profile);
+    const allowedDocumentTypes = new Set<string>();
+
+    for (const field of schema.fields) {
+      if (allowedFieldIds.has(field.id) && field.document_type) {
+        allowedDocumentTypes.add(field.document_type);
+      }
+    }
+
+    filteredDocs = filteredDocs.filter((doc) => 
+      doc.document_type && allowedDocumentTypes.has(doc.document_type)
+    );
+  }
+
   const documentDescriptors = (await Promise.all(
-    clientDocumentsRows.map(async (document) => {
+    filteredDocs.map(async (document) => {
+      const bucket = document.bucket_id ?? "profile-documents";
       const signedUrl = document.storage_path
-        ? await createSignedStorageUrl({ bucket: "client-documents", path: document.storage_path })
+        ? await createSignedStorageUrl({ bucket, path: document.storage_path })
         : null;
       const metadata = (document.metadata ?? {}) as Record<string, unknown>;
       const rawDocumentType = getString(document.document_type);
@@ -2347,7 +2391,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
         documentType: normalizedDocumentType ?? rawDocumentType,
         category: getString(document.document_category),
         source: "client" as const,
-        bucket: "client-documents",
+        bucket,
         storagePath: document.storage_path ?? null,
         uploadedAt: document.uploaded_at ?? null,
         signedAt: document.verified_at ?? null,
@@ -2488,7 +2532,7 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
     return null;
   }
 
-  const profileSelect = `user_id, full_name, status, phone, nationality, metadata, created_at, source, entity_type, seller_details`;
+  const profileSelect = `id, user_id, full_name, status, phone, nationality, metadata, created_at, source, entity_type, seller_details`;
 
   let { data: profileRow, error: profileError } = await supabase
     .from("profiles")
@@ -2502,7 +2546,7 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
     });
     ({ data: profileRow, error: profileError } = await supabase
       .from("profiles")
-      .select("user_id, full_name, status, phone, nationality, metadata, created_at, entity_type, seller_details")
+      .select("id, user_id, full_name, status, phone, nationality, metadata, created_at, entity_type, seller_details")
       .eq("user_id", userId)
       .maybeSingle());
   }
@@ -2627,10 +2671,14 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
   }
 
   // Fetch documents from profile_documents
-  const { data: profileDocumentsData, error: profileDocumentsError } = await supabase
+  // Use Service Client to bypass RLS for Ops view
+  const serviceClient = await createSupabaseServiceClient();
+  const profileIdForDocs = getString(profileRow.id) ?? userId;
+  
+  const { data: profileDocumentsData, error: profileDocumentsError } = await serviceClient
     .from("profile_documents")
     .select("*")
-    .eq("profile_id", userId)
+    .eq("profile_id", profileIdForDocs)
     .order("uploaded_at", { ascending: false });
 
   if (profileDocumentsError) {
@@ -2732,7 +2780,31 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
   // Process Documents
   // profile_documents table structure:
   // id, profile_id, document_type, title, storage_path, bucket_id, file_size, content_type, metadata, created_at, updated_at
-  const sellerDocuments = await buildSellerDocumentList(profileDocumentsData ?? []);
+  
+  // Filter documents based on workflow template configuration
+  const workflowCatalog = getWorkflowCatalogSync();
+  const entityType = normalizeOpsEntityType(getString(profileRow.entity_type));
+  const schemaKey = entityType === "company" ? "seller_docs_company" : "seller_docs_individual";
+  const schema = (workflowCatalog.schemas as Record<string, any>)?.[schemaKey];
+
+  let filteredDocs = profileDocumentsData ?? [];
+
+  if (schema && Array.isArray(schema.save_to_seller_profile) && Array.isArray(schema.fields)) {
+    const allowedFieldIds = new Set(schema.save_to_seller_profile);
+    const allowedDocumentTypes = new Set<string>();
+
+    for (const field of schema.fields) {
+      if (allowedFieldIds.has(field.id) && field.document_type) {
+        allowedDocumentTypes.add(field.document_type);
+      }
+    }
+
+    filteredDocs = filteredDocs.filter((doc) => 
+      doc.document_type && allowedDocumentTypes.has(doc.document_type)
+    );
+  }
+
+  const sellerDocuments = await buildSellerDocumentList(filteredDocs);
 
   return {
     profile,
@@ -3263,13 +3335,13 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   }
 
   let clientDocuments: OpsClientDocument[] = [];
-  if (clientId) {
+  if (clientId && clientData?.id) {
     const { data: clientDocumentsRows, error: clientDocumentsError } = await supabase
-      .from("client_documents")
+      .from("profile_documents")
       .select(
-        "id, document_type, document_category, title, storage_path, status, uploaded_at, verified_at, metadata",
+        "id, document_type, document_category, title, storage_path, bucket_id, status, uploaded_at, verified_at, metadata",
       )
-      .eq("client_id", clientId)
+      .eq("profile_id", clientData.id)
       .order("uploaded_at", { ascending: false });
 
     if (clientDocumentsError) {
@@ -3282,8 +3354,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
     const mappedClientDocuments = await Promise.all(
       (clientDocumentsRows ?? []).map(async (document: SupabaseClientDocumentRow) => {
+        const bucket = document.bucket_id ?? "profile-documents";
         const signedUrl = document.storage_path
-          ? await createSignedStorageUrl({ bucket: "client-documents", path: document.storage_path })
+          ? await createSignedStorageUrl({ bucket, path: document.storage_path })
           : null;
         const metadata = (document.metadata ?? {}) as Record<string, unknown>;
         const rawDocumentType = getString(document.document_type);
@@ -3314,7 +3387,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
           documentType: normalizedDocumentType ?? rawDocumentType,
           category: getString(document.document_category),
           source: "client" as const,
-          bucket: "client-documents",
+          bucket,
           storagePath: document.storage_path ?? null,
           uploadedAt: document.uploaded_at ?? null,
           signedAt: document.verified_at ?? null,
@@ -3333,13 +3406,13 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   }
 
   let sellerDocumentsFromDb: OpsClientDocument[] = [];
-  if (sellerId) {
+  if (sellerId && sellerData?.id) {
     const { data: sellerDocumentsRows, error: sellerDocumentsError } = await supabase
-      .from("client_documents")
+      .from("profile_documents")
       .select(
-        "id, document_type, document_category, title, storage_path, status, uploaded_at, verified_at, metadata",
+        "id, document_type, document_category, title, storage_path, bucket_id, status, uploaded_at, verified_at, metadata",
       )
-      .eq("client_id", sellerId)
+      .eq("profile_id", sellerData.id)
       .order("uploaded_at", { ascending: false });
 
     if (sellerDocumentsError) {
@@ -3352,8 +3425,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
 
     const mappedSellerDocuments = await Promise.all(
       (sellerDocumentsRows ?? []).map(async (document: SupabaseClientDocumentRow) => {
+        const bucket = document.bucket_id ?? "profile-documents";
         const signedUrl = document.storage_path
-          ? await createSignedStorageUrl({ bucket: "client-documents", path: document.storage_path })
+          ? await createSignedStorageUrl({ bucket, path: document.storage_path })
           : null;
         const metadata = (document.metadata ?? {}) as Record<string, unknown>;
         const rawDocumentType = getString(document.document_type);
@@ -3384,7 +3458,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
           documentType: normalizedDocumentType ?? rawDocumentType,
           category: getString(document.document_category),
           source: "client" as const,
-          bucket: "client-documents",
+          bucket,
           storagePath: document.storage_path ?? null,
           uploadedAt: document.uploaded_at ?? null,
           signedAt: document.verified_at ?? null,
@@ -5498,3 +5572,5 @@ export async function getOperationsSellers(): Promise<OpsClientRecord[]> {
     } satisfies OpsClientRecord;
   });
 }
+
+

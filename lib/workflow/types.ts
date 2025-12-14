@@ -239,4 +239,5 @@ export type WorkflowTemplate = {
   integrations: WorkflowIntegrationsConfig;
   metrics: WorkflowMetricsConfig;
   notifications: WorkflowNotificationConfig;
+  schemas?: Record<string, WorkflowTaskSchema>;
 };

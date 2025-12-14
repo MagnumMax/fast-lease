@@ -1199,7 +1199,7 @@ export function TaskDetailView({
                   <span className="font-medium text-foreground/80">Продавец:</span>
                   <Link
                     href={
-                      sellerSlug ? `/ops/clients/${sellerSlug}` : `/ops/clients/${deal.sellerId}`
+                      sellerSlug ? `/ops/sellers/${sellerSlug}` : `/ops/sellers/${deal.sellerId}`
                     }
                     className="text-xs font-semibold uppercase tracking-wide text-brand-600 underline underline-offset-2"
                   >
