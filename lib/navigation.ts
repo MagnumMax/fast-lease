@@ -129,6 +129,7 @@ export const investorNav: NavItem[] = [
 const ROLE_PROFILE_PATH: Record<AppRole, string> = {
   ADMIN: "/admin/profile",
   OP_MANAGER: "/ops/profile",
+  OPS_MANAGER: "/ops/profile",
   SUPPORT: "/support/profile",
   FINANCE: "/finance/profile",
   TECH_SPECIALIST: "/tech/profile",
@@ -137,6 +138,7 @@ const ROLE_PROFILE_PATH: Record<AppRole, string> = {
   LEGAL: "/legal/profile",
   ACCOUNTING: "/accounting/profile",
   CLIENT: "/client/profile",
+  SELLER: "/seller/profile",
 };
 
 export function resolveProfileHrefForRole(role: AppRole | null): string {

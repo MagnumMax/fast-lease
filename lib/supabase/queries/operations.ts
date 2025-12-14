@@ -127,6 +127,9 @@ export type SupabaseClientData = {
   status: string | null;
   nationality: string | null;
   metadata: Record<string, unknown> | null;
+  source?: string | null;
+  entity_type?: string | null;
+  seller_details?: Record<string, unknown> | null;
 };
 
 export type SupabaseVehicleData = {

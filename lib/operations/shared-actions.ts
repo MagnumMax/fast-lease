@@ -21,6 +21,7 @@ export type SupabaseProfileRow = {
   created_at: string | null;
   source?: string | null;
   entity_type?: string | null;
+  seller_details?: Record<string, unknown> | null;
 };
 
 export function generateRandomPassword() {

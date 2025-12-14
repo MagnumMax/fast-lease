@@ -15,6 +15,7 @@ export const PORTAL_CODES: PortalCode[] = [
   "investor",
   "client",
   "partner",
+  "seller",
 ];
 
 export const PORTAL_DEFINITIONS: Record<PortalCode, PortalDefinition> = {
@@ -28,6 +29,7 @@ export const PORTAL_DEFINITIONS: Record<PortalCode, PortalDefinition> = {
     allowedRoles: [
       "ADMIN",
       "OP_MANAGER",
+      "OPS_MANAGER",
       "SUPPORT",
       "FINANCE",
       "TECH_SPECIALIST",
@@ -64,11 +66,21 @@ export const PORTAL_DEFINITIONS: Record<PortalCode, PortalDefinition> = {
     allowedRoles: [],
     defaultRole: null,
   },
+  seller: {
+    code: "seller",
+    label: "Кабинет продавца",
+    description: "Управление инвентарем и продажами.",
+    loginPath: "/login",
+    homePath: "/seller/dashboard",
+    allowedRoles: ["SELLER"],
+    defaultRole: "SELLER",
+  },
 };
 
 const ROLE_TO_PORTAL: Record<AppRole, PortalCode> = {
   ADMIN: "app",
   OP_MANAGER: "app",
+  OPS_MANAGER: "app",
   SUPPORT: "app",
   FINANCE: "app",
   TECH_SPECIALIST: "app",
@@ -77,6 +89,7 @@ const ROLE_TO_PORTAL: Record<AppRole, PortalCode> = {
   ACCOUNTING: "app",
   INVESTOR: "investor",
   CLIENT: "client",
+  SELLER: "seller",
 };
 
 export function normalizePortalCode(value: unknown): PortalCode | null {

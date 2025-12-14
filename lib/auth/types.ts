@@ -10,9 +10,11 @@ export type AppRole =
   | "INVESTOR"
   | "LEGAL"
   | "ACCOUNTING"
+  | "OPS_MANAGER"
+  | "SELLER"
   | "CLIENT";
 
-export type PortalCode = "app" | "investor" | "client" | "partner";
+export type PortalCode = "app" | "investor" | "client" | "partner" | "seller";
 
 export type ProfileRecord = {
   id: string;
@@ -36,6 +38,9 @@ export type ProfileRecord = {
   last_login_at: string | null;
   created_at: string;
   updated_at: string;
+  source: string | null;
+  entity_type: "individual" | "company" | null;
+  seller_details: Record<string, unknown> | null;
 };
 
 export type PortalAccessRecord = {

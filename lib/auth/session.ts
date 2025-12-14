@@ -40,6 +40,9 @@ function normalizeProfile(
     last_login_at,
     created_at,
     updated_at,
+    source,
+    entity_type,
+    seller_details,
   } = row as ProfileRecord;
 
   return {
@@ -64,6 +67,9 @@ function normalizeProfile(
     last_login_at,
     created_at,
     updated_at,
+    source,
+    entity_type,
+    seller_details: (seller_details as Record<string, unknown>) ?? null,
   };
 }
 
