@@ -9,6 +9,7 @@ interface ProfileDocument {
   title: string;
   mime_type: string;
   file_size: number;
+  bucket_id?: string;
 }
 
 interface ProfileData {
@@ -16,6 +17,14 @@ interface ProfileData {
   user_id: string;
   metadata: Record<string, unknown>;
   seller_details: Record<string, unknown>;
+}
+
+interface FileData {
+  path: string;
+  name: string;
+  type: string;
+  size: number;
+  bucket?: string;
 }
 
 export class ProfileSyncService {
@@ -109,7 +118,8 @@ export class ProfileSyncService {
         buyerFields,
         fieldsBranch,
         schemaFields,
-        "buyer"
+        "buyer",
+        dealId
       );
     }
 
@@ -119,7 +129,8 @@ export class ProfileSyncService {
         sellerFields,
         fieldsBranch,
         schemaFields,
-        "seller"
+        "seller",
+        dealId
       );
     }
   }
@@ -183,6 +194,7 @@ export class ProfileSyncService {
           name: doc.title || doc.storage_path.split("/").pop(),
           type: doc.mime_type,
           size: doc.file_size,
+          bucket: doc.bucket_id || "profile-documents",
         };
       } else if (sourceData && sourceData[fieldId] !== undefined) {
         acc[fieldId] = sourceData[fieldId];
@@ -195,7 +207,8 @@ export class ProfileSyncService {
     targetFields: string[],
     payload: Record<string, unknown>,
     schemaFields: WorkflowTaskSchema["fields"],
-    role: "buyer" | "seller"
+    role: "buyer" | "seller",
+    dealId: string
   ) {
     // 1. Get Profile
     const { data: profile, error: profileError } = await this.client
@@ -222,18 +235,42 @@ export class ProfileSyncService {
       const fieldDef = schemaFields.find((f) => f.id === fieldId);
       const isFile = fieldDef?.type === "file";
       // Fallback: check if value looks like a file object
-      const valueIsFile =
+      const valueIsFileObject =
         typeof value === "object" &&
         value !== null &&
         "path" in value &&
         "type" in value;
 
-      if (isFile || valueIsFile) {
+      if (isFile || valueIsFileObject) {
         // Handle Document
-        const fileData = value as { path: string; name: string; type: string; size: number };
-        const docType = fieldDef?.document_type || fieldId; // Use document_type from schema or fieldId
-        
-        await this.upsertProfileDocument(profile.id, docType, fileData, fieldDef?.label || fieldId);
+        let fileData: FileData | null = null;
+
+        if (typeof value === "string") {
+          // Lookup in deal_documents
+          const { data: dealDoc } = await this.client
+            .from("deal_documents")
+            .select("storage_path, title, mime_type, file_size")
+            .eq("deal_id", dealId)
+            .eq("storage_path", value)
+            .single();
+
+          if (dealDoc) {
+            fileData = {
+              path: dealDoc.storage_path,
+              name: dealDoc.title,
+              type: dealDoc.mime_type,
+              size: dealDoc.file_size,
+              bucket: "deal-documents", // Implicit bucket for deal documents
+            };
+          }
+        } else if (valueIsFileObject) {
+          fileData = value as FileData;
+        }
+
+        if (fileData) {
+          const docType = fieldDef?.document_type || fieldId; // Use document_type from schema or fieldId
+          await this.upsertProfileDocument(profile.id, docType, fileData, fieldDef?.label || fieldId);
+        }
       } else {
         // Handle Text
         if (currentTextData[fieldId] !== value) {
@@ -255,7 +292,7 @@ export class ProfileSyncService {
   private async upsertProfileDocument(
     profileId: string,
     documentType: string,
-    fileData: { path: string; name: string; type: string; size: number },
+    fileData: FileData,
     title: string
   ) {
     // Check existing
@@ -272,6 +309,7 @@ export class ProfileSyncService {
         .from("profile_documents")
         .update({
           storage_path: fileData.path,
+          bucket_id: fileData.bucket || "profile-documents",
           title: title,
           mime_type: fileData.type,
           file_size: fileData.size,
@@ -284,6 +322,7 @@ export class ProfileSyncService {
         profile_id: profileId,
         document_type: documentType,
         storage_path: fileData.path,
+        bucket_id: fileData.bucket || "profile-documents",
         title: title,
         mime_type: fileData.type,
         file_size: fileData.size,

@@ -235,6 +235,9 @@ const updateInputSchema = z.object({
   source: z.string().optional(),
   emiratesId: z.string().optional(),
   passportNumber: z.string().optional(),
+  bankDetails: z.string().optional(),
+  contactEmail: z.union([z.string().email(), z.literal("")]).optional(),
+  contactPhone: z.string().optional(),
 });
 
 export type UpdateOperationsSellerInput = z.infer<typeof updateInputSchema>;
@@ -305,11 +308,16 @@ export async function updateOperationsSeller(
     source,
     emiratesId,
     passportNumber,
+    bankDetails,
+    contactEmail,
+    contactPhone,
   } = parsed.data;
 
   const { firstName, lastName } = parseNameParts(fullName);
   const normalizedEmail = normalizeEmail(email);
   const sanitizedPhone = sanitizePhone(phone);
+  const normalizedContactEmail = normalizeEmail(contactEmail || undefined);
+  const sanitizedContactPhone = sanitizePhone(contactPhone);
   const userStatus = status === "Blocked" ? "suspended" : "active";
 
   try {
@@ -346,7 +354,7 @@ export async function updateOperationsSeller(
     let supportsSourceColumn = true;
     let { data: existingProfile, error: fetchError } = await supabase
       .from("profiles")
-      .select("metadata, source")
+      .select("metadata, source, seller_details")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -354,7 +362,7 @@ export async function updateOperationsSeller(
       supportsSourceColumn = false;
       ({ data: existingProfile, error: fetchError } = await supabase
         .from("profiles")
-        .select("metadata")
+        .select("metadata, seller_details")
         .eq("user_id", userId)
         .maybeSingle());
     }
@@ -379,6 +387,15 @@ export async function updateOperationsSeller(
         updatedMetadata.lead_source = source;
     }
 
+    // Prepare seller_details
+    const currentSellerDetails = (existingProfile?.seller_details as Record<string, unknown> | null) ?? {};
+    const updatedSellerDetails: Record<string, unknown> = {
+      ...currentSellerDetails,
+      seller_bank_details: bankDetails ?? currentSellerDetails.seller_bank_details,
+      seller_contact_email: normalizedContactEmail ?? currentSellerDetails.seller_contact_email,
+      seller_contact_phone: sanitizedContactPhone ?? currentSellerDetails.seller_contact_phone,
+    };
+
     // 3. Update Profile
     const profilePayload: Record<string, unknown> = {
       full_name: fullName,
@@ -388,6 +405,7 @@ export async function updateOperationsSeller(
       status: userStatus,
       nationality: nationality, // Try updating column first
       metadata: updatedMetadata,
+      seller_details: updatedSellerDetails,
       updated_at: new Date().toISOString(),
     };
 

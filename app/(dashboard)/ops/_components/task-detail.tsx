@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Loader2,
   Paperclip,
@@ -327,6 +329,7 @@ export function TaskDetailView({
   const [docFieldWarnings, setDocFieldWarnings] = useState<Record<string, string>>({});
   const [draftWarnings, setDraftWarnings] = useState<Record<string, string>>({});
   const [requiredDocErrors, setRequiredDocErrors] = useState<Record<string, string>>({});
+  const [isAdditionalDocsOpen, setIsAdditionalDocsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const pending = serverPending || isUploading;
 
@@ -658,9 +661,7 @@ export function TaskDetailView({
   const sellerSlug = deal?.sellerId
     ? buildSlugWithId(task.dealSellerName ?? null, deal.sellerId) || deal.sellerId
     : null;
-  const guardDocumentTypeLabel = guardState?.documentType
-    ? getClientDocumentLabel(guardState.documentType) ?? guardState.documentType
-    : null;
+
   const rentyManagerFeeDefault = useMemo(
     () => deriveRentyManagerFee(commercialOfferPriceVat),
     [commercialOfferPriceVat],
@@ -1248,9 +1249,7 @@ export function TaskDetailView({
               Просмотреть текущее вложение
             </Link>
           ) : null}
-          {guardDocumentTypeLabel ? (
-            <p className="text-xs text-muted-foreground">Тип документа: {guardDocumentTypeLabel}</p>
-          ) : null}
+
         </CardContent>
       </Card>
 
@@ -1859,14 +1858,27 @@ export function TaskDetailView({
             ) : null}
 
             {enableDocsSection ? (
-              <div className="mt-6 space-y-4 rounded-2xl border border-dashed border-border/70 p-4">
-                <div className="space-y-1">
-                  <span className="text-sm font-semibold text-foreground">Загрузка дополнительных документов</span>
-                  <p className="text-xs text-muted-foreground">
-                    {documentSectionDescription}
-                  </p>
-                </div>
-                {uploadValidationError ? (
+              <div className="mt-6 rounded-2xl border border-dashed border-border/70 p-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAdditionalDocsOpen(!isAdditionalDocsOpen)}
+                  className="flex w-full items-start justify-between gap-2 text-left"
+                >
+                  <div className="space-y-1">
+                    <span className="text-sm font-semibold text-foreground">Загрузка дополнительных документов</span>
+                    <p className="text-xs text-muted-foreground">
+                      {documentSectionDescription}
+                    </p>
+                  </div>
+                  {isAdditionalDocsOpen ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </button>
+                {isAdditionalDocsOpen ? (
+                  <div className="mt-4 space-y-4">
+                    {uploadValidationError ? (
                   <p className="text-xs text-destructive">{uploadValidationError}</p>
                 ) : null}
 
@@ -2099,6 +2111,8 @@ export function TaskDetailView({
                     После отправки файлы автоматически попадут в карточку сделки.
                   </p>
                 </div>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

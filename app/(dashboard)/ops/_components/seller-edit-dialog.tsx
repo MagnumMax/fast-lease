@@ -71,6 +71,9 @@ type FormState = {
   source: string;
   emiratesId: string;
   passportNumber: string;
+  bankDetails: string;
+  contactEmail: string;
+  contactPhone: string;
 };
 
 type FormSectionProps = {
@@ -118,6 +121,8 @@ const DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 
 function buildInitialState(profile: OpsSellerProfile): FormState {
   const metadata = profile.metadata || {};
+  const sellerDetails = profile.sellerDetails || {};
+
   return {
     fullName: profile.fullName ?? "",
     status: profile.status === "blocked" ? "Blocked" : "Active",
@@ -127,6 +132,9 @@ function buildInitialState(profile: OpsSellerProfile): FormState {
     source: profile.source ?? (metadata.source as string) ?? "",
     emiratesId: (metadata.emirates_id as string) ?? "",
     passportNumber: (metadata.passport_number as string) ?? "",
+    bankDetails: (sellerDetails.seller_bank_details as string) ?? "",
+    contactEmail: (sellerDetails.seller_contact_email as string) ?? "",
+    contactPhone: (sellerDetails.seller_contact_phone as string) ?? "",
   };
 }
 
@@ -272,6 +280,9 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
         source: form.source || undefined,
         emiratesId: form.emiratesId || undefined,
         passportNumber: form.passportNumber || undefined,
+        bankDetails: form.bankDetails || undefined,
+        contactEmail: form.contactEmail || undefined,
+        contactPhone: form.contactPhone || undefined,
       });
 
       if (result.success) {
@@ -426,6 +437,38 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
                 id="passportNumber"
                 value={form.passportNumber}
                 onChange={handleChange("passportNumber")}
+              />
+            </div>
+          </FormSection>
+
+          <FormSection title="Реквизиты">
+             <div className="col-span-2 space-y-2">
+              <Label htmlFor="bankDetails">Банковские реквизиты (IBAN)</Label>
+              <Input
+                id="bankDetails"
+                value={form.bankDetails}
+                onChange={handleChange("bankDetails")}
+                placeholder="AE..."
+              />
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="contactEmail">Email для связи</Label>
+              <Input
+                id="contactEmail"
+                type="email"
+                value={form.contactEmail}
+                onChange={handleChange("contactEmail")}
+                placeholder="contact@example.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="contactPhone">Телефон для связи</Label>
+              <Input
+                id="contactPhone"
+                type="tel"
+                value={form.contactPhone}
+                onChange={handleChange("contactPhone")}
+                placeholder="+971..."
               />
             </div>
           </FormSection>

@@ -1763,6 +1763,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         getString(metadata?.["work_email"]),
         getString(metadata?.["email"]),
         getString(metadata?.["contact_email"]),
+        getString(metadata?.["buyer_contact_email"]),
         getString(metadata?.["primary_email"]),
         getString(rawClient?.["email"]),
       ].find((v): v is string => Boolean(v)) ?? null;
@@ -1773,6 +1774,7 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
         getString(metadata?.["work_phone"]),
         getString(metadata?.["phone"]),
         getString(metadata?.["contact_phone"]),
+        getString(metadata?.["buyer_contact_phone"]),
         getString(metadata?.["primary_phone"]),
         getString(rawClient?.["phone"]),
       ].find((v): v is string => Boolean(v)) ?? null;
@@ -1964,15 +1966,15 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     if (authError) {
       console.warn("[SERVER-OPS] auth user not available for client", { userId, error: authError.message ?? authError });
     } else if (authData?.user) {
-      authEmail = authData.user.email ?? null;
-      authPhone = authData.user.phone ?? null;
+      authEmail = getString(authData.user.email);
+      authPhone = getString(authData.user.phone);
     }
   } catch (error) {
     console.warn("[SERVER-OPS] auth lookup skipped (service key not configured?)", { userId, error });
   }
 
   const metadata = isRecord(profileRow.metadata) ? (profileRow.metadata as Record<string, unknown>) : {};
-  const metadataEmailCandidates = ["ops_email", "work_email", "email", "contact_email"];
+  const metadataEmailCandidates = ["ops_email", "work_email", "email", "contact_email", "buyer_contact_email", "buyer_company_email"];
   for (const key of metadataEmailCandidates) {
     const candidateEmail = getString(metadata[key]);
     if (candidateEmail) {
@@ -1981,7 +1983,7 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
     }
   }
 
-  const metadataPhoneCandidates = ["ops_phone", "work_phone", "phone"];
+  const metadataPhoneCandidates = ["ops_phone", "work_phone", "phone", "buyer_contact_phone", "buyer_company_phone"];
   for (const key of metadataPhoneCandidates) {
     const candidatePhone = getString(metadata[key]);
     if (candidatePhone) {
@@ -2582,26 +2584,28 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
   }
 
   const metadata = isRecord(profileRow.metadata) ? (profileRow.metadata as Record<string, unknown>) : {};
+  const sellerDetails = isRecord(profileRow.seller_details) ? (profileRow.seller_details as Record<string, unknown>) : {};
   
   // Resolve Email
-  const metadataEmailCandidates = ["ops_email", "work_email", "email", "contact_email"];
-  for (const key of metadataEmailCandidates) {
-    const candidateEmail = getString(metadata[key]);
-    if (candidateEmail) {
-      authEmail = authEmail ?? candidateEmail;
-      break;
-    }
-  }
+  const emailCandidates = [
+    getString(sellerDetails["seller_contact_email"]),
+    getString(metadata["ops_email"]),
+    getString(metadata["work_email"]),
+    getString(metadata["email"]),
+    getString(metadata["contact_email"]),
+  ];
+  
+  authEmail = authEmail ?? emailCandidates.find((e) => e !== null) ?? null;
 
   // Resolve Phone
-  const metadataPhoneCandidates = ["ops_phone", "work_phone", "phone"];
-  for (const key of metadataPhoneCandidates) {
-    const candidatePhone = getString(metadata[key]);
-    if (candidatePhone) {
-      authPhone = authPhone ?? candidatePhone;
-      break;
-    }
-  }
+  const phoneCandidates = [
+    getString(sellerDetails["seller_contact_phone"]),
+    getString(metadata["ops_phone"]),
+    getString(metadata["work_phone"]),
+    getString(metadata["phone"]),
+  ];
+
+  authPhone = authPhone ?? phoneCandidates.find((p) => p !== null) ?? null;
 
   const profileSourceRaw = getString(profileRow.source);
   const metadataSourceCandidates = [
