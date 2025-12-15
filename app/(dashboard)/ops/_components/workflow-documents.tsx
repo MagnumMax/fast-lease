@@ -78,7 +78,16 @@ export function WorkflowDocuments({ groups, additional, financedAmount, classNam
                 className="rounded-lg border border-border/60 bg-background/80"
               >
                 <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-border/60 bg-muted/10 px-4 py-2 text-sm font-semibold text-foreground">
-                  <span>{group.taskTitle}</span>
+                  {group.taskTemplateId && group.taskTemplateId !== "deal-documents" ? (
+                    <Link
+                      href={`/ops/tasks/${group.taskTemplateId}`}
+                      className="hover:underline hover:text-brand-600 transition-colors"
+                    >
+                      {group.taskTitle}
+                    </Link>
+                  ) : (
+                    <span>{group.taskTitle}</span>
+                  )}
                   {group.taskTemplateId ? (
                     <Button asChild size="sm" variant="ghost" className="h-8 rounded-lg px-2 text-xs font-medium">
                       <Link href={`/ops/tasks/${group.taskTemplateId}#reopen-task`}>Переоткрыть</Link>

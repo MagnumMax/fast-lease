@@ -21,6 +21,9 @@ import { createSignedStorageUrl } from "@/lib/supabase/storage";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 import { completeTaskFormAction, reopenTaskAction } from "./actions";
 import {
+  TASK_DOCUMENT_MAPPING,
+} from "@/lib/constants/task-documents";
+import {
   evaluateClientDocumentChecklist,
   extractChecklistFromTaskPayload,
   isOptionalGuardDocument,
@@ -48,6 +51,44 @@ type GuardDocumentLink = {
 type TaskPageParams = {
   params: Promise<{ id: string }>;
 };
+
+const ALLOWED_PROFILE_DOC_TYPES = [
+  // Buyer (Company)
+  "doc_company_license",
+  "company_license", // Correct type from template
+  "doc_emirates_id_manager",
+  "doc_passport_manager",
+  "doc_emirates_id_driver",
+  "doc_passport_driver",
+  "doc_driving_license",
+
+  // Buyer (Individual)
+  "doc_passport_buyer",
+  "doc_emirates_id_buyer",
+  "doc_driving_license_buyer",
+  "doc_second_driver_bundle",
+
+  // Seller (Company)
+  "doc_emirates_id_owner",
+  "emirates_id_owner", // Seen in DB
+  "doc_trn_certificate",
+  "trn_certificate", // Correct type from template
+
+  // Seller (Individual)
+  "doc_emirates_id_seller",
+  "emirates_id_seller", // Potential variant
+
+  // Generic / Registry (Personal)
+  "identity_document",
+  "salary_certificate",
+  "bank_statement",
+  "proof_of_address",
+  "emirates_id", // Generic type seen in DB
+
+  // Generic / Registry (Company)
+  "corporate_documents",
+  "company_bank_statement",
+];
 
 const DEAL_STORAGE_BUCKET = "deal-documents";
 const CLIENT_STORAGE_BUCKET = "client-documents";
@@ -108,7 +149,7 @@ type DealDocumentWithUrl = {
   status: string | null;
   storage_path: string | null;
   created_at?: string | null;
-  metadata?: unknown;
+  metadata?: Record<string, unknown> | null;
   signedUrl: string | null;
 };
 type VehicleDocumentWithUrl = {
@@ -676,7 +717,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           deal_number,
           client_id,
           seller_id,
-          seller:profiles!deals_seller_id_fkey(full_name, entity_type),
+          seller:profiles!deals_seller_id_fkey(id, full_name, entity_type),
           vehicle_id,
           status,
           monthly_payment,
@@ -756,14 +797,17 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       }
 
       let sellerType = ((dealRow.seller as unknown) as { entity_type: string | null } | null)?.entity_type ?? null;
-      if (!sellerType && dealRow.seller_id) {
+      let sellerProfileId = ((dealRow.seller as unknown) as { id: string | null } | null)?.id ?? null;
+
+      if ((!sellerType || !sellerProfileId) && dealRow.seller_id) {
         const { data: sellerData } = await serviceClient
           .from("profiles")
-          .select("entity_type")
+          .select("id, entity_type")
           .eq("user_id", dealRow.seller_id)
           .maybeSingle();
         if (sellerData) {
-          sellerType = sellerData.entity_type;
+          if (!sellerType) sellerType = sellerData.entity_type;
+          if (!sellerProfileId) sellerProfileId = sellerData.id;
         }
       }
 
@@ -782,7 +826,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       commercialOffer = extractCommercialOfferFromPayload(dealRow.payload ?? null);
       const { data: tasksData, error: tasksError } = await supabase
         .from("tasks")
-        .select("id, title, payload, created_at")
+        .select("id, title, type, payload, created_at")
         .eq("deal_id", task.dealId)
         .order("created_at", { ascending: true });
 
@@ -807,10 +851,56 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
                 : null;
           const stageTitle = stageKey && OPS_WORKFLOW_STATUS_MAP[stageKey] ? OPS_WORKFLOW_STATUS_MAP[stageKey].title : stageKey;
           const schemaEntriesBase = extractOrderedSchemaEntriesFromPayload(payload);
+
+          const checklist = extractChecklistFromTaskPayload(payload);
+          let extendedChecklist = [...checklist];
+
+          // Merge static mapping with payload checklist
+          if (row.type) {
+            const taskType = row.type.toUpperCase();
+            let mappingKey: string | null = null;
+
+            if (taskType === "COLLECT_SELLER_DOCS" && sellerType) {
+              const suffix = sellerType.toLowerCase() === "personal" ? "INDIVIDUAL" : sellerType.toUpperCase();
+              mappingKey = `${taskType}_${suffix}`;
+            } else if (taskType === "COLLECT_BUYER_DOCS" && buyerType) {
+              const suffix = buyerType.toLowerCase() === "personal" ? "INDIVIDUAL" : buyerType.toUpperCase();
+              mappingKey = `${taskType}_${suffix}`;
+            }
+
+            if (mappingKey && TASK_DOCUMENT_MAPPING[mappingKey]) {
+              const mappedDocs = TASK_DOCUMENT_MAPPING[mappingKey];
+              for (const doc of mappedDocs) {
+                if (!extendedChecklist.includes(doc)) {
+                  extendedChecklist.push(doc);
+                }
+              }
+            }
+          }
+
+          const checklistEntries: TaskSchemaEntry[] = extendedChecklist.map((docType) => ({
+            kind: "document" as const,
+            id: docType,
+            documentType: docType,
+            label: getClientDocumentLabel(docType as ClientDocumentTypeValue) || docType,
+          }));
+
+          const existingDocTypes = new Set(
+            schemaEntriesBase
+              .filter(isDocumentSchemaEntry)
+              .map((e) => e.documentType)
+          );
+
+          const uniqueChecklistEntries = checklistEntries.filter(
+            (entry) => isDocumentSchemaEntry(entry) && !existingDocTypes.has(entry.documentType)
+          );
+
+          const schemaEntriesCombined = [...schemaEntriesBase, ...uniqueChecklistEntries];
+
           const schemaEntries =
-            guardNote && !schemaEntriesBase.some((entry) => isParameterSchemaEntry(entry) && entry.id === "guard_note")
+            guardNote && !schemaEntriesCombined.some((entry) => isParameterSchemaEntry(entry) && entry.id === "guard_note")
               ? [
-                  ...schemaEntriesBase,
+                  ...schemaEntriesCombined,
                   {
                     kind: "parameter" as const,
                     id: "guard_note",
@@ -818,7 +908,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
                     value: guardNote,
                   },
                 ]
-              : schemaEntriesBase;
+              : schemaEntriesCombined;
           const parameters = schemaEntries
             .filter(isParameterSchemaEntry)
             .map((entry) => ({
@@ -880,28 +970,49 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           title: (doc.title as string | null | undefined) ?? null,
           status: (doc.status as string | null | undefined) ?? null,
           created_at: (doc as { created_at?: string }).created_at ?? null,
-          metadata: doc.metadata ?? null,
+          metadata: (doc.metadata as Record<string, unknown> | null) ?? null,
           signedUrl: doc.storage_path
             ? await createSignedStorageUrl({ bucket: DEAL_STORAGE_BUCKET, path: doc.storage_path as string })
             : null,
         })),
       );
 
-      if (dealRow.seller_id) {
+      if (sellerProfileId) {
+        // Only fetch documents that are actually relevant to the seller profile (Entity documents).
+        // Vehicle/Deal specific documents (Mulkia, Passing, etc.) should not be pulled from the seller profile
+        // as they are bound to the specific deal/vehicle, not the seller entity.
         const { data: sellerDocsData, error: sellerDocsError } = await serviceClient
           .from("profile_documents")
           .select("id, document_type, title, status, storage_path, metadata, uploaded_at")
-          .eq("profile_id", dealRow.seller_id);
+          .eq("profile_id", sellerProfileId)
+          .in("document_type", ALLOWED_PROFILE_DOC_TYPES);
 
         if (sellerDocsError) {
           console.error("[workflow] failed to load seller documents", sellerDocsError);
         } else if (Array.isArray(sellerDocsData)) {
           const sellerDocs = await Promise.all(
             sellerDocsData.map(async (doc) => {
-              const bucket = "profile-documents";
-              const signedUrl = doc.storage_path
-                ? await createSignedStorageUrl({ bucket, path: doc.storage_path })
-                : null;
+              const metadata = (doc.metadata as Record<string, unknown> | null) ?? null;
+              const metaBucket =
+                metadata && typeof metadata.bucket === "string" ? (metadata.bucket as string) : null;
+              
+              let signedUrl: string | null = null;
+              if (doc.storage_path) {
+                 const bucketsToTry = metaBucket
+                  ? [metaBucket, "profile-documents", DEAL_STORAGE_BUCKET, CLIENT_STORAGE_BUCKET]
+                  : ["profile-documents", DEAL_STORAGE_BUCKET, CLIENT_STORAGE_BUCKET];
+                 
+                 // Remove duplicates
+                 const uniqueBuckets = Array.from(new Set(bucketsToTry));
+
+                 for (const bucket of uniqueBuckets) {
+                   const url = await createSignedStorageUrl({ bucket, path: doc.storage_path });
+                   if (url) {
+                     signedUrl = url;
+                     break;
+                   }
+                 }
+              }
 
               return {
                 id: doc.id,
@@ -910,7 +1021,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
                 status: doc.status,
                 storage_path: doc.storage_path,
                 created_at: doc.uploaded_at,
-                metadata: doc.metadata,
+                metadata,
                 signedUrl,
               };
             }),
@@ -923,7 +1034,8 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         const { data: clientDocsData, error: clientDocsError } = await supabase
           .from("client_documents")
           .select("id, document_type, title, status, storage_path, metadata")
-          .eq("client_id", effectiveClientId);
+          .eq("client_id", effectiveClientId)
+          .in("document_type", ALLOWED_PROFILE_DOC_TYPES);
 
         if (clientDocsError) {
           console.error("[workflow] failed to load client documents for task page", clientDocsError);
@@ -1407,7 +1519,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       deal={dealSummary}
       stageTitle={stageMeta?.title ?? null}
       guardDocuments={guardDocuments}
-      clientDocuments={clientDocuments}
+      clientDocuments={[...clientDocuments, ...dealDocuments]}
       financeSnapshot={financeSnapshot}
       commercialOfferPriceVat={commercialOffer?.priceVat ?? null}
       completeAction={completeTaskFormAction}

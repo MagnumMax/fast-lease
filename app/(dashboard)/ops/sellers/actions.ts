@@ -354,7 +354,7 @@ export async function updateOperationsSeller(
     let supportsSourceColumn = true;
     let { data: existingProfile, error: fetchError } = await supabase
       .from("profiles")
-      .select("metadata, source, seller_details")
+      .select("metadata, source, seller_details, full_name")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -362,7 +362,7 @@ export async function updateOperationsSeller(
       supportsSourceColumn = false;
       ({ data: existingProfile, error: fetchError } = await supabase
         .from("profiles")
-        .select("metadata, seller_details")
+        .select("metadata, seller_details, full_name")
         .eq("user_id", userId)
         .maybeSingle());
     }
@@ -445,6 +445,20 @@ export async function updateOperationsSeller(
     for (const path of getWorkspacePaths("sellers")) {
       revalidatePath(path);
     }
+
+    // Revalidate all potential paths for this seller
+    const newSlug = buildSlugWithId(fullName, userId);
+    revalidatePath(`/ops/sellers/${newSlug}`);
+
+    if (existingProfile) {
+      // @ts-ignore - full_name is selected dynamically
+      const oldFullName = existingProfile.full_name as string | null;
+      const oldSlug = buildSlugWithId(oldFullName, userId);
+      if (oldSlug !== newSlug) {
+        revalidatePath(`/ops/sellers/${oldSlug}`);
+      }
+    }
+
     revalidatePath(`/ops/sellers/${userId}`); // Revalidate detail page via ID (slug might change but ID is stable)
 
     return { success: true };
