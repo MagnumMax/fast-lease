@@ -693,6 +693,8 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     sellerId: string | null;
     sellerName?: string | null;
     sellerType?: string | null;
+    sellerEmail?: string | null;
+    sellerPhone?: string | null;
     vehicleId: string | null;
     buyerEmail?: string | null;
     buyerPhone?: string | null;
@@ -717,7 +719,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           deal_number,
           client_id,
           seller_id,
-          seller:profiles!deals_seller_id_fkey(id, full_name, entity_type),
+          seller:profiles!deals_seller_id_fkey(id, full_name, entity_type, phone, metadata),
           vehicle_id,
           status,
           monthly_payment,
@@ -798,16 +800,42 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
 
       let sellerType = ((dealRow.seller as unknown) as { entity_type: string | null } | null)?.entity_type ?? null;
       let sellerProfileId = ((dealRow.seller as unknown) as { id: string | null } | null)?.id ?? null;
+      let sellerPhone = ((dealRow.seller as unknown) as { phone: string | null } | null)?.phone ?? null;
+      let sellerMetadata = ((dealRow.seller as unknown) as { metadata: Record<string, unknown> | null } | null)?.metadata ?? null;
+      let sellerEmail: string | null = null;
+
+      if (sellerMetadata && typeof sellerMetadata === "object" && "email" in sellerMetadata) {
+        sellerEmail = (sellerMetadata as { email?: string }).email ?? null;
+      }
 
       if ((!sellerType || !sellerProfileId) && dealRow.seller_id) {
         const { data: sellerData } = await serviceClient
           .from("profiles")
-          .select("id, entity_type")
+          .select("id, entity_type, phone, metadata")
           .eq("user_id", dealRow.seller_id)
           .maybeSingle();
         if (sellerData) {
           if (!sellerType) sellerType = sellerData.entity_type;
           if (!sellerProfileId) sellerProfileId = sellerData.id;
+          if (!sellerPhone) sellerPhone = sellerData.phone;
+          
+          if (!sellerEmail && sellerData.metadata && typeof sellerData.metadata === "object" && "email" in sellerData.metadata) {
+            sellerEmail = (sellerData.metadata as { email?: string }).email ?? null;
+          }
+        }
+      }
+
+      // Last resort for seller email: Fetch from auth.users
+      if (!sellerEmail && dealRow.seller_id) {
+        try {
+          const { data: userData, error: userError } = await serviceClient.auth.admin.getUserById(
+            dealRow.seller_id,
+          );
+          if (!userError && userData?.user?.email) {
+            sellerEmail = userData.user.email;
+          }
+        } catch (err) {
+          console.warn("[workflow] failed to fetch seller email", err);
         }
       }
 
@@ -818,6 +846,8 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         sellerId: (dealRow.seller_id as string | null) ?? null,
         sellerName: ((dealRow.seller as unknown) as { full_name: string | null } | null)?.full_name ?? null,
         sellerType,
+        sellerEmail,
+        sellerPhone,
         vehicleId: dealRow.vehicle_id ?? null,
         buyerEmail,
         buyerPhone,

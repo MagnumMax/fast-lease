@@ -61,6 +61,8 @@ type TaskDetailViewProps = {
     sellerId: string | null;
     sellerName?: string | null;
     sellerType?: string | null;
+    sellerEmail?: string | null;
+    sellerPhone?: string | null;
     vehicleId: string | null;
     buyerEmail?: string | null;
     buyerPhone?: string | null;
@@ -382,9 +384,9 @@ export function TaskDetailView({
   const isVehicleVerificationTask =
     guardKeyResolved === VEHICLE_VERIFICATION_GUARD_KEY ||
     task.type === VEHICLE_VERIFICATION_TASK_TYPE;
-  const initialBuyerType = normalizePartyType(resolveFieldValue("buyer_type", payload));
+  const initialBuyerType = normalizePartyType(resolveFieldValue("buyer_type", payload)) || normalizePartyType(deal?.buyerType);
   const [buyerType, setBuyerType] = useState<PartyTypeValue | "">(() => initialBuyerType);
-  const initialSellerType = normalizePartyType(resolveFieldValue("seller_type", payload));
+  const initialSellerType = normalizePartyType(resolveFieldValue("seller_type", payload)) || normalizePartyType(deal?.sellerType);
   const [sellerType, setSellerType] = useState<PartyTypeValue | "">(() => initialSellerType);
   const buyerChecklist: string[] = [];
   const sellerChecklist: string[] = [];
@@ -1395,6 +1397,11 @@ export function TaskDetailView({
                   } else if (fieldId === "buyer_contact_phone" && buyerType === "personal") {
                     label = "Телефон покупателя";
                   }
+                  if (fieldId === "seller_contact_email" && sellerType === "personal") {
+                    label = "Электронная почта продавца";
+                  } else if (fieldId === "seller_contact_phone" && sellerType === "personal") {
+                    label = "Телефон продавца";
+                  }
                   if (buyerType === "personal" && INDIVIDUAL_DOC_LABELS[fieldId]) {
                     label = INDIVIDUAL_DOC_LABELS[fieldId];
                   }
@@ -1825,6 +1832,10 @@ export function TaskDetailView({
                       prefilledTextValue = deal.buyerEmail;
                     } else if (fieldId === "buyer_contact_phone" && deal?.buyerPhone) {
                       prefilledTextValue = deal.buyerPhone;
+                    } else if (fieldId === "seller_contact_email" && deal?.sellerEmail) {
+                      prefilledTextValue = deal.sellerEmail;
+                    } else if (fieldId === "seller_contact_phone" && deal?.sellerPhone) {
+                      prefilledTextValue = deal.sellerPhone;
                     }
                   }
 
