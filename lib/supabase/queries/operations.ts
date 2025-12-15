@@ -218,7 +218,7 @@ export type OpsClientRecord = {
     overdue: string;
   };
   residencyStatus?: string | null;
-  entityType?: "individual" | "company" | null;
+  entityType?: OpsClientEntityType | null;
   deals?: OpsSellerDealSummary[];
   leasing?: {
     vehicle: string;
@@ -232,7 +232,7 @@ export type OpsClientRecord = {
 
 export type OpsClientType = "Personal" | "Company";
 
-export type OpsClientEntityType = "individual" | "company";
+export type OpsClientEntityType = "personal" | "company";
 
 export function normalizeOpsEntityType(value: string | null | undefined): OpsClientEntityType | null {
   if (!value) {
@@ -245,8 +245,8 @@ export function normalizeOpsEntityType(value: string | null | undefined): OpsCli
   if (normalized === "company") {
     return "company";
   }
-  if (normalized === "individual" || normalized === "personal") {
-    return "individual";
+  if (normalized === "personal") {
+    return "personal";
   }
   return null;
 }
@@ -436,7 +436,7 @@ export type OpsSellerProfile = {
   source: string | null;
   createdAt: string | null;
   metadata: Record<string, unknown> | null;
-  entityType: "individual" | "company" | null;
+  entityType: "personal" | "company" | null;
   sellerDetails: Record<string, unknown> | null;
 };
 
@@ -513,8 +513,8 @@ export type OpsDealEditDefaults = {
   dealNumber: string;
   statusKey: OpsDealStatusKey;
   companyCode: DealCompanyCode | null;
-  buyerType: "individual" | "company" | null;
-  sellerType: "individual" | "company" | null;
+  buyerType: "personal" | "company" | null;
+  sellerType: "personal" | "company" | null;
   principalAmount: number | null;
   totalAmount: number | null;
   monthlyPayment: number | null;

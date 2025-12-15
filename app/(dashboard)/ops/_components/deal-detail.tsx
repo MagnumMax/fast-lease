@@ -845,7 +845,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   )}
                   {client.type ? (
                     <span className="text-xs text-muted-foreground">
-                      ({client.type === "company" ? "Юр. лицо" : client.type === "individual" ? "Физ. лицо" : client.type})
+                      ({client.type === "company" ? "Юр. лицо" : client.type === "personal" ? "Физ. лицо" : client.type})
                     </span>
                   ) : null}
                 </div>
@@ -860,7 +860,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
                   )}
                   {seller?.type ? (
                     <span className="text-xs text-muted-foreground">
-                      ({seller.type === "company" ? "Юр. лицо" : seller.type === "individual" ? "Физ. лицо" : seller.type})
+                      ({seller.type === "company" ? "Юр. лицо" : seller.type === "personal" ? "Физ. лицо" : seller.type})
                     </span>
                   ) : null}
                 </div>

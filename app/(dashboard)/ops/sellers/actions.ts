@@ -40,7 +40,7 @@ const createInputSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional(),
   phone: z.string().optional(),
-  type: z.enum(["individual", "company"]).default("individual"),
+  type: z.enum(["personal", "company"]).default("personal"),
 });
 
 type CreateOperationsSellerInput = z.infer<typeof createInputSchema>;
@@ -90,7 +90,7 @@ function formatSellerRecord(
       overdue: "Нет данных",
     },
     residencyStatus: profile.residency_status ?? null,
-    entityType: (profile.entity_type as "individual" | "company") ?? null,
+    entityType: (profile.entity_type as "personal" | "company") ?? null,
     leasing: undefined,
   };
 }
@@ -114,6 +114,9 @@ export async function createOperationsSeller(
   const normalizedEmail = normalizeEmail(email);
   const sanitizedPhone = sanitizePhone(phone);
   const userStatus = "active";
+  
+  // Normalize entity type for DB
+  const entityType = type;
 
   try {
     const supabase = await createSupabaseServerClient();
@@ -159,7 +162,7 @@ export async function createOperationsSeller(
       email: normalizedEmail || null,
       status: userStatus,
       source: "OPS Dashboard",
-      entityType: type,
+      entityType: entityType,
     });
 
     if (profileError || !profile) {

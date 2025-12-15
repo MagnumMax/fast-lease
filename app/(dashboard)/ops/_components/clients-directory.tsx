@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -69,6 +70,7 @@ type ClientFormState = {
   name: string;
   email: string;
   phone: string;
+  type: "personal" | "company";
 };
 
 function createDefaultClientFormState(): ClientFormState {
@@ -76,6 +78,7 @@ function createDefaultClientFormState(): ClientFormState {
     name: "",
     email: "",
     phone: "",
+    type: "personal",
   };
 }
 
@@ -175,6 +178,7 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
         name: formState.name.trim(),
         email: formState.email.trim() || undefined,
         phone: formState.phone.trim() || undefined,
+        type: formState.type,
       });
 
       if (result.error) {
@@ -220,6 +224,32 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
             <DialogDescription>Заполните контактную информацию покупателя.</DialogDescription>
           </DialogHeader>
           <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="space-y-2">
+              <label htmlFor="client-type" className="text-sm font-medium text-foreground/80">
+                Тип покупателя
+              </label>
+              <RadioGroup
+                id="client-type"
+                value={formState.type}
+                onValueChange={(value) =>
+                  setFormState((prev) => ({ ...prev, type: value as "personal" | "company" }))
+                }
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="personal" id="type-personal" />
+                  <label htmlFor="type-personal" className="text-sm">
+                    Физическое лицо
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="company" id="type-company" />
+                  <label htmlFor="type-company" className="text-sm">
+                    Юридическое лицо
+                  </label>
+                </div>
+              </RadioGroup>
+            </div>
             <div className="space-y-2">
               <label htmlFor="client-name" className="text-sm font-medium text-foreground/80">
                 Полное имя
@@ -312,13 +342,18 @@ export function OpsClientsDirectory({ initialClients }: OpsClientsDirectoryProps
                       >
                         {client.name}
                       </Link>
-                      {client.segment ? (
-                        <div className="mt-2">
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Badge variant="outline" className="rounded-lg text-xs">
+                          {client.entityType === "company" ? "Company" : "Personal"}
+                        </Badge>
+                        {client.segment &&
+                        client.segment !==
+                          (client.entityType === "company" ? "Company" : "Personal") ? (
                           <Badge variant="outline" className="rounded-lg text-xs">
                             {client.segment}
                           </Badge>
-                        </div>
-                      ) : null}
+                        ) : null}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveClientStatusToneClass(client.status)}`}>

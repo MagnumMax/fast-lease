@@ -39,7 +39,7 @@ export type ProfileRecord = {
   created_at: string;
   updated_at: string;
   source: string | null;
-  entity_type: "individual" | "company" | null;
+  entity_type: "personal" | "company" | null;
   seller_details: Record<string, unknown> | null;
 };
 

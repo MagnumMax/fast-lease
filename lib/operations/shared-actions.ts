@@ -204,7 +204,7 @@ export async function upsertOperationsProfile(
     email: string | null;
     status: string;
     source?: string;
-    entityType?: "individual" | "company" | null;
+    entityType?: "personal" | "company" | null;
   }
 ) {
   const { fullName, firstName, lastName, phone, email, status, source = "OPS Dashboard", entityType } = params;

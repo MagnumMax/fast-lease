@@ -81,8 +81,8 @@ type FormState = {
   insuranceLastPaymentStatus: string;
   insuranceLastPaymentDate: string;
   insuranceNotes: string;
-  buyerType: "individual" | "company" | "";
-  sellerType: "individual" | "company" | "";
+  buyerType: "personal" | "company" | "";
+  sellerType: "personal" | "company" | "";
   sellerName: string;
   sellerPhone: string;
   sellerEmail: string;
@@ -720,7 +720,7 @@ export function DealEditDialog({
                     onValueChange={(value) =>
                       setForm((prev) => ({
                         ...prev,
-                        buyerType: value === EMPTY_SELECT_VALUE ? "" : (value as "individual" | "company"),
+                        buyerType: value === EMPTY_SELECT_VALUE ? "" : (value as "personal" | "company"),
                       }))
                     }
                   >
@@ -729,7 +729,7 @@ export function DealEditDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={EMPTY_SELECT_VALUE}>Не выбрано</SelectItem>
-                      <SelectItem value="individual">Физлицо</SelectItem>
+                      <SelectItem value="personal">Физлицо</SelectItem>
                       <SelectItem value="company">Юрлицо</SelectItem>
                     </SelectContent>
                   </Select>
@@ -741,7 +741,7 @@ export function DealEditDialog({
                     onValueChange={(value) =>
                       setForm((prev) => ({
                         ...prev,
-                        sellerType: value === EMPTY_SELECT_VALUE ? "" : (value as "individual" | "company"),
+                        sellerType: value === EMPTY_SELECT_VALUE ? "" : (value as "personal" | "company"),
                       }))
                     }
                   >
@@ -750,7 +750,7 @@ export function DealEditDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={EMPTY_SELECT_VALUE}>Не выбрано</SelectItem>
-                      <SelectItem value="individual">Физлицо</SelectItem>
+                      <SelectItem value="personal">Физлицо</SelectItem>
                       <SelectItem value="company">Юрлицо</SelectItem>
                     </SelectContent>
                   </Select>

@@ -35,7 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createOperationsSeller } from "@/app/(dashboard)/ops/sellers/actions";
-import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
+import type { OpsClientRecord, OpsClientEntityType } from "@/lib/supabase/queries/operations";
 import { useDashboard } from "@/components/providers/dashboard-context";
 import { WorkspaceListHeader } from "@/components/workspace/list-page-header";
 
@@ -66,15 +66,15 @@ function resolveSellerStatusToneClass(status: string | undefined | null) {
   }
 }
 
-function resolveSellerTypeLabel(entityType?: "individual" | "company" | null) {
-  return entityType === "company" ? "Company" : "Private";
+function resolveSellerTypeLabel(entityType?: OpsClientEntityType | null) {
+  return entityType === "company" ? "Company" : "Personal";
 }
 
 type SellerFormState = {
   name: string;
   email: string;
   phone: string;
-  type: "individual" | "company";
+  type: "personal" | "company";
 };
 
 function createDefaultSellerFormState(): SellerFormState {
@@ -82,7 +82,7 @@ function createDefaultSellerFormState(): SellerFormState {
     name: "",
     email: "",
     phone: "",
-    type: "individual",
+    type: "personal",
   };
 }
 
@@ -137,8 +137,8 @@ export function OpsSellersDirectory({ initialSellers }: OpsSellersDirectoryProps
             Все типы
           </DropdownMenuCheckboxItem>
           <DropdownMenuCheckboxItem
-            checked={typeFilter === "individual"}
-            onCheckedChange={() => setTypeFilter("individual")}
+            checked={typeFilter === "personal"}
+            onCheckedChange={() => setTypeFilter("personal")}
           >
             Физлицо
           </DropdownMenuCheckboxItem>
@@ -181,7 +181,8 @@ export function OpsSellersDirectory({ initialSellers }: OpsSellersDirectoryProps
       const matchesVin =
         normalizedVinQuery.length > 0 && normalizeVin(seller.leasing?.vin).includes(normalizedVinQuery);
       const matchesStatus = !normalizedStatusFilter || seller.status === normalizedStatusFilter;
-      const matchesType = !normalizedTypeFilter || (seller.entityType ?? "individual") === normalizedTypeFilter;
+      const sellerType = seller.entityType === "company" ? "company" : "personal";
+      const matchesType = !normalizedTypeFilter || sellerType === normalizedTypeFilter;
       return (matchesText || matchesVin) && matchesStatus && matchesType;
     });
   }, [sellers, searchQuery, normalizedStatusFilter, normalizedTypeFilter]);
@@ -261,26 +262,26 @@ export function OpsSellersDirectory({ initialSellers }: OpsSellersDirectoryProps
                 id="seller-type"
                 value={formState.type}
                 onValueChange={(value) =>
-                  setFormState((prev) => ({ ...prev, type: value as "individual" | "company" }))
+                  setFormState((prev) => ({ ...prev, type: value as "personal" | "company" }))
                 }
                 className="flex gap-4"
               >
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="individual" id="r-individual" />
+                  <RadioGroupItem value="personal" id="type-personal" />
                   <label
-                    htmlFor="r-individual"
+                    htmlFor="type-personal"
                     className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Физлицо
+                    Физическое лицо
                   </label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="company" id="r-company" />
+                  <RadioGroupItem value="company" id="type-company" />
                   <label
-                    htmlFor="r-company"
+                    htmlFor="type-company"
                     className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
-                    Юрлицо
+                    Юридическое лицо
                   </label>
                 </div>
               </RadioGroup>

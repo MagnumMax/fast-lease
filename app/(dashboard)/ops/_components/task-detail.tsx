@@ -117,7 +117,7 @@ type DocumentDraft = {
   prefilledId?: string | null;
 };
 
-type PartyTypeValue = "company" | "individual";
+type PartyTypeValue = "company" | "personal";
 
 type SummaryDataPoint = { label: string; value: string };
 type SummaryDocumentEntry = { label: string; value: string; status?: string | null; url?: string | null };
@@ -157,7 +157,7 @@ const PARTY_TYPE_EMPTY_VALUE = "__party-type-none__";
 const FINANCE_REVIEW_TITLE = "Проверка и утверждение финансовой структуры сделки";
 const PARTY_TYPE_OPTIONS: ReadonlyArray<{ value: PartyTypeValue; label: string }> = [
   { value: "company", label: "Юридическое лицо" },
-  { value: "individual", label: "Физическое лицо" },
+  { value: "personal", label: "Физическое лицо" },
 ];
 
 function createDocumentDraft(defaultType: ClientDocumentTypeValue | "" = ""): DocumentDraft {
@@ -173,7 +173,7 @@ function createDocumentDraft(defaultType: ClientDocumentTypeValue | "" = ""): Do
 }
 
 function normalizePartyType(value: string | null | undefined): PartyTypeValue | "" {
-  if (value === "company" || value === "individual") {
+  if (value === "company" || value === "personal") {
     return value;
   }
   return "";
@@ -1189,7 +1189,7 @@ export function TaskDetailView({
                   </Link>
                   {deal.buyerType ? (
                     <span className="text-xs text-muted-foreground">
-                      ({deal.buyerType === "company" ? "Юр. лицо" : deal.buyerType === "individual" ? "Физ. лицо" : deal.buyerType})
+                      ({deal.buyerType === "company" ? "Юр. лицо" : deal.buyerType === "personal" ? "Физ. лицо" : deal.buyerType})
                     </span>
                   ) : null}
                 </div>
@@ -1207,7 +1207,7 @@ export function TaskDetailView({
                   </Link>
                   {deal.sellerType ? (
                     <span className="text-xs text-muted-foreground">
-                      ({deal.sellerType === "company" ? "Юр. лицо" : deal.sellerType === "individual" ? "Физ. лицо" : deal.sellerType})
+                      ({deal.sellerType === "company" ? "Юр. лицо" : deal.sellerType === "personal" ? "Физ. лицо" : deal.sellerType})
                     </span>
                   ) : null}
                 </div>
@@ -1391,12 +1391,12 @@ export function TaskDetailView({
                   const baseLabel = field.label ?? fieldId;
                   const hint = ""; // хинты скрываем для компактности
                   let label = baseLabel;
-                  if (fieldId === "buyer_contact_email" && buyerType === "individual") {
+                  if (fieldId === "buyer_contact_email" && buyerType === "personal") {
                     label = "Электронная почта покупателя";
-                  } else if (fieldId === "buyer_contact_phone" && buyerType === "individual") {
+                  } else if (fieldId === "buyer_contact_phone" && buyerType === "personal") {
                     label = "Телефон покупателя";
                   }
-                  if (buyerType === "individual" && INDIVIDUAL_DOC_LABELS[fieldId]) {
+                  if (buyerType === "personal" && INDIVIDUAL_DOC_LABELS[fieldId]) {
                     label = INDIVIDUAL_DOC_LABELS[fieldId];
                   }
                   const isRentyManagerFeeField = fieldId === "renty_manager_fee";

@@ -34,6 +34,7 @@ const inputSchema = z.object({
   name: z.string().min(1),
   email: z.string().email().optional(),
   phone: z.string().optional(),
+  type: z.enum(["personal", "company"]).optional().default("personal"),
 });
 
 type CreateOperationsClientInput = z.infer<typeof inputSchema>;
@@ -94,6 +95,7 @@ type SupabaseProfileRow = {
   metadata?: unknown;
   created_at: string | null;
   source?: string | null;
+  entity_type?: string | null;
 };
 
 function normalizeEmail(email?: string) {
@@ -150,6 +152,7 @@ function formatClientRecord(
     status: string;
     created_at?: string | null;
     residency_status?: string | null;
+    entity_type?: string | null;
   },
   name: string,
   email: string | null,
@@ -184,6 +187,7 @@ function formatClientRecord(
       overdue: "Нет данных",
     },
     residencyStatus: profile.residency_status ?? null,
+    entityType: (profile.entity_type as "personal" | "company") ?? "personal",
     leasing: undefined,
   };
 }
@@ -268,7 +272,7 @@ export async function createOperationsClient(
     return { error: READ_ONLY_ACCESS_MESSAGE };
   }
 
-const { name, email, phone } = parsed.data;
+const { name, email, phone, type } = parsed.data;
   const { fullName, firstName, lastName } = parseNameParts(name);
   const normalizedEmail = normalizeEmail(email);
   const sanitizedPhone = sanitizePhone(phone);
@@ -400,6 +404,7 @@ const { name, email, phone } = parsed.data;
       phone: sanitizedPhone,
       status: userStatus,
       metadata,
+      entity_type: type,
     };
 
     if (supportsSourceColumn) {
@@ -411,8 +416,8 @@ const { name, email, phone } = parsed.data;
       .upsert(baseProfilePayload, { onConflict: "user_id" })
       .select(
         supportsSourceColumn
-          ? "full_name, phone, status, residency_status, metadata, created_at, source"
-          : "full_name, phone, status, residency_status, metadata, created_at",
+          ? "full_name, phone, status, residency_status, metadata, created_at, source, entity_type"
+          : "full_name, phone, status, residency_status, metadata, created_at, entity_type",
       )
       .single();
 
@@ -430,7 +435,7 @@ const { name, email, phone } = parsed.data;
       ({ data: profile, error: profileError } = await supabase
         .from("profiles")
         .upsert(fallbackPayload, { onConflict: "user_id" })
-        .select("full_name, phone, status, residency_status, metadata, created_at")
+        .select("full_name, phone, status, residency_status, metadata, created_at, entity_type")
         .single());
     }
 
@@ -496,7 +501,7 @@ const { name, email, phone } = parsed.data;
       (profileMetadata?.ops_email as string | undefined) ?? normalizedEmail ?? null;
 
     const record = formatClientRecord(
-      { phone: typedProfile.phone, status: typedProfile.status, created_at: typedProfile.created_at },
+      { phone: typedProfile.phone, status: typedProfile.status, created_at: typedProfile.created_at, entity_type: typedProfile.entity_type },
       fullName,
       emailFromProfile,
       userId,
@@ -685,7 +690,7 @@ export async function updateOperationsClient(
       delete metadata.company_license_number;
     }
 
-    const entityType = clientType === "Company" ? "company" : "individual";
+    const entityType = clientType === "Company" ? "company" : "personal";
 
     const employmentPayload = {
       employer: normalizeOptionalString(employment?.employer),

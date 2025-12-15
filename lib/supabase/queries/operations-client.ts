@@ -1286,6 +1286,7 @@ type SupabaseClientProfileRow = {
         overdue: overdueSummary,
       },
       residencyStatus: getString(profile.residency_status),
+      entityType,
       leasing: undefined,
     } satisfies OpsClientRecord;
   });

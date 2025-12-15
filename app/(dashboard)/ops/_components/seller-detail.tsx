@@ -142,7 +142,7 @@ export function SellerDetailView({
   const entityTypeLabel =
     profile.entityType === "company"
       ? "Юрлицо"
-      : profile.entityType === "individual"
+      : profile.entityType === "personal"
         ? "Физлицо"
         : "—";
 
@@ -258,11 +258,8 @@ export function SellerDetailView({
             </TableHeader>
             <TableBody>
               {deals.map((deal) => {
-                 // Use buildSlugWithId to construct the deal slug if needed, but OpsClientDeal usually has a detail link or we construct it.
-                 // OpsClientDeal has id, dealNumber, vehicleName, etc.
-                 const dealHref = `/ops/deals/${deal.dealNumber}`; // Assuming dealNumber is the slug or we can use ID.
-                 // Actually existing code uses dealNumber usually.
-                 
+                const dealHref = `/ops/deals/${deal.dealNumber}`;
+
                 return (
                   <TableRow key={deal.id}>
                     <TableCell>

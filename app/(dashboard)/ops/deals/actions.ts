@@ -17,8 +17,8 @@ const inputSchema = z.object({
   reference: z.string().optional(),
   opManagerId: z.string().uuid().optional(),
   companyCode: z.enum(DEAL_COMPANY_CODES).default(DEFAULT_DEAL_COMPANY_CODE),
-  buyerType: z.enum(["individual", "company"]),
-  sellerType: z.enum(["individual", "company"]),
+  buyerType: z.enum(["personal", "company"]),
+  sellerType: z.enum(["personal", "company"]),
   sellerId: z.string().uuid().optional(),
   customer: z.object({
     full_name: z.string().min(1),
@@ -73,7 +73,7 @@ export async function createOperationsDeal(
       .maybeSingle();
 
     if (profile?.entity_type) {
-      sellerType = profile.entity_type as "individual" | "company";
+      sellerType = profile.entity_type as "personal" | "company";
     }
   }
 

@@ -1781,7 +1781,8 @@ export async function getOperationsClients(): Promise<OpsClientRecord[]> {
       getString(metadata?.["client_segment"]) ??
       getString(metadata?.["customer_segment"]) ??
       null;
-    const entityType = normalizeOpsEntityType(getString(profile.entity_type));
+    const entityTypeRaw = getString(profile.entity_type) ?? getString(metadata?.["entity_type"]);
+    const entityType = normalizeOpsEntityType(entityTypeRaw);
     const entityTypeLabel = getOpsClientTypeLabel(entityType);
     const segment = rawSegment ?? null;
 
@@ -2627,7 +2628,7 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
     nationality: getString(profileRow.nationality),
     createdAt: profileRow.created_at ?? null,
     metadata,
-    entityType: getString(profileRow.entity_type) as "individual" | "company" | null,
+    entityType: normalizeOpsEntityType(getString(profileRow.entity_type)),
     sellerDetails: isRecord(profileRow.seller_details) ? (profileRow.seller_details as Record<string, unknown>) : null,
   };
 
@@ -4416,9 +4417,9 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
   const rawBuyerType = typeof dealPayload?.buyer_type === "string" ? dealPayload.buyer_type : null;
   const rawSellerType = typeof dealPayload?.seller_type === "string" ? dealPayload.seller_type : null;
   const normalizedBuyerType =
-    rawBuyerType === "company" || rawBuyerType === "individual" ? rawBuyerType : null;
+    rawBuyerType === "company" ? "company" : rawBuyerType === "personal" || rawBuyerType === "individual" ? "personal" : null;
   const normalizedSellerType =
-    rawSellerType === "company" || rawSellerType === "individual" ? rawSellerType : null;
+    rawSellerType === "company" ? "company" : rawSellerType === "personal" || rawSellerType === "individual" ? "personal" : null;
 
   const editDefaults: OpsDealEditDefaults = {
     dealNumber: dealRow.deal_number ?? fallbackDealNumber,

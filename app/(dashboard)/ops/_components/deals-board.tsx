@@ -649,7 +649,7 @@ export function OpsDealsBoard({
       const typeLabel =
         entityType === "company"
           ? "Юрлицо"
-          : entityType === "individual"
+          : entityType === "personal"
             ? "Физлицо"
             : undefined;
       return {
@@ -691,7 +691,7 @@ export function OpsDealsBoard({
       const typeLabel =
         seller.entityType === "company"
           ? "(Юрлицо)"
-          : seller.entityType === "individual"
+          : seller.entityType === "personal"
             ? "(Физлицо)"
             : "";
       const baseName = (seller.name ?? "").trim();
@@ -1023,7 +1023,7 @@ export function OpsDealsBoard({
       return;
     }
 
-    const buyerType = selectedClient.entityType ?? "individual";
+    const buyerType = selectedClient.entityType ?? "personal";
 
     if (!selectedVehicle) {
       setFeedback({
@@ -1044,7 +1044,7 @@ export function OpsDealsBoard({
       return;
     }
 
-    const sellerType = selectedSeller.entityType ?? "individual";
+    const sellerType = selectedSeller.entityType ?? "personal";
 
     setIsSubmitting(true);
     setFeedback(null);
