@@ -154,12 +154,12 @@ describe("WorkflowVersionService", () => {
     expect(templates).toBeDefined();
     expect(templates.length).toBeGreaterThan(0);
 
-    const confirmCar = templates.find((t) => t.templateId === "confirm_car_v1");
+    const confirmCar = templates.find((t) => t.templateId === "confirm_car_v2");
     expect(confirmCar).toBeDefined();
     expect(confirmCar).toMatchObject({
       taskType: "CONFIRM_CAR",
       defaults: {
-        instruction_short: "Подтвердите наличие авто и условия у дилера/брокера.",
+        instruction_short: "Подтвердите авто, выберите продавца и брокера, приложите первичные документы.",
       },
     });
     expect(confirmCar?.defaults).not.toHaveProperty("instructions");
@@ -171,8 +171,7 @@ describe("WorkflowVersionService", () => {
       .map((field) => field?.id)
       .filter((id): id is string => Boolean(id));
 
-    expect(fieldIds).toContain("deal_id");
-    expect(fieldIds).toContain("current_status");
+    expect(fieldIds).toContain("seller_id");
     expect(fieldIds).not.toContain("instructions");
   });
 });

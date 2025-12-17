@@ -21,12 +21,12 @@ import {
 } from "@/components/ui/table";
 import {
   OpsClientDeal,
-  OpsSellerDocument,
-  OpsSellerProfile,
+  OpsBrokerDocument,
+  OpsBrokerProfile,
 } from "@/lib/supabase/queries/operations";
-import { updateOperationsSeller, deleteOperationsSeller } from "@/app/(dashboard)/ops/sellers/actions";
+import { updateOperationsBroker, deleteOperationsBroker } from "@/app/(dashboard)/ops/brokers/actions";
 import { DocumentList } from "./document-list";
-import { SellerEditDialog } from "./seller-edit-dialog";
+import { BrokerEditDialog } from "./broker-edit-dialog";
 
 function getString(record: Record<string, unknown> | null, key: string): string | null {
   if (!record) return null;
@@ -111,26 +111,24 @@ function SectionCard({ title, description, children, className, actions, id }: S
   );
 }
 
-type SellerDetailProps = {
-  profile: OpsSellerProfile;
+type OpsBrokerDetailProps = {
+  profile: OpsBrokerProfile;
   deals: OpsClientDeal[];
-  documents: OpsSellerDocument[];
-  allDocuments?: OpsSellerDocument[];
-  documentsError?: string | null;
+  documents: OpsBrokerDocument[];
+  backUrl?: string;
 };
 
-export function SellerDetailView({
+export function OpsBrokerDetailView({
   profile,
   deals,
   documents,
-  allDocuments,
-  documentsError,
-}: SellerDetailProps) {
+  backUrl,
+}: OpsBrokerDetailProps) {
   const hasAnyDocuments = documents.length > 0;
   
   const emptyMessage = hasAnyDocuments
     ? "Документы не найдены. Загрузите документы через кнопку «Редактировать»."
-    : "Документы продавца отсутствуют. Нажмите «Редактировать» для загрузки документов.";
+    : "Документы брокера отсутствуют. Нажмите «Редактировать» для загрузки документов.";
 
   const documentItems = useMemo(
     () =>
@@ -154,9 +152,9 @@ export function SellerDetailView({
     <div className="flex flex-col gap-8 pb-20">
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href="/ops/sellers" className="flex items-center gap-1 hover:text-foreground">
+          <Link href={backUrl ?? "/ops/brokers"} className="flex items-center gap-1 hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
-            К списку продавцов
+            К списку брокеров
           </Link>
         </div>
 
@@ -191,11 +189,11 @@ export function SellerDetailView({
             </div>
           </div>
           <div className="flex gap-2">
-            <SellerEditDialog
+            <BrokerEditDialog
               profile={profile}
-              documents={allDocuments ?? documents}
-              onSubmit={updateOperationsSeller}
-              onDelete={deleteOperationsSeller}
+              documents={documents}
+              onSubmit={updateOperationsBroker}
+              onDelete={deleteOperationsBroker}
             />
           </div>
         </div>
@@ -213,22 +211,22 @@ export function SellerDetailView({
             </div>
           </SectionCard>
 
-          {profile.sellerDetails && Object.keys(profile.sellerDetails).length > 0 && (
+          {profile.brokerDetails && Object.keys(profile.brokerDetails).length > 0 && (
             <SectionCard title="Реквизиты">
               <div className="grid grid-cols-1 gap-y-6 sm:grid-cols-2">
-                {getString(profile.sellerDetails, "seller_bank_details") && (
+                {getString(profile.brokerDetails, "broker_bank_details") && (
                   <InfoCell label="Банковские реквизиты (IBAN)" className="col-span-2">
-                    {getString(profile.sellerDetails, "seller_bank_details")}
+                    {getString(profile.brokerDetails, "broker_bank_details")}
                   </InfoCell>
                 )}
-                {getString(profile.sellerDetails, "seller_contact_email") && (
+                {getString(profile.brokerDetails, "broker_contact_email") && (
                   <InfoCell label="Email для связи">
-                    {getString(profile.sellerDetails, "seller_contact_email")}
+                    {getString(profile.brokerDetails, "broker_contact_email")}
                   </InfoCell>
                 )}
-                {getString(profile.sellerDetails, "seller_contact_phone") && (
+                {getString(profile.brokerDetails, "broker_contact_phone") && (
                   <InfoCell label="Телефон для связи">
-                    {getString(profile.sellerDetails, "seller_contact_phone")}
+                    {getString(profile.brokerDetails, "broker_contact_phone")}
                   </InfoCell>
                 )}
               </div>
@@ -240,12 +238,11 @@ export function SellerDetailView({
           <DocumentList
             documents={documentItems}
             emptyMessage={emptyMessage}
-            errorMessage={documentsError}
           />
         </SectionCard>
       </div>
 
-      <SectionCard id="seller-deals" title="Сделки" description={`Всего сделок: ${deals.length}`}>
+      <SectionCard id="broker-deals" title="Сделки" description={`Всего сделок: ${deals.length}`}>
         {deals.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Нет активных или завершенных сделок

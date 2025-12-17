@@ -27,6 +27,8 @@ export type WorkflowCatalog = {
   documentTypeAliases: WorkflowDocumentTypeAlias[];
   clientDocumentTypeRegistry: WorkflowDocumentTypeEntry[];
   clientDocumentTypeAliases: WorkflowDocumentTypeAlias[];
+  sellerDocumentTypeRegistry: WorkflowDocumentTypeEntry[];
+  sellerDocumentTypeAliases: WorkflowDocumentTypeAlias[];
   vehicleDocumentTypeRegistry: WorkflowDocumentTypeEntry[];
   vehicleDocumentTypeAliases: WorkflowDocumentTypeAlias[];
   taskTemplates: Record<string, TaskTemplate>;
@@ -88,6 +90,8 @@ const resolveDocumentTypes = (
   dealAliases: WorkflowDocumentTypeAlias[];
   clientRegistry: WorkflowDocumentTypeEntry[];
   clientAliases: WorkflowDocumentTypeAlias[];
+  sellerRegistry: WorkflowDocumentTypeEntry[];
+  sellerAliases: WorkflowDocumentTypeAlias[];
   vehicleRegistry: WorkflowDocumentTypeEntry[];
   vehicleAliases: WorkflowDocumentTypeAlias[];
 } => {
@@ -99,6 +103,9 @@ const resolveDocumentTypes = (
   const clientRegistry = documentTypes?.client?.registry ?? [];
   const clientAliases = documentTypes?.client?.aliases ?? [];
 
+  const sellerRegistry = documentTypes?.seller?.registry ?? [];
+  const sellerAliases = documentTypes?.seller?.aliases ?? [];
+
   const vehicleRegistry = documentTypes?.vehicle?.registry ?? [];
   const vehicleAliases = documentTypes?.vehicle?.aliases ?? [];
 
@@ -107,6 +114,8 @@ const resolveDocumentTypes = (
     dealAliases,
     clientRegistry,
     clientAliases,
+    sellerRegistry,
+    sellerAliases,
     vehicleRegistry,
     vehicleAliases,
   };
@@ -147,6 +156,8 @@ export function buildWorkflowCatalog(template: WorkflowTemplate): WorkflowCatalo
     dealAliases,
     clientRegistry,
     clientAliases,
+    sellerRegistry,
+    sellerAliases,
     vehicleRegistry,
     vehicleAliases,
   } = resolveDocumentTypes(template.documentTypes);
@@ -162,6 +173,8 @@ export function buildWorkflowCatalog(template: WorkflowTemplate): WorkflowCatalo
     documentTypeAliases: dealAliases,
     clientDocumentTypeRegistry: clientRegistry,
     clientDocumentTypeAliases: clientAliases,
+    sellerDocumentTypeRegistry: sellerRegistry,
+    sellerDocumentTypeAliases: sellerAliases,
     vehicleDocumentTypeRegistry: vehicleRegistry,
     vehicleDocumentTypeAliases: vehicleAliases,
     taskTemplates,

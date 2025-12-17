@@ -6,9 +6,9 @@ import { z } from "zod";
 import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import {
-  SELLER_DOCUMENT_TYPES,
-  SELLER_DOCUMENT_TYPE_LABEL_MAP,
-  type SellerDocumentTypeValue,
+  CLIENT_DOCUMENT_TYPES,
+  CLIENT_DOCUMENT_TYPE_LABEL_MAP,
+  type ClientDocumentTypeValue,
 } from "@/lib/supabase/queries/operations";
 import {
   createSupabaseServerClient,
@@ -43,13 +43,13 @@ const createInputSchema = z.object({
   type: z.enum(["personal", "company"]).default("personal"),
 });
 
-type CreateOperationsSellerInput = z.infer<typeof createInputSchema>;
+type CreateOperationsBrokerInput = z.infer<typeof createInputSchema>;
 
-export type CreateOperationsSellerResult =
+export type CreateOperationsBrokerResult =
   | { data: OpsClientRecord; error?: undefined }
   | { data?: undefined; error: string };
 
-function formatSellerRecord(
+function formatBrokerRecord(
   profile: {
     phone: string | null;
     status: string;
@@ -71,7 +71,7 @@ function formatSellerRecord(
 
   return {
     userId,
-    id: `SL-${Math.floor(Date.now() / 1000).toString().slice(-4).padStart(4, "0")}`,
+    id: `BR-${Math.floor(Date.now() / 1000).toString().slice(-4).padStart(4, "0")}`,
     name,
     email: email ?? "",
     phone: profile.phone ?? "+971 50 000 0000",
@@ -80,7 +80,7 @@ function formatSellerRecord(
     scoring: "—",
     overdue: 0,
     limit: "—",
-    detailHref: `/ops/sellers/${detailSlug}`,
+    detailHref: `/ops/brokers/${detailSlug}`,
     memberSince,
     segment: null,
     tags: statusLabel === "Blocked" ? ["Blocked"] : ["Active"],
@@ -95,12 +95,12 @@ function formatSellerRecord(
   };
 }
 
-export async function createOperationsSeller(
-  input: CreateOperationsSellerInput,
-): Promise<CreateOperationsSellerResult> {
+export async function createOperationsBroker(
+  input: CreateOperationsBrokerInput,
+): Promise<CreateOperationsBrokerResult> {
   const parsed = createInputSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: "Введите корректные данные продавца." };
+    return { error: "Введите корректные данные брокера." };
   }
 
   const sessionUser = await getMutationSessionUser();
@@ -124,7 +124,7 @@ export async function createOperationsSeller(
 
     if (!normalizedEmail && !sanitizedPhone) {
       return {
-        error: "Укажите email или телефон продавца.",
+        error: "Укажите email или телефон брокера.",
       };
     }
 
@@ -135,7 +135,7 @@ export async function createOperationsSeller(
         email: normalizedEmail || null,
         phone: sanitizedPhone || null,
         fullName,
-        role: "SELLER",
+        role: "BROKER",
         source: "ops_dashboard"
       });
 
@@ -150,7 +150,7 @@ export async function createOperationsSeller(
 
     if (!userId) {
       return {
-        error: "Не удалось определить учетную запись продавца.",
+        error: "Не удалось определить учетную запись брокера.",
       };
     }
 
@@ -167,7 +167,7 @@ export async function createOperationsSeller(
 
     if (profileError || !profile) {
       return {
-        error: "Не удалось сохранить профиль продавца.",
+        error: "Не удалось сохранить профиль брокера.",
       };
     }
 
@@ -175,7 +175,7 @@ export async function createOperationsSeller(
       .from("user_roles")
       .select("id")
       .eq("user_id", userId)
-      .eq("role", "SELLER")
+      .eq("role", "BROKER")
       .maybeSingle();
 
     if (!existingRole) {
@@ -183,8 +183,8 @@ export async function createOperationsSeller(
         .from("user_roles")
         .insert({
             user_id: userId,
-            role: "SELLER",
-            portal: "seller",
+            role: "BROKER",
+            portal: "broker",
             assigned_at: new Date().toISOString(),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -192,14 +192,14 @@ export async function createOperationsSeller(
         });
 
       if (roleInsertError) {
-        console.error("[operations] failed to insert seller role", roleInsertError);
+        console.error("[operations] failed to insert broker role", roleInsertError);
         return {
-          error: "Не удалось назначить роль продавца.",
+          error: "Не удалось назначить роль брокера.",
         };
       }
     }
 
-    for (const path of getWorkspacePaths("sellers")) {
+    for (const path of getWorkspacePaths("brokers")) {
       revalidatePath(path);
     }
 
@@ -208,7 +208,7 @@ export async function createOperationsSeller(
     const emailFromProfile =
       (profileMetadata?.ops_email as string | undefined) ?? normalizedEmail ?? null;
 
-    const record = formatSellerRecord(
+    const record = formatBrokerRecord(
       { phone: typedProfile.phone, status: typedProfile.status, created_at: typedProfile.created_at },
       fullName,
       emailFromProfile,
@@ -218,9 +218,9 @@ export async function createOperationsSeller(
     return { data: record };
 
   } catch (error) {
-    console.error("[operations] unexpected error while creating seller", error);
+    console.error("[operations] unexpected error while creating broker", error);
     return {
-      error: "Произошла ошибка при создании продавца.",
+      error: "Произошла ошибка при создании брокера.",
     };
   }
 }
@@ -241,50 +241,50 @@ const updateInputSchema = z.object({
   type: z.enum(["personal", "company"]).optional(),
 });
 
-export type UpdateOperationsSellerInput = z.infer<typeof updateInputSchema>;
+export type UpdateOperationsBrokerInput = z.infer<typeof updateInputSchema>;
 
-export type UpdateOperationsSellerResult =
+export type UpdateOperationsBrokerResult =
   | { success: true }
   | { success: false; error: string };
 
-const deleteSellerSchema = z.object({
+const deleteBrokerSchema = z.object({
   userId: z.string().uuid(),
 });
 
-export type DeleteOperationsSellerInput = z.infer<typeof deleteSellerSchema>;
+export type DeleteOperationsBrokerInput = z.infer<typeof deleteBrokerSchema>;
 
-export type DeleteOperationsSellerResult =
+export type DeleteOperationsBrokerResult =
   | { success: true }
   | { success: false; error: string; dealsCount?: number };
 
-const SELLER_DOCUMENT_BUCKET = "profile-documents";
-const SELLER_DOCUMENT_TYPE_VALUES = new Set(
-  SELLER_DOCUMENT_TYPES.map((entry) => entry.value),
+const BROKER_DOCUMENT_BUCKET = "profile-documents";
+const BROKER_DOCUMENT_TYPE_VALUES = new Set(
+  CLIENT_DOCUMENT_TYPES.map((entry) => entry.value),
 );
 
-const uploadSellerDocumentsSchema = z.object({
-  sellerId: z.string().uuid(),
+const uploadBrokerDocumentsSchema = z.object({
+  brokerId: z.string().uuid(),
 });
 
-const deleteSellerDocumentSchema = z.object({
-  sellerId: z.string().uuid(),
+const deleteBrokerDocumentSchema = z.object({
+  brokerId: z.string().uuid(),
   documentId: z.string().uuid(),
 });
 
-export type UploadOperationsSellerDocumentsResult =
+export type UploadOperationsBrokerDocumentsResult =
   | { success: true; uploaded: number }
   | { success: false; error: string };
 
-type DeleteOperationsSellerDocumentInput = z.infer<typeof deleteSellerDocumentSchema>;
+type DeleteOperationsBrokerDocumentInput = z.infer<typeof deleteBrokerDocumentSchema>;
 
-export type DeleteOperationsSellerDocumentResult =
+export type DeleteOperationsBrokerDocumentResult =
   | { success: true }
   | { success: false; error: string };
 
 
-export async function updateOperationsSeller(
-  input: UpdateOperationsSellerInput,
-): Promise<UpdateOperationsSellerResult> {
+export async function updateOperationsBroker(
+  input: UpdateOperationsBrokerInput,
+): Promise<UpdateOperationsBrokerResult> {
   const parsed = updateInputSchema.safeParse({
     ...input,
     email: input.email ?? undefined,
@@ -298,7 +298,7 @@ export async function updateOperationsSeller(
   if (!sessionUser) {
     return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
-
+  
   const {
     userId,
     fullName,
@@ -347,7 +347,7 @@ export async function updateOperationsSeller(
       );
 
       if (authError) {
-        console.error("[operations] failed to update auth user for seller", { userId, authError });
+        console.error("[operations] failed to update auth user for broker", { userId, authError });
         // Continue to update profile even if auth update fails (e.g. email duplicate)
       }
     }
@@ -356,7 +356,7 @@ export async function updateOperationsSeller(
     let supportsSourceColumn = true;
     let { data: existingProfile, error: fetchError } = await supabase
       .from("profiles")
-      .select("metadata, source, seller_details, full_name")
+      .select("metadata, source, broker_details, full_name")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -364,14 +364,14 @@ export async function updateOperationsSeller(
       supportsSourceColumn = false;
       ({ data: existingProfile, error: fetchError } = await supabase
         .from("profiles")
-        .select("metadata, seller_details, full_name")
+        .select("metadata, broker_details, full_name")
         .eq("user_id", userId)
         .maybeSingle());
     }
 
     if (fetchError) {
       console.error("[operations] failed to fetch existing profile", fetchError);
-      return { success: false, error: "Не удалось загрузить профиль продавца." };
+      return { success: false, error: "Не удалось загрузить профиль брокера." };
     }
 
     const currentMetadata = (existingProfile?.metadata as ProfileMetadata | null) ?? {};
@@ -389,13 +389,13 @@ export async function updateOperationsSeller(
         updatedMetadata.lead_source = source;
     }
 
-    // Prepare seller_details
-    const currentSellerDetails = (existingProfile?.seller_details as Record<string, unknown> | null) ?? {};
-    const updatedSellerDetails: Record<string, unknown> = {
-      ...currentSellerDetails,
-      seller_bank_details: bankDetails ?? currentSellerDetails.seller_bank_details,
-      seller_contact_email: normalizedContactEmail ?? currentSellerDetails.seller_contact_email,
-      seller_contact_phone: sanitizedContactPhone ?? currentSellerDetails.seller_contact_phone,
+    // Prepare broker_details
+    const currentBrokerDetails = (existingProfile?.broker_details as Record<string, unknown> | null) ?? {};
+    const updatedBrokerDetails: Record<string, unknown> = {
+      ...currentBrokerDetails,
+      broker_bank_details: bankDetails ?? currentBrokerDetails.broker_bank_details,
+      broker_contact_email: normalizedContactEmail ?? currentBrokerDetails.broker_contact_email,
+      broker_contact_phone: sanitizedContactPhone ?? currentBrokerDetails.broker_contact_phone,
     };
 
     // 3. Update Profile
@@ -407,7 +407,7 @@ export async function updateOperationsSeller(
       status: userStatus,
       nationality: nationality, // Try updating column first
       metadata: updatedMetadata,
-      seller_details: updatedSellerDetails,
+      broker_details: updatedBrokerDetails,
       entity_type: type,
       updated_at: new Date().toISOString(),
     };
@@ -441,42 +441,42 @@ export async function updateOperationsSeller(
     }
 
     if (updateError) {
-      console.error("[operations] failed to update seller profile", updateError);
-      return { success: false, error: "Не удалось обновить профиль продавца." };
+      console.error("[operations] failed to update broker profile", updateError);
+      return { success: false, error: "Не удалось обновить профиль брокера." };
     }
 
-    for (const path of getWorkspacePaths("sellers")) {
+    for (const path of getWorkspacePaths("brokers")) {
       revalidatePath(path);
     }
 
-    // Revalidate all potential paths for this seller
+    // Revalidate all potential paths for this broker
     const newSlug = buildSlugWithId(fullName, userId);
-    revalidatePath(`/ops/sellers/${newSlug}`);
+    revalidatePath(`/ops/brokers/${newSlug}`);
 
     if (existingProfile) {
       // @ts-ignore - full_name is selected dynamically
       const oldFullName = existingProfile.full_name as string | null;
       const oldSlug = buildSlugWithId(oldFullName, userId);
       if (oldSlug !== newSlug) {
-        revalidatePath(`/ops/sellers/${oldSlug}`);
+        revalidatePath(`/ops/brokers/${oldSlug}`);
       }
     }
 
-    revalidatePath(`/ops/sellers/${userId}`); // Revalidate detail page via ID (slug might change but ID is stable)
+    revalidatePath(`/ops/brokers/${userId}`); // Revalidate detail page via ID (slug might change but ID is stable)
 
     return { success: true };
   } catch (error) {
-    console.error("[operations] unexpected error updating seller", error);
+    console.error("[operations] unexpected error updating broker", error);
     return { success: false, error: "Произошла системная ошибка." };
   }
 }
 
-export async function deleteOperationsSeller(
-  input: DeleteOperationsSellerInput,
-): Promise<DeleteOperationsSellerResult> {
-  const parsed = deleteSellerSchema.safeParse(input);
+export async function deleteOperationsBroker(
+  input: DeleteOperationsBrokerInput,
+): Promise<DeleteOperationsBrokerResult> {
+  const parsed = deleteBrokerSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Некорректный ID продавца." };
+    return { success: false, error: "Некорректный ID брокера." };
   }
 
   const { userId } = parsed.data;
@@ -486,22 +486,21 @@ export async function deleteOperationsSeller(
   }
 
   try {
-    const supabase = await createSupabaseServerClient();
     const serviceClient = await createSupabaseServiceClient();
 
     // 1. Check for active deals
-    // Sellers are linked via 'seller_id' in deals table
+    // Brokers are linked via 'broker_id' in deals table
     const { data: deals, error: countError } = await serviceClient
       .from("deals")
       .select("id, status")
-      .eq("seller_id", userId);
+      .eq("broker_id", userId);
 
-    if (countError && !isMissingColumnError(countError, "seller_id")) {
-        console.error("[operations] failed to check seller deals", countError);
-        return { success: false, error: "Не удалось проверить сделки продавца." };
+    if (countError && !isMissingColumnError(countError, "broker_id")) {
+        console.error("[operations] failed to check broker deals", countError);
+        return { success: false, error: "Не удалось проверить сделки брокера." };
     }
 
-    // If seller_id column exists
+    // If broker_id column exists
     if (!countError && deals) {
         const activeDeals = deals.filter(d => 
             d.status !== 'cancelled' && d.status !== 'completed'
@@ -510,27 +509,24 @@ export async function deleteOperationsSeller(
         if (activeDeals.length > 0) {
             return { 
                 success: false, 
-                error: `Невозможно удалить продавца: найдено ${activeDeals.length} активных сделок.`,
+                error: `Невозможно удалить брокера: найдено ${activeDeals.length} активных сделок.`,
                 dealsCount: activeDeals.length
             };
         }
     }
 
     // 2. Soft delete / Block user
-    // We don't hard delete users usually to preserve audit trails.
-    // But if requested, we can mark status as deleted or actually delete if no dependencies.
-    // For now, let's stick to blocking/suspending or soft-deleting profile.
     
     // If the user wants to DELETE, we can try deleting the user_role first.
     const { error: roleError } = await serviceClient
         .from("user_roles")
         .delete()
         .eq("user_id", userId)
-        .eq("role", "SELLER");
+        .eq("role", "BROKER");
 
     if (roleError) {
-        console.error("[operations] failed to delete seller role", roleError);
-        return { success: false, error: "Не удалось удалить роль продавца." };
+        console.error("[operations] failed to delete broker role", roleError);
+        return { success: false, error: "Не удалось удалить роль брокера." };
     }
 
     // Optionally update profile status to 'deleted' or 'blocked'
@@ -539,25 +535,25 @@ export async function deleteOperationsSeller(
         .update({ status: "archived", metadata: { ...parsed, deleted_at: new Date().toISOString() } }) // simplified
         .eq("user_id", userId);
 
-    for (const path of getWorkspacePaths("sellers")) {
+    for (const path of getWorkspacePaths("brokers")) {
       revalidatePath(path);
     }
 
     return { success: true };
 
   } catch (error) {
-    console.error("[operations] unexpected error deleting seller", error);
+    console.error("[operations] unexpected error deleting broker", error);
     return { success: false, error: "Произошла системная ошибка." };
   }
 }
 
-export async function uploadOperationsSellerDocuments(
+export async function uploadOperationsBrokerDocuments(
   formData: FormData,
-): Promise<UploadOperationsSellerDocumentsResult> {
+): Promise<UploadOperationsBrokerDocumentsResult> {
   const base = {
-    sellerId: formData.get("sellerId"),
+    brokerId: formData.get("brokerId"),
   } satisfies Record<string, unknown>;
-  const parsed = uploadSellerDocumentsSchema.safeParse(base);
+  const parsed = uploadBrokerDocumentsSchema.safeParse(base);
 
   if (!parsed.success) {
     return { success: false, error: "Некорректные данные документа." };
@@ -568,17 +564,10 @@ export async function uploadOperationsSellerDocuments(
     return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
-  const { sellerId } = parsed.data;
+  const { brokerId } = parsed.data;
   const files = Array.from(formData.getAll("files")).filter(isFileLike) as FileLike[];
   // Expect types to be passed as parallel array "types"
   const types = Array.from(formData.getAll("types")).map(String);
-
-  console.log("[operations] uploading seller documents", {
-    sellerId,
-    filesCount: files.length,
-    types,
-    uploadedBy: sessionUser.user.id
-  });
 
   if (files.length === 0) {
     return { success: false, error: "Не выбраны файлы для загрузки." };
@@ -587,16 +576,16 @@ export async function uploadOperationsSellerDocuments(
   const supabase = await createSupabaseServerClient();
   const uploadedBy = sessionUser.user.id;
 
-  // Resolve profile.id from user_id (sellerId)
+  // Resolve profile.id from user_id (brokerId)
   const { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select("id")
-    .eq("user_id", sellerId)
+    .eq("user_id", brokerId)
     .maybeSingle();
 
   if (profileError || !profileData) {
-    console.error("[operations] failed to resolve profile id for upload", { sellerId, error: profileError });
-    return { success: false, error: "Не удалось определить профиль продавца." };
+    console.error("[operations] failed to resolve profile id for upload", { brokerId, error: profileError });
+    return { success: false, error: "Не удалось определить профиль брокера." };
   }
 
   const profileId = profileData.id;
@@ -604,7 +593,7 @@ export async function uploadOperationsSellerDocuments(
   // We need to map files to candidates with types
   const candidates: DocumentUploadCandidate[] = files.map((file, index) => {
     const typeValue = types[index] || "other";
-    const typeLabel = SELLER_DOCUMENT_TYPE_LABEL_MAP[typeValue as SellerDocumentTypeValue] ?? "Документ";
+    const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[typeValue as ClientDocumentTypeValue] ?? "Документ";
     
     return {
       file,
@@ -618,46 +607,44 @@ export async function uploadOperationsSellerDocuments(
     };
   });
 
-  const uploadResult = await uploadDocumentsBatch<SellerDocumentTypeValue>(candidates, {
+  const uploadResult = await uploadDocumentsBatch<ClientDocumentTypeValue>(candidates, {
     supabase,
-    bucket: SELLER_DOCUMENT_BUCKET,
+    bucket: BROKER_DOCUMENT_BUCKET,
     table: "profile_documents",
     entityColumn: "profile_id",
     entityId: profileId,
-    storagePathPrefix: `sellers/${sellerId}`,
-    allowedTypes: SELLER_DOCUMENT_TYPE_VALUES,
-    typeLabelMap: SELLER_DOCUMENT_TYPE_LABEL_MAP,
+    storagePathPrefix: `brokers/${brokerId}`,
+    allowedTypes: BROKER_DOCUMENT_TYPE_VALUES,
+    typeLabelMap: CLIENT_DOCUMENT_TYPE_LABEL_MAP,
     categoryColumn: "document_category",
     uploadedBy,
-    logPrefix: "[operations] seller document",
+    logPrefix: "[operations] broker document",
     messages: {
       upload: "Не удалось загрузить документ.",
-      insert: "Документ не сохранился. Попробуйте ещё раз.",
     },
   });
 
   if (!uploadResult.success) {
-    console.error("[operations] batch upload failed", { error: uploadResult.error, sellerId });
     return { success: false, error: uploadResult.error };
   }
-  
-  console.log("[operations] batch upload success", { uploaded: uploadResult.uploaded, sellerId });
 
-  for (const path of getWorkspacePaths("sellers")) {
+  for (const path of getWorkspacePaths("brokers")) {
     revalidatePath(path);
   }
-  revalidatePath(`/ops/sellers/${sellerId}`);
-
+  
+  // Revalidate detail page
+  revalidatePath(`/ops/brokers/${brokerId}`);
+  // Also revalidate by slug if possible, but ID is safest
+  
   return { success: true, uploaded: uploadResult.uploaded };
 }
 
-export async function deleteOperationsSellerDocument(
-  input: DeleteOperationsSellerDocumentInput,
-): Promise<DeleteOperationsSellerDocumentResult> {
-  const parsed = deleteSellerDocumentSchema.safeParse(input);
-
+export async function deleteOperationsBrokerDocument(
+  input: DeleteOperationsBrokerDocumentInput,
+): Promise<DeleteOperationsBrokerDocumentResult> {
+  const parsed = deleteBrokerDocumentSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Некорректные данные для удаления документа." };
+    return { success: false, error: "Некорректный ID документа." };
   }
 
   const sessionUser = await getMutationSessionUser();
@@ -665,77 +652,58 @@ export async function deleteOperationsSellerDocument(
     return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
-  const { sellerId, documentId } = parsed.data;
+  const { brokerId, documentId } = parsed.data;
 
   try {
-    const serviceClient = await createSupabaseServiceClient();
+    const supabase = await createSupabaseServerClient();
 
-    // Resolve profile.id from user_id (sellerId)
-    const { data: profileData, error: profileError } = await serviceClient
-      .from("profiles")
-      .select("id")
-      .eq("user_id", sellerId)
-      .maybeSingle();
-
-    if (profileError || !profileData) {
-        console.error("[operations] failed to resolve profile id for delete", { sellerId, error: profileError });
-        return { success: false, error: "Не удалось определить профиль продавца." };
-    }
-    const profileId = profileData.id;
-
-    const { data: documentRecord, error: lookupError } = await serviceClient
-      .from("profile_documents")
-      .select("id, profile_id, storage_path")
-      .eq("id", documentId)
-      .maybeSingle();
-
-    if (lookupError) {
-      console.error("[operations] failed to load seller document before deletion", lookupError);
-      return { success: false, error: "Не удалось найти документ продавца." };
+    // 1. Verify ownership/access if needed (omitted for ops dashboard admins)
+    
+    // 2. Delete file from storage
+    const { data: docData, error: fetchError } = await supabase
+        .from("profile_documents")
+        .select("storage_path, bucket_id")
+        .eq("id", documentId)
+        .single();
+    
+    if (fetchError) {
+         console.error("[operations] document not found for deletion", fetchError);
+         return { success: false, error: "Документ не найден." };
     }
 
-    if (!documentRecord || String(documentRecord.profile_id) !== sellerId) {
-      return { success: false, error: "Документ не найден или принадлежит другому продавцу." };
+    if (docData.storage_path && docData.bucket_id) {
+        const { error: storageError } = await supabase
+            .storage
+            .from(docData.bucket_id)
+            .remove([docData.storage_path]);
+        
+        if (storageError) {
+            console.error("[operations] failed to delete document from storage", storageError);
+            // Continue to delete record? Maybe safest to stop.
+            return { success: false, error: "Не удалось удалить файл из хранилища." };
+        }
     }
 
-    const storagePath =
-      typeof documentRecord.storage_path === "string" && documentRecord.storage_path.length > 0
-        ? documentRecord.storage_path
-        : null;
-
-    if (storagePath) {
-      // Try deleting from seller-documents bucket first, then profile-documents if needed?
-      // Or just try removing from the bucket configured.
-      // Since we don't know for sure which bucket it is in (could be default), we try SELLER_DOCUMENT_BUCKET.
-      const { error: storageError } = await serviceClient.storage
-        .from(SELLER_DOCUMENT_BUCKET)
-        .remove([storagePath]);
-
-      if (storageError && !String(storageError.message ?? "").toLowerCase().includes("not found")) {
-        console.warn("[operations] failed to remove seller document file", storageError);
-        // Continue to delete record
-      }
-    }
-
-    const { error: deleteError } = await serviceClient
+    // 3. Delete record
+    const { error: deleteError } = await supabase
       .from("profile_documents")
       .delete()
-      .eq("id", documentId)
-      .eq("profile_id", sellerId);
+      .eq("id", documentId);
 
     if (deleteError) {
-      console.error("[operations] failed to delete seller document", deleteError);
-      return { success: false, error: "Не удалось удалить запись документа." };
+      console.error("[operations] failed to delete broker document record", deleteError);
+      return { success: false, error: "Не удалось удалить запись о документе." };
     }
 
-    for (const path of getWorkspacePaths("sellers")) {
+    for (const path of getWorkspacePaths("brokers")) {
       revalidatePath(path);
     }
-    revalidatePath(`/ops/sellers/${sellerId}`);
+    revalidatePath(`/ops/brokers/${brokerId}`);
 
     return { success: true };
+
   } catch (error) {
-    console.error("[operations] unexpected error while deleting seller document", error);
+    console.error("[operations] unexpected error deleting broker document", error);
     return { success: false, error: "Произошла ошибка при удалении документа." };
   }
 }

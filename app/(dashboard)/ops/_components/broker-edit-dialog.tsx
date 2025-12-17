@@ -34,32 +34,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type {
-  OpsSellerDocument,
-  OpsSellerProfile,
+  OpsBrokerDocument,
+  OpsBrokerProfile,
 } from "@/lib/supabase/queries/operations";
 import {
-  SELLER_DOCUMENT_TYPES,
-  SELLER_DOCUMENT_TYPE_LABEL_MAP,
-  type SellerDocumentTypeValue,
+  CLIENT_DOCUMENT_TYPES,
+  CLIENT_DOCUMENT_TYPE_LABEL_MAP,
+  type ClientDocumentTypeValue,
 } from "@/lib/supabase/queries/operations";
 import {
-  type UpdateOperationsSellerInput,
-  type UpdateOperationsSellerResult,
-  type DeleteOperationsSellerInput,
-  type DeleteOperationsSellerResult,
-  type DeleteOperationsSellerDocumentResult,
-  uploadOperationsSellerDocuments,
-  deleteOperationsSellerDocument,
-} from "@/app/(dashboard)/ops/sellers/actions";
+  type UpdateOperationsBrokerInput,
+  type UpdateOperationsBrokerResult,
+  type DeleteOperationsBrokerInput,
+  type DeleteOperationsBrokerResult,
+  type DeleteOperationsBrokerDocumentResult,
+  uploadOperationsBrokerDocuments,
+  deleteOperationsBrokerDocument,
+} from "@/app/(dashboard)/ops/brokers/actions";
 import { sortDocumentOptions } from "@/lib/documents/options";
 
 const EMPTY_SELECT_VALUE = "__empty";
 
-type SellerEditDialogProps = {
-  profile: OpsSellerProfile;
-  documents: OpsSellerDocument[];
-  onSubmit: (input: UpdateOperationsSellerInput) => Promise<UpdateOperationsSellerResult>;
-  onDelete: (input: DeleteOperationsSellerInput) => Promise<DeleteOperationsSellerResult>;
+type BrokerEditDialogProps = {
+  profile: OpsBrokerProfile;
+  documents: OpsBrokerDocument[];
+  onSubmit: (input: UpdateOperationsBrokerInput) => Promise<UpdateOperationsBrokerResult>;
+  onDelete: (input: DeleteOperationsBrokerInput) => Promise<DeleteOperationsBrokerResult>;
 };
 
 type FormState = {
@@ -101,7 +101,7 @@ function FormSection({ title, description, children, columns = 2 }: FormSectionP
 
 type DocumentDraft = {
   id: string;
-  type: SellerDocumentTypeValue | "";
+  type: ClientDocumentTypeValue | "";
   file: File | null;
 };
 
@@ -118,29 +118,29 @@ function createDocumentDraft(): DocumentDraft {
 }
 
 const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
-const DOCUMENT_OPTIONS = sortDocumentOptions(SELLER_DOCUMENT_TYPES);
+const DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 
-function buildInitialState(profile: OpsSellerProfile): FormState {
+function buildInitialState(profile: OpsBrokerProfile): FormState {
   const metadata = profile.metadata || {};
-  const sellerDetails = profile.sellerDetails || {};
+  const brokerDetails = profile.brokerDetails || {};
 
   return {
     fullName: profile.fullName ?? "",
-    status: profile.status === "blocked" ? "Blocked" : "Active",
+    status: profile.status === "Blocked" ? "Blocked" : "Active",
     email: profile.email ?? (metadata.ops_email as string) ?? "",
     phone: profile.phone ?? (metadata.ops_phone as string) ?? "",
     nationality: profile.nationality ?? (metadata.nationality as string) ?? "",
     source: profile.source ?? (metadata.source as string) ?? "",
     emiratesId: (metadata.emirates_id as string) ?? "",
     passportNumber: (metadata.passport_number as string) ?? "",
-    bankDetails: (sellerDetails.seller_bank_details as string) ?? "",
-    contactEmail: (sellerDetails.seller_contact_email as string) ?? "",
-    contactPhone: (sellerDetails.seller_contact_phone as string) ?? "",
+    bankDetails: (brokerDetails.broker_bank_details as string) ?? "",
+    contactEmail: (brokerDetails.broker_contact_email as string) ?? "",
+    contactPhone: (brokerDetails.broker_contact_phone as string) ?? "",
     type: profile.entityType ?? "",
   };
 }
 
-export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: SellerEditDialogProps) {
+export function BrokerEditDialog({ profile, documents, onSubmit, onDelete }: BrokerEditDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -191,7 +191,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
   }, [form.fullName, isDraftIncomplete]);
 
   const handleDeleteExistingDocument = useCallback(
-    async (doc: OpsSellerDocument) => {
+    async (doc: OpsBrokerDocument) => {
       const documentId = doc.id;
       if (!documentId || isDocumentDeleting(documentId)) {
         return;
@@ -202,8 +202,8 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
       setDocumentDeleting(documentId, true);
 
       try {
-        const result: DeleteOperationsSellerDocumentResult = await deleteOperationsSellerDocument({
-          sellerId: profile.userId,
+        const result: DeleteOperationsBrokerDocumentResult = await deleteOperationsBrokerDocument({
+          brokerId: profile.userId,
           documentId,
         });
 
@@ -215,7 +215,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
         setDocumentActionMessage("Документ удалён.");
         router.refresh();
       } catch (error) {
-        console.error("[operations] seller document delete error", error);
+        console.error("[operations] broker document delete error", error);
         setDocumentActionError("Не удалось удалить документ. Попробуйте ещё раз.");
       } finally {
         setDocumentDeleting(documentId, false);
@@ -251,7 +251,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
       // 1. Upload documents if any
       if (documentDrafts.length > 0) {
         const formData = new FormData();
-        formData.append("sellerId", profile.userId);
+        formData.append("brokerId", profile.userId);
         
         let hasFiles = false;
         for (const draft of documentDrafts) {
@@ -263,7 +263,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
         }
 
         if (hasFiles) {
-          const uploadResult = await uploadOperationsSellerDocuments(formData);
+          const uploadResult = await uploadOperationsBrokerDocuments(formData);
           if (!uploadResult.success) {
             setErrorMessage(uploadResult.error);
             return;
@@ -301,14 +301,6 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
     setIsCheckingDelete(true);
     setDeleteErrorMessage(null);
     
-    // In this version we just try to delete directly, but we can implement a check step if needed.
-    // The delete action itself checks for deals and returns an error if blocked.
-    // So we can just proceed to confirmation or try calling delete to "check" (but that would delete).
-    // Let's just allow user to click "Delete" and show error if it fails due to deals.
-    // Or we can simulate a check if we had a verify function. 
-    // Since we don't have verifySellerDeletion yet, we'll just skip the pre-check visual 
-    // and handle the error from deleteOperationsSeller.
-    
     setCanConfirmDelete(true);
     setIsCheckingDelete(false);
   };
@@ -320,7 +312,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
     try {
       const result = await onDelete({ userId: profile.userId });
       if (result.success) {
-        router.push("/ops/sellers");
+        router.push("/ops/brokers");
         router.refresh();
       } else {
         setDeleteErrorMessage(result.error);
@@ -329,7 +321,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
         }
       }
     } catch (error) {
-      setDeleteErrorMessage("Не удалось удалить продавца.");
+      setDeleteErrorMessage("Не удалось удалить брокера.");
     } finally {
       setIsDeleting(false);
     }
@@ -359,7 +351,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Редактирование продавца</DialogTitle>
+          <DialogTitle>Редактирование брокера</DialogTitle>
           <DialogDescription>
             Измените данные профиля или добавьте документы.
           </DialogDescription>
@@ -526,8 +518,8 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
                   <ul className="space-y-2">
                     {documents.map((doc) => {
                       const typeLabel =
-                        doc.documentType && SELLER_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as SellerDocumentTypeValue]
-                          ? SELLER_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as SellerDocumentTypeValue]
+                        doc.documentType && CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as ClientDocumentTypeValue]
+                          ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as ClientDocumentTypeValue]
                           : doc.documentType ?? "Документ";
                        const uploadedDisplay = doc.uploadedAt
                         ? new Date(doc.uploadedAt).toLocaleDateString("ru-RU")
@@ -585,144 +577,177 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
                     })}
                   </ul>
                 </div>
-             )}
+              )}
 
-             {/* Action Messages */}
-             {documentActionError ? <p className="text-xs text-destructive">{documentActionError}</p> : null}
-             {documentActionMessage ? <p className="text-xs text-muted-foreground">{documentActionMessage}</p> : null}
-
-             {/* Drafts */}
-             <div className="space-y-3">
-                {documentDrafts.map((draft, index) => (
-                    <div
-                      key={draft.id}
-                      className="space-y-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-3"
-                    >
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Тип документа</Label>
+            {/* Document Drafts */}
+            {documentDrafts.length > 0 && (
+                <div className="space-y-2 rounded-xl border border-border/60 bg-background/70 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Новые файлы
+                  </p>
+                   <ul className="space-y-2">
+                    {documentDrafts.map((draft, index) => (
+                      <li
+                        key={draft.id}
+                        className="flex flex-col gap-3 rounded-lg border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-end sm:gap-4"
+                      >
+                         <div className="flex-1 space-y-2">
+                            <Label htmlFor={`doc-type-${draft.id}`} className="text-xs">
+                              Тип документа
+                            </Label>
                             <Select
-                              value={draft.type || EMPTY_SELECT_VALUE}
-                              onValueChange={(value) => {
-                                const newDrafts = [...documentDrafts];
-                                newDrafts[index].type = (value === EMPTY_SELECT_VALUE ? "" : value) as SellerDocumentTypeValue | "";
-                                setDocumentDrafts(newDrafts);
+                              value={draft.type}
+                              onValueChange={(val) => {
+                                setDocumentDrafts((prev) => {
+                                  const next = [...prev];
+                                  next[index] = { ...next[index], type: val as ClientDocumentTypeValue };
+                                  return next;
+                                });
                               }}
                             >
-                              <SelectTrigger className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm">
+                              <SelectTrigger id={`doc-type-${draft.id}`}>
                                 <SelectValue placeholder="Выберите тип" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value={EMPTY_SELECT_VALUE}>Выберите тип</SelectItem>
-                                {DOCUMENT_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
+                                {DOCUMENT_OPTIONS.map((opt) => (
+                                  <SelectItem key={opt.value} value={opt.value}>
+                                    {opt.label}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Файл</Label>
+
+                          <div className="flex-1 space-y-2">
+                            <Label htmlFor={`doc-file-${draft.id}`} className="text-xs">
+                              Файл
+                            </Label>
                             <Input
+                              id={`doc-file-${draft.id}`}
                               type="file"
                               accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                              onChange={(event) => {
-                                const file = event.currentTarget.files?.[0] ?? null;
-                                const newDrafts = [...documentDrafts];
-                                newDrafts[index].file = file;
-                                setDocumentDrafts(newDrafts);
+                              className="text-sm file:mr-4 file:rounded-full file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-semibold file:text-primary-foreground hover:file:bg-primary/90"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                setDocumentDrafts((prev) => {
+                                  const next = [...prev];
+                                  next[index] = { ...next[index], file };
+                                  return next;
+                                });
                               }}
-                              className="cursor-pointer rounded-lg"
                             />
-                            {draft.file ? (
-                              <p className="text-xs text-muted-foreground">{draft.file.name}</p>
-                            ) : null}
                           </div>
-                        </div>
-                        <div className="flex justify-end">
+                          
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                                setDocumentDrafts(prev => prev.filter(d => d.id !== draft.id));
+                                setDocumentDrafts(prev => prev.filter((_, i) => i !== index));
                             }}
-                            className="rounded-lg text-muted-foreground hover:text-destructive"
+                            className="mb-0.5 text-muted-foreground hover:text-destructive"
                           >
-                            Удалить
+                             <Trash2 className="h-4 w-4" />
                           </Button>
-                        </div>
-                    </div>
-                ))}
-             </div>
-             {validationMessage && <p className="text-xs text-destructive">{validationMessage}</p>}
+                      </li>
+                    ))}
+                   </ul>
+                </div>
+            )}
           </div>
 
-          {errorMessage ? (
+          {documentActionError && (
+            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              {documentActionError}
+            </div>
+          )}
+           {documentActionMessage && (
+            <div className="rounded-lg bg-green-500/10 p-3 text-sm text-green-600">
+              {documentActionMessage}
+            </div>
+          )}
+          {errorMessage && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {errorMessage}
             </div>
-          ) : null}
+          )}
+           {validationMessage && (
+            <div className="rounded-lg bg-orange-500/10 p-3 text-sm text-orange-600">
+              {validationMessage}
+            </div>
+          )}
 
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => setDeleteOpen(true)}
-              disabled={isPending}
-            >
-              Удалить продавца
-            </Button>
-            <div className="flex gap-2">
-              <Button
+          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between sm:gap-0">
+             <Button
                 type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={isPending}
-              >
+                variant="destructive"
+                onClick={() => setDeleteOpen(true)}
+             >
+                Удалить брокера
+             </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Отмена
               </Button>
               <Button type="submit" disabled={!canSubmit || isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Сохранить
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : (
+                  "Сохранить изменения"
+                )}
               </Button>
             </div>
           </DialogFooter>
         </form>
       </DialogContent>
-
+      
+       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Удаление продавца</DialogTitle>
+            <DialogTitle>Удаление брокера</DialogTitle>
             <DialogDescription>
-              Вы уверены, что хотите удалить продавца <strong>{profile.fullName}</strong>?
-              Это действие нельзя отменить.
+              Вы уверены, что хотите удалить этого брокера? Это действие нельзя отменить.
+              <br />
+              <br />
+              Проверьте, нет ли активных сделок, связанных с этим брокером.
             </DialogDescription>
           </DialogHeader>
-
-          {deleteErrorMessage ? (
+          
+          {deleteErrorMessage && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {deleteErrorMessage}
             </div>
-          ) : null}
+          )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={isDeleting}>
-              Отмена
-            </Button>
-            {!canConfirmDelete ? (
-                 <Button variant="destructive" onClick={handleCheckDelete} disabled={isDeleting || isCheckingDelete}>
-                  {isCheckingDelete && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Удалить
-                </Button>
-            ) : (
-                <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
-                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Подтвердить удаление
-                </Button>
-            )}
+             <Button
+                variant="outline"
+                onClick={() => setDeleteOpen(false)}
+                disabled={isDeleting}
+             >
+                Отмена
+             </Button>
+              {!canConfirmDelete ? (
+                 <Button
+                    variant="destructive"
+                    onClick={handleCheckDelete}
+                    disabled={isCheckingDelete}
+                 >
+                    {isCheckingDelete ? <Loader2 className="h-4 w-4 animate-spin" /> : "Продолжить"}
+                 </Button>
+              ) : (
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                 >
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Подтвердить удаление"}
+                 </Button>
+              )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

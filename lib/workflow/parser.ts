@@ -52,6 +52,7 @@ const rawTaskFieldSchema = z.object({
   document_type: z.string().min(1).optional(),
   documentType: z.string().min(1).optional(),
   required: z.boolean().optional(),
+  filter: z.string().optional(),
   options: z
     .array(
       z.object({
@@ -138,7 +139,7 @@ const rawActionSchema = z.discriminatedUnion("type", [
 ]);
 
 const documentTypeCategoryEnum = z.enum(["required", "signature", "archived", "other"]);
-const documentTypeContextEnum = z.enum(["personal", "company", "any", "vehicle"]);
+const documentTypeContextEnum = z.enum(["personal", "company", "any", "vehicle", "deal"]);
 
 const documentTypeRegistrySchema = z.object({
   value: z.string().min(1),
@@ -162,6 +163,7 @@ const documentTypesSchema = z.object({
   aliases: z.array(documentTypeAliasSchema).optional(),
   deal: documentTypeGroupSchema.optional(),
   client: documentTypeGroupSchema.optional(),
+  seller: documentTypeGroupSchema.optional(),
   vehicle: documentTypeGroupSchema.optional(),
 });
 
@@ -494,6 +496,12 @@ const normalizeTemplate = (result: TemplateSchemaResult): WorkflowTemplate => {
           ? {
               registry: result.document_types.client.registry?.map(mapRegistryEntry),
               aliases: mapAliases(result.document_types.client.aliases),
+            }
+          : undefined,
+        seller: result.document_types.seller
+          ? {
+              registry: result.document_types.seller.registry?.map(mapRegistryEntry),
+              aliases: mapAliases(result.document_types.seller.aliases),
             }
           : undefined,
         vehicle: result.document_types.vehicle

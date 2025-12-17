@@ -18,8 +18,8 @@ const inputSchema = z.object({
   opManagerId: z.string().uuid().optional(),
   companyCode: z.enum(DEAL_COMPANY_CODES).default(DEFAULT_DEAL_COMPANY_CODE),
   buyerType: z.enum(["personal", "company"]),
-  sellerType: z.enum(["personal", "company"]),
-  sellerId: z.string().uuid().optional(),
+  sellerType: z.enum(["personal", "company"]).optional().nullable(),
+  sellerId: z.string().uuid().optional().nullable(),
   customer: z.object({
     full_name: z.string().min(1),
     email: z.string().email().optional(),

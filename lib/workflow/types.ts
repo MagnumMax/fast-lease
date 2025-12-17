@@ -9,7 +9,7 @@ export type WorkflowRoleDefinition = {
 };
 
 export type WorkflowDocumentCategory = "required" | "signature" | "archived" | "other";
-export type WorkflowDocumentContext = "personal" | "company" | "any" | "vehicle";
+export type WorkflowDocumentContext = "personal" | "company" | "any" | "vehicle" | "deal";
 
 export type WorkflowDocumentTypeEntry = {
   value: string;
@@ -31,6 +31,10 @@ export type WorkflowDocumentTypesConfig = {
     aliases?: WorkflowDocumentTypeAlias[];
   };
   client?: {
+    registry?: WorkflowDocumentTypeEntry[];
+    aliases?: WorkflowDocumentTypeAlias[];
+  };
+  seller?: {
     registry?: WorkflowDocumentTypeEntry[];
     aliases?: WorkflowDocumentTypeAlias[];
   };
@@ -66,6 +70,7 @@ export type WorkflowTaskFieldSchema = {
   document_type?: string;
   documentType?: string;
   required?: boolean;
+  filter?: string;
   options?: WorkflowTaskFieldOption[];
   ui?: Record<string, unknown>;
 };
@@ -76,6 +81,8 @@ export type WorkflowTaskSchema = {
   save_to_buyer_profile?: string[];
   save_to_seller_profile?: string[];
   save_to_client_profile?: string[];
+  save_to_vehicle?: string[];
+  save_to_deal?: string[];
 };
 
 export type WorkflowTaskDefinition = {

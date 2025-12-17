@@ -103,11 +103,6 @@ export async function createSupabaseServiceClient(): Promise<SupabaseClient> {
     "SUPABASE_SECRET",
   );
 
-  console.log(
-    `${LOG_PREFIX} Service client URL env key:`,
-    supabaseUrlVar?.key ?? "missing",
-  );
-
   if (!supabaseUrlVar || !serviceRoleKeyVar) {
     throw new Error(
       "Supabase service client is missing Supabase environment variables. Set NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET).",

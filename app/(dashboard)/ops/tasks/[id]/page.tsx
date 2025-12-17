@@ -691,6 +691,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     dealNumber: string | null;
     clientId: string | null;
     sellerId: string | null;
+    brokerId: string | null;
     sellerName?: string | null;
     sellerType?: string | null;
     sellerEmail?: string | null;
@@ -719,6 +720,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           deal_number,
           client_id,
           seller_id,
+          broker_id,
           seller:profiles!deals_seller_id_fkey(id, full_name, entity_type, phone, metadata),
           vehicle_id,
           status,
@@ -844,6 +846,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         dealNumber: dealRow.deal_number ?? null,
         clientId: effectiveClientId,
         sellerId: (dealRow.seller_id as string | null) ?? null,
+        brokerId: (dealRow.broker_id as string | null) ?? null,
         sellerName: ((dealRow.seller as unknown) as { full_name: string | null } | null)?.full_name ?? null,
         sellerType,
         sellerEmail,

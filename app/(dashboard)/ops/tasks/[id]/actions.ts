@@ -453,6 +453,8 @@ async function uploadAttachment(options: {
       }
       return { error: "Не удалось загрузить вложение" };
     }
+    
+    console.log("[workflow] attachment uploaded successfully", { path, bucket: DEAL_DOCUMENT_BUCKET, size: uploadSize });
   }
 
   if (isAdditional) {
@@ -740,6 +742,18 @@ export async function deleteTaskGuardDocumentAction(
       if (storageError && !String(storageError.message ?? "").toLowerCase().includes("not found")) {
         console.error("[workflow] failed to remove guard document file", storageError);
         return { success: false, error: "Не удалось удалить файл документа." };
+      }
+
+      // Also clean up any profile_documents referencing this path
+      // This prevents orphans when a document is synced to profile but then deleted from task
+      const { error: profileDocError } = await supabase
+        .from("profile_documents")
+        .delete()
+        .eq("storage_path", storagePath);
+        
+      if (profileDocError) {
+        console.warn("[workflow] failed to cleanup profile_documents for deleted path", profileDocError);
+        // Non-critical error, proceed
       }
     }
 

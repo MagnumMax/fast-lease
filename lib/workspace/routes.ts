@@ -3,6 +3,7 @@ export const WORKSPACE_SECTIONS = [
   "deals",
   "clients",
   "sellers",
+  "brokers",
   "cars",
 ] as const;
 

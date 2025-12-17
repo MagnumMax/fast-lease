@@ -17,6 +17,8 @@ export default async function OpsSellerDetailsPage({ params }: OpsSellerDetailsP
       profile={detail.profile}
       deals={detail.deals}
       documents={detail.documents}
+      allDocuments={detail.allDocuments}
+      documentsError={detail.documentsError}
     />
   );
 }

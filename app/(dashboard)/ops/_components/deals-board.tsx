@@ -159,7 +159,6 @@ type OpsDealsBoardProps = {
   initialDeals: OpsDealSummary[];
   clientDirectory: OpsClientRecord[];
   vehicleDirectory: OpsCarRecord[];
-  sellerDirectory: OpsClientRecord[];
 };
 
 type VehicleOption = OpsCarRecord & { optionValue: string };
@@ -323,7 +322,6 @@ type DealFormState = {
   vehicleVin: string;
   source: string;
   companyCode: DealCompanyCode;
-  sellerId: string;
 };
 
 function getPayloadValue(
@@ -435,12 +433,10 @@ export function OpsDealsBoard({
   initialDeals,
   clientDirectory: clientDirectoryProp,
   vehicleDirectory: vehicleDirectoryProp,
-  sellerDirectory: sellerDirectoryProp,
 }: OpsDealsBoardProps) {
   const router = useRouter();
   const [clientDirectory, setClientDirectory] = useState<OpsClientRecord[]>(clientDirectoryProp);
   const [vehicleDirectory, setVehicleDirectory] = useState<OpsCarRecord[]>(vehicleDirectoryProp);
-  const [sellerDirectory, setSellerDirectory] = useState<OpsClientRecord[]>(sellerDirectoryProp);
 
   useEffect(() => {
     setClientDirectory(clientDirectoryProp);
@@ -449,10 +445,6 @@ export function OpsDealsBoard({
   useEffect(() => {
     setVehicleDirectory(vehicleDirectoryProp);
   }, [vehicleDirectoryProp]);
-
-  useEffect(() => {
-    setSellerDirectory(sellerDirectoryProp);
-  }, [sellerDirectoryProp]);
 
   async function refreshClients() {
     try {
@@ -481,21 +473,6 @@ export function OpsDealsBoard({
       }
     } catch (error) {
       console.error("[workflow] failed to refresh vehicles", error);
-    }
-  }
-
-  async function refreshSellers() {
-    try {
-      const response = await fetch("/api/ops/sellers", { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error("Не удалось загрузить продавцов");
-      }
-      const latest = (await response.json()) as OpsClientRecord[];
-      if (Array.isArray(latest)) {
-        setSellerDirectory(latest);
-      }
-    } catch (error) {
-      console.error("[workflow] failed to refresh sellers", error);
     }
   }
 
@@ -682,45 +659,6 @@ export function OpsDealsBoard({
       })),
     [clientDropdownOptions],
   );
-  const sellerDropdownOptions = useMemo(() => {
-    if (sellerDirectory.length === 0) {
-      return [] as Array<{ id: string; optionLabel: string; titleLabel: string }>;
-    }
-
-    const normalized = sellerDirectory.map((seller) => {
-      const typeLabel =
-        seller.entityType === "company"
-          ? "(Юрлицо)"
-          : seller.entityType === "personal"
-            ? "(Физлицо)"
-            : "";
-      const baseName = (seller.name ?? "").trim();
-      const nameWithType = typeLabel ? `${baseName} ${typeLabel}` : baseName;
-
-      return {
-        id: seller.id,
-        name: nameWithType,
-        phone: seller.phone?.trim() ?? "",
-      };
-    });
-    return normalized.map((item) => {
-      const baseTitle = item.name.length > 0 ? item.name : "—";
-      return {
-        id: item.id,
-        optionLabel: baseTitle,
-        titleLabel: baseTitle,
-      };
-    });
-  }, [sellerDirectory]);
-  const sellerComboboxOptions = useMemo(
-    () =>
-      sellerDropdownOptions.map((option) => ({
-        value: option.id,
-        label: option.optionLabel,
-        description: option.titleLabel,
-      })),
-    [sellerDropdownOptions],
-  );
   const vehicleDropdownOptions = useMemo(() => {
     if (vehicleOptions.length === 0) {
       return [] as Array<{ optionValue: string; optionLabel: string; titleLabel: string }>;
@@ -776,7 +714,6 @@ export function OpsDealsBoard({
     vehicleVin: vehicleOptions[0]?.optionValue ?? "",
     source: defaultSource,
     companyCode: DEFAULT_DEAL_COMPANY_CODE,
-    sellerId: sellerDirectory[0]?.id ?? "",
   }));
   const [showCustomSource, setShowCustomSource] = useState(false);
 
@@ -824,25 +761,6 @@ export function OpsDealsBoard({
     }));
   }, [defaultSource, formState.source]);
 
-  useEffect(() => {
-    if (sellerDirectory.some((seller) => seller.id === formState.sellerId)) {
-      return;
-    }
-
-    if (sellerDirectory.length === 0) {
-      if (!formState.sellerId) {
-        return;
-      }
-      setFormState((prev) => ({ ...prev, sellerId: "" }));
-      return;
-    }
-
-    setFormState((prev) => ({
-      ...prev,
-      sellerId: sellerDirectory[0]?.id ?? "",
-    }));
-  }, [sellerDirectory, formState.sellerId]);
-
   const selectedClient = useMemo(
     () => clientDirectory.find((client) => client.id === formState.clientId),
     [clientDirectory, formState.clientId],
@@ -851,11 +769,6 @@ export function OpsDealsBoard({
   const selectedVehicle = useMemo(
     () => vehicleOptions.find((vehicle) => vehicle.optionValue === formState.vehicleVin),
     [vehicleOptions, formState.vehicleVin],
-  );
-
-  const selectedSeller = useMemo(
-    () => sellerDirectory.find((seller) => seller.id === formState.sellerId),
-    [sellerDirectory, formState.sellerId],
   );
 
   useEffect(() => {
@@ -1033,19 +946,6 @@ export function OpsDealsBoard({
       return;
     }
 
-    if (!selectedSeller) {
-      setFeedback({
-        type: "error",
-        message:
-          sellerDirectory.length === 0
-            ? "Добавьте продавца в каталог и повторите попытку."
-            : "Выберите продавца из каталога.",
-      });
-      return;
-    }
-
-    const sellerType = selectedSeller.entityType ?? "personal";
-
     setIsSubmitting(true);
     setFeedback(null);
 
@@ -1064,7 +964,7 @@ export function OpsDealsBoard({
         source: normalizedSource,
         reference,
         buyerType,
-        sellerType,
+        sellerType: null,
         customer: {
           full_name: selectedClient.name,
           email: selectedClient.email || undefined,
@@ -1092,8 +992,8 @@ export function OpsDealsBoard({
         companyCode: selectedCompanyCode,
         reference,
         buyerType,
-        sellerType,
-        sellerId: selectedSeller.userId,
+        sellerType: null,
+        sellerId: null,
         customer: {
           full_name: selectedClient.name,
           email: selectedClient.email || undefined,
@@ -1149,7 +1049,6 @@ export function OpsDealsBoard({
         vehicleVin: vehicleOptions[0]?.optionValue ?? "",
         source: resetSource,
         companyCode: DEFAULT_DEAL_COMPANY_CODE,
-        sellerId: sellerDirectory[0]?.id ?? "",
       });
       setIsCreateOpen(false);
       router.refresh();
@@ -1255,39 +1154,6 @@ export function OpsDealsBoard({
             />
           </div>
 
-          <div className="space-y-2">
-            <ComboboxField
-              label="Продавец"
-              placeholder="Выберите продавца"
-              value={formState.sellerId}
-              onChange={(value) =>
-                setFormState((prev) => ({ ...prev, sellerId: value }))
-              }
-              options={sellerComboboxOptions}
-              disabled={sellerDirectory.length === 0}
-              onOpen={() => {
-                void refreshSellers();
-              }}
-              action={
-                <Button
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs font-semibold uppercase tracking-[0.3em] text-foreground"
-                >
-                  <Link
-                    href="/ops/sellers"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1"
-                  >
-                    <Plus className="h-3 w-3" aria-hidden="true" />
-                    <span className="sr-only">Добавить продавца</span>
-                  </Link>
-                </Button>
-              }
-            />
-          </div>
 
           <div className="space-y-2">
             <ComboboxField

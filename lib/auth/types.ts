@@ -12,6 +12,7 @@ export type AppRole =
   | "ACCOUNTING"
   | "OPS_MANAGER"
   | "SELLER"
+  | "BROKER"
   | "CLIENT";
 
 export type PortalCode = "app" | "investor" | "client" | "partner" | "seller";

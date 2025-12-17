@@ -70,10 +70,10 @@ export async function createSignedStorageUrl({
           /object .+ does not exist/i.test(normalizedError.message ?? "");
 
         if (isNotFound) {
-          console.warn("[storage] object not found, returning null URL", {
-            bucket,
-            path: normalizedPath,
-          });
+          // console.warn("[storage] object not found, returning null URL", {
+          //   bucket,
+          //   path: normalizedPath,
+          // });
           return null;
         }
 

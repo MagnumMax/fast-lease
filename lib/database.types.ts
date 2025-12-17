@@ -228,7 +228,8 @@ export interface Database {
         | "ACCOUNTING"
         | "OPS_MANAGER"
         | "SELLER"
-      portal_code: "app" | "investor" | "client" | "partner" | "seller"
+        | "BROKER"
+      portal_code: "app" | "investor" | "client" | "partner" | "seller" | "broker"
       vehicle_status: "draft" | "available" | "reserved" | "leased" | "maintenance" | "retired"
       application_status: "draft" | "submitted" | "in_review" | "on_hold" | "approved" | "rejected" | "cancelled" | "converted"
     }

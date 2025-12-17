@@ -114,6 +114,13 @@ const ACCESS_SECTION_DEFINITIONS = [
     defaultRoles: ["OP_MANAGER", "SUPPORT", "FINANCE", "TECH_SPECIALIST", "RISK_MANAGER", "LEGAL", "ACCOUNTING", "ADMIN"],
   },
   {
+    id: "workspace_brokers",
+    label: "Brokers",
+    description: "База брокеров.",
+    prefix: "/workspace/brokers",
+    defaultRoles: ["OP_MANAGER", "SUPPORT", "FINANCE", "TECH_SPECIALIST", "RISK_MANAGER", "LEGAL", "ACCOUNTING", "ADMIN"],
+  },
+  {
     id: "workspace_cars",
     label: "Cars",
     description: "Парк автомобилей для всех ролей.",

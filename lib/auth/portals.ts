@@ -63,8 +63,8 @@ export const PORTAL_DEFINITIONS: Record<PortalCode, PortalDefinition> = {
     description: "Поставщики, сервисы и подрядчики Fast Lease.",
     loginPath: "/login",
     homePath: "/partner/dashboard",
-    allowedRoles: [],
-    defaultRole: null,
+    allowedRoles: ["BROKER"],
+    defaultRole: "BROKER",
   },
   seller: {
     code: "seller",
@@ -90,6 +90,7 @@ const ROLE_TO_PORTAL: Record<AppRole, PortalCode> = {
   INVESTOR: "investor",
   CLIENT: "client",
   SELLER: "seller",
+  BROKER: "partner",
 };
 
 export function normalizePortalCode(value: unknown): PortalCode | null {

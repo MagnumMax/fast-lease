@@ -122,6 +122,20 @@ export const APP_ROLE_DEFINITIONS: AppRoleDefinition[] = [
     homePath: "/accounting/dashboard",
     priority: 9,
   },
+  {
+    role: "SELLER",
+    label: "Seller",
+    description: "Продавец автомобилей и партнер.",
+    homePath: "/seller/dashboard",
+    priority: 10,
+  },
+  {
+    role: "BROKER",
+    label: "Broker",
+    description: "Брокер и агент.",
+    homePath: "/ops/brokers",
+    priority: 11,
+  },
 ];
 
 const SORTED_BY_PRIORITY = [...APP_ROLE_DEFINITIONS].sort(

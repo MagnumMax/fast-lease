@@ -87,8 +87,9 @@
     "NEW",
     "OFFER_PREP",
     "VEHICLE_CHECK",
-    "DOCS_COLLECT_BUYER",
-    "DOCS_COLLECT_SELLER",
+    "DOCS_REVIEW_BUYER",
+    "DOCS_REVIEW_SELLER",
+    "DOCS_REVIEW_BROKER",
     "RISK_REVIEW",
     "FINANCE_REVIEW",
     "INVESTOR_PENDING",
@@ -100,273 +101,356 @@
     "CANCELLED"
   ],
   "schemas": {
-    "buyer_docs_company": {
+    "review_buyer_profile": {
       "version": "1.0",
-      "save_to_buyer_profile": [
-        "buyer_company_email",
-        "buyer_company_phone",
-        "buyer_contact_email",
-        "buyer_contact_phone",
-        "doc_company_license",
-        "doc_emirates_id_manager",
-        "doc_passport_manager",
-        "doc_emirates_id_driver",
-        "doc_passport_driver",
-        "doc_driving_license"
-      ],
       "fields": [
         {
-          "id": "buyer_company_email",
+          "id": "client_full_name",
           "type": "text",
-          "label": "Электронная почта компании"
+          "label": "ФИО Покупателя",
+          "readonly": true
         },
         {
-          "id": "buyer_company_phone",
+          "id": "client_phone",
           "type": "text",
-          "label": "Телефон компании"
+          "label": "Телефон Покупателя",
+          "readonly": true
         },
         {
-          "id": "buyer_contact_email",
-          "type": "text",
-          "label": "Электронная почта покупателя/водителя"
+          "id": "buyer_profile_link",
+          "type": "link",
+          "label": "Редактировать профиль покупателя",
+          "link_target": "/ops/clients/{{deal.client_id}}",
+          "readonly": true
         },
         {
-          "id": "buyer_contact_phone",
-          "type": "text",
-          "label": "Телефон покупателя/водителя"
-        },
-        {
-          "id": "doc_company_license",
-          "type": "file",
-          "label": "Лицензия компании",
-          "document_type": "company_license"
-        },
-        {
-          "id": "doc_emirates_id_manager",
-          "type": "file",
-          "label": "Emirates ID менеджера лицензии",
-          "document_type": "doc_emirates_id_manager"
-        },
-        {
-          "id": "doc_passport_manager",
-          "type": "file",
-          "label": "Паспорт менеджера лицензии",
-          "document_type": "doc_passport_manager"
-        },
-        {
-          "id": "doc_emirates_id_driver",
-          "type": "file",
-          "label": "Emirates ID водителя",
-          "document_type": "doc_emirates_id_driver"
-        },
-        {
-          "id": "doc_passport_driver",
-          "type": "file",
-          "label": "Паспорт водителя",
-          "document_type": "doc_passport_driver"
-        },
-        {
-          "id": "doc_driving_license",
-          "type": "file",
-          "label": "Водительские права (UAE) покупателя/водителя",
-          "document_type": "doc_driving_license"
+          "id": "buyer_verification_status",
+          "type": "checkbox",
+          "label": "Данные покупателя проверены и актуальны",
+          "required": true
         }
       ]
     },
-    "buyer_docs_individual": {
+    "review_seller_profile": {
       "version": "1.0",
-      "save_to_buyer_profile": [
-        "buyer_contact_email",
-        "buyer_contact_phone",
-        "doc_passport_buyer",
-        "doc_emirates_id_buyer",
-        "doc_driving_license_buyer",
-        "doc_second_driver_bundle"
-      ],
       "fields": [
         {
-          "id": "buyer_contact_email",
+          "id": "seller_full_name",
           "type": "text",
-          "label": "Электронная почта покупателя/водителя"
+          "label": "ФИО/Название Продавца",
+          "readonly": true
         },
         {
-          "id": "buyer_contact_phone",
+          "id": "seller_phone",
           "type": "text",
-          "label": "Телефон покупателя/водителя"
+          "label": "Телефон Продавца",
+          "readonly": true
         },
         {
-          "id": "doc_passport_buyer",
-          "type": "file",
-          "label": "Паспорт покупателя",
-          "document_type": "doc_passport_buyer"
+          "id": "seller_profile_link",
+          "type": "link",
+          "label": "Редактировать профиль продавца",
+          "link_target": "/ops/sellers/{{deal.seller_id}}",
+          "readonly": true
         },
         {
-          "id": "doc_emirates_id_buyer",
-          "type": "file",
-          "label": "Emirates ID покупателя",
-          "document_type": "doc_emirates_id_buyer"
+          "id": "seller_id",
+          "type": "profile_selector",
+          "label": "Продавец",
+          "required": true,
+          "filter": "seller"
         },
         {
-          "id": "doc_driving_license_buyer",
-          "type": "file",
-          "label": "Водительские права (UAE) покупателя",
-          "document_type": "doc_driving_license_buyer"
-        },
-        {
-          "id": "doc_second_driver_bundle",
-          "type": "file",
-          "label": "Комплект документов второго водителя",
-          "document_type": "doc_second_driver_bundle"
+          "id": "seller_verification_status",
+          "type": "checkbox",
+          "label": "Данные продавца проверены и актуальны (IBAN, Лицензия)",
+          "required": true
         }
       ]
     },
-    "seller_docs_company": {
+    "review_broker_profile": {
       "version": "1.0",
-      "save_to_seller_profile": [
-        "seller_contact_email",
-        "seller_contact_phone",
-        "seller_bank_details",
-        "doc_emirates_id_owner",
-        "doc_company_license",
-        "doc_trn_certificate"
-      ],
       "fields": [
         {
-          "id": "seller_contact_email",
+          "id": "broker_full_name",
           "type": "text",
-          "label": "Электронная почта продавца"
+          "label": "ФИО Брокера",
+          "readonly": true
         },
         {
-          "id": "seller_contact_phone",
+          "id": "broker_phone",
           "type": "text",
-          "label": "Телефон продавца"
+          "label": "Телефон Брокера",
+          "readonly": true
         },
         {
-          "id": "seller_bank_details",
-          "type": "text",
-          "label": "IBAN"
+          "id": "broker_profile_link",
+          "type": "link",
+          "label": "Редактировать профиль брокера",
+          "link_target": "/ops/brokers/{{deal.broker_id}}",
+          "readonly": true
         },
         {
-          "id": "doc_emirates_id_owner",
+          "id": "broker_id",
+          "type": "profile_selector",
+          "label": "Брокер",
+          "required": true,
+          "filter": "broker"
+        },
+        {
+          "id": "broker_verification_status",
+          "type": "checkbox",
+          "label": "Данные брокера проверены и актуальны",
+          "required": true
+        },
+        {
+          "id": "doc_broker_invoice",
           "type": "file",
-          "label": "Emirates ID владельца",
-          "document_type": "doc_emirates_id_owner",
-          "required": false
-        },
-        {
-          "id": "doc_company_license",
-          "type": "file",
-          "label": "Лицензия компании",
-          "document_type": "company_license"
-        },
-        {
-          "id": "doc_quotation",
-          "type": "file",
-          "label": "Quotation",
-          "document_type": "quotation"
-        },
-        {
-          "id": "doc_passing_certificate",
-          "type": "file",
-          "label": "Passing Certificate",
-          "document_type": "passing_certificate"
-        },
-        {
-          "id": "doc_mulkia_certificate",
-          "type": "file",
-          "label": "Mulkia",
-          "document_type": "mulkia_certificate"
-        },
-        {
-          "id": "doc_hiyaza_certificate",
-          "type": "file",
-          "label": "Hiyaza",
-          "document_type": "hiyaza_certificate"
-        },
-        {
-          "id": "doc_noc_company_letter",
-          "type": "file",
-          "label": "NOC letter от компании",
-          "document_type": "noc_company_letter"
-        },
-        {
-          "id": "doc_noc_gps_letter",
-          "type": "file",
-          "label": "NOC letter от GPS",
-          "document_type": "noc_gps_letter"
-        },
-        {
-          "id": "doc_trn_certificate",
-          "type": "file",
-          "label": "TRN-сертификат",
-          "document_type": "trn_certificate"
+          "label": "Счет на оплату комиссии (Broker Invoice)",
+          "document_type": "invoice",
+          "required": true
         }
       ]
     },
-    "seller_docs_individual": {
+    "confirm_car_and_participants": {
       "version": "1.0",
-      "save_to_seller_profile": [
-        "seller_contact_email",
-        "seller_contact_phone",
-        "doc_emirates_id_seller"
-      ],
       "fields": [
         {
-          "id": "seller_contact_email",
+          "id": "section_participants",
+          "type": "section_header",
+          "label": "Участники сделки"
+        },
+        {
+          "id": "seller_id",
+          "type": "profile_selector",
+          "label": "Продавец",
+          "required": true,
+          "filter": "seller"
+        },
+        {
+          "id": "seller_vat_payer",
+          "type": "boolean",
+          "label": "Продавец плательщик VAT"
+        },
+        {
+          "id": "broker_id",
+          "type": "profile_selector",
+          "label": "Брокер (опционально)",
+          "required": false,
+          "filter": "broker"
+        },
+        {
+          "id": "broker_commission",
+          "type": "currency",
+          "label": "Комиссия брокера (AED)",
+          "required": false,
+          "depends_on": "broker_id"
+        },
+        {
+          "id": "renty_manager_commission",
           "type": "text",
-          "label": "Электронная почта продавца"
+          "label": "Комиссия менеджера Fast Lease (%)",
+          "readonly": true
         },
         {
-          "id": "seller_contact_phone",
-          "type": "text",
-          "label": "Телефон продавца"
+          "id": "showroom_manager_fee",
+          "type": "currency",
+          "label": "Комиссия менеджера салона (AED)"
         },
         {
-          "id": "doc_vcc_certificate",
-          "type": "file",
-          "label": "VCC (Vehicle Certificate of Conformity)",
-          "document_type": "vcc_certificate"
+          "id": "section_vehicle",
+          "type": "section_header",
+          "label": "Автомобиль и Документы"
         },
         {
-          "id": "doc_vehicle_possession_certificate",
-          "type": "file",
-          "label": "Vehicle Possession Certificate",
-          "document_type": "vehicle_possession_certificate"
+          "id": "vehicle_price",
+          "type": "currency",
+          "label": "Стоимость авто (AED)",
+          "required": true
         },
         {
-          "id": "doc_hiyaza_certificate",
-          "type": "file",
-          "label": "Hiyaza",
-          "document_type": "hiyaza_certificate"
+          "id": "seller_vehicle_price_with_vat",
+          "type": "boolean",
+          "label": "Авто продается с VAT"
         },
         {
-          "id": "doc_mulkia_certificate",
-          "type": "file",
-          "label": "Mulkia",
-          "document_type": "mulkia_certificate"
+          "id": "insurance_amount",
+          "type": "currency",
+          "label": "Стоимость авто от страховой (AED)"
         },
         {
-          "id": "doc_passing_certificate",
-          "type": "file",
-          "label": "Passing Certificate",
-          "document_type": "passing_certificate"
+          "id": "registration_amount",
+          "type": "currency",
+          "label": "Сумма регистрации (AED)"
         },
         {
-          "id": "doc_emirates_id_seller",
-          "type": "file",
-          "label": "Emirates ID продавца",
-          "document_type": "doc_emirates_id_seller"
-        },
-        {
-          "id": "doc_spa_invoice",
-          "type": "file",
-          "label": "SPA Invoice",
-          "document_type": "spa_invoice"
+          "id": "technical_inspection_amount",
+          "type": "currency",
+          "label": "Сумма за технический осмотр авто (AED)"
         }
       ]
     }
   },
   "document_types": {
+    "deal": {
+      "registry": [
+        {
+          "value": "noc_gps_letter",
+          "label": "NOC letter от GPS",
+          "context": "deal"
+        },
+        {
+          "value": "vcc_certificate",
+          "label": "VCC (Vehicle Certificate of Conformity)",
+          "context": "deal"
+        },
+        {
+          "value": "vehicle_possession_certificate",
+          "label": "Vehicle Possession Certificate",
+          "context": "deal"
+        },
+        {
+          "value": "hiyaza_certificate",
+          "label": "Hiyaza",
+          "context": "deal"
+        },
+        {
+          "value": "mulkia_certificate",
+          "label": "Mulkia",
+          "context": "deal"
+        },
+        {
+          "value": "passing_certificate",
+          "label": "Passing Certificate",
+          "context": "deal"
+        },
+        {
+          "value": "lease_agreement",
+          "label": "Договор лизинга",
+          "context": "deal"
+        },
+        {
+          "value": "signed_lease_agreement",
+          "label": "Подписанный договор лизинга",
+          "context": "deal"
+        },
+        {
+          "value": "purchase_agreement",
+          "label": "Договор купли-продажи",
+          "context": "deal"
+        },
+        {
+          "value": "signed_purchase_agreement",
+          "label": "Подписанный договор купли-продажи",
+          "context": "deal"
+        },
+        {
+          "value": "preliminary_purchase_agreement",
+          "label": "Предварительный договор купли-продажи",
+          "context": "deal"
+        },
+        {
+          "value": "authorization_letter",
+          "label": "Authorization Letter",
+          "context": "deal"
+        },
+        {
+          "value": "payment_schedule",
+          "label": "График платежей",
+          "context": "deal"
+        },
+        {
+          "value": "signed_payment_schedule",
+          "label": "Подписанный график платежей",
+          "context": "deal"
+        },
+        {
+          "value": "tax_invoice",
+          "label": "Tax Invoice",
+          "context": "deal"
+        },
+        {
+          "value": "invoice",
+          "label": "Invoice (без VAT)",
+          "context": "deal"
+        },
+        {
+          "value": "delivery_act",
+          "label": "Акт приема-передачи",
+          "context": "deal"
+        },
+        {
+          "value": "signed_delivery_act",
+          "label": "Подписанный акт приема-передачи",
+          "context": "deal"
+        },
+        {
+          "value": "technical_report",
+          "label": "Технический отчёт",
+          "context": "deal"
+        },
+        {
+          "value": "commercial_offer",
+          "label": "Коммерческое предложение",
+          "context": "deal"
+        },
+        {
+          "value": "signed_commercial_offer",
+          "label": "Коммерческое предложение (подписанное)",
+          "context": "deal"
+        },
+        {
+          "value": "quotation",
+          "label": "Quotation",
+          "context": "deal"
+        },
+        {
+          "value": "payment_receipt",
+          "label": "Подтверждение оплаты",
+          "context": "deal"
+        },
+        {
+          "value": "spa_invoice",
+          "label": "SPA Invoice",
+          "context": "deal"
+        },
+        {
+          "value": "noc_company_letter",
+          "label": "NOC letter от компании",
+          "context": "deal"
+        },
+        {
+          "value": "vehicle_inspection_certificate",
+          "label": "Сертификат техосмотра",
+          "context": "deal"
+        },
+        {
+          "value": "vehicle_transfer_certificate",
+          "label": "Сертификат передачи транспортного средства",
+          "context": "deal"
+        },
+        {
+          "value": "certificate_of_installation",
+          "label": "Сертификат установки (GPS)",
+          "context": "deal"
+        },
+        {
+          "value": "delivery_form",
+          "label": "Акт приёма-передачи",
+          "context": "deal"
+        },
+        {
+          "value": "insurance_policy",
+          "label": "Страховой полис",
+          "context": "deal"
+        },
+        {
+          "value": "insurance_policy_with_tax_invoice",
+          "label": "Страховка с налоговым инвойсом",
+          "context": "deal"
+        }
+      ]
+    },
     "client": {
       "registry": [
         {
@@ -410,31 +494,6 @@
           "context": "personal"
         },
         {
-          "value": "vcc_certificate",
-          "label": "VCC (Vehicle Certificate of Conformity)",
-          "context": "any"
-        },
-        {
-          "value": "vehicle_possession_certificate",
-          "label": "Vehicle Possession Certificate",
-          "context": "any"
-        },
-        {
-          "value": "hiyaza_certificate",
-          "label": "Hiyaza",
-          "context": "any"
-        },
-        {
-          "value": "mulkia_certificate",
-          "label": "Mulkia",
-          "context": "any"
-        },
-        {
-          "value": "passing_certificate",
-          "label": "Passing Certificate",
-          "context": "any"
-        },
-        {
           "value": "company_license",
           "label": "Лицензия компании",
           "context": "company"
@@ -450,108 +509,8 @@
           "context": "company"
         },
         {
-          "value": "lease_agreement",
-          "label": "Договор лизинга",
-          "context": "any"
-        },
-        {
-          "value": "signed_lease_agreement",
-          "label": "Подписанный договор лизинга",
-          "context": "any"
-        },
-        {
-          "value": "purchase_agreement",
-          "label": "Договор купли-продажи",
-          "context": "any"
-        },
-        {
-          "value": "signed_purchase_agreement",
-          "label": "Подписанный договор купли-продажи",
-          "context": "any"
-        },
-        {
-          "value": "preliminary_purchase_agreement",
-          "label": "Предварительный договор купли-продажи",
-          "context": "any"
-        },
-        {
-          "value": "authorization_letter",
-          "label": "Authorization Letter",
-          "context": "any"
-        },
-        {
-          "value": "payment_schedule",
-          "label": "График платежей",
-          "context": "any"
-        },
-        {
-          "value": "signed_payment_schedule",
-          "label": "Подписанный график платежей",
-          "context": "any"
-        },
-        {
-          "value": "tax_invoice",
-          "label": "Tax Invoice",
-          "context": "any"
-        },
-        {
-          "value": "invoice",
-          "label": "Invoice (без VAT)",
-          "context": "any"
-        },
-        {
-          "value": "delivery_act",
-          "label": "Акт приема-передачи",
-          "context": "any"
-        },
-        {
-          "value": "signed_delivery_act",
-          "label": "Подписанный акт приема-передачи",
-          "context": "any"
-        },
-        {
-          "value": "technical_report",
-          "label": "Технический отчёт",
-          "context": "any"
-        },
-        {
           "value": "aecb_credit_report",
           "label": "AECB Credit Report",
-          "context": "any"
-        },
-        {
-          "value": "commercial_offer",
-          "label": "Коммерческое предложение",
-          "context": "any"
-        },
-        {
-          "value": "signed_commercial_offer",
-          "label": "Коммерческое предложение (подписанное)",
-          "context": "any"
-        },
-        {
-          "value": "quotation",
-          "label": "Quotation",
-          "context": "any"
-        },
-        {
-          "value": "payment_receipt",
-          "label": "Подтверждение оплаты",
-          "context": "any"
-        },
-        {
-          "value": "spa_invoice",
-          "label": "SPA Invoice",
-          "context": "any"
-        },
-        {
-          "value": "noc_company_letter",
-          "label": "NOC letter от компании",
-          "context": "any"
-        },
-        {
-          "value": "noc_gps_letter",
-          "label": "NOC letter от GPS",
           "context": "any"
         },
         {
@@ -601,46 +560,35 @@
         }
       ]
     },
+    "seller": {
+      "registry": [
+        {
+          "value": "trade_license",
+          "label": "Торговая лицензия (Trade License)",
+          "context": "company"
+        },
+        {
+          "value": "passport",
+          "label": "Паспорт",
+          "context": "personal"
+        },
+        {
+          "value": "emirates_id",
+          "label": "Emirates ID",
+          "context": "personal"
+        },
+        {
+          "value": "other",
+          "label": "Другой документ",
+          "context": "any"
+        }
+      ]
+    },
     "vehicle": {
       "registry": [
         {
           "value": "vehicle_registration",
           "label": "Регистрационные данные транспортного средства",
-          "context": "vehicle"
-        },
-        {
-          "value": "vehicle_inspection_certificate",
-          "label": "Сертификат техосмотра",
-          "context": "vehicle"
-        },
-        {
-          "value": "vehicle_possession_certificate",
-          "label": "Сертификат владения транспортным средством",
-          "context": "vehicle"
-        },
-        {
-          "value": "vehicle_transfer_certificate",
-          "label": "Сертификат передачи транспортного средства",
-          "context": "vehicle"
-        },
-        {
-          "value": "certificate_of_installation",
-          "label": "Сертификат установки (GPS)",
-          "context": "vehicle"
-        },
-        {
-          "value": "delivery_form",
-          "label": "Акт приёма-передачи",
-          "context": "vehicle"
-        },
-        {
-          "value": "insurance_policy",
-          "label": "Страховой полис",
-          "context": "vehicle"
-        },
-        {
-          "value": "insurance_policy_with_tax_invoice",
-          "label": "Страховка с налоговым инвойсом",
           "context": "vehicle"
         },
         {
@@ -654,36 +602,73 @@
   "statuses": {
     "NEW": {
       "title": "Новая заявка",
-      "description": "Лид создан (сайт/брокер).",
       "entry_actions": [
         {
           "type": "TASK_CREATE",
           "task": {
-            "template_id": "confirm_car_v1",
+            "template_id": "confirm_car_v2",
             "type": "CONFIRM_CAR",
-            "title": "Подтвердить авто у дилера/брокера",
+            "title": "Подтверждение авто и участников сделки",
             "assignee_role": "OP_MANAGER",
             "guard_key": "tasks.confirmCar.completed",
             "sla": {
-              "hours": 8
+              "hours": 2
             },
             "schema": {
               "version": "1.0",
               "fields": [
                 {
-                  "id": "deal_id",
-                  "type": "badge",
-                  "label": "ID сделки"
+                  "id": "section_participants",
+                  "type": "section_header",
+                  "label": "Участники сделки"
                 },
                 {
-                  "id": "current_status",
-                  "type": "badge",
-                  "label": "Текущий этап"
+                  "id": "seller_id",
+                  "type": "profile_selector",
+                  "label": "Продавец",
+                  "required": true,
+                  "filter": "seller"
                 },
                 {
-                  "id": "seller_vehicle_price",
+                  "id": "seller_vat_payer",
+                  "type": "boolean",
+                  "label": "Продавец плательщик VAT"
+                },
+                {
+                  "id": "broker_id",
+                  "type": "profile_selector",
+                  "label": "Брокер (опционально)",
+                  "required": false,
+                  "filter": "broker"
+                },
+                {
+                  "id": "broker_commission",
+                  "type": "currency",
+                  "label": "Комиссия брокера (AED)",
+                  "required": false,
+                  "depends_on": "broker_id"
+                },
+                {
+                  "id": "renty_manager_commission",
                   "type": "text",
-                  "label": "Цена авто продавца"
+                  "label": "Комиссия менеджера Fast Lease (%)",
+                  "readonly": true
+                },
+                {
+                  "id": "showroom_manager_fee",
+                  "type": "currency",
+                  "label": "Комиссия менеджера салона (AED)"
+                },
+                {
+                  "id": "section_vehicle",
+                  "type": "section_header",
+                  "label": "Автомобиль и Документы"
+                },
+                {
+                  "id": "vehicle_price",
+                  "type": "currency",
+                  "label": "Стоимость авто (AED)",
+                  "required": true
                 },
                 {
                   "id": "seller_vehicle_price_with_vat",
@@ -692,42 +677,28 @@
                 },
                 {
                   "id": "insurance_amount",
-                  "type": "text",
-                  "label": "Стоимость авто от страховой"
+                  "type": "currency",
+                  "label": "Стоимость авто от страховой (AED)"
                 },
                 {
                   "id": "registration_amount",
-                  "type": "text",
-                  "label": "Сумма регистрации"
+                  "type": "currency",
+                  "label": "Сумма регистрации (AED)"
                 },
                 {
                   "id": "technical_inspection_amount",
-                  "type": "text",
-                  "label": "Сумма за технический осмотр авто"
-                },
-                {
-                  "id": "renty_manager_fee",
-                  "type": "text",
-                  "label": "Комиссия менеджера RENTY"
-                },
-                {
-                  "id": "showroom_manager_fee",
-                  "type": "text",
-                  "label": "Комиссия менеджера салона"
-                },
-                {
-                  "id": "seller_vat_payer",
-                  "type": "boolean",
-                  "label": "Продавец плательщик VAT"
+                  "type": "currency",
+                  "label": "Сумма за технический осмотр авто (AED)"
                 }
               ]
             },
             "defaults": {
-              "instruction_short": "Подтвердите наличие авто и условия у дилера/брокера.",
-              "seller_vehicle_price_with_vat": false,
-              "seller_vat_payer": false,
+              "instruction_short": "Подтвердите авто, выберите продавца и брокера, приложите первичные документы.",
               "registration_amount": "2500",
-              "technical_inspection_amount": "1000"
+              "technical_inspection_amount": "1000",
+              "broker_commission": "0",
+              "seller_vehicle_price_with_vat": false,
+              "seller_vat_payer": false
             },
             "bindings": {
               "deal_id": "{{deal.id}}",
@@ -747,7 +718,7 @@
         {
           "key": "tasks.confirmCar.completed",
           "rule": "== true",
-          "message": "Авто не подтверждено у дилера/брокера."
+          "message": "Авто и участники не подтверждены."
         }
       ]
     },
@@ -920,407 +891,209 @@
         }
       ]
     },
-    "DOCS_COLLECT_BUYER": {
-      "title": "Сбор документов покупателя",
+    "DOCS_REVIEW_BUYER": {
+      "title": "Проверка документов покупателя",
       "entry_actions": [
         {
           "type": "TASK_CREATE",
           "task": {
-            "template_id": "collect_buyer_docs_company_v1",
-            "type": "COLLECT_BUYER_DOCS_COMPANY",
-            "title": "Собрать пакет документов покупателя (юрлицо)",
+            "template_id": "review_buyer_docs_v1",
+            "type": "REVIEW_BUYER",
+            "title": "Проверка данных покупателя (Review & Confirm)",
             "assignee_role": "OP_MANAGER",
-            "guard_key": "docs.required.allUploaded",
+            "guard_key": "buyer.verified",
             "sla": {
-              "hours": 48
+              "hours": 24
             },
             "schema": {
               "version": "1.0",
-              "save_to_buyer_profile": [
-                "buyer_company_email",
-                "buyer_company_phone",
-                "buyer_contact_email",
-                "buyer_contact_phone",
-                "doc_company_license",
-                "doc_emirates_id_manager",
-                "doc_passport_manager",
-                "doc_emirates_id_driver",
-                "doc_passport_driver",
-                "doc_driving_license"
-              ],
               "fields": [
                 {
-                  "id": "buyer_company_email",
+                  "id": "client_full_name",
                   "type": "text",
-                  "label": "Электронная почта компании"
+                  "label": "ФИО Покупателя",
+                  "readonly": true
                 },
                 {
-                  "id": "buyer_company_phone",
+                  "id": "client_phone",
                   "type": "text",
-                  "label": "Телефон компании"
+                  "label": "Телефон Покупателя",
+                  "readonly": true
                 },
                 {
-                  "id": "buyer_contact_email",
-                  "type": "text",
-                  "label": "Электронная почта покупателя/водителя"
+                  "id": "buyer_profile_link",
+                  "type": "link",
+                  "label": "Редактировать профиль покупателя",
+                  "link_target": "/ops/clients/{{deal.client_id}}",
+                  "readonly": true
                 },
                 {
-                  "id": "buyer_contact_phone",
-                  "type": "text",
-                  "label": "Телефон покупателя/водителя"
-                },
-                {
-                  "id": "doc_company_license",
-                  "type": "file",
-                  "label": "Лицензия компании",
-                  "document_type": "company_license"
-                },
-                {
-                  "id": "doc_emirates_id_manager",
-                  "type": "file",
-                  "label": "Emirates ID менеджера лицензии",
-                  "document_type": "doc_emirates_id_manager"
-                },
-                {
-                  "id": "doc_passport_manager",
-                  "type": "file",
-                  "label": "Паспорт менеджера лицензии",
-                  "document_type": "doc_passport_manager"
-                },
-                {
-                  "id": "doc_emirates_id_driver",
-                  "type": "file",
-                  "label": "Emirates ID водителя",
-                  "document_type": "doc_emirates_id_driver"
-                },
-                {
-                  "id": "doc_passport_driver",
-                  "type": "file",
-                  "label": "Паспорт водителя",
-                  "document_type": "doc_passport_driver"
-                },
-                {
-                  "id": "doc_driving_license",
-                  "type": "file",
-                  "label": "Водительские права (UAE) покупателя/водителя",
-                  "document_type": "doc_driving_license"
+                  "id": "buyer_verification_status",
+                  "type": "checkbox",
+                  "label": "Данные покупателя проверены и актуальны",
+                  "required": true
                 }
               ]
             },
             "defaults": {
-              "instruction_short": "Загрузите документы покупателя-юрлица и контакты ответственного.",
-              "buyer_company_email": "",
-              "buyer_company_phone": "",
-              "buyer_contact_email": "",
-              "buyer_contact_phone": "",
-              "doc_company_license": "",
-              "doc_emirates_id_manager": "",
-              "doc_passport_manager": "",
-              "doc_emirates_id_driver": "",
-              "doc_passport_driver": "",
-              "doc_driving_license": ""
+              "instruction_short": "Перейдите в профиль покупателя, убедитесь, что все документы актуальны и подтвердите это.",
+              "buyer_verification_status": false
             },
-            "conditions": [
-              {
-                "key": "payload.buyer_type",
-                "rule": "== company"
-              }
-            ]
-          }
-        },
-        {
-          "type": "TASK_CREATE",
-          "task": {
-            "template_id": "collect_buyer_docs_individual_v1",
-            "type": "COLLECT_BUYER_DOCS_INDIVIDUAL",
-            "title": "Собрать пакет документов покупателя (физлицо)",
-            "assignee_role": "OP_MANAGER",
-            "guard_key": "docs.required.allUploaded",
-            "sla": {
-              "hours": 48
-            },
-            "schema": {
-              "version": "1.0",
-              "save_to_buyer_profile": [
-                "buyer_contact_email",
-                "buyer_contact_phone",
-                "doc_passport_buyer",
-                "doc_emirates_id_buyer",
-                "doc_driving_license_buyer",
-                "doc_second_driver_bundle"
-              ],
-              "fields": [
-                {
-                  "id": "buyer_contact_email",
-                  "type": "text",
-                  "label": "Электронная почта покупателя/водителя"
-                },
-                {
-                  "id": "buyer_contact_phone",
-                  "type": "text",
-                  "label": "Телефон покупателя/водителя"
-                },
-                {
-                  "id": "doc_passport_buyer",
-                  "type": "file",
-                  "label": "Паспорт покупателя",
-                  "document_type": "doc_passport_buyer"
-                },
-                {
-                  "id": "doc_emirates_id_buyer",
-                  "type": "file",
-                  "label": "Emirates ID покупателя",
-                  "document_type": "doc_emirates_id_buyer"
-                },
-                {
-                  "id": "doc_driving_license_buyer",
-                  "type": "file",
-                  "label": "Водительские права (UAE) покупателя",
-                  "document_type": "doc_driving_license_buyer"
-                },
-                {
-                  "id": "doc_second_driver_bundle",
-                  "type": "file",
-                  "label": "Комплект документов второго водителя",
-                  "document_type": "doc_second_driver_bundle"
-                }
-              ]
-            },
-            "defaults": {
-              "instruction_short": "Прикрепите паспорт, EID и права покупателя; добавьте второй комплект для второго водителя при необходимости.",
-              "buyer_contact_email": "",
-              "buyer_contact_phone": "",
-              "doc_passport_buyer": "",
-              "doc_emirates_id_buyer": "",
-              "doc_driving_license_buyer": "",
-              "doc_second_driver_bundle": ""
-            },
-            "conditions": [
-              {
-                "key": "payload.buyer_type",
-                "rule": "== individual"
-              }
-            ]
+            "bindings": {
+              "deal_id": "{{deal.id}}",
+              "client_id": "{{deal.client_id}}"
+            }
           }
         }
       ],
       "exit_requirements": [
         {
-          "key": "docs.required.allUploaded",
+          "key": "buyer.verified",
           "rule": "== true",
-          "message": "Не все обязательные документы покупателя загружены."
+          "message": "Данные покупателя не подтверждены."
         }
       ]
     },
-    "DOCS_COLLECT_SELLER": {
-      "title": "Сбор документов продавца",
+    "DOCS_REVIEW_SELLER": {
+      "title": "Проверка документов продавца",
       "entry_actions": [
         {
           "type": "TASK_CREATE",
           "task": {
-            "template_id": "collect_seller_docs_company_v1",
-            "type": "COLLECT_SELLER_DOCS_COMPANY",
-            "title": "Собрать пакет документов продавца (юрлицо)",
+            "template_id": "review_seller_docs_v1",
+            "type": "REVIEW_SELLER",
+            "title": "Проверка данных продавца (Review & Confirm)",
             "assignee_role": "OP_MANAGER",
-            "guard_key": "docs.seller.allUploaded",
+            "guard_key": "seller.verified",
             "sla": {
-              "hours": 48
+              "hours": 24
             },
             "schema": {
               "version": "1.0",
-              "save_to_seller_profile": [
-                "seller_contact_email",
-                "seller_contact_phone",
-                "seller_bank_details",
-                "doc_emirates_id_owner",
-                "doc_company_license",
-                "doc_trn_certificate"
-              ],
               "fields": [
                 {
-                  "id": "seller_contact_email",
+                  "id": "seller_full_name",
                   "type": "text",
-                  "label": "Электронная почта продавца"
+                  "label": "ФИО/Название Продавца",
+                  "readonly": true
                 },
                 {
-                  "id": "seller_contact_phone",
+                  "id": "seller_phone",
                   "type": "text",
-                  "label": "Телефон продавца"
+                  "label": "Телефон Продавца",
+                  "readonly": true
                 },
                 {
-                  "id": "seller_bank_details",
-                  "type": "text",
-                  "label": "IBAN"
+                  "id": "seller_profile_link",
+                  "type": "link",
+                  "label": "Редактировать профиль продавца",
+                  "link_target": "/ops/sellers/{{deal.seller_id}}",
+                  "readonly": true
                 },
                 {
-                  "id": "doc_emirates_id_owner",
-                  "type": "file",
-                  "label": "Emirates ID владельца",
-                  "document_type": "doc_emirates_id_owner",
-                  "required": false
+                  "id": "seller_id",
+                  "type": "profile_selector",
+                  "label": "Продавец",
+                  "required": true,
+                  "filter": "seller"
                 },
                 {
-                  "id": "doc_company_license",
-                  "type": "file",
-                  "label": "Лицензия компании",
-                  "document_type": "company_license"
-                },
-                {
-                  "id": "doc_quotation",
-                  "type": "file",
-                  "label": "Quotation",
-                  "document_type": "quotation"
-                },
-                {
-                  "id": "doc_passing_certificate",
-                  "type": "file",
-                  "label": "Passing Certificate",
-                  "document_type": "passing_certificate"
-                },
-                {
-                  "id": "doc_mulkia_certificate",
-                  "type": "file",
-                  "label": "Mulkia",
-                  "document_type": "mulkia_certificate"
-                },
-                {
-                  "id": "doc_hiyaza_certificate",
-                  "type": "file",
-                  "label": "Hiyaza",
-                  "document_type": "hiyaza_certificate"
-                },
-                {
-                  "id": "doc_noc_company_letter",
-                  "type": "file",
-                  "label": "NOC letter от компании",
-                  "document_type": "noc_company_letter"
-                },
-                {
-                  "id": "doc_noc_gps_letter",
-                  "type": "file",
-                  "label": "NOC letter от GPS",
-                  "document_type": "noc_gps_letter"
-                },
-                {
-                  "id": "doc_trn_certificate",
-                  "type": "file",
-                  "label": "TRN-сертификат",
-                  "document_type": "trn_certificate"
+                  "id": "seller_verification_status",
+                  "type": "checkbox",
+                  "label": "Данные продавца проверены и актуальны (IBAN, Лицензия)",
+                  "required": true
                 }
               ]
             },
             "defaults": {
-              "instruction_short": "Загрузите документы продавца-юрлица и контакты.",
-              "seller_contact_email": "",
-              "seller_contact_phone": "",
-              "seller_bank_details": "",
-              "doc_emirates_id_owner": "",
-              "doc_company_license": "",
-              "doc_quotation": "",
-              "doc_passing_certificate": "",
-              "doc_mulkia_certificate": "",
-              "doc_hiyaza_certificate": "",
-              "doc_noc_company_letter": "",
-              "doc_noc_gps_letter": "",
-              "doc_trn_certificate": ""
+              "instruction_short": "Перейдите в профиль продавца, убедитесь в наличии IBAN и Лицензии, подтвердите.",
+              "seller_verification_status": false
             },
-            "conditions": [
-              {
-                "key": "payload.seller_type",
-                "rule": "== company"
-              }
-            ]
+            "bindings": {
+              "deal_id": "{{deal.id}}",
+              "seller_id": "{{deal.seller_id}}"
+            }
           }
-        },
+        }
+      ],
+      "exit_requirements": [
+        {
+          "key": "seller.verified",
+          "rule": "== true",
+          "message": "Данные продавца не подтверждены."
+        }
+      ]
+    },
+    "DOCS_REVIEW_BROKER": {
+      "title": "Проверка документов брокера",
+      "entry_actions": [
         {
           "type": "TASK_CREATE",
           "task": {
-            "template_id": "collect_seller_docs_individual_v1",
-            "type": "COLLECT_SELLER_DOCS_INDIVIDUAL",
-            "title": "Собрать пакет документов продавца (физлицо)",
+            "template_id": "review_broker_docs_v1",
+            "type": "REVIEW_BROKER",
+            "title": "Проверка данных брокера и сбор счета",
             "assignee_role": "OP_MANAGER",
-            "guard_key": "docs.seller.allUploaded",
+            "guard_key": "broker.verified",
             "sla": {
-              "hours": 48
+              "hours": 24
             },
             "schema": {
               "version": "1.0",
-              "save_to_seller_profile": [
-                "seller_contact_email",
-                "seller_contact_phone",
-                "doc_emirates_id_seller"
-              ],
               "fields": [
                 {
-                  "id": "seller_contact_email",
+                  "id": "broker_full_name",
                   "type": "text",
-                  "label": "Электронная почта продавца"
+                  "label": "ФИО Брокера",
+                  "readonly": true
                 },
                 {
-                  "id": "seller_contact_phone",
+                  "id": "broker_phone",
                   "type": "text",
-                  "label": "Телефон продавца"
+                  "label": "Телефон Брокера",
+                  "readonly": true
                 },
                 {
-                  "id": "doc_vcc_certificate",
-                  "type": "file",
-                  "label": "VCC (Vehicle Certificate of Conformity)",
-                  "document_type": "vcc_certificate"
+                  "id": "broker_profile_link",
+                  "type": "link",
+                  "label": "Редактировать профиль брокера",
+                  "link_target": "/ops/brokers/{{deal.broker_id}}",
+                  "readonly": true
                 },
                 {
-                  "id": "doc_vehicle_possession_certificate",
-                  "type": "file",
-                  "label": "Vehicle Possession Certificate",
-                  "document_type": "vehicle_possession_certificate"
+                  "id": "broker_id",
+                  "type": "profile_selector",
+                  "label": "Брокер",
+                  "required": true,
+                  "filter": "broker"
                 },
                 {
-                  "id": "doc_hiyaza_certificate",
-                  "type": "file",
-                  "label": "Hiyaza",
-                  "document_type": "hiyaza_certificate"
+                  "id": "broker_verification_status",
+                  "type": "checkbox",
+                  "label": "Данные брокера проверены и актуальны",
+                  "required": true
                 },
                 {
-                  "id": "doc_mulkia_certificate",
+                  "id": "doc_broker_invoice",
                   "type": "file",
-                  "label": "Mulkia",
-                  "document_type": "mulkia_certificate"
-                },
-                {
-                  "id": "doc_passing_certificate",
-                  "type": "file",
-                  "label": "Passing Certificate",
-                  "document_type": "passing_certificate"
-                },
-                {
-                  "id": "doc_emirates_id_seller",
-                  "type": "file",
-                  "label": "Emirates ID продавца",
-                  "document_type": "doc_emirates_id_seller"
-                },
-                {
-                  "id": "doc_spa_invoice",
-                  "type": "file",
-                  "label": "SPA Invoice",
-                  "document_type": "spa_invoice"
+                  "label": "Счет на оплату комиссии (Broker Invoice)",
+                  "document_type": "invoice",
+                  "required": true
                 }
               ]
             },
             "defaults": {
-              "instruction_short": "Загрузите документы продавца-физлица и контакты.",
-              "seller_contact_email": "",
-              "seller_contact_phone": "",
-              "doc_vcc_certificate": "",
-              "doc_vehicle_possession_certificate": "",
-              "doc_hiyaza_certificate": "",
-              "doc_mulkia_certificate": "",
-              "doc_passing_certificate": "",
-              "doc_emirates_id_seller": "",
-              "doc_spa_invoice": ""
+              "instruction_short": "Проверьте профиль брокера и загрузите инвойс на комиссию.",
+              "broker_verification_status": false
+            },
+            "bindings": {
+              "deal_id": "{{deal.id}}",
+              "broker_id": "{{deal.broker_id}}"
             },
             "conditions": [
               {
-                "key": "payload.seller_type",
-                "rule": "== individual"
+                "key": "deal.broker_id",
+                "rule": "!= null"
               }
             ]
           }
@@ -1328,9 +1101,9 @@
       ],
       "exit_requirements": [
         {
-          "key": "docs.seller.allUploaded",
+          "key": "broker.verified",
           "rule": "== true",
-          "message": "Не все обязательные документы продавца загружены."
+          "message": "Данные брокера не подтверждены или инвойс не загружен."
         }
       ]
     },
@@ -1910,7 +1683,7 @@
     },
     {
       "from": "VEHICLE_CHECK",
-      "to": "DOCS_COLLECT_BUYER",
+      "to": "DOCS_REVIEW_BUYER",
       "by_roles": [
         "OP_MANAGER",
         "TECH_SPECIALIST"
@@ -1923,27 +1696,61 @@
       ]
     },
     {
-      "from": "DOCS_COLLECT_BUYER",
-      "to": "DOCS_COLLECT_SELLER",
+      "from": "DOCS_REVIEW_BUYER",
+      "to": "DOCS_REVIEW_SELLER",
       "by_roles": [
         "OP_MANAGER"
       ],
       "guards": [
         {
-          "key": "docs.required.allUploaded",
+          "key": "buyer.verified",
           "rule": "== true"
         }
       ]
     },
     {
-      "from": "DOCS_COLLECT_SELLER",
+      "from": "DOCS_REVIEW_SELLER",
+      "to": "DOCS_REVIEW_BROKER",
+      "by_roles": [
+        "OP_MANAGER"
+      ],
+      "guards": [
+        {
+          "key": "seller.verified",
+          "rule": "== true"
+        },
+        {
+          "key": "deal.broker_id",
+          "rule": "!= null"
+        }
+      ]
+    },
+    {
+      "from": "DOCS_REVIEW_SELLER",
       "to": "RISK_REVIEW",
       "by_roles": [
         "OP_MANAGER"
       ],
       "guards": [
         {
-          "key": "docs.seller.allUploaded",
+          "key": "seller.verified",
+          "rule": "== true"
+        },
+        {
+          "key": "deal.broker_id",
+          "rule": "== null"
+        }
+      ]
+    },
+    {
+      "from": "DOCS_REVIEW_BROKER",
+      "to": "RISK_REVIEW",
+      "by_roles": [
+        "OP_MANAGER"
+      ],
+      "guards": [
+        {
+          "key": "broker.verified",
           "rule": "== true"
         }
       ]
@@ -2072,14 +1879,21 @@
       ]
     },
     {
-      "from": "DOCS_COLLECT_BUYER",
+      "from": "DOCS_REVIEW_BUYER",
       "to": "CANCELLED",
       "by_roles": [
         "OP_MANAGER"
       ]
     },
     {
-      "from": "DOCS_COLLECT_SELLER",
+      "from": "DOCS_REVIEW_SELLER",
+      "to": "CANCELLED",
+      "by_roles": [
+        "OP_MANAGER"
+      ]
+    },
+    {
+      "from": "DOCS_REVIEW_BROKER",
       "to": "CANCELLED",
       "by_roles": [
         "OP_MANAGER"
@@ -2163,8 +1977,9 @@
             "NEW",
             "OFFER_PREP",
             "VEHICLE_CHECK",
-            "DOCS_COLLECT_BUYER",
-            "DOCS_COLLECT_SELLER",
+            "DOCS_REVIEW_BUYER",
+            "DOCS_REVIEW_SELLER",
+            "DOCS_REVIEW_BROKER",
             "RISK_REVIEW",
             "FINANCE_REVIEW",
             "INVESTOR_PENDING",
@@ -2229,12 +2044,12 @@
     "timers": [
       {
         "name": "t_docs_collect_buyer",
-        "from": "DOCS_COLLECT_BUYER",
-        "to": "DOCS_COLLECT_SELLER"
+        "from": "DOCS_REVIEW_BUYER",
+        "to": "DOCS_REVIEW_SELLER"
       },
       {
         "name": "t_docs_collect_seller",
-        "from": "DOCS_COLLECT_SELLER",
+        "from": "DOCS_REVIEW_SELLER",
         "to": "RISK_REVIEW"
       },
       {

@@ -183,7 +183,11 @@ function buildTaskPayload(
     contextPayload: Record<string, unknown>;
     status: { key: string; title: string };
     workflow: { id: string; title: string };
-    sellerProfile?: Record<string, unknown> | null;
+    participants?: {
+      seller?: Record<string, unknown> | null;
+      client?: Record<string, unknown> | null;
+      broker?: Record<string, unknown> | null;
+    };
   },
   bindings: Record<string, string> | undefined,
 ): Record<string, unknown> {
@@ -193,7 +197,9 @@ function buildTaskPayload(
     context: options.contextPayload,
     status: options.status,
     workflow: options.workflow,
-    seller: options.sellerProfile ?? null,
+    seller: options.participants?.seller ?? null,
+    client: options.participants?.client ?? null,
+    broker: options.participants?.broker ?? null,
     now: new Date().toISOString(),
   };
 
@@ -202,9 +208,26 @@ function buildTaskPayload(
   // Auto-populate fields from deal payload if they exist in the schema
   const payloadFields = (options.deal?.payload as Record<string, unknown>) ?? {};
   const legacyFields = (payloadFields.fields as Record<string, unknown>) ?? {};
-  const sellerFields = (options.sellerProfile?.seller_details as Record<string, unknown>) ?? {};
+  
+  // Extract participant details
+  const sellerFields = (options.participants?.seller?.seller_details as Record<string, unknown>) ?? {};
+  
+  // Construct participant summary fields
+  const participantSummary = {
+    client_full_name: options.participants?.client?.full_name ?? null,
+    client_phone: options.participants?.client?.phone ?? null,
+    seller_full_name: options.participants?.seller?.full_name ?? null,
+    seller_phone: options.participants?.seller?.phone ?? null,
+    broker_full_name: options.participants?.broker?.full_name ?? null,
+    broker_phone: options.participants?.broker?.phone ?? null,
+  };
 
-  const sourceData = { ...payloadFields, ...legacyFields, ...sellerFields };
+  const sourceData: Record<string, unknown> = { 
+    ...payloadFields, 
+    ...legacyFields, 
+    ...sellerFields,
+    ...participantSummary 
+  };
 
   const schemaFields = definition.schema?.fields ?? [];
   const prefilledFields: Record<string, unknown> = {};
@@ -326,7 +349,9 @@ async function handleTaskCreate(
         id: context.template.workflow.id,
         title: context.template.workflow.title,
       },
-      sellerProfile,
+      participants: {
+        seller: sellerProfile,
+      },
     },
     action.task.bindings ?? undefined,
   );

@@ -42,6 +42,7 @@ const workspaceNavItems: NavItem[] = [
   { label: "Deals", href: "/workspace/deals", icon: "KanbanSquare" },
   { label: "Clients", href: "/workspace/clients", icon: "Users" },
   { label: "Sellers", href: "/workspace/sellers", icon: "UserCircle" },
+  { label: "Brokers", href: "/workspace/brokers", icon: "Briefcase" },
   { label: "Cars", href: "/workspace/cars", icon: "Car" },
 ];
 
@@ -139,6 +140,7 @@ const ROLE_PROFILE_PATH: Record<AppRole, string> = {
   ACCOUNTING: "/accounting/profile",
   CLIENT: "/client/profile",
   SELLER: "/seller/profile",
+  BROKER: "/partner/profile",
 };
 
 export function resolveProfileHrefForRole(role: AppRole | null): string {

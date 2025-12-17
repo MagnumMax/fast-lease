@@ -93,14 +93,21 @@ export class ProfileSyncService {
   ): Promise<void> {
     const buyerFields = taskSchema.save_to_buyer_profile || [];
     const sellerFields = taskSchema.save_to_seller_profile || [];
+    const vehicleFields = taskSchema.save_to_vehicle || [];
+    const dealFields = taskSchema.save_to_deal || [];
 
-    if (buyerFields.length === 0 && sellerFields.length === 0) {
+    if (
+      buyerFields.length === 0 &&
+      sellerFields.length === 0 &&
+      vehicleFields.length === 0 &&
+      dealFields.length === 0
+    ) {
       return;
     }
 
     const { data: deal, error: dealError } = await this.client
       .from("deals")
-      .select("client_id, seller_id")
+      .select("client_id, seller_id, vehicle_id")
       .eq("id", dealId)
       .single();
 
@@ -119,7 +126,7 @@ export class ProfileSyncService {
         fieldsBranch,
         schemaFields,
         "buyer",
-        dealId
+        dealId,
       );
     }
 
@@ -130,7 +137,26 @@ export class ProfileSyncService {
         fieldsBranch,
         schemaFields,
         "seller",
-        dealId
+        dealId,
+      );
+    }
+
+    if (vehicleFields.length > 0 && deal.vehicle_id) {
+      await this.saveToVehicle(
+        deal.vehicle_id,
+        vehicleFields,
+        fieldsBranch,
+        schemaFields,
+        dealId,
+      );
+    }
+
+    if (dealFields.length > 0) {
+      await this.saveToDeal(
+        dealId,
+        dealFields,
+        fieldsBranch,
+        schemaFields,
       );
     }
   }
@@ -329,6 +355,131 @@ export class ProfileSyncService {
         status: "verified", // Auto-verify from workflow? Or 'pending'? Let's assume verified if coming from workflow completion.
         uploaded_by: null, // System
       });
+    }
+  }
+
+  private async saveToVehicle(
+    vehicleId: string,
+    targetFields: string[],
+    payload: Record<string, unknown>,
+    schemaFields: WorkflowTaskSchema["fields"],
+    dealId: string,
+  ) {
+    for (const fieldId of targetFields) {
+      const value = payload[fieldId];
+      if (value === undefined || value === null) continue;
+
+      const fieldDef = schemaFields.find((f) => f.id === fieldId);
+      const isFile = fieldDef?.type === "file";
+      const valueIsFileObject =
+        typeof value === "object" &&
+        value !== null &&
+        "path" in value &&
+        "type" in value;
+
+      if (isFile || valueIsFileObject) {
+        let fileData: FileData | null = null;
+
+        if (typeof value === "string") {
+          const { data: dealDoc } = await this.client
+            .from("deal_documents")
+            .select("storage_path, title, mime_type, file_size")
+            .eq("deal_id", dealId)
+            .eq("storage_path", value)
+            .single();
+
+          if (dealDoc) {
+            fileData = {
+              path: dealDoc.storage_path,
+              name: dealDoc.title,
+              type: dealDoc.mime_type,
+              size: dealDoc.file_size,
+              bucket: "deal-documents",
+            };
+          }
+        } else if (valueIsFileObject) {
+          fileData = value as FileData;
+        }
+
+        if (fileData) {
+          const docType = fieldDef?.document_type || fieldId;
+          await this.upsertVehicleDocument(
+            vehicleId,
+            docType,
+            fileData,
+            fieldDef?.label || fieldId,
+          );
+        }
+      }
+    }
+  }
+
+  private async upsertVehicleDocument(
+    vehicleId: string,
+    documentType: string,
+    fileData: FileData,
+    title: string,
+  ) {
+    const { data: existing } = await this.client
+      .from("vehicle_documents")
+      .select("id")
+      .eq("vehicle_id", vehicleId)
+      .eq("document_type", documentType)
+      .maybeSingle();
+
+    if (existing) {
+      await this.client
+        .from("vehicle_documents")
+        .update({
+          storage_path: fileData.path,
+          title: title,
+          mime_type: fileData.type,
+          file_size: fileData.size,
+          uploaded_at: new Date().toISOString(),
+          metadata: { bucket_id: fileData.bucket || "deal-documents" },
+        })
+        .eq("id", existing.id);
+    } else {
+      await this.client.from("vehicle_documents").insert({
+        vehicle_id: vehicleId,
+        document_type: documentType,
+        storage_path: fileData.path,
+        title: title,
+        mime_type: fileData.type,
+        file_size: fileData.size,
+        status: "verified",
+        uploaded_by: null,
+        metadata: { bucket_id: fileData.bucket || "deal-documents" },
+      });
+    }
+  }
+
+  private async saveToDeal(
+    dealId: string,
+    targetFields: string[],
+    payload: Record<string, unknown>,
+    schemaFields: WorkflowTaskSchema["fields"],
+  ) {
+    // Deal documents are already in deal_documents (uploaded there).
+    // This function updates their metadata (category, type) based on the task field mapping.
+    for (const fieldId of targetFields) {
+      const value = payload[fieldId];
+      if (typeof value !== "string") continue; // We only care about storage paths here
+
+      const fieldDef = schemaFields.find((f) => f.id === fieldId);
+      if (!fieldDef) continue;
+
+      const docType = fieldDef.document_type || fieldId;
+
+      await this.client
+        .from("deal_documents")
+        .update({
+          document_type: docType,
+          document_category: "required", // or infer from context?
+          title: fieldDef.label || fieldId,
+        })
+        .eq("deal_id", dealId)
+        .eq("storage_path", value);
     }
   }
 }

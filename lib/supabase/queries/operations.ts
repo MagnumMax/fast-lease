@@ -444,6 +444,39 @@ export type OpsSellerDetail = {
   profile: OpsSellerProfile;
   deals: OpsClientDeal[]; // Sellers can be associated with deals just like clients
   documents: OpsSellerDocument[];
+  allDocuments?: OpsSellerDocument[]; // Unfiltered list for editing
+  documentsError?: string | null;
+};
+
+export type OpsBrokerDocument = {
+  id: string;
+  title: string;
+  status?: string | null;
+  documentType?: string | null;
+  uploadedAt?: string | null;
+  url: string | null;
+  bucket?: string | null;
+  storagePath?: string | null;
+};
+
+export type OpsBrokerProfile = {
+  userId: string;
+  fullName: string;
+  status: string;
+  email: string | null;
+  phone: string | null;
+  nationality: string | null;
+  source: string | null;
+  createdAt: string | null;
+  metadata: Record<string, unknown> | null;
+  entityType: "personal" | "company" | null;
+  brokerDetails: Record<string, unknown> | null;
+};
+
+export type OpsBrokerDetail = {
+  profile: OpsBrokerProfile;
+  deals: OpsClientDeal[];
+  documents: OpsBrokerDocument[];
 };
 
 export type OpsDealInvoice = {
@@ -808,6 +841,46 @@ export const CLIENT_DOCUMENT_TYPE_LABEL_MAP = CLIENT_DOCUMENT_TYPE_REGISTRY.labe
 export const normalizeClientDocumentType = CLIENT_DOCUMENT_TYPE_REGISTRY.normalizeValue;
 
 export const getClientDocumentLabel = CLIENT_DOCUMENT_TYPE_REGISTRY.resolveLabel;
+
+export type SellerDocumentContext = "personal" | "company" | "any";
+
+export type SellerDocumentTypeEntry = {
+  value: string;
+  label: string;
+  context: SellerDocumentContext;
+};
+
+export type SellerDocumentTypeValue = SellerDocumentTypeEntry["value"];
+
+const deriveSellerDocumentTypesFromCatalog = (): SellerDocumentTypeEntry[] => {
+  const registry = workflowCatalog.sellerDocumentTypeRegistry ?? [];
+  return registry.map((entry) => ({
+    value: entry.value,
+    label: entry.label,
+    context: (entry.context as SellerDocumentContext | undefined) ?? "any",
+  }));
+};
+
+export const SELLER_DOCUMENT_TYPES = deriveSellerDocumentTypesFromCatalog();
+
+const sellerDocumentTypeValueSet = new Set(SELLER_DOCUMENT_TYPES.map((entry) => entry.value));
+
+const SELLER_DOCUMENT_TYPE_ALIAS_ENTRIES: ReadonlyArray<[string, SellerDocumentTypeValue]> = (
+  workflowCatalog.sellerDocumentTypeAliases ?? []
+)
+  .filter((alias) => sellerDocumentTypeValueSet.has(alias.target))
+  .map((alias) => [alias.alias, alias.target as SellerDocumentTypeValue]);
+
+const SELLER_DOCUMENT_TYPE_REGISTRY = createDocumentTypeRegistry<SellerDocumentTypeValue, SellerDocumentTypeEntry>(
+  SELLER_DOCUMENT_TYPES,
+  SELLER_DOCUMENT_TYPE_ALIAS_ENTRIES,
+);
+
+export const SELLER_DOCUMENT_TYPE_LABEL_MAP = SELLER_DOCUMENT_TYPE_REGISTRY.labelMap;
+
+export const normalizeSellerDocumentType = SELLER_DOCUMENT_TYPE_REGISTRY.normalizeValue;
+
+export const getSellerDocumentLabel = SELLER_DOCUMENT_TYPE_REGISTRY.resolveLabel;
 
 export type DealDocumentCategory = WorkflowDocumentCategory;
 

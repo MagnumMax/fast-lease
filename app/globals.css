@@ -12,7 +12,7 @@
   --header: rgba(255, 255, 255, 0.96);
   --card: #ffffff;
   --border: #e2e8f0;
-  --muted: #6b7280;
+  --muted: #f1f5f9;
   --muted-foreground: #6b7280;
   --text-soft: #9ca3af;
   --accent: #2563eb;
@@ -99,7 +99,7 @@
   --header: rgba(17, 24, 39, 0.72);
   --card: #111b2f;
   --border: rgba(148, 163, 184, 0.2);
-  --muted: #9caecb;
+  --muted: #1e293b;
   --muted-foreground: rgba(226, 232, 240, 0.82);
   --accent: #2563eb;
   --accent-foreground: #e2e8f0;

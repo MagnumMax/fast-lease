@@ -166,14 +166,14 @@ describe("WorkflowService", () => {
         id: "deal-1",
         workflowId: "fast-lease-v1",
         workflowVersionId: null,
-        status: "DOCS_COLLECT_SELLER",
+        status: "DOCS_REVIEW_SELLER",
         payload: null,
       },
       {
         id: "deal-guard",
         workflowId: "fast-lease-v1",
         workflowVersionId: null,
-        status: "DOCS_COLLECT_SELLER",
+        status: "DOCS_REVIEW_SELLER",
         payload: null,
       },
     ]);
@@ -193,10 +193,11 @@ describe("WorkflowService", () => {
       targetStatus: "RISK_REVIEW",
       actorRole: "OP_MANAGER",
       guardContext: {
-        docs: {
-          seller: {
-            allUploaded: true,
-          },
+        seller: {
+          verified: true,
+        },
+        deal: {
+          broker_id: null,
         },
       },
     });
@@ -219,10 +220,11 @@ describe("WorkflowService", () => {
       targetStatus: "RISK_REVIEW",
       actorRole: "ADMIN",
       guardContext: {
-        docs: {
-          seller: {
-            allUploaded: true,
-          },
+        seller: {
+          verified: true,
+        },
+        deal: {
+          broker_id: null,
         },
       },
     });

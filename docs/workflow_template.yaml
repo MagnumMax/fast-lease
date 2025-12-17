@@ -41,8 +41,9 @@ kanban_order:
   - NEW
   - OFFER_PREP
   - VEHICLE_CHECK
-  - DOCS_COLLECT_BUYER
-  - DOCS_COLLECT_SELLER
+  - DOCS_REVIEW_BUYER
+  - DOCS_REVIEW_SELLER
+  - DOCS_REVIEW_BROKER
   - RISK_REVIEW
   - FINANCE_REVIEW
   - INVESTOR_PENDING
@@ -54,43 +55,68 @@ kanban_order:
   - CANCELLED
 
 schemas:
+  review_buyer_profile: &review_buyer_profile
+    version: "1.0"
+    fields:
+      - id: client_full_name
+        type: text
+        label: "ФИО Покупателя"
+        readonly: true
+      - id: client_phone
+        type: text
+        label: "Телефон Покупателя"
+        readonly: true
+      - id: buyer_profile_link
+        type: link
+        label: "Редактировать профиль покупателя"
+        link_target: "/ops/clients/{{deal.client_id}}"
+        readonly: true
+      - id: buyer_verification_status
+        type: checkbox
+        label: "Данные покупателя проверены и актуальны"
+        required: true
+
+  review_seller_profile: &review_seller_profile
+    version: "1.0"
+    fields:
+      - id: seller_full_name
+        type: text
+        label: "ФИО/Название Продавца"
+        readonly: true
+      - id: seller_phone
+        type: text
+        label: "Телефон Продавца"
+        readonly: true
+      - id: seller_profile_link
+        type: link
+        label: "Редактировать профиль продавца"
+        link_target: "/ops/sellers/{{deal.seller_id}}"
+        readonly: true
+      - id: seller_id
+        type: profile_selector
+        label: "Продавец"
+        required: true
+        filter: "seller"
+      - id: seller_verification_status
+        type: checkbox
+        label: "Данные продавца проверены и актуальны (IBAN, Лицензия)"
+        required: true
+
   buyer_docs_company: &buyer_docs_company
     version: "1.0"
-    save_to_buyer_profile:
-      - buyer_company_email
-      - buyer_company_phone
-      - buyer_contact_email
-      - buyer_contact_phone
-      - doc_company_license
-      - doc_emirates_id_manager
-      - doc_passport_manager
-      - doc_emirates_id_driver
-      - doc_passport_driver
-      - doc_driving_license
+    save_to_buyer_profile: ["doc_company_license", "doc_emirates_id_manager", "doc_passport_manager", "doc_emirates_id_driver", "doc_passport_driver", "doc_driving_license", "doc_other"]
     fields:
-      - id: buyer_company_email
-        type: text
-        label: "Электронная почта компании"
-      - id: buyer_company_phone
-        type: text
-        label: "Телефон компании"
-      - id: buyer_contact_email
-        type: text
-        label: "Электронная почта покупателя/водителя"
-      - id: buyer_contact_phone
-        type: text
-        label: "Телефон покупателя/водителя"
       - id: doc_company_license
         type: file
         label: "Лицензия компании"
         document_type: company_license
       - id: doc_emirates_id_manager
         type: file
-        label: "Emirates ID менеджера лицензии"
+        label: "Emirates ID менеджера"
         document_type: doc_emirates_id_manager
       - id: doc_passport_manager
         type: file
-        label: "Паспорт менеджера лицензии"
+        label: "Паспорт менеджера"
         document_type: doc_passport_manager
       - id: doc_emirates_id_driver
         type: file
@@ -102,25 +128,17 @@ schemas:
         document_type: doc_passport_driver
       - id: doc_driving_license
         type: file
-        label: "Водительские права (UAE) покупателя/водителя"
+        label: "Водительские права (UAE)"
         document_type: doc_driving_license
+      - id: doc_other
+        type: file
+        label: "Другой документ"
+        document_type: other
 
   buyer_docs_individual: &buyer_docs_individual
     version: "1.0"
-    save_to_buyer_profile:
-      - buyer_contact_email
-      - buyer_contact_phone
-      - doc_passport_buyer
-      - doc_emirates_id_buyer
-      - doc_driving_license_buyer
-      - doc_second_driver_bundle
+    save_to_buyer_profile: ["doc_passport_buyer", "doc_emirates_id_buyer", "doc_driving_license_buyer", "doc_second_driver_bundle", "doc_other"]
     fields:
-      - id: buyer_contact_email
-        type: text
-        label: "Электронная почта покупателя/водителя"
-      - id: buyer_contact_phone
-        type: text
-        label: "Телефон покупателя/водителя"
       - id: doc_passport_buyer
         type: file
         label: "Паспорт покупателя"
@@ -131,113 +149,277 @@ schemas:
         document_type: doc_emirates_id_buyer
       - id: doc_driving_license_buyer
         type: file
-        label: "Водительские права (UAE) покупателя"
+        label: "Водительские права (UAE)"
         document_type: doc_driving_license_buyer
       - id: doc_second_driver_bundle
         type: file
         label: "Комплект документов второго водителя"
         document_type: doc_second_driver_bundle
+      - id: doc_other
+        type: file
+        label: "Другой документ"
+        document_type: other
 
   seller_docs_company: &seller_docs_company
     version: "1.0"
-    save_to_seller_profile:
-      - seller_contact_email
-      - seller_contact_phone
-      - seller_bank_details
-      - doc_emirates_id_owner
-      - doc_company_license
-      - doc_trn_certificate
+    save_to_seller_profile: ["doc_trade_license", "doc_company_license", "doc_trn", "doc_emirates_id_owner", "doc_other"]
+    save_to_vehicle: ["doc_mulkia_certificate", "doc_passing_certificate", "doc_vehicle_possession_certificate", "doc_vcc_certificate", "doc_vehicle_transfer_certificate"]
+    save_to_deal: ["doc_tax_invoice", "doc_hiyaza_certificate", "doc_noc_gps_letter", "doc_noc_company_letter"]
     fields:
-      - id: seller_contact_email
-        type: text
-        label: "Электронная почта продавца"
-      - id: seller_contact_phone
-        type: text
-        label: "Телефон продавца"
-      - id: seller_bank_details
-        type: text
-        label: "IBAN"
-      - id: doc_emirates_id_owner
+      - id: doc_trade_license
         type: file
-        label: "Emirates ID владельца"
-        document_type: doc_emirates_id_owner
-        required: false
+        label: "Торговая лицензия (Trade License)"
+        document_type: trade_license
       - id: doc_company_license
         type: file
         label: "Лицензия компании"
         document_type: company_license
-      - id: doc_quotation
+      - id: doc_trn
         type: file
-        label: "Quotation"
-        document_type: quotation
-      - id: doc_passing_certificate
+        label: "TRN сертификат"
+        document_type: trn_certificate
+      - id: doc_emirates_id_owner
         type: file
-        label: "Passing Certificate"
-        document_type: passing_certificate
+        label: "Emirates ID владельца"
+        document_type: emirates_id_owner
       - id: doc_mulkia_certificate
         type: file
-        label: "Mulkia"
+        label: "Mulkia (Регистрация ТС)"
         document_type: mulkia_certificate
+      - id: doc_passing_certificate
+        type: file
+        label: "Passing Certificate (Техосмотр)"
+        document_type: passing_certificate
       - id: doc_hiyaza_certificate
         type: file
-        label: "Hiyaza"
+        label: "Hiyaza (Сертификат владения)"
         document_type: hiyaza_certificate
-      - id: doc_noc_company_letter
+      - id: doc_tax_invoice
         type: file
-        label: "NOC letter от компании"
-        document_type: noc_company_letter
-      - id: doc_noc_gps_letter
+        label: "Tax Invoice (Налоговый инвойс)"
+        document_type: tax_invoice
+      - id: doc_other
         type: file
-        label: "NOC letter от GPS"
-        document_type: noc_gps_letter
-      - id: doc_trn_certificate
-        type: file
-        label: "TRN-сертификат"
-        document_type: trn_certificate
+        label: "Другой документ"
+        document_type: other
 
   seller_docs_individual: &seller_docs_individual
     version: "1.0"
-    save_to_seller_profile:
-      - seller_contact_email
-      - seller_contact_phone
-      - doc_emirates_id_seller
+    save_to_seller_profile: ["doc_passport", "doc_emirates_id", "doc_other"]
+    save_to_vehicle: ["doc_mulkia_certificate", "doc_passing_certificate", "doc_vehicle_possession_certificate", "doc_vcc_certificate", "doc_vehicle_transfer_certificate"]
+    save_to_deal: ["doc_tax_invoice", "doc_hiyaza_certificate", "doc_noc_gps_letter", "doc_noc_company_letter"]
     fields:
-      - id: seller_contact_email
-        type: text
-        label: "Электронная почта продавца"
-      - id: seller_contact_phone
-        type: text
-        label: "Телефон продавца"
-      - id: doc_vcc_certificate
+      - id: doc_passport
         type: file
-        label: "VCC (Vehicle Certificate of Conformity)"
-        document_type: vcc_certificate
-      - id: doc_vehicle_possession_certificate
+        label: "Паспорт"
+        document_type: passport
+      - id: doc_emirates_id
         type: file
-        label: "Vehicle Possession Certificate"
-        document_type: vehicle_possession_certificate
-      - id: doc_hiyaza_certificate
-        type: file
-        label: "Hiyaza"
-        document_type: hiyaza_certificate
+        label: "Emirates ID"
+        document_type: emirates_id
       - id: doc_mulkia_certificate
         type: file
-        label: "Mulkia"
+        label: "Mulkia (Регистрация ТС)"
         document_type: mulkia_certificate
       - id: doc_passing_certificate
         type: file
-        label: "Passing Certificate"
+        label: "Passing Certificate (Техосмотр)"
         document_type: passing_certificate
-      - id: doc_emirates_id_seller
+      - id: doc_hiyaza_certificate
         type: file
-        label: "Emirates ID продавца"
-        document_type: doc_emirates_id_seller
-      - id: doc_spa_invoice
+        label: "Hiyaza (Сертификат владения)"
+        document_type: hiyaza_certificate
+      - id: doc_tax_invoice
         type: file
-        label: "SPA Invoice"
-        document_type: spa_invoice
+        label: "Tax Invoice (Налоговый инвойс)"
+        document_type: tax_invoice
+      - id: doc_other
+        type: file
+        label: "Другой документ"
+        document_type: other
+
+  review_broker_profile: &review_broker_profile
+    version: "1.0"
+    fields:
+      - id: broker_full_name
+        type: text
+        label: "ФИО Брокера"
+        readonly: true
+      - id: broker_phone
+        type: text
+        label: "Телефон Брокера"
+        readonly: true
+      - id: broker_profile_link
+        type: link
+        label: "Редактировать профиль брокера"
+        link_target: "/ops/brokers/{{deal.broker_id}}"
+        readonly: true
+      - id: broker_id
+        type: profile_selector
+        label: "Брокер"
+        required: true
+        filter: "broker"
+      - id: broker_verification_status
+        type: checkbox
+        label: "Данные брокера проверены и актуальны"
+        required: true
+      - id: doc_broker_invoice
+        type: file
+        label: "Счет на оплату комиссии (Broker Invoice)"
+        document_type: invoice
+        required: true
+
+  confirm_car_and_participants: &confirm_car_and_participants
+    version: "1.0"
+    fields:
+      # --- Участники сделки ---
+      - id: section_participants
+        type: section_header
+        label: "Участники сделки"
+      - id: seller_id
+        type: profile_selector
+        label: "Продавец"
+        required: true
+        filter: "seller" # UI фильтрует только профили подходящие под роль
+      - id: seller_vat_payer
+        type: boolean
+        label: "Продавец плательщик VAT"
+      - id: broker_id
+        type: profile_selector
+        label: "Брокер (опционально)"
+        required: false
+        filter: "broker"
+      - id: broker_commission
+        type: currency
+        label: "Комиссия брокера (AED)"
+        required: false
+        depends_on: "broker_id" # Поле активно только если выбран брокер
+      - id: renty_manager_commission
+        type: text
+        label: "Комиссия менеджера Fast Lease (%)"
+        readonly: true
+      - id: showroom_manager_fee
+        type: currency
+        label: "Комиссия менеджера салона (AED)"
+
+      # --- Автомобиль и Документы Сделки ---
+      - id: section_vehicle
+        type: section_header
+        label: "Автомобиль и Документы"
+      - id: vehicle_price
+        type: currency
+        label: "Стоимость авто (AED)"
+        required: true
+      - id: seller_vehicle_price_with_vat
+        type: boolean
+        label: "Авто продается с VAT"
+      - id: insurance_amount
+        type: currency
+        label: "Стоимость авто от страховой (AED)"
+      - id: registration_amount
+        type: currency
+        label: "Сумма регистрации (AED)"
+      - id: technical_inspection_amount
+        type: currency
+        label: "Сумма за технический осмотр авто (AED)"
 
 document_types:
+  deal:
+    registry:
+      - value: noc_gps_letter
+        label: "NOC letter от GPS"
+        context: deal
+      - value: vcc_certificate
+        label: "VCC (Vehicle Certificate of Conformity)"
+        context: deal
+      - value: vehicle_possession_certificate
+        label: "Vehicle Possession Certificate"
+        context: deal
+      - value: hiyaza_certificate
+        label: "Hiyaza"
+        context: deal
+      - value: mulkia_certificate
+        label: "Mulkia"
+        context: deal
+      - value: passing_certificate
+        label: "Passing Certificate"
+        context: deal
+      - value: lease_agreement
+        label: "Договор лизинга"
+        context: deal
+      - value: signed_lease_agreement
+        label: "Подписанный договор лизинга"
+        context: deal
+      - value: purchase_agreement
+        label: "Договор купли-продажи"
+        context: deal
+      - value: signed_purchase_agreement
+        label: "Подписанный договор купли-продажи"
+        context: deal
+      - value: preliminary_purchase_agreement
+        label: "Предварительный договор купли-продажи"
+        context: deal
+      - value: authorization_letter
+        label: "Authorization Letter"
+        context: deal
+      - value: payment_schedule
+        label: "График платежей"
+        context: deal
+      - value: signed_payment_schedule
+        label: "Подписанный график платежей"
+        context: deal
+      - value: tax_invoice
+        label: "Tax Invoice"
+        context: deal
+      - value: invoice
+        label: "Invoice (без VAT)"
+        context: deal
+      - value: delivery_act
+        label: "Акт приема-передачи"
+        context: deal
+      - value: signed_delivery_act
+        label: "Подписанный акт приема-передачи"
+        context: deal
+      - value: technical_report
+        label: "Технический отчёт"
+        context: deal
+      - value: commercial_offer
+        label: "Коммерческое предложение"
+        context: deal
+      - value: signed_commercial_offer
+        label: "Коммерческое предложение (подписанное)"
+        context: deal
+      - value: quotation
+        label: "Quotation"
+        context: deal
+      - value: payment_receipt
+        label: "Подтверждение оплаты"
+        context: deal
+      - value: spa_invoice
+        label: "SPA Invoice"
+        context: deal
+      - value: noc_company_letter
+        label: "NOC letter от компании"
+        context: deal
+      - value: vehicle_inspection_certificate
+        label: "Сертификат техосмотра"
+        context: deal
+      - value: vehicle_transfer_certificate
+        label: "Сертификат передачи транспортного средства"
+        context: deal
+      - value: certificate_of_installation
+        label: "Сертификат установки (GPS)"
+        context: deal
+      - value: delivery_form
+        label: "Акт приёма-передачи"
+        context: deal
+      - value: insurance_policy
+        label: "Страховой полис"
+        context: deal
+      - value: insurance_policy_with_tax_invoice
+        label: "Страховка с налоговым инвойсом"
+        context: deal
+
   client:
     registry:
       - value: doc_emirates_id_manager
@@ -264,21 +446,6 @@ document_types:
       - value: proof_of_address
         label: "Подтверждение адреса"
         context: personal
-      - value: vcc_certificate
-        label: "VCC (Vehicle Certificate of Conformity)"
-        context: any
-      - value: vehicle_possession_certificate
-        label: "Vehicle Possession Certificate"
-        context: any
-      - value: hiyaza_certificate
-        label: "Hiyaza"
-        context: any
-      - value: mulkia_certificate
-        label: "Mulkia"
-        context: any
-      - value: passing_certificate
-        label: "Passing Certificate"
-        context: any
       - value: company_license
         label: "Лицензия компании"
         context: company
@@ -288,68 +455,8 @@ document_types:
       - value: company_bank_statement
         label: "Банковская выписка компании"
         context: company
-      - value: lease_agreement
-        label: "Договор лизинга"
-        context: any
-      - value: signed_lease_agreement
-        label: "Подписанный договор лизинга"
-        context: any
-      - value: purchase_agreement
-        label: "Договор купли-продажи"
-        context: any
-      - value: signed_purchase_agreement
-        label: "Подписанный договор купли-продажи"
-        context: any
-      - value: preliminary_purchase_agreement
-        label: "Предварительный договор купли-продажи"
-        context: any
-      - value: authorization_letter
-        label: "Authorization Letter"
-        context: any
-      - value: payment_schedule
-        label: "График платежей"
-        context: any
-      - value: signed_payment_schedule
-        label: "Подписанный график платежей"
-        context: any
-      - value: tax_invoice
-        label: "Tax Invoice"
-        context: any
-      - value: invoice
-        label: "Invoice (без VAT)"
-        context: any
-      - value: delivery_act
-        label: "Акт приема-передачи"
-        context: any
-      - value: signed_delivery_act
-        label: "Подписанный акт приема-передачи"
-        context: any
-      - value: technical_report
-        label: "Технический отчёт"
-        context: any
       - value: aecb_credit_report
         label: "AECB Credit Report"
-        context: any
-      - value: commercial_offer
-        label: "Коммерческое предложение"
-        context: any
-      - value: signed_commercial_offer
-        label: "Коммерческое предложение (подписанное)"
-        context: any
-      - value: quotation
-        label: "Quotation"
-        context: any
-      - value: payment_receipt
-        label: "Подтверждение оплаты"
-        context: any
-      - value: spa_invoice
-        label: "SPA Invoice"
-        context: any
-      - value: noc_company_letter
-        label: "NOC letter от компании"
-        context: any
-      - value: noc_gps_letter
-        label: "NOC letter от GPS"
         context: any
       - value: trn_certificate
         label: "TRN-сертификат"
@@ -379,31 +486,46 @@ document_types:
         label: "Водительские права (UAE) покупателя/водителя"
         context: company
 
+  seller:
+    registry:
+      - value: trade_license
+        label: "Торговая лицензия (Trade License)"
+        context: company
+      - value: company_license
+        label: "Лицензия компании"
+        context: company
+      - value: trn_certificate
+        label: "TRN сертификат"
+        context: company
+      - value: emirates_id_owner
+        label: "Emirates ID владельца"
+        context: company
+      - value: mulkia_certificate
+        label: "Mulkia"
+        context: any
+      - value: hiyaza_certificate
+        label: "Hiyaza"
+        context: any
+      - value: passing_certificate
+        label: "Сертификат прохождения (Passing)"
+        context: any
+      - value: tax_invoice
+        label: "Налоговый инвойс"
+        context: any
+      - value: passport
+        label: "Паспорт"
+        context: personal
+      - value: emirates_id
+        label: "Emirates ID"
+        context: personal
+      - value: other
+        label: "Другой документ"
+        context: any
+
   vehicle:
     registry:
       - value: vehicle_registration
         label: "Регистрационные данные транспортного средства"
-        context: vehicle
-      - value: vehicle_inspection_certificate
-        label: "Сертификат техосмотра"
-        context: vehicle
-      - value: vehicle_possession_certificate
-        label: "Сертификат владения транспортным средством"
-        context: vehicle
-      - value: vehicle_transfer_certificate
-        label: "Сертификат передачи транспортного средства"
-        context: vehicle
-      - value: certificate_of_installation
-        label: "Сертификат установки (GPS)"
-        context: vehicle
-      - value: delivery_form
-        label: "Акт приёма-передачи"
-        context: vehicle
-      - value: insurance_policy
-        label: "Страховой полис"
-        context: vehicle
-      - value: insurance_policy_with_tax_invoice
-        label: "Страховка с налоговым инвойсом"
         context: vehicle
       - value: other
         label: "Другой документ"
@@ -413,55 +535,23 @@ document_types:
 statuses:
   NEW:
     title: "Новая заявка"
-    description: "Лид создан (сайт/брокер)."
     entry_actions:
       - type: TASK_CREATE
         task:
-          template_id: confirm_car_v1
+          template_id: confirm_car_v2
           type: CONFIRM_CAR
-          title: "Подтвердить авто у дилера/брокера"
+          title: "Подтверждение авто и участников сделки"
           assignee_role: OP_MANAGER
           guard_key: "tasks.confirmCar.completed"
-          sla: { hours: 8 }
-          schema:
-            version: "1.0"
-            fields:
-              - id: deal_id
-                type: badge
-                label: "ID сделки"
-              - id: current_status
-                type: badge
-                label: "Текущий этап"
-              - id: seller_vehicle_price
-                type: text
-                label: "Цена авто продавца"
-              - id: seller_vehicle_price_with_vat
-                type: boolean
-                label: "Авто продается с VAT"
-              - id: insurance_amount
-                type: text
-                label: "Стоимость авто от страховой"
-              - id: registration_amount
-                type: text
-                label: "Сумма регистрации"
-              - id: technical_inspection_amount
-                type: text
-                label: "Сумма за технический осмотр авто"
-              - id: renty_manager_fee
-                type: text
-                label: "Комиссия менеджера RENTY"
-              - id: showroom_manager_fee
-                type: text
-                label: "Комиссия менеджера салона"
-              - id: seller_vat_payer
-                type: boolean
-                label: "Продавец плательщик VAT"
+          sla: { hours: 2 }
+          schema: *confirm_car_and_participants
           defaults:
-            instruction_short: "Подтвердите наличие авто и условия у дилера/брокера."
-            seller_vehicle_price_with_vat: false
-            seller_vat_payer: false
+            instruction_short: "Подтвердите авто, выберите продавца и брокера, приложите первичные документы."
             registration_amount: "2500"
             technical_inspection_amount: "1000"
+            broker_commission: "0"
+            seller_vehicle_price_with_vat: false
+            seller_vat_payer: false
           bindings:
             deal_id: "{{deal.id}}"
             current_status: "{{deal.status}}"
@@ -471,7 +561,7 @@ statuses:
     exit_requirements:
       - key: tasks.confirmCar.completed
         rule: "== true"
-        message: "Авто не подтверждено у дилера/брокера."
+        message: "Авто и участники не подтверждены."
 
   OFFER_PREP:
     title: "Подготовка предложения"
@@ -584,114 +674,78 @@ statuses:
         rule: "== true"
         message: "Технический отчёт и оценка авто не подтверждены."
 
-  DOCS_COLLECT_BUYER:
-    title: "Сбор документов покупателя"
+  DOCS_REVIEW_BUYER:
+    title: "Проверка документов покупателя"
     entry_actions:
       - type: TASK_CREATE
         task:
-          template_id: collect_buyer_docs_company_v1
-          type: COLLECT_BUYER_DOCS_COMPANY
-          title: "Собрать пакет документов покупателя (юрлицо)"
+          template_id: review_buyer_docs_v1
+          type: REVIEW_BUYER
+          title: "Проверка данных покупателя (Review & Confirm)"
           assignee_role: OP_MANAGER
-          guard_key: "docs.required.allUploaded"
-          sla: { hours: 48 }
-          schema: *buyer_docs_company
+          guard_key: "buyer.verified"
+          sla: { hours: 24 }
+          schema: *review_buyer_profile
           defaults:
-            instruction_short: "Загрузите документы покупателя-юрлица и контакты ответственного."
-            buyer_company_email: ""
-            buyer_company_phone: ""
-            buyer_contact_email: ""
-            buyer_contact_phone: ""
-            doc_company_license: ""
-            doc_emirates_id_manager: ""
-            doc_passport_manager: ""
-            doc_emirates_id_driver: ""
-            doc_passport_driver: ""
-            doc_driving_license: ""
-          conditions:
-            - key: "payload.buyer_type"
-              rule: "== company"
-      - type: TASK_CREATE
-        task:
-          template_id: collect_buyer_docs_individual_v1
-          type: COLLECT_BUYER_DOCS_INDIVIDUAL
-          title: "Собрать пакет документов покупателя (физлицо)"
-          assignee_role: OP_MANAGER
-          guard_key: "docs.required.allUploaded"
-          sla: { hours: 48 }
-          schema: *buyer_docs_individual
-          defaults:
-            instruction_short: "Прикрепите паспорт, EID и права покупателя; добавьте второй комплект для второго водителя при необходимости."
-            buyer_contact_email: ""
-            buyer_contact_phone: ""
-            doc_passport_buyer: ""
-            doc_emirates_id_buyer: ""
-            doc_driving_license_buyer: ""
-            doc_second_driver_bundle: ""
-          conditions:
-            - key: "payload.buyer_type"
-              rule: "== individual"
+            instruction_short: "Перейдите в профиль покупателя, убедитесь, что все документы актуальны и подтвердите это."
+            buyer_verification_status: false
+          bindings:
+            deal_id: "{{deal.id}}"
+            client_id: "{{deal.client_id}}"
     exit_requirements:
-      - key: docs.required.allUploaded
+      - key: buyer.verified
         rule: "== true"
-        message: "Не все обязательные документы покупателя загружены."
+        message: "Данные покупателя не подтверждены."
 
-  DOCS_COLLECT_SELLER:
-    title: "Сбор документов продавца"
+  DOCS_REVIEW_SELLER:
+    title: "Проверка документов продавца"
     entry_actions:
       - type: TASK_CREATE
         task:
-          template_id: collect_seller_docs_company_v1
-          type: COLLECT_SELLER_DOCS_COMPANY
-          title: "Собрать пакет документов продавца (юрлицо)"
+          template_id: review_seller_docs_v1
+          type: REVIEW_SELLER
+          title: "Проверка данных продавца (Review & Confirm)"
           assignee_role: OP_MANAGER
-          guard_key: "docs.seller.allUploaded"
-          sla: { hours: 48 }
-          schema: *seller_docs_company
+          guard_key: "seller.verified"
+          sla: { hours: 24 }
+          schema: *review_seller_profile
           defaults:
-            instruction_short: "Загрузите документы продавца-юрлица и контакты."
-            seller_contact_email: ""
-            seller_contact_phone: ""
-            seller_bank_details: ""
-            doc_emirates_id_owner: ""
-            doc_company_license: ""
-            doc_quotation: ""
-            doc_passing_certificate: ""
-            doc_mulkia_certificate: ""
-            doc_hiyaza_certificate: ""
-            doc_noc_company_letter: ""
-            doc_noc_gps_letter: ""
-            doc_trn_certificate: ""
-          conditions:
-            - key: "payload.seller_type"
-              rule: "== company"
+            instruction_short: "Перейдите в профиль продавца, убедитесь в наличии IBAN и Лицензии, подтвердите."
+            seller_verification_status: false
+          bindings:
+            deal_id: "{{deal.id}}"
+            seller_id: "{{deal.seller_id}}"
+    exit_requirements:
+      - key: seller.verified
+        rule: "== true"
+        message: "Данные продавца не подтверждены."
+
+  DOCS_REVIEW_BROKER:
+    title: "Проверка документов брокера"
+    entry_actions:
       - type: TASK_CREATE
         task:
-          template_id: collect_seller_docs_individual_v1
-          type: COLLECT_SELLER_DOCS_INDIVIDUAL
-          title: "Собрать пакет документов продавца (физлицо)"
+          template_id: review_broker_docs_v1
+          type: REVIEW_BROKER
+          title: "Проверка данных брокера и сбор счета"
           assignee_role: OP_MANAGER
-          guard_key: "docs.seller.allUploaded"
-          sla: { hours: 48 }
-          schema: *seller_docs_individual
+          guard_key: "broker.verified"
+          sla: { hours: 24 }
+          schema: *review_broker_profile
           defaults:
-            instruction_short: "Загрузите документы продавца-физлица и контакты."
-            seller_contact_email: ""
-            seller_contact_phone: ""
-            doc_vcc_certificate: ""
-            doc_vehicle_possession_certificate: ""
-            doc_hiyaza_certificate: ""
-            doc_mulkia_certificate: ""
-            doc_passing_certificate: ""
-            doc_emirates_id_seller: ""
-            doc_spa_invoice: ""
+            instruction_short: "Проверьте профиль брокера и загрузите инвойс на комиссию."
+            broker_verification_status: false
+          bindings:
+            deal_id: "{{deal.id}}"
+            broker_id: "{{deal.broker_id}}"
           conditions:
-            - key: "payload.seller_type"
-              rule: "== individual"
+            - key: "deal.broker_id"
+              rule: "!= null" # Задача создается только если есть брокер
     exit_requirements:
-      - key: docs.seller.allUploaded
+      - key: broker.verified
         rule: "== true"
-        message: "Не все обязательные документы продавца загружены."
+        message: "Данные брокера не подтверждены или инвойс не загружен."
+
 
   RISK_REVIEW:
     title: "Проверка риска"
@@ -1057,24 +1111,42 @@ transitions:
         rule: "== true"
 
   - from: VEHICLE_CHECK
-    to: DOCS_COLLECT_BUYER
+    to: DOCS_REVIEW_BUYER
     by_roles: [OP_MANAGER, TECH_SPECIALIST]
     guards:
       - key: vehicle.verified
         rule: "== true"
 
-  - from: DOCS_COLLECT_BUYER
-    to: DOCS_COLLECT_SELLER
+  - from: DOCS_REVIEW_BUYER
+    to: DOCS_REVIEW_SELLER
     by_roles: [OP_MANAGER]
     guards:
-      - key: docs.required.allUploaded
+      - key: buyer.verified
         rule: "== true"
 
-  - from: DOCS_COLLECT_SELLER
+  - from: DOCS_REVIEW_SELLER
+    to: DOCS_REVIEW_BROKER
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: seller.verified
+        rule: "== true"
+      - key: deal.broker_id
+        rule: "!= null"
+
+  - from: DOCS_REVIEW_SELLER
     to: RISK_REVIEW
     by_roles: [OP_MANAGER]
     guards:
-      - key: docs.seller.allUploaded
+      - key: seller.verified
+        rule: "== true"
+      - key: deal.broker_id
+        rule: "== null"
+
+  - from: DOCS_REVIEW_BROKER
+    to: RISK_REVIEW
+    by_roles: [OP_MANAGER]
+    guards:
+      - key: broker.verified
         rule: "== true"
 
   - from: RISK_REVIEW
@@ -1138,10 +1210,13 @@ transitions:
   - from: VEHICLE_CHECK
     to: CANCELLED
     by_roles: [OP_MANAGER, TECH_SPECIALIST]
-  - from: DOCS_COLLECT_BUYER
+  - from: DOCS_REVIEW_BUYER
     to: CANCELLED
     by_roles: [OP_MANAGER]
-  - from: DOCS_COLLECT_SELLER
+  - from: DOCS_REVIEW_SELLER
+    to: CANCELLED
+    by_roles: [OP_MANAGER]
+  - from: DOCS_REVIEW_BROKER
     to: CANCELLED
     by_roles: [OP_MANAGER]
   - from: RISK_REVIEW
@@ -1175,7 +1250,7 @@ permissions:
   STATUS_TRANSITION:
     rules:
       - role: OP_MANAGER
-        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_COLLECT_BUYER, DOCS_COLLECT_SELLER, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY]
+        allowed_from: [NEW, OFFER_PREP, VEHICLE_CHECK, DOCS_REVIEW_BUYER, DOCS_REVIEW_SELLER, DOCS_REVIEW_BROKER, RISK_REVIEW, FINANCE_REVIEW, INVESTOR_PENDING, CONTRACT_PREP, DOC_SIGNING, SIGNING_FUNDING, VEHICLE_DELIVERY]
       - role: TECH_SPECIALIST
         allowed_from: [VEHICLE_CHECK, VEHICLE_DELIVERY]
       - role: RISK_MANAGER
@@ -1203,10 +1278,10 @@ metrics:
   enabled: true
   timers:
     - name: "t_docs_collect_buyer"
-      from: DOCS_COLLECT_BUYER
-      to: DOCS_COLLECT_SELLER
+      from: DOCS_REVIEW_BUYER
+      to: DOCS_REVIEW_SELLER
     - name: "t_docs_collect_seller"
-      from: DOCS_COLLECT_SELLER
+      from: DOCS_REVIEW_SELLER
       to: RISK_REVIEW
     - name: "t_risk_review"
       from: RISK_REVIEW

@@ -2,6 +2,7 @@ import type { AppRole } from "@/lib/auth/types";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createWorkflowService } from "@/lib/workflow";
 import { ProfileSyncService } from "./profile-sync";
+import { snapshotDealParticipants } from "./snapshot";
 import { WorkflowTransitionError } from "@/lib/workflow/state-machine";
 import { resolveTaskGuardKey } from "@/lib/workflow/task-utils";
 import type { WorkflowTemplate, WorkflowTaskDefinition } from "@/lib/workflow/types";
@@ -485,6 +486,65 @@ export async function handleTaskCompletion(
       };
     }
     trace("payload-updated");
+
+    // --- SNAPSHOT & SYNC LOGIC ---
+    if ((context.taskType === "CONFIRM_CAR" || context.taskType === "REVIEW_SELLER" || context.taskType === "REVIEW_BROKER") && context.taskPayload) {
+      // Extract fields from payload or payload.fields
+      const payloadData = (
+        context.taskPayload.fields && typeof context.taskPayload.fields === "object" && !Array.isArray(context.taskPayload.fields)
+          ? context.taskPayload.fields
+          : context.taskPayload
+      ) as Record<string, unknown>;
+
+      const sellerId = payloadData.seller_id as string | undefined;
+      const brokerId = payloadData.broker_id as string | undefined;
+
+      // Update deal columns if participants selected
+      if (typeof sellerId !== "undefined" || typeof brokerId !== "undefined") {
+        const updates: Record<string, unknown> = {};
+        
+        // Handle seller_id: if empty string or null, clear it; if valid ID, set it
+        if (sellerId) {
+          updates.seller_id = sellerId;
+        } else if (sellerId === "" || sellerId === null) {
+          updates.seller_id = null;
+        }
+        
+        // Handle broker_id: if empty string, clear it; if valid ID, set it
+        if (brokerId) {
+          updates.broker_id = brokerId;
+        } else if (brokerId === "" || brokerId === null) {
+          updates.broker_id = null;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          const { error: colUpdateError } = await supabase
+            .from("deals")
+            .update(updates)
+            .eq("id", context.dealId);
+
+          if (colUpdateError) {
+            console.error("[workflow] failed to update deal columns", colUpdateError);
+            trace("deal-columns-update-failed", { error: colUpdateError.message });
+          } else {
+            trace("deal-columns-updated", updates);
+          }
+        }
+
+        // Snapshot participants data into deal payload
+        try {
+          await snapshotDealParticipants(supabase, context.dealId, {
+            sellerId,
+            brokerId: brokerId || null,
+            clientId: context.dealPayload?.client_id as string | undefined,
+          });
+          trace("participants-snapshotted");
+        } catch (snapError) {
+          console.error("[workflow] snapshot failed", snapError);
+          trace("snapshot-failed", { error: String(snapError) });
+        }
+      }
+    }
 
     // Пытаемся выполнить автоматический переход
     console.log("[workflow] Starting workflow transition attempt", {

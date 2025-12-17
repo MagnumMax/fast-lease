@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type ComponentProps } from "react";
+import { useMemo, useState, useTransition, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 
 import { Loader2, Paperclip, Pencil, Plus, Trash2 } from "lucide-react";
@@ -30,7 +30,6 @@ import { DEAL_DOCUMENT_TYPES, type DealDocumentTypeValue, type OpsDealDetail } f
 import {
   updateOperationsDeal,
   uploadDealDocuments,
-  uploadSellerDocuments,
   verifyDealDeletion,
   deleteOperationsDeal,
   deleteDealDocument,
@@ -81,11 +80,6 @@ type FormState = {
   insuranceLastPaymentStatus: string;
   insuranceLastPaymentDate: string;
   insuranceNotes: string;
-  buyerType: "personal" | "company" | "";
-  sellerType: "personal" | "company" | "";
-  sellerName: string;
-  sellerPhone: string;
-  sellerEmail: string;
 };
 
 type FormSectionProps = {
@@ -99,16 +93,6 @@ type DealDocumentDraft = {
   id: string;
   type: DealDocumentTypeValue | "";
   file: File | null;
-};
-
-type SellerDocumentDraft = {
-  id: string;
-  title: string;
-  file: File | null;
-  url?: string | null;
-  bucket?: string | null;
-  storagePath?: string | null;
-  uploadedAt?: string;
 };
 
 const DEAL_BLOCKER_LABELS: Record<DealDeletionBlockerType, string> = {
@@ -126,21 +110,6 @@ function createDealDocumentDraft(): DealDocumentDraft {
     type: "",
     file: null,
   } satisfies DealDocumentDraft;
-}
-
-function createSellerDocumentDraft(): SellerDocumentDraft {
-  return {
-    id:
-      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `seller-doc-${Math.random().toString(36).slice(2, 10)}`,
-    title: "",
-    file: null,
-    url: null,
-    bucket: null,
-    storagePath: null,
-    uploadedAt: new Date().toISOString(),
-  } satisfies SellerDocumentDraft;
 }
 
 function formatNumberInput(value: number | null | undefined, fractionDigits = 2) {
@@ -218,20 +187,6 @@ export function DealEditDialog({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [dealDocumentDrafts, setDealDocumentDrafts] = useState<DealDocumentDraft[]>([]);
-  const initialSellerDocuments = useMemo<SellerDocumentDraft[]>(
-    () =>
-      (detail.sellerDocuments ?? []).map((doc) => ({
-        id: doc.id,
-        title: doc.title ?? "",
-        file: null,
-        url: doc.url ?? null,
-        bucket: doc.bucket ?? null,
-        storagePath: doc.storagePath ?? null,
-        uploadedAt: doc.uploadedAt ?? undefined,
-      })),
-    [detail.sellerDocuments],
-  );
-  const [sellerDocumentDrafts, setSellerDocumentDrafts] = useState<SellerDocumentDraft[]>(initialSellerDocuments);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -252,8 +207,6 @@ export function DealEditDialog({
     return {
       dealNumber: defaults.dealNumber ?? "",
       companyCode: defaults.companyCode ?? DEFAULT_DEAL_COMPANY_CODE,
-      buyerType: defaults.buyerType ?? "",
-      sellerType: defaults.sellerType ?? "",
       principalAmount: formatNumberInput(defaults.principalAmount, 2),
       totalAmount: formatNumberInput(defaults.totalAmount, 2),
       monthlyPayment: formatNumberInput(defaults.monthlyPayment, 2),
@@ -280,11 +233,8 @@ export function DealEditDialog({
       insuranceLastPaymentStatus: insuranceDefaults?.lastPaymentStatus ?? "",
       insuranceLastPaymentDate: formatDateInput(insuranceDefaults?.lastPaymentDate),
       insuranceNotes: insuranceDefaults?.notes ?? "",
-      sellerName: detail.seller?.name ?? "",
-      sellerPhone: detail.seller?.phone ?? "",
-      sellerEmail: detail.seller?.email ?? "",
     };
-  }, [detail.editDefaults, detail.seller]);
+  }, [detail.editDefaults]);
 
   const [form, setForm] = useState<FormState>(initialState);
 
@@ -295,30 +245,11 @@ export function DealEditDialog({
   const dealDocumentsValidationMessage = dealDocumentsHasIncomplete
     ? "Выберите тип и загрузите файл для каждого документа."
     : null;
-  const sellerDocumentsHasIncomplete = useMemo(() => {
-    return sellerDocumentDrafts.some((doc) => {
-      const hasTitle = doc.title.trim().length > 0;
-      const hasExistingFile = Boolean(doc.url || doc.storagePath);
-      const hasNewFile = doc.file instanceof File && doc.file.size > 0;
-      const hasFileReference = hasExistingFile || hasNewFile;
-      return (hasTitle && !hasFileReference) || (!hasTitle && hasFileReference);
-    });
-  }, [sellerDocumentDrafts]);
-  const sellerDocumentsValidationMessage = sellerDocumentsHasIncomplete
-    ? "Для документов продавца заполните название и выберите файл."
-    : null;
+
   const existingDealDocuments = detail.documents ?? [];
   const documentTypeOptions = useMemo(
     () => sortDocumentOptions(DEAL_DOCUMENT_TYPES),
     [],
-  );
-  const existingSellerDocuments = useMemo(
-    () => sellerDocumentDrafts.filter((doc) => Boolean(doc.url || doc.storagePath)),
-    [sellerDocumentDrafts],
-  );
-  const newSellerDocumentDrafts = useMemo(
-    () => sellerDocumentDrafts.filter((doc) => !doc.url && !doc.storagePath),
-    [sellerDocumentDrafts],
   );
 
   const isDocumentDeleting = (documentId: string) => deletingDocumentIds.has(documentId);
@@ -336,22 +267,19 @@ export function DealEditDialog({
   }
 
   const canSubmit = useMemo(() => {
-    return !isPending && !dealDocumentsHasIncomplete && !sellerDocumentsHasIncomplete;
-  }, [isPending, dealDocumentsHasIncomplete, sellerDocumentsHasIncomplete]);
+    return !isPending && !dealDocumentsHasIncomplete;
+  }, [isPending, dealDocumentsHasIncomplete]);
 
   function resetForm() {
     setForm(initialState);
     setErrorMessage(null);
     setDealDocumentDrafts([]);
-    setSellerDocumentDrafts(initialSellerDocuments);
     setDocumentActionError(null);
     setDocumentActionMessage(null);
     setDeletingDocumentIds(new Set());
   }
 
-  useEffect(() => {
-    setSellerDocumentDrafts(initialSellerDocuments);
-  }, [initialSellerDocuments]);
+
 
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
@@ -396,22 +324,6 @@ export function DealEditDialog({
 
   function removeDealDocumentDraft(id: string) {
     setDealDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
-  }
-
-  function addSellerDocumentDraft() {
-    setSellerDocumentDrafts((prev) => [...prev, createSellerDocumentDraft()]);
-  }
-
-  function updateSellerDocumentDraft(id: string, patch: Partial<SellerDocumentDraft>) {
-    setSellerDocumentDrafts((prev) => prev.map((doc) => (doc.id === id ? { ...doc, ...patch } : doc)));
-  }
-
-  function changeSellerDocumentFile(id: string, file: File | null) {
-    updateSellerDocumentDraft(id, { file });
-  }
-
-  function removeSellerDocumentDraft(id: string) {
-    setSellerDocumentDrafts((prev) => prev.filter((doc) => doc.id !== id));
   }
 
   function handleDeleteExistingDocument(documentId: string) {
@@ -527,83 +439,12 @@ export function DealEditDialog({
     event.preventDefault();
     setErrorMessage(null);
 
-    if (!form.buyerType || !form.sellerType) {
-      setErrorMessage("Укажите тип покупателя и продавца.");
-      return;
-    }
-
     startTransition(async () => {
-      const sellerDocumentsNeedingUpload = sellerDocumentDrafts.filter(
-        (doc) => doc.file instanceof File && doc.file.size > 0,
-      );
-
-      let uploadedSellerDocuments: Array<{ id: string; title: string; bucket: string; storage_path: string; uploaded_at: string }> = [];
-
-      if (sellerDocumentsNeedingUpload.length > 0) {
-        const sellerFormData = new FormData();
-        sellerFormData.append("dealId", detail.dealUuid);
-        sellerFormData.append("slug", detail.slug);
-
-        sellerDocumentsNeedingUpload.forEach((doc, index) => {
-          sellerFormData.append(`documents[${index}][title]`, doc.title.trim());
-          if (doc.file) {
-            sellerFormData.append(`documents[${index}][file]`, doc.file);
-          }
-        });
-
-        const sellerUploadResult = await uploadSellerDocuments(sellerFormData);
-
-        if (!sellerUploadResult.success) {
-          setErrorMessage(sellerUploadResult.error);
-          return;
-        }
-
-        uploadedSellerDocuments = sellerUploadResult.documents;
-      }
-
-      const manualSellerDocuments = sellerDocumentDrafts
-        .filter((doc) => !(doc.file instanceof File && doc.file.size > 0))
-        .map((doc) => {
-          const title = doc.title.trim();
-          if (!title) {
-            return null;
-          }
-          const hasExistingFile = Boolean(doc.url || doc.storagePath);
-          if (!hasExistingFile) {
-            return null;
-          }
-          return {
-            id: doc.id,
-            title,
-            url: doc.url ?? undefined,
-            bucket: doc.bucket ?? undefined,
-            storagePath: doc.storagePath ?? undefined,
-            uploadedAt: doc.uploadedAt ?? new Date().toISOString(),
-          };
-        })
-        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-
-      const sellerDocumentsPayload = [
-        ...manualSellerDocuments,
-        ...uploadedSellerDocuments.map((doc) => ({
-          id: doc.id,
-          title: doc.title,
-          bucket: doc.bucket,
-          storagePath: doc.storage_path,
-          uploadedAt: doc.uploaded_at,
-        })),
-      ];
-
       const result = await updateOperationsDeal({
         dealId: detail.dealUuid,
         slug: detail.slug,
         dealNumber: form.dealNumber,
         companyCode: form.companyCode,
-        buyerType: form.buyerType || undefined,
-        sellerType: form.sellerType || undefined,
-        sellerName: form.sellerName,
-        sellerPhone: form.sellerPhone,
-        sellerEmail: form.sellerEmail,
         principalAmount: form.principalAmount,
         totalAmount: form.totalAmount,
         monthlyPayment: form.monthlyPayment,
@@ -627,7 +468,6 @@ export function DealEditDialog({
         insuranceLastPaymentStatus: form.insuranceLastPaymentStatus,
         insuranceLastPaymentDate: form.insuranceLastPaymentDate,
         insuranceNotes: form.insuranceNotes,
-        sellerDocuments: sellerDocumentsPayload,
       });
 
       if (!result.success) {
@@ -711,84 +551,6 @@ export function DealEditDialog({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип покупателя</Label>
-                  <Select
-                    value={form.buyerType || EMPTY_SELECT_VALUE}
-                    onValueChange={(value) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        buyerType: value === EMPTY_SELECT_VALUE ? "" : (value as "personal" | "company"),
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background text-sm">
-                      <SelectValue placeholder="Выберите тип" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={EMPTY_SELECT_VALUE}>Не выбрано</SelectItem>
-                      <SelectItem value="personal">Физлицо</SelectItem>
-                      <SelectItem value="company">Юрлицо</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Тип продавца</Label>
-                  <Select
-                    value={form.sellerType || EMPTY_SELECT_VALUE}
-                    onValueChange={(value) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        sellerType: value === EMPTY_SELECT_VALUE ? "" : (value as "personal" | "company"),
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="h-11 w-full rounded-lg border border-border bg-background text-sm">
-                      <SelectValue placeholder="Выберите тип" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={EMPTY_SELECT_VALUE}>Не выбрано</SelectItem>
-                      <SelectItem value="personal">Физлицо</SelectItem>
-                      <SelectItem value="company">Юрлицо</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </FormSection>
-
-            <FormSection
-              title="Данные продавца"
-              description="Контактная информация продавца"
-              columns={3}
-            >
-              <div className="space-y-2">
-                <Label>Имя / Название</Label>
-                <Input
-                  value={form.sellerName}
-                  onChange={handleChange("sellerName")}
-                  placeholder="Имя продавца"
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Телефон</Label>
-                <Input
-                  value={form.sellerPhone}
-                  onChange={handleChange("sellerPhone")}
-                  placeholder="+971..."
-                  className="rounded-lg"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  value={form.sellerEmail}
-                  onChange={handleChange("sellerEmail")}
-                  placeholder="example@mail.com"
-                  className="rounded-lg"
-                />
               </div>
             </FormSection>
 
@@ -929,131 +691,6 @@ export function DealEditDialog({
                   </div>
                   {dealDocumentsValidationMessage ? (
                     <p className="text-xs text-destructive">{dealDocumentsValidationMessage}</p>
-                  ) : null}
-                </div>
-              </div>
-            </FormSection>
-
-            <FormSection
-              title="Документы продавца автомобиля"
-              description="Сохраните ссылки на документы, которые передал дилер или поставщик."
-              columns={1}
-            >
-              <div className="space-y-4">
-                {existingSellerDocuments.length ? (
-                  <div className="space-y-2 rounded-2xl border border-border/60 bg-background/60 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Уже загружено
-                    </p>
-                    <ul className="space-y-2">
-                      {existingSellerDocuments.map((doc) => {
-                        const title = doc.title?.trim().length ? doc.title : "Документ продавца";
-                        return (
-                          <li
-                            key={doc.id}
-                            className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">{title}</p>
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {doc.url ? (
-                                <Button asChild size="sm" variant="outline" className="rounded-lg">
-                                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                                    <Paperclip className="mr-2 h-3.5 w-3.5" /> Открыть
-                                  </a>
-                                </Button>
-                              ) : null}
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => removeSellerDocumentDraft(doc.id)}
-                                className="rounded-lg text-muted-foreground hover:text-destructive"
-                                aria-label="Удалить документ продавца"
-                              >
-                                <Trash2 className="h-4 w-4" aria-hidden="true" />
-                              </Button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Документы продавца пока не добавлены.</p>
-                )}
-
-                <div className="space-y-3 rounded-2xl border border-dashed border-border/60 bg-background/50 p-3">
-                  {newSellerDocumentDrafts.map((doc) => {
-                    const hasTitle = doc.title.trim().length > 0;
-                    const hasFile = doc.file instanceof File && doc.file.size > 0;
-                    return (
-                      <div key={doc.id} className="space-y-3 rounded-xl border border-border/50 bg-background/60 p-3">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Название документа</Label>
-                            <Input
-                              value={doc.title}
-                              onChange={(event) =>
-                                updateSellerDocumentDraft(doc.id, { title: event.currentTarget.value })
-                              }
-                              placeholder="Invoice, Purchase Order ..."
-                              className="rounded-lg"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Файл</Label>
-                            <Input
-                              type="file"
-                              accept=".pdf,.png,.jpg,.jpeg"
-                              onChange={(event) =>
-                                changeSellerDocumentFile(
-                                  doc.id,
-                                  event.currentTarget.files && event.currentTarget.files[0]
-                                    ? event.currentTarget.files[0]
-                                    : null,
-                                )
-                              }
-                              className="cursor-pointer rounded-lg"
-                            />
-                            {doc.file ? (
-                              <p className="text-xs text-muted-foreground">{doc.file.name}</p>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeSellerDocumentDraft(doc.id)}
-                            className="rounded-lg text-muted-foreground hover:text-destructive"
-                          >
-                            Удалить
-                          </Button>
-                        </div>
-                        {(!hasTitle && !hasFile) || (hasTitle && hasFile) ? null : (
-                          <p className="text-xs text-destructive">Укажите и название, и выберите файл.</p>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addSellerDocumentDraft}
-                      className="flex items-center gap-2 rounded-lg"
-                      disabled={isPending}
-                    >
-                      <Plus className="h-4 w-4" /> Добавить документ продавца
-                    </Button>
-                    <p className="text-xs text-muted-foreground">Допустимые форматы: PDF, JPG, PNG (до 10 МБ).</p>
-                  </div>
-                  {sellerDocumentsValidationMessage ? (
-                    <p className="text-xs text-destructive">{sellerDocumentsValidationMessage}</p>
                   ) : null}
                 </div>
               </div>

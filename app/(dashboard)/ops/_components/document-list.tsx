@@ -13,6 +13,7 @@ export type DocumentListItem = {
 type DocumentListProps = {
   documents: DocumentListItem[];
   emptyMessage: string;
+  errorMessage?: string | null;
   className?: string;
   showUploadOnly?: boolean;
 };
@@ -36,7 +37,11 @@ function formatDocumentDate(value?: string | null): string {
   return trimmed.length > 0 ? trimmed : "Не указана";
 }
 
-export function DocumentList({ documents, emptyMessage, className, showUploadOnly = false }: DocumentListProps) {
+export function DocumentList({ documents, emptyMessage, errorMessage, className, showUploadOnly = false }: DocumentListProps) {
+  if (errorMessage) {
+    return <p className={cn("text-sm text-destructive", className)}>Ошибка загрузки документов: {errorMessage}</p>;
+  }
+
   if (!documents.length) {
     return <p className={cn("text-sm text-muted-foreground", className)}>{emptyMessage}</p>;
   }

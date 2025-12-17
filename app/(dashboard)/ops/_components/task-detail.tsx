@@ -16,6 +16,7 @@ import {
   Plus,
   RefreshCcw,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/supabase/queries/operations";
 import { filterChecklistTypes, type ClientDocumentChecklist, type ClientDocumentSummary } from "@/lib/workflow/documents-checklist";
 import { WorkflowDocuments } from "@/app/(dashboard)/ops/_components/workflow-documents";
+import { ProfileSelector } from "@/app/(dashboard)/ops/_components/profile-selector";
 
 import { deleteTaskGuardDocumentAction, getUploadUrlAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
 
@@ -59,6 +61,7 @@ type TaskDetailViewProps = {
     dealNumber: string | null;
     clientId: string | null;
     sellerId: string | null;
+    brokerId: string | null;
     sellerName?: string | null;
     sellerType?: string | null;
     sellerEmail?: string | null;
@@ -86,6 +89,10 @@ type TaskFieldDefinition = {
   required?: boolean;
   hint?: string;
   options?: { value: string; label: string }[];
+  depends_on?: string;
+  link_target?: string;
+  filter?: string;
+  readonly?: boolean;
 };
 
 type SchemaPayload = {
@@ -377,10 +384,7 @@ export function TaskDetailView({
     task.type === "COLLECT_SELLER_DOCS" ||
     task.type === "COLLECT_SELLER_DOCS_COMPANY" ||
     task.type === "COLLECT_SELLER_DOCS_INDIVIDUAL";
-  const confirmCarInstructions =
-    isConfirmCarTask && typeof payload?.defaults?.instruction_short === "string"
-      ? (payload.defaults.instruction_short as string)
-      : null;
+
   const isVehicleVerificationTask =
     guardKeyResolved === VEHICLE_VERIFICATION_GUARD_KEY ||
     task.type === VEHICLE_VERIFICATION_TASK_TYPE;
@@ -391,6 +395,22 @@ export function TaskDetailView({
   const buyerChecklist: string[] = [];
   const sellerChecklist: string[] = [];
   const [booleanFieldValues, setBooleanFieldValues] = useState<Record<string, boolean>>({});
+  
+  // Track all field values for dependencies and interactivity
+  const [fieldValues, setFieldValues] = useState<Record<string, unknown>>(() => {
+    const initial: Record<string, unknown> = {};
+    if (payload?.fields) Object.assign(initial, payload.fields);
+    if (payload?.defaults) {
+      Object.entries(payload.defaults).forEach(([k, v]) => {
+        if (initial[k] === undefined) initial[k] = v;
+      });
+    }
+    return initial;
+  });
+
+  function handleFieldValueChange(fieldId: string, value: unknown) {
+    setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
+  }
 
   const schemaFieldsRaw = payload?.schema?.fields;
   const rawFieldsFromPayload = Array.isArray(schemaFieldsRaw)
@@ -447,7 +467,7 @@ export function TaskDetailView({
   const workflowDocumentFields = visibleFields.filter((field) => getFieldDocumentType(field));
   const hasWorkflowDocumentFields = workflowDocumentFields.length > 0;
   const hasWorkflowChecklist = Boolean(checklist && checklist.items.length > 0);
-  const hasWorkflowDocuments = hasWorkflowDocumentFields || hasWorkflowChecklist;
+
   const isDocFieldRequired = (field: TaskFieldDefinition): boolean => {
     const docFieldType = getFieldDocumentType(field);
     if (!docFieldType) return false;
@@ -458,8 +478,7 @@ export function TaskDetailView({
   };
   const workflowDocumentsRequired =
     workflowDocumentFields.some((field) => isDocFieldRequired(field)) || hasWorkflowChecklist;
-  const hasMandatoryWorkflowDocs =
-    workflowDocumentsRequired || Boolean(guardRequiresDocument || enforcedDocumentType);
+
   const workflowDocumentItems =
     checklist && checklist.items.length > 0
       ? checklist.items.map((item) => ({
@@ -586,7 +605,7 @@ export function TaskDetailView({
     });
   }, [defaultDocumentType, enableDocsSection, clientDocuments, guardDocuments, task.type]);
 
-  const hasExistingAttachment = Boolean(guardState?.attachmentUrl);
+
   const isCompleted = task.status === "DONE";
   const isReadOnly = isCompleted;
   const guardDocumentLinks = useMemo(
@@ -1382,15 +1401,28 @@ export function TaskDetailView({
               >
                 {visibleFields.map((field, index) => {
                   const fieldId = field.id;
-                  const value = resolveFieldValue(fieldId, payload);
+                  const value = fieldValues[fieldId] !== undefined ? fieldValues[fieldId] : resolveFieldValue(fieldId, payload);
                   const rawValue =
                     payload?.fields && fieldId in (payload.fields as Record<string, unknown>)
                       ? (payload.fields as Record<string, unknown>)[fieldId]
                       : payload?.defaults && fieldId in (payload.defaults as Record<string, unknown>)
                         ? (payload.defaults as Record<string, unknown>)[fieldId]
                         : undefined;
+
+                  // --- Dependency Check ---
+                  if (field.depends_on) {
+                    const [depField, depValue] = field.depends_on.split("=");
+                    const currentDepValue = fieldValues[depField];
+                    if (depValue !== undefined) {
+                      if (String(currentDepValue) !== depValue) return null;
+                    } else {
+                      if (!currentDepValue) return null;
+                    }
+                  }
+                  // ------------------------
+
                   const baseLabel = field.label ?? fieldId;
-                  const hint = ""; // хинты скрываем для компактности
+                  const hint = field.hint ?? "";
                   let label = baseLabel;
                   if (fieldId === "buyer_contact_email" && buyerType === "personal") {
                     label = "Электронная почта покупателя";
@@ -1405,10 +1437,10 @@ export function TaskDetailView({
                   if (buyerType === "personal" && INDIVIDUAL_DOC_LABELS[fieldId]) {
                     label = INDIVIDUAL_DOC_LABELS[fieldId];
                   }
-                  const isRentyManagerFeeField = fieldId === "renty_manager_fee";
+                  const isRentyManagerFeeField = fieldId === "renty_manager_commission";
                   const hasUserValue = typeof value === "string" ? value.trim().length > 0 : value != null;
                   const effectiveValue =
-                    isRentyManagerFeeField && !hasUserValue
+                    isRentyManagerFeeField
                       ? rentyManagerFeeDefault ?? value
                       : value;
                   const docFieldType = getFieldDocumentType(field);
@@ -1416,6 +1448,7 @@ export function TaskDetailView({
                     label = label.replace(/\s*\(файл\)/gi, "").trim();
                   }
                   const type = field.type?.toLowerCase();
+
                   const isDocField = Boolean(docFieldType || type === "file");
                   const isRequired = isDocField ? isDocFieldRequired(field) : field.required ?? false;
                   const isLastRow = index === visibleFields.length - 1;
@@ -1434,6 +1467,60 @@ export function TaskDetailView({
                       useTwoColumn: useTwoColumnFieldLayout,
                       rowClass,
                     });
+
+                  // --- New Field Types ---
+                  if (type === "section_header") {
+                     return (
+                        <div key={field.id} className="col-span-full mt-6 mb-2">
+                           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{label}</h3>
+                           {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+                           <hr className="mt-2 border-border/60" />
+                        </div>
+                     );
+                  }
+
+                  if (type === "link") {
+                    let target = field.link_target || "#";
+                    if (deal) {
+                      target = target
+                        .replace("{{deal.client_id}}", deal.clientId || "")
+                        .replace("{{deal.seller_id}}", deal.sellerId || "")
+                        .replace("{{deal.broker_id}}", deal.brokerId || "");
+                    }
+                    
+                    return (
+                        <div key={field.id} className="col-span-full sm:col-span-1 flex items-end pb-2">
+                            <a
+                                href={target}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:underline"
+                            >
+                                {label}
+                                <ExternalLink className="h-4 w-4" />
+                            </a>
+                        </div>
+                    );
+                  }
+
+                  if (type === "profile_selector") {
+                     const profileSelectorControl = (
+                        <>
+                           <ProfileSelector
+                              value={effectiveValue as string}
+                              onChange={(val) => {
+                                 handleFieldValueChange(fieldId, val);
+                              }}
+                              filter={field.filter as any}
+                              disabled={isReadOnly || field.readonly}
+                              optional={!field.required}
+                           />
+                           <input type="hidden" name={`field:${fieldId}`} value={effectiveValue as string || ""} />
+                           {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+                        </>
+                     );
+                     return renderRow(profileSelectorControl);
+                  }
 
                   // Hide company contact fields for individuals
                   if (
@@ -1542,7 +1629,7 @@ export function TaskDetailView({
                       <Textarea
                         id={`field-${fieldId}`}
                         name={`field:${fieldId}`}
-                        defaultValue={value}
+                        defaultValue={(value as string) ?? ""}
                         required={isRequired}
                         placeholder={hint}
                         className="min-h-[120px] rounded-lg"
@@ -1558,8 +1645,8 @@ export function TaskDetailView({
                             );
                           }
                         }}
-                        readOnly={isReadOnly}
-                        disabled={pending || isReadOnly}
+                        readOnly={isReadOnly || field.readonly}
+                        disabled={pending || isReadOnly || field.readonly}
                       />
                     );
                     return renderRow(textareaControl);
@@ -1844,15 +1931,16 @@ export function TaskDetailView({
                       <Input
                         id={`field-${fieldId}`}
                         name={`field:${fieldId}`}
-                        defaultValue={prefilledTextValue ?? ""}
+                        defaultValue={(prefilledTextValue as string) ?? ""}
                         required={isRequired}
                         placeholder={hint}
                         className="rounded-lg"
-                        readOnly={isReadOnly || isRentyManagerFeeField}
-                        disabled={pending || isReadOnly || isRentyManagerFeeField}
+                        readOnly={isReadOnly || field.readonly || isRentyManagerFeeField}
+                        disabled={pending || isReadOnly || field.readonly || isRentyManagerFeeField}
+                        onChange={(e) => handleFieldValueChange(fieldId, e.target.value)}
                       />
                       {isRentyManagerFeeField ? (
-                        <input type="hidden" name={`field:${fieldId}`} value={effectiveValue ?? ""} />
+                        <input type="hidden" name={`field:${fieldId}`} value={(effectiveValue as string) ?? ""} />
                       ) : null}
                     </>
                   );

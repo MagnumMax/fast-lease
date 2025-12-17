@@ -16,6 +16,7 @@ import { buildSlugWithId, extractIdFromSlug, slugify } from "@/lib/utils/slugs";
 import {
   OPS_DEAL_STATUS_META,
   OPS_VEHICLE_STATUS_META,
+  SELLER_DOCUMENT_TYPES,
   getClientDocumentLabel,
   getDealDocumentLabel,
   getVehicleDocumentLabel,
@@ -54,6 +55,9 @@ import type {
   OpsSellerDocument,
   OpsSellerDetail,
   OpsSellerProfile,
+  OpsBrokerDetail,
+  OpsBrokerProfile,
+  OpsBrokerDocument,
   CarDetailResult,
   OpsCarRecord,
   OpsTone,
@@ -584,6 +588,286 @@ function formatShortDate(value: string | null | undefined): string {
   });
 }
 
+export async function getOperationsBrokers(): Promise<OpsClientRecord[]> {
+  console.log("[SERVER-OPS] getOperationsBrokers called");
+
+  const supabase = await createSupabaseServerClient();
+
+  const profileBaseColumns =
+    "user_id, full_name, status, phone, nationality, residency_status, entity_type, created_at, metadata";
+  const baseColumnList = profileBaseColumns.split(", ").map((column) => column.trim());
+  let profileSelectColumns = [...baseColumnList, "source", "seller_details"];
+  let profilesData: SupabaseClientProfileRow[] | null = null;
+  let profilesError: unknown = null;
+
+  const executeProfileQuery = async (columns: string[]) =>
+    supabase.from("profiles").select(columns.join(", ")).in("user_id", clientUserIds).order("full_name", { ascending: true });
+
+  const { data: clientRoleRows, error: clientRolesError } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "BROKER");
+
+  if (clientRolesError) {
+    console.error("[SERVER-OPS] failed to load broker roles:", clientRolesError);
+    return [];
+  }
+
+  const clientUserIds = (clientRoleRows ?? [])
+    .map((row) => row.user_id)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+
+  if (clientUserIds.length === 0) {
+    console.log("[SERVER-OPS] no BROKER role users found");
+    return [];
+  }
+
+  while (true) {
+    const response = await executeProfileQuery(profileSelectColumns);
+    profilesData = (response.data as SupabaseClientProfileRow[] | null) ?? null;
+    profilesError = response.error;
+    if (!profilesError) {
+      break;
+    }
+
+    const missingSource = isMissingColumnError(profilesError, "source");
+    const missingSellerDetails = isMissingColumnError(profilesError, "seller_details");
+    const columnsToDrop: string[] = [];
+
+    if (missingSource && profileSelectColumns.includes("source")) {
+      console.warn("[SERVER-OPS] profiles.source column missing, retrying without it");
+      columnsToDrop.push("source");
+    }
+    if (missingSellerDetails && profileSelectColumns.includes("seller_details")) {
+      console.warn("[SERVER-OPS] profiles.seller_details column missing, retrying without it");
+      columnsToDrop.push("seller_details");
+    }
+
+    if (!columnsToDrop.length) {
+      break;
+    }
+
+    profileSelectColumns = profileSelectColumns.filter((column) => !columnsToDrop.includes(column));
+  }
+
+  if (profilesError) {
+    console.error("[SERVER-OPS] failed to load brokers:", profilesError);
+    return [];
+  }
+
+  const profiles = profilesData ?? [];
+
+  console.log(`[SERVER-OPS] loaded ${profiles.length} brokers`);
+
+  if (!profiles.length) {
+    return [];
+  }
+
+  const clientIds = profiles.map((profile) => profile.user_id);
+
+  let leasingRows: Array<{
+    broker_id: string;
+    deal_id: string;
+    deal_number: string | null;
+    company_code: string | null;
+    vehicle_name: string | null;
+    vehicle_vin: string | null;
+    total_amount: number | null;
+    contract_start_date: string | null;
+  }> = [];
+
+  let dealsByBroker: Map<string, OpsSellerDealSummary[]> = new Map();
+
+  if (clientIds.length) {
+    const leasingResult = await supabase
+      .from("deals")
+      .select(
+        "id, broker_id, deal_number, company_code, total_amount, contract_start_date, vehicles:vehicle_id(make, model, vin)",
+      )
+      .in("broker_id", clientIds)
+      .order("contract_start_date", { ascending: false, nullsFirst: false });
+
+    if (leasingResult.error) {
+      console.error("[SERVER-OPS] failed to load broker deals:", leasingResult.error);
+    } else {
+      leasingRows = (leasingResult.data ?? []).map((row) => {
+        const vehicle = Array.isArray(row.vehicles) ? row.vehicles[0] : row.vehicles;
+        const vehicleName =
+          vehicle && typeof vehicle === "object"
+            ? `${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim()
+            : null;
+        const vehicleVin =
+          vehicle && typeof vehicle === "object"
+            ? getString((vehicle as { vin?: string | null }).vin)
+            : null;
+        return {
+          broker_id: row.broker_id as string,
+          deal_id: row.id as string,
+          deal_number: getString(row.deal_number),
+          company_code: getString(row.company_code),
+          total_amount: typeof row.total_amount === "number" ? row.total_amount : null,
+          contract_start_date: getString(row.contract_start_date),
+          vehicle_name: vehicleName && vehicleName.length ? vehicleName : null,
+          vehicle_vin: vehicleVin,
+        };
+      });
+    }
+
+    // Build deals map per broker for UI
+    dealsByBroker = leasingRows.reduce<Map<string, OpsSellerDealSummary[]>>((acc, row) => {
+      const vehicle = row.vehicle_name ?? "Автомобиль";
+      const number = row.deal_number || formatFallbackDealNumber({
+        id: row.deal_id,
+        createdAt: row.contract_start_date,
+        prefix: getDealCompanyPrefix(resolveDealCompanyCode(row.company_code) ?? DEFAULT_DEAL_COMPANY_CODE),
+      });
+
+      const amountValue = typeof row.total_amount === "number" ? row.total_amount : null;
+      const amount = amountValue != null ? formatCurrency(amountValue) : "—";
+      const since = row.contract_start_date
+        ? formatDate(row.contract_start_date, { day: "2-digit", month: "2-digit", year: "numeric" })
+        : "—";
+
+      const entry: OpsSellerDealSummary = {
+        id: row.deal_id,
+        number,
+        vehicle,
+        vin: row.vehicle_vin,
+        amount,
+        amountValue,
+        since,
+        href: `/ops/deals/${buildSlugWithId(number, row.deal_id) || row.deal_id}`,
+      };
+
+      const list = acc.get(row.broker_id) ?? [];
+      list.push(entry);
+      acc.set(row.broker_id, list);
+      return acc;
+    }, new Map());
+  }
+
+  const leasingMap = leasingRows.reduce<Map<string, typeof leasingRows[number]>>((acc, row) => {
+    if (!row.broker_id) return acc;
+    if (!acc.has(row.broker_id)) {
+      acc.set(row.broker_id, row);
+    }
+    return acc;
+  }, new Map());
+
+  return profiles.map((profile, index) => {
+    const metadata = isRecord(profile.metadata)
+      ? (profile.metadata as Record<string, unknown>)
+      : {};
+    // Reuse seller_details logic or company_details if implemented
+    const sellerDetails =
+      isRecord(profile.seller_details) ? (profile.seller_details as Record<string, unknown>) : null;
+    const statusInfo = normalizeClientStatus(profile.status);
+    const rawClient = isRecord(metadata?.["raw_client"])
+      ? (metadata["raw_client"] as Record<string, unknown>)
+      : null;
+    const emailFromMetadata =
+      [
+        getString(metadata?.["ops_email"]),
+        getString(metadata?.["work_email"]),
+        getString(metadata?.["email"]),
+        getString(metadata?.["contact_email"]),
+        getString(metadata?.["primary_email"]),
+        getString(rawClient?.["email"]),
+      ].find((v): v is string => Boolean(v)) ?? null;
+
+    const phoneFromMetadata =
+      [
+        getString(metadata?.["ops_phone"]),
+        getString(metadata?.["work_phone"]),
+        getString(metadata?.["phone"]),
+        getString(metadata?.["contact_phone"]),
+        getString(metadata?.["primary_phone"]),
+        getString(rawClient?.["phone"]),
+      ].find((v): v is string => Boolean(v)) ?? null;
+    const sellerContactEmail = getString(sellerDetails?.["seller_contact_email"]);
+    const sellerContactPhone = getString(sellerDetails?.["seller_contact_phone"]);
+    const rawSegment =
+      getString(metadata?.["segment"]) ??
+      getString(metadata?.["client_segment"]) ??
+      getString(metadata?.["customer_segment"]) ??
+      null;
+    const entityType = normalizeOpsEntityType(getString(profile.entity_type));
+    const entityTypeLabel = getOpsClientTypeLabel(entityType);
+    const segment = rawSegment ?? null;
+
+    const rawMemberSince = profile.created_at
+      ? formatDate(profile.created_at as string, { month: "long", year: "numeric" })
+      : null;
+    const memberSince = rawMemberSince && rawMemberSince !== "—" ? rawMemberSince : null;
+
+    const overdueCount = 0;
+    const overdueSummary = "Нет просрочек";
+
+    const tags = Array.from(
+      new Set(
+        [
+          statusInfo.display,
+          getString(profile.residency_status),
+          entityTypeLabel,
+          segment,
+          getString(profile.nationality),
+        ]
+          .filter((value): value is string => Boolean(value))
+          .map((value) => value.trim()),
+      ),
+    );
+
+    const leasing = leasingMap.get(profile.user_id as string) ?? null;
+    const brokerDeals = dealsByBroker.get(profile.user_id as string) ?? [];
+    const leasingAmount = leasing?.total_amount != null ? formatCurrency(leasing.total_amount) : "—";
+    const leasingStart = leasing?.contract_start_date
+      ? formatDate(leasing.contract_start_date, { day: "2-digit", month: "2-digit", year: "numeric" })
+      : "—";
+    const leasingVehicle = leasing?.vehicle_name ?? "—";
+    const leasingVin = leasing?.vehicle_vin ?? null;
+
+    const userId = (profile.user_id as string) ?? "";
+    const clientName = (profile.full_name as string) ?? "";
+    const detailSlug = buildSlugWithId(clientName, userId) || userId;
+    return {
+      userId,
+      entityType,
+      id: `BR-${(101 + index).toString().padStart(4, "0")}`,
+      name: clientName || "Broker",
+      email: (sellerContactEmail ?? emailFromMetadata) ?? "",
+      phone:
+        (sellerContactPhone ?? phoneFromMetadata ?? getString(profile.phone)) ??
+        "+971 50 000 0000",
+      status: statusInfo.filter,
+      statusLabel: statusInfo.display,
+      scoring: "90/100",
+      overdue: overdueCount,
+      limit: "AED 350,000",
+      detailHref: `/ops/brokers/${detailSlug}`,
+      memberSince,
+      segment,
+      tags,
+      metricsSummary: {
+        scoring: "90/100",
+        limit: "AED 350,000",
+        overdue: overdueSummary,
+      },
+      residencyStatus: getString(profile.residency_status),
+      leasing:
+        leasing
+          ? {
+              vehicle: leasingVehicle,
+              amount: leasingAmount,
+              since: leasingStart,
+              dealNumber: leasing.deal_number ?? undefined,
+              dealId: leasing.deal_id,
+              vin: leasingVin,
+            }
+          : undefined,
+      deals: brokerDeals,
+    } satisfies OpsClientRecord;
+  });
+}
 const PAYMENT_FREQUENCY_LABELS: Record<string, string> = {
   monthly: "Ежемесячно",
   quarterly: "Ежеквартально",
@@ -896,12 +1180,19 @@ async function buildSellerDocumentList(
         (storagePath ? "profile-documents" : null);
 
       if (!url && storagePath) {
+        // Check for service key availability to aid debugging
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+           console.warn("[SERVER-OPS] SUPABASE_SERVICE_ROLE_KEY is missing. Signed URL generation may fail for restricted buckets.");
+        }
+
         const bucketsToTry = new Set<string>();
         if (bucketCandidate) bucketsToTry.add(bucketCandidate);
         // Add fallback buckets for legacy/migrated documents
         bucketsToTry.add("client-documents");
         bucketsToTry.add("deal-documents");
         bucketsToTry.add("profile-documents");
+        bucketsToTry.add("seller-documents");
+        bucketsToTry.add("documents");
 
         for (const bucket of bucketsToTry) {
           try {
@@ -917,10 +1208,11 @@ async function buildSellerDocumentList(
         }
 
         if (!url) {
-          console.error("[SERVER-OPS] failed to sign seller document", {
-            bucket: bucketCandidate,
+          console.warn("[SERVER-OPS] failed to sign seller document (orphaned?)", {
+            id: idCandidate,
+            title,
+            documentType,
             storagePath,
-            tried: Array.from(bucketsToTry),
           });
         }
       }
@@ -2337,27 +2629,8 @@ export async function getOperationsClientDetail(identifier: string): Promise<Ops
 
   const clientDocumentsRows = (clientDocumentsData ?? []) as SupabaseClientDocumentRow[];
 
-  // Filter documents based on workflow template configuration
-  const workflowCatalog = getWorkflowCatalogSync();
-  const schemaKey = entityType === "company" ? "buyer_docs_company" : "buyer_docs_individual";
-  const schema = (workflowCatalog.schemas as Record<string, any>)?.[schemaKey];
-
-  let filteredDocs = clientDocumentsRows;
-
-  if (schema && Array.isArray(schema.save_to_buyer_profile) && Array.isArray(schema.fields)) {
-    const allowedFieldIds = new Set(schema.save_to_buyer_profile);
-    const allowedDocumentTypes = new Set<string>();
-
-    for (const field of schema.fields) {
-      if (allowedFieldIds.has(field.id) && field.document_type) {
-        allowedDocumentTypes.add(field.document_type);
-      }
-    }
-
-    filteredDocs = filteredDocs.filter((doc) => 
-      doc.document_type && allowedDocumentTypes.has(doc.document_type)
-    );
-  }
+  // Use all documents without filtering
+  const filteredDocs = clientDocumentsRows;
 
   const documentDescriptors = (await Promise.all(
     filteredDocs.map(async (document) => {
@@ -2786,35 +3059,18 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
   // profile_documents table structure:
   // id, profile_id, document_type, title, storage_path, bucket_id, file_size, content_type, metadata, created_at, updated_at
   
-  // Filter documents based on workflow template configuration
-  const workflowCatalog = getWorkflowCatalogSync();
-  const entityType = normalizeOpsEntityType(getString(profileRow.entity_type));
-  const schemaKey = entityType === "company" ? "seller_docs_company" : "seller_docs_individual";
-  const schema = (workflowCatalog.schemas as Record<string, any>)?.[schemaKey];
+  const allDocsRaw = profileDocumentsData ?? [];
+  const allSellerDocuments = await buildSellerDocumentList(allDocsRaw);
 
-  let filteredDocs = profileDocumentsData ?? [];
-
-  if (schema && Array.isArray(schema.save_to_seller_profile) && Array.isArray(schema.fields)) {
-    const allowedFieldIds = new Set(schema.save_to_seller_profile);
-    const allowedDocumentTypes = new Set<string>();
-
-    for (const field of schema.fields) {
-      if (allowedFieldIds.has(field.id) && field.document_type) {
-        allowedDocumentTypes.add(field.document_type);
-      }
-    }
-
-    filteredDocs = filteredDocs.filter((doc) => 
-      doc.document_type && allowedDocumentTypes.has(doc.document_type)
-    );
-  }
-
-  const sellerDocuments = await buildSellerDocumentList(filteredDocs);
+  // Use all documents without filtering
+  const visibleSellerDocuments = allSellerDocuments;
 
   return {
     profile,
     deals: sellerDeals,
-    documents: sellerDocuments,
+    documents: visibleSellerDocuments,
+    allDocuments: allSellerDocuments,
+    documentsError: profileDocumentsError?.message ?? null,
   };
 }
 
@@ -5579,3 +5835,390 @@ export async function getOperationsSellers(): Promise<OpsClientRecord[]> {
 }
 
 
+
+type BrokerDocumentCandidate = Record<string, unknown>;
+
+async function buildBrokerDocumentList(
+  candidates: BrokerDocumentCandidate[],
+): Promise<OpsBrokerDocument[]> {
+  const documents = await Promise.all(
+    candidates.map(async (candidate, index) => {
+      const metadata = isRecord(candidate.metadata) ? (candidate.metadata as Record<string, unknown>) : null;
+      const idCandidate =
+        getString(candidate["id"]) ??
+        getString(candidate["document_id"]) ??
+        getString(candidate["uuid"]) ??
+        getString(metadata?.document_id);
+      const title =
+        getString(candidate["title"]) ??
+        getString(candidate["name"]) ??
+        getString(candidate["document_name"]) ??
+        getString(candidate["display_name"]) ??
+        getString(candidate["document_type"]) ??
+        getString(candidate["documentType"]) ??
+        "Документ брокера";
+      const status =
+        getString(candidate["status"]) ??
+        getString(candidate["state"]) ??
+        getString(candidate["stage"]) ??
+        getString(metadata?.status);
+      const documentType =
+        getString(candidate["document_type"]) ??
+        getString(candidate["documentType"]) ??
+        getString(metadata?.document_type);
+      const uploadedAt =
+        getString(candidate["uploaded_at"]) ??
+        getString(candidate["uploadedAt"]) ??
+        getString(candidate["created_at"]) ??
+        getString(candidate["createdAt"]) ??
+        getString(metadata?.uploaded_at);
+      let url =
+        getString(candidate["url"]) ??
+        getString(candidate["signed_url"]) ??
+        getString(candidate["download_url"]) ??
+        getString(metadata?.url) ??
+        null;
+      const storagePath =
+        getString(candidate["storage_path"]) ??
+        getString(candidate["storagePath"]) ??
+        getString(candidate["path"]) ??
+        getString(candidate["file_path"]) ??
+        getString(metadata?.storage_path) ??
+        getString(metadata?.path) ??
+        null;
+      let bucketCandidate =
+        getString(candidate["bucket"]) ??
+        getString(candidate["bucket_id"]) ??
+        getString(metadata?.bucket) ??
+        getString(metadata?.storage_bucket) ??
+        getString(metadata?.bucket_id) ??
+        (storagePath ? "profile-documents" : null);
+
+      if (!url && storagePath) {
+        const bucketsToTry = new Set<string>();
+        if (bucketCandidate) bucketsToTry.add(bucketCandidate);
+        bucketsToTry.add("client-documents");
+        bucketsToTry.add("deal-documents");
+        bucketsToTry.add("profile-documents");
+
+        for (const bucket of bucketsToTry) {
+          try {
+            const signed = await createSignedStorageUrl({ bucket, path: storagePath });
+            if (signed) {
+              url = signed;
+              bucketCandidate = bucket;
+              break;
+            }
+          } catch (error) {
+            // Ignore errors
+          }
+        }
+
+        if (!url) {
+          console.error("[SERVER-OPS] failed to sign broker document", {
+            bucket: bucketCandidate,
+            storagePath,
+            tried: Array.from(bucketsToTry),
+          });
+        }
+      }
+
+      return {
+        id: idCandidate ?? `broker-doc-${index}`,
+        title,
+        status,
+        documentType,
+        uploadedAt,
+        url,
+        bucket: bucketCandidate ?? null,
+        storagePath,
+      } satisfies OpsBrokerDocument;
+    }),
+  );
+
+  return documents;
+}
+
+export async function getOperationsBrokerDetail(identifier: string): Promise<OpsBrokerDetail | null> {
+  const trimmedInput = (identifier ?? "").trim();
+  if (!trimmedInput) {
+    console.warn("[SERVER-OPS] getOperationsBrokerDetail called with empty identifier");
+    return null;
+  }
+
+  const supabase = await createSupabaseServerClient();
+
+  const { id: extractedUuid, slug: slugRemainder } = extractIdFromSlug(trimmedInput);
+  const normalizedIdentifier = slugRemainder || trimmedInput;
+
+  let userId: string | null = null;
+
+  if (extractedUuid && isUuid(extractedUuid)) {
+    userId = extractedUuid;
+  } else if (isUuid(trimmedInput)) {
+    userId = trimmedInput;
+  }
+
+  if (!userId) {
+    const slugCandidate = toSlug(normalizedIdentifier);
+    const nameSearch = normalizedIdentifier.replace(/[-_]+/g, " ").trim();
+
+    let profileQuery = supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .order("full_name", { ascending: true })
+      .limit(50);
+
+    if (nameSearch) {
+      const pattern = `%${nameSearch.replace(/\s+/g, "%")}%`;
+      profileQuery = profileQuery.ilike("full_name", pattern);
+    }
+
+    const { data: profileCandidates, error: profileSearchError } = await profileQuery;
+    if (profileSearchError) {
+      console.error("[SERVER-OPS] failed to search profile by slug", {
+        identifier,
+        error: profileSearchError,
+      });
+    } else if (profileCandidates?.length) {
+      const match = profileCandidates.find((candidate) => {
+        const candidateName = getString(candidate.full_name);
+        if (!candidateName) return false;
+        return toSlug(candidateName) === slugCandidate;
+      });
+      userId = match?.user_id ?? null;
+    }
+  }
+
+  if (!userId) {
+    console.warn("[SERVER-OPS] broker detail user id not resolved", { identifier });
+    return null;
+  }
+
+  const profileSelect = `id, user_id, full_name, status, phone, nationality, metadata, created_at, source, entity_type`;
+
+  let { data: profileRow, error: profileError } = await supabase
+    .from("profiles")
+    .select(profileSelect)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (profileError && isMissingColumnError(profileError, "source")) {
+    console.warn("[SERVER-OPS] profiles.source column missing, retrying broker profile without it", {
+      userId,
+    });
+    ({ data: profileRow, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, user_id, full_name, status, phone, nationality, metadata, created_at, entity_type")
+      .eq("user_id", userId)
+      .maybeSingle());
+  }
+
+  if (profileError) {
+    console.error("[SERVER-OPS] failed to load broker profile", { userId, error: profileError });
+    return null;
+  }
+
+  if (!profileRow) {
+    console.warn("[SERVER-OPS] profile not found for broker", { userId });
+    return null;
+  }
+
+  let authEmail: string | null = null;
+  let authPhone: string | null = null;
+
+  try {
+    const serviceClient = await createSupabaseServiceClient();
+    const { data: authData, error: authError } = await serviceClient.auth.admin.getUserById(userId);
+    if (authError) {
+      console.warn("[SERVER-OPS] auth user not available for broker", {
+        userId,
+        error: authError.message ?? authError,
+      });
+    } else if (authData?.user) {
+      authEmail = authData.user.email ?? null;
+      authPhone = authData.user.phone ?? null;
+    }
+  } catch (error) {
+    console.warn("[SERVER-OPS] auth lookup skipped (service key not configured?)", { userId, error });
+  }
+
+  const metadata = isRecord(profileRow.metadata) ? (profileRow.metadata as Record<string, unknown>) : {};
+  
+  // Resolve Email
+  const emailCandidates = [
+    getString(metadata["ops_email"]),
+    getString(metadata["work_email"]),
+    getString(metadata["email"]),
+    getString(metadata["contact_email"]),
+  ];
+  
+  authEmail = authEmail ?? emailCandidates.find((e) => e !== null) ?? null;
+
+  // Resolve Phone
+  const phoneCandidates = [
+    getString(metadata["ops_phone"]),
+    getString(metadata["work_phone"]),
+    getString(metadata["phone"]),
+  ];
+
+  authPhone = authPhone ?? phoneCandidates.find((p) => p !== null) ?? null;
+
+  const profileSourceRaw = getString(profileRow.source);
+  const metadataSourceCandidates = [
+    getString(metadata?.["lead_source"]),
+    getString(metadata?.["source_label"]),
+    getString(metadata?.["source"]),
+  ];
+  const resolvedSource =
+    (profileSourceRaw && profileSourceRaw.trim().length > 0 ? profileSourceRaw.trim() : null) ??
+    metadataSourceCandidates.find(
+      (value): value is string => typeof value === "string" && value.trim().length > 0,
+    ) ??
+    null;
+
+  const statusInfo = normalizeClientStatus(profileRow.status);
+
+  const profile: OpsBrokerProfile = {
+    userId,
+    fullName: getString(profileRow.full_name) ?? "Без имени",
+    status: statusInfo.display,
+    source: resolvedSource,
+    email: authEmail,
+    phone: getString(profileRow.phone) ?? authPhone,
+    nationality: getString(profileRow.nationality),
+    createdAt: profileRow.created_at ?? null,
+    metadata,
+    entityType: normalizeOpsEntityType(getString(profileRow.entity_type)),
+    brokerDetails: null, // No specific broker details column yet
+  };
+
+  const { data: dealsData, error: dealsError } = await supabase
+    .from("deals")
+    .select(
+      `id, deal_number, company_code, status, created_at, updated_at, monthly_payment, total_amount,
+       principal_amount, term_months, contract_start_date, contract_end_date, first_payment_date,
+       source, assigned_account_manager, vehicle_id,
+       vehicles!vehicle_id (id, vin, make, model, year)`
+    )
+    .eq("broker_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (dealsError) {
+     console.error("[SERVER-OPS] failed to load broker deals", { userId, error: dealsError });
+  }
+
+  // Fetch documents from profile_documents
+  const serviceClient = await createSupabaseServiceClient();
+  const profileIdForDocs = getString(profileRow.id) ?? userId;
+  
+  const { data: profileDocumentsData, error: profileDocumentsError } = await serviceClient
+    .from("profile_documents")
+    .select("*")
+    .eq("profile_id", profileIdForDocs)
+    .order("uploaded_at", { ascending: false });
+
+  if (profileDocumentsError) {
+    console.error("[SERVER-OPS] failed to load broker documents", { userId, error: profileDocumentsError });
+  }
+
+  // Process Deals
+  const deals = ((dealsData && !dealsError) ? dealsData : []) as SupabaseDealRow[];
+  const dealIds = deals.map((deal) => deal.id);
+  
+  const { data: schedulesData } = dealIds.length
+      ? await supabase
+          .from("payment_schedules")
+          .select("id, deal_id, due_date, amount, status")
+          .in("deal_id", dealIds)
+      : { data: [] };
+
+  const schedules = (schedulesData ?? []) as SupabaseScheduleRow[];
+  const schedulesByDeal = schedules.reduce<Map<string, SupabaseScheduleRow[]>>((acc, schedule) => {
+    if (!schedule.deal_id) return acc;
+    const list = acc.get(schedule.deal_id) ?? [];
+    list.push(schedule);
+    acc.set(schedule.deal_id, list);
+    return acc;
+  }, new Map());
+
+  const scheduleNow = new Date();
+  scheduleNow.setHours(0, 0, 0, 0);
+
+  const brokerDeals: OpsClientDeal[] = deals.map((deal) => {
+    const vehicleCandidates = Array.isArray(deal.vehicles)
+      ? deal.vehicles
+      : deal.vehicles
+        ? [deal.vehicles]
+        : [];
+    const vehicle = vehicleCandidates[0] ?? null;
+    const statusKey = mapStatusToWorkflow(deal.status ?? null);
+    const statusMeta = OPS_WORKFLOW_STATUS_MAP[statusKey];
+
+    const dealSchedules = schedulesByDeal.get(deal.id) ?? [];
+    let nextPaymentDue: string | null = null;
+    let overdueAmount: number | null = null;
+
+    if (dealSchedules.length) {
+      const upcoming = dealSchedules
+        .filter((schedule) => schedule.status?.toLowerCase() !== "paid" && schedule.due_date)
+        .map((schedule) => ({
+          ...schedule,
+          dueDate: new Date(schedule.due_date as string),
+        }))
+        .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+
+      const next = upcoming.find((item) => item.dueDate.getTime() >= scheduleNow.getTime());
+      if (next) {
+        nextPaymentDue = formatShortDate(next.due_date ?? null);
+      }
+
+      const overdueSchedules = upcoming.filter((item) => item.dueDate.getTime() < scheduleNow.getTime());
+      if (overdueSchedules.length) {
+        const sum = overdueSchedules.reduce((acc, schedule) => acc + (Number(schedule.amount) || 0), 0);
+        overdueAmount = sum > 0 ? sum : null;
+      }
+    }
+
+    const companyCode =
+      toDealCompanyCode((deal as { company_code?: string | null }).company_code ?? null) ?? null;
+
+    return {
+      id: deal.id,
+      dealNumber:
+        deal.deal_number ??
+        formatFallbackDealNumber({
+          id: deal.id,
+          createdAt: deal.created_at,
+          prefix: getDealCompanyPrefix(companyCode),
+        }),
+      status: (deal.status ?? "unknown").toUpperCase(),
+      statusKey,
+      stageLabel: statusMeta?.title ?? null,
+      createdAt: deal.created_at,
+      updatedAt: deal.updated_at,
+      vehicleId: deal.vehicle_id ?? vehicle?.id ?? null,
+      vehicleName: vehicle ? `${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim() || "Авто не выбрано" : "Авто не выбрано",
+      vehicleVin: vehicle?.vin ?? null,
+      monthlyPayment: formatCurrency(deal.monthly_payment),
+      totalAmount: formatCurrency(deal.total_amount),
+      principalAmount: formatCurrency(deal.principal_amount),
+      termMonths: deal.term_months ?? null,
+      contractStartDate: formatShortDate(deal.contract_start_date),
+      contractEndDate: formatShortDate(deal.contract_end_date),
+      nextPaymentDue,
+      overdueAmount: overdueAmount != null ? formatCurrency(overdueAmount) : null,
+      assignedManagerId: deal.assigned_account_manager ?? null,
+      source: getString(deal.source),
+    } satisfies OpsClientDeal;
+  });
+
+  const filteredDocs = profileDocumentsData ?? [];
+  const brokerDocuments = await buildBrokerDocumentList(filteredDocs);
+
+  return {
+    profile,
+    deals: brokerDeals,
+    documents: brokerDocuments,
+  };
+}

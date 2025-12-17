@@ -132,6 +132,7 @@ statuses:
             fields:
               - id: field1
                 type: string
+                filter: broker
           bindings:
             deal_id: "\${deal.id}"
           defaults:
@@ -169,7 +170,7 @@ notifications: { channels: [], templates: {} }
         templateId: "tpl-1",
         schema: {
           version: "1.0",
-          fields: [{ id: "field1", type: "string" }],
+          fields: [{ id: "field1", type: "string", filter: "broker" }],
         },
         bindings: { deal_id: "${deal.id}" },
         defaults: { priority: "high" },
