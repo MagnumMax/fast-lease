@@ -72,7 +72,7 @@ schemas:
         link_target: "/ops/clients/{{deal.client_id}}"
         readonly: true
       - id: buyer_verification_status
-        type: checkbox
+        type: boolean
         label: "Данные покупателя проверены и актуальны"
         required: true
 
@@ -92,13 +92,8 @@ schemas:
         label: "Редактировать профиль продавца"
         link_target: "/ops/sellers/{{deal.seller_id}}"
         readonly: true
-      - id: seller_id
-        type: profile_selector
-        label: "Продавец"
-        required: true
-        filter: "seller"
       - id: seller_verification_status
-        type: checkbox
+        type: boolean
         label: "Данные продавца проверены и актуальны (IBAN, Лицензия)"
         required: true
 
@@ -254,20 +249,15 @@ schemas:
         label: "Редактировать профиль брокера"
         link_target: "/ops/brokers/{{deal.broker_id}}"
         readonly: true
-      - id: broker_id
-        type: profile_selector
-        label: "Брокер"
-        required: true
-        filter: "broker"
       - id: broker_verification_status
-        type: checkbox
+        type: boolean
         label: "Данные брокера проверены и актуальны"
         required: true
       - id: doc_broker_invoice
         type: file
         label: "Счет на оплату комиссии (Broker Invoice)"
         document_type: invoice
-        required: true
+        required: false
 
   confirm_car_and_participants: &confirm_car_and_participants
     version: "1.0"
@@ -581,7 +571,7 @@ statuses:
                 type: textarea
                 label: "Инструкции"
               - id: doc_signed_commercial_offer
-                type: text
+                type: file
                 label: "Коммерческое предложение (подписанное)"
                 required: true
                 document_type: signed_commercial_offer
@@ -616,6 +606,7 @@ statuses:
                 type: file
                 label: "Технический отчёт"
                 document_type: technical_report
+                required: true
               - id: analog_market_url_1
                 type: text
                 label: "Аналоги на площадках #1"
@@ -692,6 +683,8 @@ statuses:
           bindings:
             deal_id: "{{deal.id}}"
             client_id: "{{deal.client_id}}"
+            client_full_name: "{{client.full_name}}"
+            client_phone: "{{client.phone}}"
     exit_requirements:
       - key: buyer.verified
         rule: "== true"
@@ -715,6 +708,8 @@ statuses:
           bindings:
             deal_id: "{{deal.id}}"
             seller_id: "{{deal.seller_id}}"
+            seller_full_name: "{{seller.full_name}}"
+            seller_phone: "{{seller.phone}}"
     exit_requirements:
       - key: seller.verified
         rule: "== true"
@@ -738,6 +733,8 @@ statuses:
           bindings:
             deal_id: "{{deal.id}}"
             broker_id: "{{deal.broker_id}}"
+            broker_full_name: "{{broker.full_name}}"
+            broker_phone: "{{broker.phone}}"
           conditions:
             - key: "deal.broker_id"
               rule: "!= null" # Задача создается только если есть брокер

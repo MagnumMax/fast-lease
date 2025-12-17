@@ -722,6 +722,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           seller_id,
           broker_id,
           seller:profiles!deals_seller_id_fkey(id, full_name, entity_type, phone, metadata),
+          broker:profiles!deals_broker_id_fkey(full_name, phone),
           vehicle_id,
           status,
           monthly_payment,

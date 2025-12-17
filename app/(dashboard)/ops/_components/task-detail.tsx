@@ -36,6 +36,8 @@ import {
   getClientDocumentLabel,
   type ClientDocumentTypeValue,
   normalizeClientDocumentType,
+  normalizeDealDocumentType,
+  getDealDocumentLabel,
 } from "@/lib/supabase/queries/operations";
 import { filterChecklistTypes, type ClientDocumentChecklist, type ClientDocumentSummary } from "@/lib/workflow/documents-checklist";
 import { WorkflowDocuments } from "@/app/(dashboard)/ops/_components/workflow-documents";
@@ -62,6 +64,8 @@ type TaskDetailViewProps = {
     clientId: string | null;
     sellerId: string | null;
     brokerId: string | null;
+    brokerName?: string | null;
+    brokerPhone?: string | null;
     sellerName?: string | null;
     sellerType?: string | null;
     sellerEmail?: string | null;
@@ -220,10 +224,15 @@ const REOPEN_REASON_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: "compliance", label: "Риски / комплаенс / безопасность" },
   { value: "other", label: "Другое" },
 ];
-function getFieldDocumentType(field: TaskFieldDefinition): ClientDocumentTypeValue | null {
+function getFieldDocumentType(field: TaskFieldDefinition): string | null {
   const docTypeRaw = field.document_type ?? (field as { documentType?: string }).documentType;
-  const normalized = normalizeClientDocumentType(docTypeRaw ?? undefined);
-  return normalized ?? null;
+  if (!docTypeRaw) return null;
+  
+  const clientNormalized = normalizeClientDocumentType(docTypeRaw ?? undefined);
+  if (clientNormalized) return clientNormalized;
+
+  const dealNormalized = normalizeDealDocumentType(docTypeRaw ?? undefined);
+  return dealNormalized ?? null;
 }
 
 const INITIAL_STATE: FormStatus = { status: "idle" };
@@ -486,6 +495,7 @@ export function TaskDetailView({
         label:
           getClientDocumentLabel((item.normalizedType as ClientDocumentTypeValue | null) ?? null) ??
           getClientDocumentLabel(item.key as ClientDocumentTypeValue) ??
+          getDealDocumentLabel(item.normalizedType ?? item.key) ??
           item.label,
         fulfilled: item.fulfilled,
         matchesCount: item.matches.length,
@@ -494,7 +504,7 @@ export function TaskDetailView({
       : workflowDocumentFields.map((field) => {
         const mappedType = getFieldDocumentType(field);
         const label =
-          (mappedType ? getClientDocumentLabel(mappedType) : null) ??
+          (mappedType ? (getClientDocumentLabel(mappedType as ClientDocumentTypeValue) ?? getDealDocumentLabel(mappedType)) : null) ??
           (field.label && /(файл)/i.test(field.label) ? field.label.replace(/\s*\(файл\)/gi, "").trim() : field.label) ??
           field.id;
         const itemRequired = isDocFieldRequired(field);
@@ -681,6 +691,9 @@ export function TaskDetailView({
     : null;
   const sellerSlug = deal?.sellerId
     ? buildSlugWithId(task.dealSellerName ?? null, deal.sellerId) || deal.sellerId
+    : null;
+  const brokerSlug = deal?.brokerId
+    ? buildSlugWithId(deal.brokerName ?? null, deal.brokerId) || deal.brokerId
     : null;
 
   const rentyManagerFeeDefault = useMemo(
@@ -1480,17 +1493,35 @@ export function TaskDetailView({
                   }
 
                   if (type === "link") {
-                    let target = field.link_target || "#";
+                    let target = field.link_target;
+
+                    // Fallback for known profile links if target is missing in payload
+                    if (!target) {
+                      if (fieldId === "buyer_profile_link") target = "/ops/clients/{{deal.client_id}}";
+                      if (fieldId === "seller_profile_link") target = "/ops/sellers/{{deal.seller_id}}";
+                      if (fieldId === "broker_profile_link") target = "/ops/brokers/{{deal.broker_id}}";
+                    }
+
+                    target = target || "#";
+
                     if (deal) {
-                      target = target
-                        .replace("{{deal.client_id}}", deal.clientId || "")
-                        .replace("{{deal.seller_id}}", deal.sellerId || "")
-                        .replace("{{deal.broker_id}}", deal.brokerId || "");
+                      if (target.includes("/ops/clients/") && clientSlug) {
+                        target = `/ops/clients/${clientSlug}`;
+                      } else if (target.includes("/ops/sellers/") && sellerSlug) {
+                        target = `/ops/sellers/${sellerSlug}`;
+                      } else if (target.includes("/ops/brokers/") && brokerSlug) {
+                        target = `/ops/brokers/${brokerSlug}`;
+                      } else {
+                        target = target
+                          .replace("{{deal.client_id}}", deal.clientId || "")
+                          .replace("{{deal.seller_id}}", deal.sellerId || "")
+                          .replace("{{deal.broker_id}}", deal.brokerId || "");
+                      }
                     }
                     
                     return (
                         <div key={field.id} className="col-span-full sm:col-span-1 flex items-end pb-2">
-                            <a
+                            <Link
                                 href={target}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -1498,7 +1529,7 @@ export function TaskDetailView({
                             >
                                 {label}
                                 <ExternalLink className="h-4 w-4" />
-                            </a>
+                            </Link>
                         </div>
                     );
                   }
@@ -1923,6 +1954,18 @@ export function TaskDetailView({
                       prefilledTextValue = deal.sellerEmail;
                     } else if (fieldId === "seller_contact_phone" && deal?.sellerPhone) {
                       prefilledTextValue = deal.sellerPhone;
+                    } else if (fieldId === "client_full_name" && task.dealClientName) {
+                      prefilledTextValue = task.dealClientName;
+                    } else if (fieldId === "client_phone" && deal?.buyerPhone) {
+                       prefilledTextValue = deal.buyerPhone;
+                     } else if (fieldId === "seller_full_name" && deal?.sellerName) {
+                       prefilledTextValue = deal.sellerName;
+                     } else if (fieldId === "seller_phone" && deal?.sellerPhone) {
+                      prefilledTextValue = deal.sellerPhone;
+                    } else if (fieldId === "broker_full_name" && deal?.brokerName) {
+                      prefilledTextValue = deal.brokerName;
+                    } else if (fieldId === "broker_phone" && deal?.brokerPhone) {
+                      prefilledTextValue = deal.brokerPhone;
                     }
                   }
 

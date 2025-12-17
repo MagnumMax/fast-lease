@@ -23,6 +23,9 @@ import {
   type ClientDocumentTypeValue,
   normalizeClientDocumentType,
   DEAL_DOCUMENT_TYPES,
+  normalizeDealDocumentType,
+  DEAL_DOCUMENT_TYPE_LABEL_MAP,
+  getDealDocumentLabel,
 } from "@/lib/supabase/queries/operations";
 import {
   evaluateClientDocumentChecklist,
@@ -165,13 +168,13 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
       continue;
     }
 
-    const normalized = normalizeClientDocumentType(entry.type);
+    const normalized = normalizeClientDocumentType(entry.type) ?? normalizeDealDocumentType(entry.type);
     if (!normalized) {
       continue;
     }
     uploads.push({
       id,
-      type: normalized,
+      type: normalized as ClientDocumentTypeValue,
       file: entry.file,
       existingPath: entry.path,
       fileSize: entry.size,
@@ -229,6 +232,7 @@ function extractFieldDocumentUploads(
       docTypeFromSchema ??
       (entry.type
         ? normalizeClientDocumentType(entry.type) ??
+        normalizeDealDocumentType(entry.type) ??
         (entry.type as ClientDocumentTypeValue)
         : null);
     if (!normalizedType) continue;
@@ -270,13 +274,15 @@ function buildDocumentTypeMapFromSchema(
           : null;
     const normalized =
       normalizeClientDocumentType(rawDocType ?? undefined) ??
+      normalizeDealDocumentType(rawDocType ?? undefined) ??
       (typeof rawDocType === "string" && rawDocType.length > 0
         ? (rawDocType as ClientDocumentTypeValue)
         : null) ??
       normalizeClientDocumentType(rawId) ??
+      normalizeDealDocumentType(rawId) ??
       (rawId as ClientDocumentTypeValue);
     if (normalized) {
-      map[rawId] = normalized;
+      map[rawId] = normalized as ClientDocumentTypeValue;
     }
   }
 
@@ -364,7 +370,7 @@ async function uploadAttachment(options: {
     },
   };
   const documentCategory = resolveDealDocumentCategory(documentType);
-  const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? null;
+  const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? DEAL_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? null;
 
   if (existingPath) {
     path = existingPath;
@@ -1161,10 +1167,11 @@ export async function completeTaskFormAction(
     if (requiredChecklist.length > 0) {
       if (!checklistState || !checklistState.fulfilled) {
         const fallbackItems: ClientDocumentChecklist["items"] = requiredChecklist.map((key) => {
-          const normalizedType = normalizeClientDocumentType(key) ?? null;
+          const normalizedType = normalizeClientDocumentType(key) ?? normalizeDealDocumentType(key) ?? null;
           const label =
-            (normalizedType ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalizedType] : undefined) ??
+            (normalizedType ? (CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalizedType] ?? DEAL_DOCUMENT_TYPE_LABEL_MAP[normalizedType]) : undefined) ??
             CLIENT_DOCUMENT_TYPE_LABEL_MAP[key as ClientDocumentTypeValue] ??
+            DEAL_DOCUMENT_TYPE_LABEL_MAP[key as ClientDocumentTypeValue] ??
             key;
           return {
             key,
@@ -1179,7 +1186,7 @@ export async function completeTaskFormAction(
           .filter((item) => !item.fulfilled)
           .map((item) => {
             const normalized = item.normalizedType ?? (item.key as ClientDocumentTypeValue);
-            return CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalized] ?? item.label ?? item.key;
+            return CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalized] ?? DEAL_DOCUMENT_TYPE_LABEL_MAP[normalized] ?? item.label ?? item.key;
           })
           .filter(Boolean);
         return {

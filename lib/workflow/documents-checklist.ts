@@ -2,6 +2,9 @@ import {
   CLIENT_DOCUMENT_TYPE_LABEL_MAP,
   type ClientDocumentTypeValue,
   normalizeClientDocumentType,
+  DEAL_DOCUMENT_TYPE_LABEL_MAP,
+  normalizeDealDocumentType,
+  getDealDocumentLabel,
 } from "@/lib/supabase/queries/operations";
 
 export const CLIENT_CHECKLIST_DISABLED_TYPES = new Set(["bank_statements", "proof_of_income"]);
@@ -85,7 +88,10 @@ export function evaluateClientDocumentChecklist(
   documents: ClientDocumentSummary[],
 ): ClientDocumentChecklist {
   const normalizedDocuments = documents.map((doc) => {
-    const normalizedType = normalizeClientDocumentType(doc.document_type ?? undefined) ?? null;
+    const normalizedType =
+      normalizeClientDocumentType(doc.document_type ?? undefined) ??
+      normalizeDealDocumentType(doc.document_type ?? undefined) ??
+      null;
     return { ...doc, normalizedType };
   });
 
@@ -98,15 +104,21 @@ export function evaluateClientDocumentChecklist(
   }, new Map());
 
   const items: ClientDocumentChecklistItem[] = requiredRaw.map((raw) => {
-    const normalizedType = normalizeClientDocumentType(raw) ?? null;
+    const normalizedType =
+      normalizeClientDocumentType(raw) ??
+      normalizeDealDocumentType(raw) ??
+      null;
     const label =
-      (normalizedType ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalizedType] : undefined) ??
+      (normalizedType
+        ? (CLIENT_DOCUMENT_TYPE_LABEL_MAP[normalizedType] ?? DEAL_DOCUMENT_TYPE_LABEL_MAP[normalizedType])
+        : undefined) ??
       CLIENT_DOCUMENT_TYPE_LABEL_MAP[raw as ClientDocumentTypeValue] ??
+      DEAL_DOCUMENT_TYPE_LABEL_MAP[raw as ClientDocumentTypeValue] ??
       raw;
     const matches = normalizedType ? docMap.get(normalizedType) ?? [] : [];
     return {
       key: raw,
-      normalizedType,
+      normalizedType: normalizedType as ClientDocumentTypeValue | null,
       label,
       fulfilled: matches.length > 0,
       matches,

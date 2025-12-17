@@ -125,7 +125,7 @@
         },
         {
           "id": "buyer_verification_status",
-          "type": "checkbox",
+          "type": "boolean",
           "label": "Данные покупателя проверены и актуальны",
           "required": true
         }
@@ -154,17 +154,252 @@
           "readonly": true
         },
         {
-          "id": "seller_id",
-          "type": "profile_selector",
-          "label": "Продавец",
-          "required": true,
-          "filter": "seller"
-        },
-        {
           "id": "seller_verification_status",
-          "type": "checkbox",
+          "type": "boolean",
           "label": "Данные продавца проверены и актуальны (IBAN, Лицензия)",
           "required": true
+        }
+      ]
+    },
+    "buyer_docs_company": {
+      "version": "1.0",
+      "save_to_buyer_profile": [
+        "doc_company_license",
+        "doc_emirates_id_manager",
+        "doc_passport_manager",
+        "doc_emirates_id_driver",
+        "doc_passport_driver",
+        "doc_driving_license",
+        "doc_other"
+      ],
+      "fields": [
+        {
+          "id": "doc_company_license",
+          "type": "file",
+          "label": "Лицензия компании",
+          "document_type": "company_license"
+        },
+        {
+          "id": "doc_emirates_id_manager",
+          "type": "file",
+          "label": "Emirates ID менеджера",
+          "document_type": "doc_emirates_id_manager"
+        },
+        {
+          "id": "doc_passport_manager",
+          "type": "file",
+          "label": "Паспорт менеджера",
+          "document_type": "doc_passport_manager"
+        },
+        {
+          "id": "doc_emirates_id_driver",
+          "type": "file",
+          "label": "Emirates ID водителя",
+          "document_type": "doc_emirates_id_driver"
+        },
+        {
+          "id": "doc_passport_driver",
+          "type": "file",
+          "label": "Паспорт водителя",
+          "document_type": "doc_passport_driver"
+        },
+        {
+          "id": "doc_driving_license",
+          "type": "file",
+          "label": "Водительские права (UAE)",
+          "document_type": "doc_driving_license"
+        },
+        {
+          "id": "doc_other",
+          "type": "file",
+          "label": "Другой документ",
+          "document_type": "other"
+        }
+      ]
+    },
+    "buyer_docs_individual": {
+      "version": "1.0",
+      "save_to_buyer_profile": [
+        "doc_passport_buyer",
+        "doc_emirates_id_buyer",
+        "doc_driving_license_buyer",
+        "doc_second_driver_bundle",
+        "doc_other"
+      ],
+      "fields": [
+        {
+          "id": "doc_passport_buyer",
+          "type": "file",
+          "label": "Паспорт покупателя",
+          "document_type": "doc_passport_buyer"
+        },
+        {
+          "id": "doc_emirates_id_buyer",
+          "type": "file",
+          "label": "Emirates ID покупателя",
+          "document_type": "doc_emirates_id_buyer"
+        },
+        {
+          "id": "doc_driving_license_buyer",
+          "type": "file",
+          "label": "Водительские права (UAE)",
+          "document_type": "doc_driving_license_buyer"
+        },
+        {
+          "id": "doc_second_driver_bundle",
+          "type": "file",
+          "label": "Комплект документов второго водителя",
+          "document_type": "doc_second_driver_bundle"
+        },
+        {
+          "id": "doc_other",
+          "type": "file",
+          "label": "Другой документ",
+          "document_type": "other"
+        }
+      ]
+    },
+    "seller_docs_company": {
+      "version": "1.0",
+      "save_to_seller_profile": [
+        "doc_trade_license",
+        "doc_company_license",
+        "doc_trn",
+        "doc_emirates_id_owner",
+        "doc_other"
+      ],
+      "save_to_vehicle": [
+        "doc_mulkia_certificate",
+        "doc_passing_certificate",
+        "doc_vehicle_possession_certificate",
+        "doc_vcc_certificate",
+        "doc_vehicle_transfer_certificate"
+      ],
+      "save_to_deal": [
+        "doc_tax_invoice",
+        "doc_hiyaza_certificate",
+        "doc_noc_gps_letter",
+        "doc_noc_company_letter"
+      ],
+      "fields": [
+        {
+          "id": "doc_trade_license",
+          "type": "file",
+          "label": "Торговая лицензия (Trade License)",
+          "document_type": "trade_license"
+        },
+        {
+          "id": "doc_company_license",
+          "type": "file",
+          "label": "Лицензия компании",
+          "document_type": "company_license"
+        },
+        {
+          "id": "doc_trn",
+          "type": "file",
+          "label": "TRN сертификат",
+          "document_type": "trn_certificate"
+        },
+        {
+          "id": "doc_emirates_id_owner",
+          "type": "file",
+          "label": "Emirates ID владельца",
+          "document_type": "emirates_id_owner"
+        },
+        {
+          "id": "doc_mulkia_certificate",
+          "type": "file",
+          "label": "Mulkia (Регистрация ТС)",
+          "document_type": "mulkia_certificate"
+        },
+        {
+          "id": "doc_passing_certificate",
+          "type": "file",
+          "label": "Passing Certificate (Техосмотр)",
+          "document_type": "passing_certificate"
+        },
+        {
+          "id": "doc_hiyaza_certificate",
+          "type": "file",
+          "label": "Hiyaza (Сертификат владения)",
+          "document_type": "hiyaza_certificate"
+        },
+        {
+          "id": "doc_tax_invoice",
+          "type": "file",
+          "label": "Tax Invoice (Налоговый инвойс)",
+          "document_type": "tax_invoice"
+        },
+        {
+          "id": "doc_other",
+          "type": "file",
+          "label": "Другой документ",
+          "document_type": "other"
+        }
+      ]
+    },
+    "seller_docs_individual": {
+      "version": "1.0",
+      "save_to_seller_profile": [
+        "doc_passport",
+        "doc_emirates_id",
+        "doc_other"
+      ],
+      "save_to_vehicle": [
+        "doc_mulkia_certificate",
+        "doc_passing_certificate",
+        "doc_vehicle_possession_certificate",
+        "doc_vcc_certificate",
+        "doc_vehicle_transfer_certificate"
+      ],
+      "save_to_deal": [
+        "doc_tax_invoice",
+        "doc_hiyaza_certificate",
+        "doc_noc_gps_letter",
+        "doc_noc_company_letter"
+      ],
+      "fields": [
+        {
+          "id": "doc_passport",
+          "type": "file",
+          "label": "Паспорт",
+          "document_type": "passport"
+        },
+        {
+          "id": "doc_emirates_id",
+          "type": "file",
+          "label": "Emirates ID",
+          "document_type": "emirates_id"
+        },
+        {
+          "id": "doc_mulkia_certificate",
+          "type": "file",
+          "label": "Mulkia (Регистрация ТС)",
+          "document_type": "mulkia_certificate"
+        },
+        {
+          "id": "doc_passing_certificate",
+          "type": "file",
+          "label": "Passing Certificate (Техосмотр)",
+          "document_type": "passing_certificate"
+        },
+        {
+          "id": "doc_hiyaza_certificate",
+          "type": "file",
+          "label": "Hiyaza (Сертификат владения)",
+          "document_type": "hiyaza_certificate"
+        },
+        {
+          "id": "doc_tax_invoice",
+          "type": "file",
+          "label": "Tax Invoice (Налоговый инвойс)",
+          "document_type": "tax_invoice"
+        },
+        {
+          "id": "doc_other",
+          "type": "file",
+          "label": "Другой документ",
+          "document_type": "other"
         }
       ]
     },
@@ -191,15 +426,8 @@
           "readonly": true
         },
         {
-          "id": "broker_id",
-          "type": "profile_selector",
-          "label": "Брокер",
-          "required": true,
-          "filter": "broker"
-        },
-        {
           "id": "broker_verification_status",
-          "type": "checkbox",
+          "type": "boolean",
           "label": "Данные брокера проверены и актуальны",
           "required": true
         },
@@ -208,7 +436,7 @@
           "type": "file",
           "label": "Счет на оплату комиссии (Broker Invoice)",
           "document_type": "invoice",
-          "required": true
+          "required": false
         }
       ]
     },
@@ -568,6 +796,41 @@
           "context": "company"
         },
         {
+          "value": "company_license",
+          "label": "Лицензия компании",
+          "context": "company"
+        },
+        {
+          "value": "trn_certificate",
+          "label": "TRN сертификат",
+          "context": "company"
+        },
+        {
+          "value": "emirates_id_owner",
+          "label": "Emirates ID владельца",
+          "context": "company"
+        },
+        {
+          "value": "mulkia_certificate",
+          "label": "Mulkia",
+          "context": "any"
+        },
+        {
+          "value": "hiyaza_certificate",
+          "label": "Hiyaza",
+          "context": "any"
+        },
+        {
+          "value": "passing_certificate",
+          "label": "Сертификат прохождения (Passing)",
+          "context": "any"
+        },
+        {
+          "value": "tax_invoice",
+          "label": "Налоговый инвойс",
+          "context": "any"
+        },
+        {
           "value": "passport",
           "label": "Паспорт",
           "context": "personal"
@@ -746,7 +1009,7 @@
                 },
                 {
                   "id": "doc_signed_commercial_offer",
-                  "type": "text",
+                  "type": "file",
                   "label": "Коммерческое предложение (подписанное)",
                   "required": true,
                   "document_type": "signed_commercial_offer"
@@ -797,7 +1060,8 @@
                   "id": "doc_technical_report",
                   "type": "file",
                   "label": "Технический отчёт",
-                  "document_type": "technical_report"
+                  "document_type": "technical_report",
+                  "required": true
                 },
                 {
                   "id": "analog_market_url_1",
@@ -929,7 +1193,7 @@
                 },
                 {
                   "id": "buyer_verification_status",
-                  "type": "checkbox",
+                  "type": "boolean",
                   "label": "Данные покупателя проверены и актуальны",
                   "required": true
                 }
@@ -941,7 +1205,9 @@
             },
             "bindings": {
               "deal_id": "{{deal.id}}",
-              "client_id": "{{deal.client_id}}"
+              "client_id": "{{deal.client_id}}",
+              "client_full_name": "{{client.full_name}}",
+              "client_phone": "{{client.phone}}"
             }
           }
         }
@@ -991,15 +1257,8 @@
                   "readonly": true
                 },
                 {
-                  "id": "seller_id",
-                  "type": "profile_selector",
-                  "label": "Продавец",
-                  "required": true,
-                  "filter": "seller"
-                },
-                {
                   "id": "seller_verification_status",
-                  "type": "checkbox",
+                  "type": "boolean",
                   "label": "Данные продавца проверены и актуальны (IBAN, Лицензия)",
                   "required": true
                 }
@@ -1011,7 +1270,9 @@
             },
             "bindings": {
               "deal_id": "{{deal.id}}",
-              "seller_id": "{{deal.seller_id}}"
+              "seller_id": "{{deal.seller_id}}",
+              "seller_full_name": "{{seller.full_name}}",
+              "seller_phone": "{{seller.phone}}"
             }
           }
         }
@@ -1061,15 +1322,8 @@
                   "readonly": true
                 },
                 {
-                  "id": "broker_id",
-                  "type": "profile_selector",
-                  "label": "Брокер",
-                  "required": true,
-                  "filter": "broker"
-                },
-                {
                   "id": "broker_verification_status",
-                  "type": "checkbox",
+                  "type": "boolean",
                   "label": "Данные брокера проверены и актуальны",
                   "required": true
                 },
@@ -1078,7 +1332,7 @@
                   "type": "file",
                   "label": "Счет на оплату комиссии (Broker Invoice)",
                   "document_type": "invoice",
-                  "required": true
+                  "required": false
                 }
               ]
             },
@@ -1088,7 +1342,9 @@
             },
             "bindings": {
               "deal_id": "{{deal.id}}",
-              "broker_id": "{{deal.broker_id}}"
+              "broker_id": "{{deal.broker_id}}",
+              "broker_full_name": "{{broker.full_name}}",
+              "broker_phone": "{{broker.phone}}"
             },
             "conditions": [
               {
