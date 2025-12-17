@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Mail, Phone } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -170,25 +170,7 @@ export function SellerDetailView({
                 {profile.status}
               </Badge>
             </div>
-            <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
-              {profile.email && (
-                <div className="flex items-center gap-1.5">
-                  <Mail className="h-3.5 w-3.5" />
-                  {profile.email}
-                </div>
-              )}
-              {profile.phone && (
-                <div className="flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5" />
-                  {profile.phone}
-                </div>
-              )}
-              {profile.createdAt && (
-                <div className="flex items-center gap-1.5">
-                  <span>Создан: {formatDateDisplay(profile.createdAt)}</span>
-                </div>
-              )}
-            </div>
+
           </div>
           <div className="flex gap-2">
             <SellerEditDialog
