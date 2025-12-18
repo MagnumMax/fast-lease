@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DatePickerInput } from "@/components/ui/date-picker";
+import { DateMaskInput } from "@/components/ui/date-mask-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -103,17 +103,21 @@ type FormSectionProps = {
   description?: string;
   children: ReactNode;
   columns?: number;
+  action?: ReactNode;
 };
 
-function FormSection({ title, description, children, columns = 2 }: FormSectionProps) {
+function FormSection({ title, description, children, columns = 2, action }: FormSectionProps) {
   const gridClass = columns === 1 ? "" : `sm:grid-cols-${columns}`;
   return (
     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        {description ? (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        ) : null}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          {description ? (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {action}
       </div>
       <div className={`grid gap-4 ${gridClass}`}>{children}</div>
     </div>
@@ -416,11 +420,23 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     actionMessage?: string | null;
   }) {
     return (
-      <div className="sm:col-span-2 space-y-4 border-t border-border/40 pt-4">
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
-        </div>
+      <FormSection
+        title={title}
+        description={description}
+        columns={1}
+        action={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddDraft}
+            className="flex items-center gap-2 rounded-lg"
+            disabled={isPending}
+          >
+            <Plus className="h-4 w-4" /> Добавить
+          </Button>
+        }
+      >
         <div className="space-y-4">
           {existingDocs.length ? (
             <div className="space-y-2 rounded-xl border border-border/60 bg-background/70 p-3">
@@ -486,22 +502,22 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                           </Button>
                         ) : null}
                       </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-      )}
-      {actionError ? <p className="text-xs text-destructive">{actionError}</p> : null}
-      {actionMessage ? <p className="text-xs text-muted-foreground">{actionMessage}</p> : null}
-      <div className="space-y-3">
-        {drafts.map((draft) => (
-            <div
-              key={draft.id}
-              className="space-y-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-3"
-            >
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+          )}
+          {actionError ? <p className="text-xs text-destructive">{actionError}</p> : null}
+          {actionMessage ? <p className="text-xs text-muted-foreground">{actionMessage}</p> : null}
+          <div className="space-y-3">
+            {drafts.map((draft) => (
+              <div
+                key={draft.id}
+                className="space-y-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-3"
+              >
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Тип документа</Label>
@@ -554,16 +570,6 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
               </div>
             ))}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onAddDraft}
-                className="flex items-center gap-2 rounded-lg"
-                disabled={isPending}
-              >
-                <Plus className="h-4 w-4" /> Добавить документ
-              </Button>
               <p className="text-xs text-muted-foreground">
                 {note ?? "Допустимые форматы: PDF, JPG, PNG (до 10 МБ)."}
               </p>
@@ -573,7 +579,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
             ) : null}
           </div>
         </div>
-      </div>
+      </FormSection>
     );
   }
   function handleChange<K extends keyof FormState>(key: K) {
@@ -876,12 +882,11 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
               </div>
               <div>
                 <Label htmlFor="client-dob">Дата рождения</Label>
-                <DatePickerInput
+                <DateMaskInput
                   id="client-dob"
                   value={form.dateOfBirth}
                   onChange={(nextValue) => setForm((prev) => ({ ...prev, dateOfBirth: nextValue }))}
                   className="mt-2"
-                  placeholder="ДД.ММ.ГГГГ"
                 />
               </div>
               <div>
@@ -920,7 +925,9 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                   className="mt-2"
                 />
               </div>
-              {renderDocumentManager({
+            </FormSection>
+
+            {renderDocumentManager({
                 existingDocs: personalDocuments,
                 drafts: personalDocumentDrafts,
                 validationMessage: personalValidationMessage,
@@ -937,10 +944,10 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                 actionError: documentActionError,
                 actionMessage: documentActionMessage,
               })}
-            </FormSection>
 
             {form.clientType === "Company"
               ? (
+                <>
                 <FormSection
                   title="Компания"
                   description="Основные сведения о компании и контактном лице."
@@ -982,6 +989,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                       className="mt-2"
                     />
                   </div>
+                </FormSection>
                   {renderDocumentManager({
                     existingDocs: companyDocuments,
                     drafts: companyDocumentDrafts,
@@ -1001,7 +1009,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                     actionError: documentActionError,
                     actionMessage: documentActionMessage,
                   })}
-                </FormSection>
+                </>
               )
               : null}
 

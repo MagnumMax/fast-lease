@@ -183,7 +183,7 @@ export function SellerDetailView({
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="flex flex-col gap-6">
         <div className="space-y-6">
           <SectionCard title="Основная информация">
             <div className="grid grid-cols-2 gap-y-6">

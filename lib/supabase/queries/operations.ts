@@ -433,6 +433,7 @@ export type OpsSellerProfile = {
   email: string | null;
   phone: string | null;
   nationality: string | null;
+  dateOfBirth: string | null;
   source: string | null;
   createdAt: string | null;
   metadata: Record<string, unknown> | null;

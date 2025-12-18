@@ -234,18 +234,14 @@ export function ClientDetailView({
               </>
             ) : null}
           </div>
-
-          <div className="space-y-4 border-t border-border/40 pt-4">
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Документы</p>
-            </div>
-
-            <DocumentList
-              documents={allDocumentItems}
-              emptyMessage={emptyMessage}
-            />
-          </div>
         </div>
+
+      <SectionCard title="Документы">
+        <DocumentList
+          documents={allDocumentItems}
+          emptyMessage={emptyMessage}
+        />
+      </SectionCard>
       </div>
 
       <SectionCard title="Финансовая информация">

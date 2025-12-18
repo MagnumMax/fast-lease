@@ -594,7 +594,7 @@ export async function getOperationsBrokers(): Promise<OpsClientRecord[]> {
   const supabase = await createSupabaseServerClient();
 
   const profileBaseColumns =
-    "user_id, full_name, status, phone, nationality, residency_status, entity_type, created_at, metadata";
+    "user_id, full_name, status, phone, nationality, date_of_birth, residency_status, entity_type, created_at, metadata";
   const baseColumnList = profileBaseColumns.split(", ").map((column) => column.trim());
   let profileSelectColumns = [...baseColumnList, "source", "seller_details"];
   let profilesData: SupabaseClientProfileRow[] | null = null;
@@ -2808,7 +2808,7 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
     return null;
   }
 
-  const profileSelect = `id, user_id, full_name, status, phone, nationality, metadata, created_at, source, entity_type, seller_details`;
+  const profileSelect = `id, user_id, full_name, status, phone, nationality, date_of_birth, metadata, created_at, source, entity_type, seller_details`;
 
   let { data: profileRow, error: profileError } = await supabase
     .from("profiles")
@@ -2822,7 +2822,7 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
     });
     ({ data: profileRow, error: profileError } = await supabase
       .from("profiles")
-      .select("id, user_id, full_name, status, phone, nationality, metadata, created_at, entity_type, seller_details")
+      .select("id, user_id, full_name, status, phone, nationality, date_of_birth, metadata, created_at, entity_type, seller_details")
       .eq("user_id", userId)
       .maybeSingle());
   }
@@ -2903,6 +2903,7 @@ export async function getOperationsSellerDetail(identifier: string): Promise<Ops
     email: authEmail,
     phone: getString(profileRow.phone) ?? authPhone,
     nationality: getString(profileRow.nationality),
+    dateOfBirth: getString(profileRow.date_of_birth),
     createdAt: profileRow.created_at ?? null,
     metadata,
     entityType: normalizeOpsEntityType(getString(profileRow.entity_type)),
@@ -5560,7 +5561,7 @@ export async function getOperationsSellers(): Promise<OpsClientRecord[]> {
   const supabase = await createSupabaseServerClient();
 
   const profileBaseColumns =
-    "user_id, full_name, status, phone, nationality, residency_status, entity_type, created_at, metadata";
+    "user_id, full_name, status, phone, nationality, date_of_birth, residency_status, entity_type, created_at, metadata";
   const baseColumnList = profileBaseColumns.split(", ").map((column) => column.trim());
   let profileSelectColumns = [...baseColumnList, "source", "seller_details"];
   let profilesData: SupabaseClientProfileRow[] | null = null;
@@ -5995,7 +5996,7 @@ export async function getOperationsBrokerDetail(identifier: string): Promise<Ops
     return null;
   }
 
-  const profileSelect = `id, user_id, full_name, status, phone, nationality, metadata, created_at, source, entity_type`;
+  const profileSelect = `id, user_id, full_name, status, phone, nationality, date_of_birth, metadata, created_at, source, entity_type`;
 
   let { data: profileRow, error: profileError } = await supabase
     .from("profiles")
@@ -6009,7 +6010,7 @@ export async function getOperationsBrokerDetail(identifier: string): Promise<Ops
     });
     ({ data: profileRow, error: profileError } = await supabase
       .from("profiles")
-      .select("id, user_id, full_name, status, phone, nationality, metadata, created_at, entity_type")
+      .select("id, user_id, full_name, status, phone, nationality, date_of_birth, metadata, created_at, entity_type")
       .eq("user_id", userId)
       .maybeSingle());
   }

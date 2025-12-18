@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DateMaskInput } from "@/components/ui/date-mask-input";
 import type {
   OpsSellerDocument,
   OpsSellerProfile,
@@ -74,6 +75,7 @@ type FormState = {
   bankDetails: string;
   contactEmail: string;
   contactPhone: string;
+  dateOfBirth: string;
   type: "personal" | "company" | "";
 };
 
@@ -82,17 +84,21 @@ type FormSectionProps = {
   description?: string;
   children: ReactNode;
   columns?: number;
+  action?: ReactNode;
 };
 
-function FormSection({ title, description, children, columns = 2 }: FormSectionProps) {
+function FormSection({ title, description, children, columns = 2, action }: FormSectionProps) {
   const gridClass = columns === 1 ? "" : `sm:grid-cols-${columns}`;
   return (
     <div className="space-y-3 rounded-2xl border border-border/60 bg-background/60 p-4">
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        {description ? (
-          <p className="text-xs text-muted-foreground">{description}</p>
-        ) : null}
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+          {description ? (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {action}
       </div>
       <div className={`grid gap-4 ${gridClass}`}>{children}</div>
     </div>
@@ -136,6 +142,7 @@ function buildInitialState(profile: OpsSellerProfile): FormState {
     bankDetails: (sellerDetails.seller_bank_details as string) ?? "",
     contactEmail: (sellerDetails.seller_contact_email as string) ?? "",
     contactPhone: (sellerDetails.seller_contact_phone as string) ?? "",
+    dateOfBirth: (metadata.date_of_birth as string) ?? "",
     type: profile.entityType ?? "",
   };
 }
@@ -285,6 +292,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
         bankDetails: form.bankDetails,
         contactEmail: form.contactEmail || undefined,
         contactPhone: form.contactPhone || undefined,
+        dateOfBirth: form.dateOfBirth || undefined,
         type: form.type || undefined,
       });
 
@@ -439,6 +447,14 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
                 placeholder="Russian Federation"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="dateOfBirth">Дата рождения</Label>
+              <DateMaskInput
+                id="dateOfBirth"
+                value={form.dateOfBirth}
+                onChange={(val) => setForm((prev) => ({ ...prev, dateOfBirth: val }))}
+              />
+            </div>
              <div className="space-y-2">
               <Label htmlFor="source">Источник</Label>
               <Input
@@ -500,22 +516,22 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
           </FormSection>
 
           {/* Document Management Section */}
-          <div className="space-y-4 border-t border-border/40 pt-4">
-            <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground">Документы</p>
-                    <p className="text-xs text-muted-foreground">Загрузите копии паспорта, Emirates ID и другие документы.</p>
-                </div>
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setDocumentDrafts(prev => [...prev, createDocumentDraft()])}
-                >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить
-                </Button>
-            </div>
+          <FormSection
+            title="Документы"
+            description="Загрузите копии паспорта, Emirates ID и другие документы."
+            columns={1}
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDocumentDrafts(prev => [...prev, createDocumentDraft()])}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Добавить
+              </Button>
+            }
+          >
 
              {/* Existing Documents */}
              {documents.length > 0 && (
@@ -657,7 +673,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
                 ))}
              </div>
              {validationMessage && <p className="text-xs text-destructive">{validationMessage}</p>}
-          </div>
+          </FormSection>
 
           {errorMessage ? (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">

@@ -238,6 +238,7 @@ const updateInputSchema = z.object({
   bankDetails: z.string().optional(),
   contactEmail: z.union([z.string().email(), z.literal("")]).optional(),
   contactPhone: z.string().optional(),
+  dateOfBirth: z.string().nullable().optional(),
   type: z.enum(["personal", "company"]).optional(),
 });
 
@@ -312,6 +313,7 @@ export async function updateOperationsBroker(
     bankDetails,
     contactEmail,
     contactPhone,
+    dateOfBirth,
     type,
   } = parsed.data;
 
@@ -406,6 +408,7 @@ export async function updateOperationsBroker(
       phone: sanitizedPhone,
       status: userStatus,
       nationality: nationality, // Try updating column first
+      date_of_birth: dateOfBirth,
       metadata: updatedMetadata,
       broker_details: updatedBrokerDetails,
       entity_type: type,
