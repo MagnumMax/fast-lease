@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import type {
   OpsClientDocument,
   OpsClientProfile,
@@ -57,6 +58,7 @@ import {
 } from "@/app/(dashboard)/ops/clients/actions";
 import { sortDocumentOptions } from "@/lib/documents/options";
 import { buildSlugWithId } from "@/lib/utils/slugs";
+import { DocumentManager, type ManagedDocument, type DocumentDraft } from "./document-manager";
 
 const EMPTY_SELECT_VALUE = "__empty";
 
@@ -80,8 +82,6 @@ type FormState = {
   status: "Active" | "Blocked";
   email: string;
   phone: string;
-  emiratesId: string;
-  passportNumber: string;
   nationality: string;
   residencyStatus: string;
   dateOfBirth: string;
@@ -124,12 +124,6 @@ function FormSection({ title, description, children, columns = 2, action }: Form
   );
 }
 
-type DocumentDraft = {
-  id: string;
-  type: ClientDocumentTypeValue | "";
-  file: File | null;
-};
-
 function createDocumentDraft(): DocumentDraft {
   const identifier =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -139,6 +133,8 @@ function createDocumentDraft(): DocumentDraft {
     id: identifier,
     type: "",
     file: null,
+    documentNumber: "",
+    expireDate: "",
   } satisfies DocumentDraft;
 }
 
@@ -169,6 +165,40 @@ const CLIENT_IDENTITY_KEYWORDS = [
   "company",
 ];
 
+const RESIDENT_STATUS_VALUE = "resident" as const;
+const NON_RESIDENT_STATUS_VALUE = "nonresident" as const;
+type ResidencyToggleValue = typeof RESIDENT_STATUS_VALUE | typeof NON_RESIDENT_STATUS_VALUE;
+
+function isNonResidentStatus(value?: string | null): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+  if (normalized === NON_RESIDENT_STATUS_VALUE) {
+    return true;
+  }
+  return normalized.replace(/[\s_-]+/g, "") === NON_RESIDENT_STATUS_VALUE;
+}
+
+function getResidencyStatusDisplay(value?: string | null): {
+  normalizedValue: ResidencyToggleValue;
+  label: string;
+  description: string;
+} {
+  if (isNonResidentStatus(value)) {
+    return {
+      normalizedValue: NON_RESIDENT_STATUS_VALUE,
+      label: "Нерезидент",
+      description: "Нет подтверждённого статуса резидента ОАЭ или документы ещё в процессе.",
+    };
+  }
+
+  return {
+    normalizedValue: RESIDENT_STATUS_VALUE,
+    label: "Резидент ОАЭ",
+    description: "Есть Emirates ID или действующая резидентская виза.",
+  };
+}
+
 function buildInitialState(profile: OpsClientProfile): FormState {
   return {
     fullName: profile.fullName ?? "",
@@ -176,8 +206,6 @@ function buildInitialState(profile: OpsClientProfile): FormState {
     status: profile.status === "Blocked" ? "Blocked" : "Active",
     email: profile.email ?? "",
     phone: profile.phone ?? "",
-    emiratesId: profile.emiratesId ?? "",
-    passportNumber: profile.passportNumber ?? "",
     nationality: profile.nationality ?? "",
     residencyStatus: profile.residencyStatus ?? "",
     dateOfBirth: profile.dateOfBirth ?? "",
@@ -265,12 +293,34 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     [documents],
   );
 
-  const personalDocuments = useMemo(
-    () => filterDocumentsByTypes(PERSONAL_DOCUMENT_TYPE_VALUES, "personal"),
+  const personalDocuments: ManagedDocument[] = useMemo(
+    () =>
+      filterDocumentsByTypes(PERSONAL_DOCUMENT_TYPE_VALUES, "personal").map((doc) => ({
+        id: doc.id,
+        title: doc.name,
+        typeLabel:
+          doc.documentType && CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
+            ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
+            : doc.documentType ?? "Документ",
+        url: doc.url ?? null,
+        uploadedAt: doc.uploadedAt ?? null,
+        metadata: doc.metadata as Record<string, unknown> | null,
+      })),
     [filterDocumentsByTypes],
   );
-  const companyDocuments = useMemo(
-    () => filterDocumentsByTypes(COMPANY_DOCUMENT_TYPE_VALUES, "company"),
+  const companyDocuments: ManagedDocument[] = useMemo(
+    () =>
+      filterDocumentsByTypes(COMPANY_DOCUMENT_TYPE_VALUES, "company").map((doc) => ({
+        id: doc.id,
+        title: doc.name,
+        typeLabel:
+          doc.documentType && CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
+            ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
+            : doc.documentType ?? "Документ",
+        url: doc.url ?? null,
+        uploadedAt: doc.uploadedAt ?? null,
+        metadata: doc.metadata as Record<string, unknown> | null,
+      })),
     [filterDocumentsByTypes],
   );
 
@@ -323,10 +373,13 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   const canSubmit = useMemo(() => {
     return form.fullName.trim().length > 0 && !personalHasIncomplete && !companyHasIncomplete;
   }, [form.fullName, personalHasIncomplete, companyHasIncomplete]);
+  const residencyStatusDisplay = useMemo(
+    () => getResidencyStatusDisplay(form.residencyStatus),
+    [form.residencyStatus],
+  );
 
   const handleDeleteExistingDocument = useCallback(
-    async (doc: OpsClientDocument) => {
-      const documentId = doc.id;
+    async (documentId: string) => {
       if (!documentId || isDocumentDeleting(documentId)) {
         return;
       }
@@ -384,204 +437,6 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     }
   }, [form.clientType, companyDocumentDrafts.length]);
 
-  function renderDocumentManager({
-    existingDocs,
-    drafts,
-    validationMessage,
-    onAddDraft,
-    onTypeChange,
-    onFileChange,
-    onRemoveDraft,
-    onDeleteExisting,
-    isDeleting,
-    title,
-    description,
-    emptyMessage,
-    note,
-    options,
-    actionError,
-    actionMessage,
-  }: {
-    existingDocs: OpsClientDocument[];
-    drafts: DocumentDraft[];
-    validationMessage?: string | null;
-    onAddDraft: () => void;
-    onTypeChange: (id: string, type: ClientDocumentTypeValue | "") => void;
-    onFileChange: (id: string, file: File | null) => void;
-    onRemoveDraft: (id: string) => void;
-    onDeleteExisting?: (doc: OpsClientDocument) => void;
-    isDeleting?: (id: string) => boolean;
-    title: string;
-    description?: string;
-    emptyMessage: string;
-    note?: string;
-    options: ReadonlyArray<{ value: ClientDocumentTypeValue; label: string }>;
-    actionError?: string | null;
-    actionMessage?: string | null;
-  }) {
-    return (
-      <FormSection
-        title={title}
-        description={description}
-        columns={1}
-        action={
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onAddDraft}
-            className="flex items-center gap-2 rounded-lg"
-            disabled={isPending}
-          >
-            <Plus className="h-4 w-4" /> Добавить
-          </Button>
-        }
-      >
-        <div className="space-y-4">
-          {existingDocs.length ? (
-            <div className="space-y-2 rounded-xl border border-border/60 bg-background/70 p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Уже загружено
-              </p>
-              <ul className="space-y-2">
-                {existingDocs.map((doc) => {
-                  const typeLabel =
-                    doc.documentType && CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
-                      ? CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.documentType]
-                      : doc.documentType ?? "Документ";
-                  const uploadedDisplay = doc.uploadedAt
-                    ? new Date(doc.uploadedAt).toLocaleDateString("ru-RU")
-                    : null;
-                  const isRemoving = isDeleting ? isDeleting(doc.id) : false;
-
-                  return (
-                    <li
-                      key={doc.id}
-                      className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="space-y-2">
-                        <p className="text-sm font-semibold text-foreground">{doc.name}</p>
-                        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                          {doc.documentType ? <span>Тип: {typeLabel}</span> : null}
-                          {uploadedDisplay ? <span>Загружен: {uploadedDisplay}</span> : null}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {doc.url ? (
-                          <Button asChild size="sm" variant="outline" className="rounded-lg">
-                            <a
-                              href={doc.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label="Скачать документ"
-                              className="flex items-center justify-center"
-                            >
-                              <Download className="h-4 w-4" aria-hidden="true" />
-                            </a>
-                          </Button>
-                        ) : (
-                          <Badge variant="outline" className="rounded-lg text-muted-foreground">
-                            Нет файла
-                          </Badge>
-                        )}
-                        {onDeleteExisting ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => onDeleteExisting(doc)}
-                            disabled={isRemoving}
-                            className="rounded-lg text-muted-foreground hover:text-destructive"
-                            aria-label="Удалить документ"
-                          >
-                            {isRemoving ? (
-                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" aria-hidden="true" />
-                            )}
-                          </Button>
-                        ) : null}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">{emptyMessage}</p>
-          )}
-          {actionError ? <p className="text-xs text-destructive">{actionError}</p> : null}
-          {actionMessage ? <p className="text-xs text-muted-foreground">{actionMessage}</p> : null}
-          <div className="space-y-3">
-            {drafts.map((draft) => (
-              <div
-                key={draft.id}
-                className="space-y-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-3"
-              >
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Тип документа</Label>
-                    <Select
-                      value={draft.type || EMPTY_SELECT_VALUE}
-                      onValueChange={(value) =>
-                        onTypeChange(
-                          draft.id,
-                          (value === EMPTY_SELECT_VALUE ? "" : value) as ClientDocumentTypeValue | "",
-                        )
-                      }
-                    >
-                      <SelectTrigger className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm">
-                        <SelectValue placeholder="Выберите тип" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={EMPTY_SELECT_VALUE}>Выберите тип</SelectItem>
-                        {options.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Файл</Label>
-                    <Input
-                      type="file"
-                      accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                      onChange={(event) => onFileChange(draft.id, event.currentTarget.files?.[0] ?? null)}
-                      className="cursor-pointer rounded-lg"
-                    />
-                    {draft.file ? (
-                      <p className="text-xs text-muted-foreground">{draft.file.name}</p>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onRemoveDraft(draft.id)}
-                    className="rounded-lg text-muted-foreground hover:text-destructive"
-                  >
-                    Удалить
-                  </Button>
-                </div>
-              </div>
-            ))}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-muted-foreground">
-                {note ?? "Допустимые форматы: PDF, JPG, PNG (до 10 МБ)."}
-              </p>
-            </div>
-            {validationMessage ? (
-              <p className="text-xs text-destructive">{validationMessage}</p>
-            ) : null}
-          </div>
-        </div>
-      </FormSection>
-    );
-  }
   function handleChange<K extends keyof FormState>(key: K) {
     return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const value = event.currentTarget.value;
@@ -589,10 +444,17 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
     };
   }
 
+  function handleResidencyToggle(nextValue: boolean) {
+    setForm((prev) => ({
+      ...prev,
+      residencyStatus: nextValue ? RESIDENT_STATUS_VALUE : NON_RESIDENT_STATUS_VALUE,
+    }));
+  }
+
   function addPersonalDocumentDraft() {
     setPersonalDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
   }
-  function changePersonalDocumentType(id: string, nextType: ClientDocumentTypeValue | "") {
+  function changePersonalDocumentType(id: string, nextType: string) {
     setPersonalDocumentDrafts((prev) =>
       prev.map((draft) => (draft.id === id ? { ...draft, type: nextType } : draft)),
     );
@@ -605,11 +467,21 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   function removePersonalDocumentDraft(id: string) {
     setPersonalDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
   }
+  function changePersonalDocumentNumber(id: string, value: string) {
+    setPersonalDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, documentNumber: value } : draft)),
+    );
+  }
+  function changePersonalDocumentExpireDate(id: string, value: string) {
+    setPersonalDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, expireDate: value } : draft)),
+    );
+  }
 
   function addCompanyDocumentDraft() {
     setCompanyDocumentDrafts((prev) => [...prev, createDocumentDraft()]);
   }
-  function changeCompanyDocumentType(id: string, nextType: ClientDocumentTypeValue | "") {
+  function changeCompanyDocumentType(id: string, nextType: string) {
     setCompanyDocumentDrafts((prev) =>
       prev.map((draft) => (draft.id === id ? { ...draft, type: nextType } : draft)),
     );
@@ -622,6 +494,16 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   function removeCompanyDocumentDraft(id: string) {
     setCompanyDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
   }
+  function changeCompanyDocumentNumber(id: string, value: string) {
+    setCompanyDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, documentNumber: value } : draft)),
+    );
+  }
+  function changeCompanyDocumentExpireDate(id: string, value: string) {
+    setCompanyDocumentDrafts((prev) =>
+      prev.map((draft) => (draft.id === id ? { ...draft, expireDate: value } : draft)),
+    );
+  }
 
   async function submit() {
     setErrorMessage(null);
@@ -632,8 +514,6 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
       status: form.status,
       email: form.email,
       phone: form.phone,
-      emiratesId: form.emiratesId,
-      passportNumber: form.passportNumber,
       nationality: form.nationality,
       residencyStatus: form.residencyStatus,
       dateOfBirth: form.dateOfBirth,
@@ -691,6 +571,12 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
           formData.append(`documents[${documentIndex}][type]`, draft.type);
           formData.append(`documents[${documentIndex}][file]`, draft.file);
           formData.append(`documents[${documentIndex}][context]`, context);
+          if (draft.documentNumber) {
+            formData.append(`documents[${documentIndex}][document_number]`, draft.documentNumber);
+          }
+          if (draft.expireDate) {
+            formData.append(`documents[${documentIndex}][expire_date]`, draft.expireDate);
+          }
           documentIndex += 1;
         });
       };
@@ -900,54 +786,48 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
               </div>
               <div>
                 <Label htmlFor="client-residency">Статус резидентства</Label>
-                <Input
-                  id="client-residency"
-                  value={form.residencyStatus}
-                  onChange={handleChange("residencyStatus")}
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="client-emirates">Emirates ID</Label>
-                <Input
-                  id="client-emirates"
-                  value={form.emiratesId}
-                  onChange={handleChange("emiratesId")}
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="client-passport">Паспорт</Label>
-                <Input
-                  id="client-passport"
-                  value={form.passportNumber}
-                  onChange={handleChange("passportNumber")}
-                  className="mt-2"
-                />
+                <div className="mt-2 flex items-center justify-between rounded-xl border border-border bg-background px-3 py-3 shadow-sm">
+                  <div className="pr-4">
+                    <p className="text-sm font-medium text-foreground">
+                      {residencyStatusDisplay.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {residencyStatusDisplay.description}
+                    </p>
+                  </div>
+                  <Switch
+                    id="client-residency"
+                    checked={residencyStatusDisplay.normalizedValue === RESIDENT_STATUS_VALUE}
+                    onCheckedChange={handleResidencyToggle}
+                    aria-label="Переключить статус резидентства"
+                  />
+                </div>
               </div>
             </FormSection>
 
-            {renderDocumentManager({
-                existingDocs: personalDocuments,
-                drafts: personalDocumentDrafts,
-                validationMessage: personalValidationMessage,
-                onAddDraft: addPersonalDocumentDraft,
-                onTypeChange: changePersonalDocumentType,
-                onFileChange: changePersonalDocumentFile,
-                onRemoveDraft: removePersonalDocumentDraft,
-                onDeleteExisting: handleDeleteExistingDocument,
-                isDeleting: isDocumentDeleting,
-                title: "Документы покупателя",
-                description: "Загрузка документов для идентификации.",
-                emptyMessage: "Документы покупателя пока не загружены.",
-                options: PERSON_DOCUMENT_OPTIONS,
-                actionError: documentActionError,
-                actionMessage: documentActionMessage,
-              })}
+            <DocumentManager
+              title="Документы покупателя"
+              description="Загрузка документов для идентификации."
+              existingDocs={personalDocuments}
+              drafts={personalDocumentDrafts}
+              options={PERSON_DOCUMENT_OPTIONS}
+              onAddDraft={addPersonalDocumentDraft}
+              onTypeChange={changePersonalDocumentType}
+              onFileChange={changePersonalDocumentFile}
+              onDocumentNumberChange={changePersonalDocumentNumber}
+              onExpireDateChange={changePersonalDocumentExpireDate}
+              onRemoveDraft={removePersonalDocumentDraft}
+              onDeleteExisting={handleDeleteExistingDocument}
+              isDeletingExisting={isDocumentDeleting}
+              validationMessage={personalValidationMessage}
+              actionError={documentActionError}
+              actionMessage={documentActionMessage}
+              emptyMessage="Документы покупателя пока не загружены."
+              acceptTypes={CLIENT_DOCUMENT_ACCEPT_TYPES}
+            />
 
-            {form.clientType === "Company"
-              ? (
-                <>
+            {form.clientType === "Company" ? (
+              <>
                 <FormSection
                   title="Компания"
                   description="Основные сведения о компании и контактном лице."
@@ -990,28 +870,28 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
                     />
                   </div>
                 </FormSection>
-                  {renderDocumentManager({
-                    existingDocs: companyDocuments,
-                    drafts: companyDocumentDrafts,
-                    validationMessage: companyValidationMessage,
-                    onAddDraft: addCompanyDocumentDraft,
-                    onTypeChange: changeCompanyDocumentType,
-                    onFileChange: changeCompanyDocumentFile,
-                    onRemoveDraft: removeCompanyDocumentDraft,
-                    onDeleteExisting: handleDeleteExistingDocument,
-                    isDeleting: isDocumentDeleting,
-                    title: "Документы компании и контактного лица",
-                    description: "Загрузите корпоративные документы и документы ответственного лица.",
-                    emptyMessage:
-                      "Документы компании пока не загружены. Добавьте идентификационные документы и лицензию компании.",
-                    note: "Допустимые форматы: PDF, JPG, PNG (до 10 МБ).",
-                    options: COMPANY_DOCUMENT_OPTIONS,
-                    actionError: documentActionError,
-                    actionMessage: documentActionMessage,
-                  })}
-                </>
-              )
-              : null}
+                <DocumentManager
+                  title="Документы компании и контактного лица"
+                  description="Загрузите корпоративные документы и документы ответственного лица."
+                  existingDocs={companyDocuments}
+                  drafts={companyDocumentDrafts}
+                  options={COMPANY_DOCUMENT_OPTIONS}
+                  onAddDraft={addCompanyDocumentDraft}
+                  onTypeChange={changeCompanyDocumentType}
+                  onFileChange={changeCompanyDocumentFile}
+                  onDocumentNumberChange={changeCompanyDocumentNumber}
+                  onExpireDateChange={changeCompanyDocumentExpireDate}
+                  onRemoveDraft={removeCompanyDocumentDraft}
+                  onDeleteExisting={handleDeleteExistingDocument}
+                  isDeletingExisting={isDocumentDeleting}
+                  validationMessage={companyValidationMessage}
+                  actionError={documentActionError}
+                  actionMessage={documentActionMessage}
+                  emptyMessage="Документы компании пока не загружены. Добавьте идентификационные документы и лицензию компании."
+                  acceptTypes={CLIENT_DOCUMENT_ACCEPT_TYPES}
+                />
+              </>
+            ) : null}
 
             <FormSection
               title="Финансовая информация"

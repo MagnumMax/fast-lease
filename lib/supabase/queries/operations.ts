@@ -424,6 +424,7 @@ export type OpsSellerDocument = {
   url: string | null;
   bucket?: string | null;
   storagePath?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type OpsSellerProfile = {
@@ -458,6 +459,7 @@ export type OpsBrokerDocument = {
   url: string | null;
   bucket?: string | null;
   storagePath?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type OpsBrokerProfile = {

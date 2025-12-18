@@ -1493,8 +1493,6 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             const clientDataPoints: SummaryDataPoint[] = [
               { label: "ФИО", value: formatStringValue(profileRow.full_name) },
               { label: "Телефон", value: formatStringValue(profileRow.phone) },
-              { label: "Emirates ID", value: formatStringValue(profileRow.emirates_id) },
-              { label: "Паспорт", value: formatStringValue(profileRow.passport_number) },
               { label: "Гражданство", value: formatStringValue(profileRow.nationality) },
               { label: "Резиденство", value: formatStringValue(profileRow.residency_status) },
               { label: "Дата рождения", value: formatDateValue(profileRow.date_of_birth) },

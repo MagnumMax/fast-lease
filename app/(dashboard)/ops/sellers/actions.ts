@@ -308,8 +308,6 @@ export async function updateOperationsSeller(
     phone,
     nationality,
     source,
-    emiratesId,
-    passportNumber,
     bankDetails,
     contactEmail,
     contactPhone,
@@ -382,8 +380,6 @@ export async function updateOperationsSeller(
       ops_email: normalizedEmail ?? currentMetadata.ops_email,
       ops_phone: sanitizedPhone ?? currentMetadata.ops_phone,
       nationality: nationality ?? (currentMetadata.nationality as string | undefined),
-      emirates_id: emiratesId ?? (currentMetadata.emirates_id as string | undefined),
-      passport_number: passportNumber ?? (currentMetadata.passport_number as string | undefined),
     };
 
     if (source) {
@@ -557,13 +553,10 @@ export async function deleteOperationsSeller(
 export async function uploadOperationsSellerDocuments(
   formData: FormData,
 ): Promise<UploadOperationsSellerDocumentsResult> {
-  const base = {
-    sellerId: formData.get("sellerId"),
-  } satisfies Record<string, unknown>;
-  const parsed = uploadSellerDocumentsSchema.safeParse(base);
+  const sellerId = formData.get("sellerId");
 
-  if (!parsed.success) {
-    return { success: false, error: "Некорректные данные документа." };
+  if (!sellerId || typeof sellerId !== "string") {
+    return { success: false, error: "Некорректный ID продавца." };
   }
 
   const sessionUser = await getMutationSessionUser();
@@ -571,19 +564,48 @@ export async function uploadOperationsSellerDocuments(
     return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
-  const { sellerId } = parsed.data;
-  const files = Array.from(formData.getAll("files")).filter(isFileLike) as FileLike[];
-  // Expect types to be passed as parallel array "types"
-  const types = Array.from(formData.getAll("types")).map(String);
+  const documentsMap = new Map<
+    number,
+    {
+      type?: string;
+      file?: FileLike;
+      documentNumber?: string;
+      expireDate?: string;
+    }
+  >();
+
+  for (const [key, value] of formData.entries()) {
+    const match = /^documents\[(\d+)\]\[(type|file|document_number|expire_date)\]$/.exec(key);
+    if (match) {
+      const index = parseInt(match[1], 10);
+      const field = match[2];
+      const existing = documentsMap.get(index) || {};
+
+      if (field === "file" && isFileLike(value)) {
+        existing.file = value;
+      } else if (field === "type" && typeof value === "string") {
+        existing.type = value;
+      } else if (field === "document_number" && typeof value === "string") {
+        existing.documentNumber = value;
+      } else if (field === "expire_date" && typeof value === "string") {
+        existing.expireDate = value;
+      }
+
+      documentsMap.set(index, existing);
+    }
+  }
+
+  const validDocs = Array.from(documentsMap.values()).filter(
+    (doc) => doc.file && doc.type,
+  );
 
   console.log("[operations] uploading seller documents", {
     sellerId,
-    filesCount: files.length,
-    types,
-    uploadedBy: sessionUser.user.id
+    filesCount: validDocs.length,
+    uploadedBy: sessionUser.user.id,
   });
 
-  if (files.length === 0) {
+  if (validDocs.length === 0) {
     return { success: false, error: "Не выбраны файлы для загрузки." };
   }
 
@@ -604,19 +626,20 @@ export async function uploadOperationsSellerDocuments(
 
   const profileId = profileData.id;
 
-  // We need to map files to candidates with types
-  const candidates: DocumentUploadCandidate[] = files.map((file, index) => {
-    const typeValue = types[index] || "other";
-    const typeLabel = SELLER_DOCUMENT_TYPE_LABEL_MAP[typeValue as SellerDocumentTypeValue] ?? "Документ";
+  const candidates: DocumentUploadCandidate[] = validDocs.map((doc) => {
+    const typeValue = doc.type as SellerDocumentTypeValue;
+    const typeLabel = SELLER_DOCUMENT_TYPE_LABEL_MAP[typeValue] ?? "Документ";
     
     return {
-      file,
+      file: doc.file!,
       title: typeLabel,
       type: typeValue,
       metadata: {
           document_type: typeValue,
           label: typeLabel,
           uploaded_via: "ops_dashboard",
+          document_number: doc.documentNumber || null,
+          expire_date: doc.expireDate || null,
       }
     };
   });
@@ -697,7 +720,7 @@ export async function deleteOperationsSellerDocument(
       return { success: false, error: "Не удалось найти документ продавца." };
     }
 
-    if (!documentRecord || String(documentRecord.profile_id) !== sellerId) {
+    if (!documentRecord || documentRecord.profile_id !== profileId) {
       return { success: false, error: "Документ не найден или принадлежит другому продавцу." };
     }
 
@@ -724,7 +747,7 @@ export async function deleteOperationsSellerDocument(
       .from("profile_documents")
       .delete()
       .eq("id", documentId)
-      .eq("profile_id", sellerId);
+      .eq("profile_id", profileId);
 
     if (deleteError) {
       console.error("[operations] failed to delete seller document", deleteError);

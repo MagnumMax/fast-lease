@@ -221,8 +221,6 @@ export function ClientDetailView({
             <InfoCell label="Дата рождения">{formatDateDisplay(profile.dateOfBirth)}</InfoCell>
             <InfoCell label="Национальность">{profile.nationality ?? "—"}</InfoCell>
             <InfoCell label="Статус резидентства">{profile.residencyStatus ?? "—"}</InfoCell>
-            <InfoCell label="Emirates ID">{profile.emiratesId ?? "—"}</InfoCell>
-            <InfoCell label="Паспорт">{profile.passportNumber ?? "—"}</InfoCell>
             {profile.clientType === "Company" ? (
               <>
                 <InfoCell label="Контактное лицо">{companyInfo.contactName ?? "—"}</InfoCell>

@@ -523,8 +523,6 @@ const updateInputSchema = z.object({
   status: z.union([z.literal("Active"), z.literal("Blocked")]).default("Active"),
   email: z.union([z.string().email(), z.literal("")]).optional(),
   phone: z.string().optional(),
-  emiratesId: z.string().optional(),
-  passportNumber: z.string().optional(),
   nationality: z.string().optional(),
   residencyStatus: z.string().optional(),
   dateOfBirth: z.string().optional(),
@@ -532,6 +530,8 @@ const updateInputSchema = z.object({
   companyContactEmiratesId: z.string().optional(),
   companyTrn: z.string().optional(),
   companyLicenseNumber: z.string().optional(),
+  emiratesId: z.string().optional(),
+  passportNumber: z.string().optional(),
   employment: z
     .object({
       employer: z.string().optional(),
@@ -796,10 +796,16 @@ export async function uploadClientDocuments(
 
   const documentsMap = new Map<
     number,
-    { type?: ClientDocumentTypeValue | ""; file?: FileLike | null; context?: "personal" | "company" }
+    {
+      type?: ClientDocumentTypeValue | "";
+      file?: FileLike | null;
+      context?: "personal" | "company";
+      documentNumber?: string;
+      expireDate?: string;
+    }
   >();
   for (const [key, value] of formData.entries()) {
-    const match = /^documents\[(\d+)\]\[(type|file|context)\]$/.exec(key);
+    const match = /^documents\[(\d+)\]\[(type|file|context|document_number|expire_date)\]$/.exec(key);
     if (!match) continue;
     const index = Number.parseInt(match[1] ?? "", 10);
     if (Number.isNaN(index)) continue;
@@ -813,6 +819,12 @@ export async function uploadClientDocuments(
     if (match[2] === "context" && typeof value === "string") {
       const normalized = value.toLowerCase();
       existing.context = normalized === "company" ? "company" : "personal";
+    }
+    if (match[2] === "document_number" && typeof value === "string") {
+      existing.documentNumber = value;
+    }
+    if (match[2] === "expire_date" && typeof value === "string") {
+      existing.expireDate = value;
     }
     documentsMap.set(index, existing);
   }
@@ -839,11 +851,24 @@ export async function uploadClientDocuments(
       const context =
         entry.context ??
         (entry.type === "company_license" ? "company" : ("personal" as "personal" | "company"));
-      return { type: entry.type, file: entry.file, context };
+      return {
+        type: entry.type,
+        file: entry.file,
+        context,
+        documentNumber: entry.documentNumber,
+        expireDate: entry.expireDate,
+      };
     })
     .filter(
-      (entry): entry is { type: ClientDocumentTypeValue; file: FileLike; context: "personal" | "company" } =>
-        entry !== null,
+      (
+        entry,
+      ): entry is {
+        type: ClientDocumentTypeValue;
+        file: FileLike;
+        context: "personal" | "company";
+        documentNumber: string | undefined;
+        expireDate: string | undefined;
+      } => entry !== null,
     );
 
   if (documents.length === 0) {
@@ -882,6 +907,8 @@ export async function uploadClientDocuments(
         metadata: {
           label: defaultLabel,
           uploaded_via: "ops_dashboard",
+          document_number: doc.documentNumber || null,
+          expire_date: doc.expireDate || null,
         },
       };
     });

@@ -54,6 +54,12 @@ import {
 } from "@/app/(dashboard)/ops/sellers/actions";
 import { sortDocumentOptions } from "@/lib/documents/options";
 
+import {
+  DocumentManager,
+  type DocumentDraft,
+  type ManagedDocument,
+} from "./document-manager";
+
 const EMPTY_SELECT_VALUE = "__empty";
 
 type SellerEditDialogProps = {
@@ -70,8 +76,6 @@ type FormState = {
   phone: string;
   nationality: string;
   source: string;
-  emiratesId: string;
-  passportNumber: string;
   bankDetails: string;
   contactEmail: string;
   contactPhone: string;
@@ -105,12 +109,6 @@ function FormSection({ title, description, children, columns = 2, action }: Form
   );
 }
 
-type DocumentDraft = {
-  id: string;
-  type: SellerDocumentTypeValue | "";
-  file: File | null;
-};
-
 function createDocumentDraft(): DocumentDraft {
   const identifier =
     typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -120,6 +118,8 @@ function createDocumentDraft(): DocumentDraft {
     id: identifier,
     type: "",
     file: null,
+    documentNumber: "",
+    expireDate: "",
   } satisfies DocumentDraft;
 }
 
@@ -137,8 +137,6 @@ function buildInitialState(profile: OpsSellerProfile): FormState {
     phone: profile.phone ?? (metadata.ops_phone as string) ?? "",
     nationality: profile.nationality ?? (metadata.nationality as string) ?? "",
     source: profile.source ?? (metadata.source as string) ?? "",
-    emiratesId: (metadata.emirates_id as string) ?? "",
-    passportNumber: (metadata.passport_number as string) ?? "",
     bankDetails: (sellerDetails.seller_bank_details as string) ?? "",
     contactEmail: (sellerDetails.seller_contact_email as string) ?? "",
     contactPhone: (sellerDetails.seller_contact_phone as string) ?? "",
@@ -198,8 +196,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
   }, [form.fullName, isDraftIncomplete]);
 
   const handleDeleteExistingDocument = useCallback(
-    async (doc: OpsSellerDocument) => {
-      const documentId = doc.id;
+    async (documentId: string) => {
       if (!documentId || isDocumentDeleting(documentId)) {
         return;
       }
@@ -247,6 +244,44 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
     }
   }, [open, profile]);
 
+  const changeDocumentType = (id: string, type: string) => {
+    setDocumentDrafts((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, type: type as SellerDocumentTypeValue | "" } : d))
+    );
+  };
+
+  const changeDocumentFile = (id: string, file: File | null) => {
+    setDocumentDrafts((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, file } : d))
+    );
+  };
+  
+  const changeDocumentNumber = (id: string, documentNumber: string) => {
+    setDocumentDrafts((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, documentNumber } : d))
+    );
+  };
+
+  const changeDocumentExpireDate = (id: string, expireDate: string) => {
+    setDocumentDrafts((prev) =>
+      prev.map((d) => (d.id === id ? { ...d, expireDate } : d))
+    );
+  };
+
+  const managedDocuments: ManagedDocument[] = useMemo(() => {
+    return documents.map((doc) => ({
+      id: doc.id,
+      title: doc.title,
+      typeLabel:
+        doc.documentType && SELLER_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as SellerDocumentTypeValue]
+          ? SELLER_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as SellerDocumentTypeValue]
+          : doc.documentType ?? "Документ",
+      url: doc.url,
+      uploadedAt: doc.uploadedAt ?? null,
+      metadata: doc.metadata ?? null,
+    }));
+  }, [documents]);
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
@@ -261,10 +296,18 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
         formData.append("sellerId", profile.userId);
         
         let hasFiles = false;
+        let documentIndex = 0;
         for (const draft of documentDrafts) {
           if (draft.file && draft.type) {
-            formData.append("files", draft.file);
-            formData.append("types", draft.type);
+            formData.append(`documents[${documentIndex}][type]`, draft.type);
+            formData.append(`documents[${documentIndex}][file]`, draft.file);
+            if (draft.documentNumber) {
+              formData.append(`documents[${documentIndex}][document_number]`, draft.documentNumber);
+            }
+            if (draft.expireDate) {
+              formData.append(`documents[${documentIndex}][expire_date]`, draft.expireDate);
+            }
+            documentIndex += 1;
             hasFiles = true;
           }
         }
@@ -287,8 +330,6 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
         phone: form.phone || undefined,
         nationality: form.nationality,
         source: form.source,
-        emiratesId: form.emiratesId,
-        passportNumber: form.passportNumber,
         bankDetails: form.bankDetails,
         contactEmail: form.contactEmail || undefined,
         contactPhone: form.contactPhone || undefined,
@@ -464,23 +505,6 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
                 placeholder="Например: Recommendation"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="emiratesId">Emirates ID</Label>
-              <Input
-                id="emiratesId"
-                value={form.emiratesId}
-                onChange={handleChange("emiratesId")}
-                placeholder="784-..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="passportNumber">Номер паспорта</Label>
-              <Input
-                id="passportNumber"
-                value={form.passportNumber}
-                onChange={handleChange("passportNumber")}
-              />
-            </div>
           </FormSection>
 
           <FormSection title="Реквизиты">
@@ -515,165 +539,26 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
             </div>
           </FormSection>
 
-          {/* Document Management Section */}
-          <FormSection
+          <DocumentManager
             title="Документы"
             description="Загрузите копии паспорта, Emirates ID и другие документы."
-            columns={1}
-            action={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setDocumentDrafts(prev => [...prev, createDocumentDraft()])}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Добавить
-              </Button>
-            }
-          >
-
-             {/* Existing Documents */}
-             {documents.length > 0 && (
-                <div className="space-y-2 rounded-xl border border-border/60 bg-background/70 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Уже загружено
-                  </p>
-                  <ul className="space-y-2">
-                    {documents.map((doc) => {
-                      const typeLabel =
-                        doc.documentType && SELLER_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as SellerDocumentTypeValue]
-                          ? SELLER_DOCUMENT_TYPE_LABEL_MAP[doc.documentType as SellerDocumentTypeValue]
-                          : doc.documentType ?? "Документ";
-                       const uploadedDisplay = doc.uploadedAt
-                        ? new Date(doc.uploadedAt).toLocaleDateString("ru-RU")
-                        : null;
-                      const isRemoving = isDocumentDeleting(doc.id);
-
-                      return (
-                        <li
-                          key={doc.id}
-                          className="flex flex-col gap-2 rounded-lg border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
-                        >
-                          <div className="space-y-2">
-                            <p className="text-sm font-semibold text-foreground">{doc.title}</p>
-                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                              {doc.documentType ? <span>Тип: {typeLabel}</span> : null}
-                              {uploadedDisplay ? <span>Загружен: {uploadedDisplay}</span> : null}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {doc.url ? (
-                              <Button asChild size="sm" variant="outline" className="rounded-lg">
-                                <a
-                                  href={doc.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  aria-label="Скачать документ"
-                                  className="flex items-center justify-center"
-                                >
-                                  <Download className="h-4 w-4" aria-hidden="true" />
-                                </a>
-                              </Button>
-                            ) : (
-                              <Badge variant="outline" className="rounded-lg text-muted-foreground">
-                                Нет файла
-                              </Badge>
-                            )}
-                             <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleDeleteExistingDocument(doc)}
-                                disabled={isRemoving}
-                                className="rounded-lg text-muted-foreground hover:text-destructive"
-                                aria-label="Удалить документ"
-                              >
-                                {isRemoving ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                                )}
-                              </Button>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-             )}
-
-             {/* Action Messages */}
-             {documentActionError ? <p className="text-xs text-destructive">{documentActionError}</p> : null}
-             {documentActionMessage ? <p className="text-xs text-muted-foreground">{documentActionMessage}</p> : null}
-
-             {/* Drafts */}
-             <div className="space-y-3">
-                {documentDrafts.map((draft, index) => (
-                    <div
-                      key={draft.id}
-                      className="space-y-3 rounded-xl border border-dashed border-border/60 bg-background/50 p-3"
-                    >
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-2">
-                            <Label>Тип документа</Label>
-                            <Select
-                              value={draft.type || EMPTY_SELECT_VALUE}
-                              onValueChange={(value) => {
-                                const newDrafts = [...documentDrafts];
-                                newDrafts[index].type = (value === EMPTY_SELECT_VALUE ? "" : value) as SellerDocumentTypeValue | "";
-                                setDocumentDrafts(newDrafts);
-                              }}
-                            >
-                              <SelectTrigger className="h-10 w-full rounded-lg border border-border bg-background/80 text-sm">
-                                <SelectValue placeholder="Выберите тип" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value={EMPTY_SELECT_VALUE}>Выберите тип</SelectItem>
-                                {DOCUMENT_OPTIONS.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Файл</Label>
-                            <Input
-                              type="file"
-                              accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
-                              onChange={(event) => {
-                                const file = event.currentTarget.files?.[0] ?? null;
-                                const newDrafts = [...documentDrafts];
-                                newDrafts[index].file = file;
-                                setDocumentDrafts(newDrafts);
-                              }}
-                              className="cursor-pointer rounded-lg"
-                            />
-                            {draft.file ? (
-                              <p className="text-xs text-muted-foreground">{draft.file.name}</p>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="flex justify-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                                setDocumentDrafts(prev => prev.filter(d => d.id !== draft.id));
-                            }}
-                            className="rounded-lg text-muted-foreground hover:text-destructive"
-                          >
-                            Удалить
-                          </Button>
-                        </div>
-                    </div>
-                ))}
-             </div>
-             {validationMessage && <p className="text-xs text-destructive">{validationMessage}</p>}
-          </FormSection>
+            existingDocs={managedDocuments}
+            drafts={documentDrafts}
+            options={DOCUMENT_OPTIONS}
+            onAddDraft={() => setDocumentDrafts((prev) => [...prev, createDocumentDraft()])}
+            onTypeChange={changeDocumentType}
+            onFileChange={changeDocumentFile}
+            onDocumentNumberChange={changeDocumentNumber}
+            onExpireDateChange={changeDocumentExpireDate}
+            onRemoveDraft={(id) => setDocumentDrafts((prev) => prev.filter((d) => d.id !== id))}
+            onDeleteExisting={handleDeleteExistingDocument}
+            isDeletingExisting={isDocumentDeleting}
+            validationMessage={validationMessage}
+            actionError={documentActionError}
+            actionMessage={documentActionMessage}
+            emptyMessage="Нет загруженных документов"
+            acceptTypes={CLIENT_DOCUMENT_ACCEPT_TYPES}
+          />
 
           {errorMessage ? (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">

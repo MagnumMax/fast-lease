@@ -233,13 +233,13 @@ const updateInputSchema = z.object({
   phone: z.string().optional(),
   nationality: z.string().optional(),
   source: z.string().optional(),
-  emiratesId: z.string().optional(),
-  passportNumber: z.string().optional(),
   bankDetails: z.string().optional(),
   contactEmail: z.union([z.string().email(), z.literal("")]).optional(),
   contactPhone: z.string().optional(),
   dateOfBirth: z.string().nullable().optional(),
   type: z.enum(["personal", "company"]).optional(),
+  emiratesId: z.string().optional(),
+  passportNumber: z.string().optional(),
 });
 
 export type UpdateOperationsBrokerInput = z.infer<typeof updateInputSchema>;
@@ -382,8 +382,6 @@ export async function updateOperationsBroker(
       ops_email: normalizedEmail ?? currentMetadata.ops_email,
       ops_phone: sanitizedPhone ?? currentMetadata.ops_phone,
       nationality: nationality ?? (currentMetadata.nationality as string | undefined),
-      emirates_id: emiratesId ?? (currentMetadata.emirates_id as string | undefined),
-      passport_number: passportNumber ?? (currentMetadata.passport_number as string | undefined),
     };
 
     if (source) {
@@ -568,11 +566,42 @@ export async function uploadOperationsBrokerDocuments(
   }
 
   const { brokerId } = parsed.data;
-  const files = Array.from(formData.getAll("files")).filter(isFileLike) as FileLike[];
-  // Expect types to be passed as parallel array "types"
-  const types = Array.from(formData.getAll("types")).map(String);
 
-  if (files.length === 0) {
+  const documentsMap = new Map<
+    number,
+    {
+      type?: string;
+      file?: FileLike;
+      documentNumber?: string;
+      expireDate?: string;
+    }
+  >();
+
+  for (const [key, value] of formData.entries()) {
+    const match = /^documents\[(\d+)\]\[(type|file|document_number|expire_date)\]$/.exec(key);
+    if (match) {
+      const index = parseInt(match[1], 10);
+      const field = match[2];
+      const existing = documentsMap.get(index) || {};
+
+      if (field === "file" && isFileLike(value)) {
+        existing.file = value;
+      } else if (field === "type" && typeof value === "string") {
+        existing.type = value;
+      } else if (field === "document_number" && typeof value === "string") {
+        existing.documentNumber = value;
+      } else if (field === "expire_date" && typeof value === "string") {
+        existing.expireDate = value;
+      }
+
+      documentsMap.set(index, existing);
+    }
+  }
+
+  const rawDocuments = Array.from(documentsMap.values());
+  const hasFiles = rawDocuments.some((d) => d.file && d.type);
+
+  if (!hasFiles) {
     return { success: false, error: "Не выбраны файлы для загрузки." };
   }
 
@@ -594,18 +623,24 @@ export async function uploadOperationsBrokerDocuments(
   const profileId = profileData.id;
 
   // We need to map files to candidates with types
-  const candidates: DocumentUploadCandidate[] = files.map((file, index) => {
-    const typeValue = types[index] || "other";
+  const candidates: DocumentUploadCandidate[] = rawDocuments
+    .filter((d): d is { type: string; file: FileLike; documentNumber?: string; expireDate?: string } => 
+      !!(d.file && d.type)
+    )
+    .map((d) => {
+    const typeValue = d.type;
     const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[typeValue as ClientDocumentTypeValue] ?? "Документ";
     
     return {
-      file,
+      file: d.file,
       title: typeLabel,
       type: typeValue,
       metadata: {
           document_type: typeValue,
           label: typeLabel,
           uploaded_via: "ops_dashboard",
+          document_number: d.documentNumber || null,
+          expire_date: d.expireDate || null,
       }
     };
   });
