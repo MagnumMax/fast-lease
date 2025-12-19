@@ -486,6 +486,7 @@ type CommercialOfferExtract = {
   downPaymentPercent: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
+  buyoutAmount: number | null;
   comment: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
@@ -505,6 +506,7 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
   const downPaymentPercent = parseQuoteNumber((payload as Record<string, unknown>)["down_payment_percent"]);
   const interestRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["interest_rate_annual"]);
   const insuranceRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["insurance_rate_annual"]);
+  const buyoutAmount = parseQuoteNumber((payload as Record<string, unknown>)["buyout_amount"]);
 
   const metaBranch =
     (payload as Record<string, unknown>)["quote_meta"] &&
@@ -525,6 +527,7 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
     downPaymentPercent,
     interestRateAnnual,
     insuranceRateAnnual,
+    buyoutAmount,
     comment,
     updatedAt: getString(metaBranch["updated_at"]),
     updatedBy: getString(metaBranch["updated_by"]),
@@ -4408,6 +4411,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         downPaymentPercent: commercialOfferExtract.downPaymentPercent,
         interestRateAnnual: commercialOfferExtract.interestRateAnnual,
         insuranceRateAnnual: commercialOfferExtract.insuranceRateAnnual,
+        buyoutAmount: commercialOfferExtract.buyoutAmount,
         comment: commercialOfferExtract.comment,
         updatedAt: commercialOfferExtract.updatedAt,
         updatedBy: commercialOfferExtract.updatedBy,

@@ -98,6 +98,8 @@ const saveCommercialOfferSchema = z.object({
   downPaymentSource: z.enum(["amount", "percent"]).optional(),
   interestRateAnnual: z.string().optional(),
   insuranceRateAnnual: z.string().optional(),
+  buyoutAmount: z.string().optional(),
+  calculationMethod: z.enum(["standard", "inclusive_vat"]).optional(),
   comment: z.string().optional(),
 });
 
@@ -336,8 +338,18 @@ export async function saveCommercialOffer(
     return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
-  const { dealId, slug, priceVat, termMonths, downPayment, interestRateAnnual, insuranceRateAnnual, comment } =
-    parsed.data;
+  const {
+    dealId,
+    slug,
+    priceVat,
+    termMonths,
+    downPayment,
+    interestRateAnnual,
+    insuranceRateAnnual,
+    buyoutAmount,
+    calculationMethod,
+    comment,
+  } = parsed.data;
   const { downPaymentPercent, downPaymentSource } = parsed.data;
 
   try {
@@ -412,6 +424,8 @@ export async function saveCommercialOffer(
     nextPayload.down_payment_source = resolvedSource ?? undefined;
     nextPayload.interest_rate_annual = parseCommercialNumber(interestRateAnnual);
     nextPayload.insurance_rate_annual = parseCommercialNumber(insuranceRateAnnual);
+    nextPayload.buyout_amount = parseCommercialNumber(buyoutAmount);
+    nextPayload.calculation_method = calculationMethod ?? undefined;
 
     const metaBranch =
       nextPayload.quote_meta &&

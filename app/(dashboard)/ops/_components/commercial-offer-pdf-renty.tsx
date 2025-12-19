@@ -16,6 +16,10 @@ import {
 import QRCode from "qrcode";
 
 import { Button } from "@/components/ui/button";
+import {
+  calculateCommercialOffer,
+  type CommercialOfferCalculationMethod,
+} from "@/lib/commercial-offer-calculations";
 
 export type CommercialOfferData = {
   dealNumber?: string | null;
@@ -26,8 +30,11 @@ export type CommercialOfferData = {
   termMonths?: string | null;
   downPayment?: string | null;
   downPaymentPercent?: string | null;
+  downPaymentSource?: "amount" | "percent";
   interestRateAnnual?: string | null;
   insuranceRateAnnual?: string | null;
+  buyoutAmount?: string | null;
+  calculationMethod?: CommercialOfferCalculationMethod | null;
   comment?: string | null;
   preparedBy?: string | null;
   preparedByPhone?: string | null;
@@ -95,22 +102,68 @@ function calculateMonthlyPayment(data: CommercialOfferData): string | null {
   const downPayment = parseNumber(data.downPayment) ?? 0;
   const termMonths = parseNumber(data.termMonths);
   const rateAnnual = parseNumber(data.interestRateAnnual);
+  const insuranceRate = parseNumber(data.insuranceRateAnnual);
+  const buyoutAmount = parseNumber(data.buyoutAmount);
 
-  if (price === null || termMonths === null || termMonths <= 0) return null;
-  const principal = Math.max(0, price - downPayment);
-  const annualRate = rateAnnual ?? 0;
-  const totalInterest = principal * (annualRate / 100) * (termMonths / 12);
-  const payment = (principal + totalInterest) / termMonths;
-  if (!Number.isFinite(payment)) return null;
-  return formatCurrencyAED(payment);
+  if (
+    price === null ||
+    termMonths === null ||
+    termMonths <= 0 ||
+    rateAnnual === null ||
+    insuranceRate === null
+  ) {
+    return null;
+  }
+
+  const result = calculateCommercialOffer({
+    priceVat: price,
+    downPaymentAmount: downPayment,
+    downPaymentSource: data.downPaymentSource ?? "amount",
+    termMonths,
+    interestRateAnnual: rateAnnual,
+    insuranceRateAnnual: insuranceRate,
+    buyoutAmount,
+    method: data.calculationMethod ?? "standard",
+  });
+
+  return formatCurrencyAED(result.monthlyPayment);
 }
 
 function estimateInsuranceAnnual(data: CommercialOfferData): string | null {
   const price = parseNumber(data.priceVat);
-  const rate = parseNumber(data.insuranceRateAnnual);
-  if (price === null || rate === null) return null;
-  const premium = (price * rate) / 100;
-  return formatCurrencyAED(Math.round(premium));
+  const downPayment = parseNumber(data.downPayment) ?? 0;
+  const termMonths = parseNumber(data.termMonths);
+  const rateAnnual = parseNumber(data.interestRateAnnual);
+  const insuranceRate = parseNumber(data.insuranceRateAnnual);
+  const buyoutAmount = parseNumber(data.buyoutAmount);
+
+  if (
+    price === null ||
+    termMonths === null ||
+    termMonths <= 0 ||
+    rateAnnual === null ||
+    insuranceRate === null
+  ) {
+    // Fallback if full data is not available, but we have price and rate
+    if (price !== null && insuranceRate !== null) {
+      const premium = (price * insuranceRate) / 100;
+      return formatCurrencyAED(Math.round(premium));
+    }
+    return null;
+  }
+
+  const result = calculateCommercialOffer({
+    priceVat: price,
+    downPaymentAmount: downPayment,
+    downPaymentSource: data.downPaymentSource ?? "amount",
+    termMonths,
+    interestRateAnnual: rateAnnual,
+    insuranceRateAnnual: insuranceRate,
+    buyoutAmount,
+    method: data.calculationMethod ?? "standard",
+  });
+
+  return formatCurrencyAED(result.insuranceAnnual);
 }
 
 function resolveLoginUrl(explicit?: string | null): string {
@@ -440,6 +493,12 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
                 <Text style={styles.rowLabel}>Tenor</Text>
                 <Text style={styles.rowValue}>{data.termMonths ? `${data.termMonths} months` : "—"}</Text>
               </View>
+              {data.buyoutAmount ? (
+                <View style={styles.row}>
+                  <Text style={styles.rowLabel}>Buyout Amount</Text>
+                  <Text style={styles.rowValue}>{normalizeMoney(data.buyoutAmount) ?? "—"}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
 

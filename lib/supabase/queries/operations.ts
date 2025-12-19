@@ -572,6 +572,8 @@ export type OpsCommercialOffer = {
   downPaymentPercent: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
+  buyoutAmount: number | null;
+  calculationMethod?: "standard" | "inclusive_vat" | null;
   comment: string | null;
   updatedAt: string | null;
   updatedBy: string | null;

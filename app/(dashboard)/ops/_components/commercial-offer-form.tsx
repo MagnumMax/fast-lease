@@ -1,18 +1,38 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
-import { CheckCircle2, RefreshCw } from "lucide-react";
+import { CheckCircle2, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
   type CommercialOfferData,
   CommercialOfferDownloadButtonRenty,
 } from "@/app/(dashboard)/ops/_components/commercial-offer-pdf-renty";
 import { saveCommercialOffer, type SaveCommercialOfferResult } from "@/app/(dashboard)/ops/deals/[id]/actions";
 import type { OpsCommercialOffer } from "@/lib/supabase/queries/operations";
+import {
+  calculateCommercialOffer,
+  type CommercialOfferCalculationMethod,
+} from "@/lib/commercial-offer-calculations";
 
 const FIELD_CONFIG: Array<{
   id: "priceVat" | "termMonths";
@@ -36,6 +56,8 @@ type FormState = {
   downPaymentSource: "amount" | "percent";
   interestRateAnnual: string;
   insuranceRateAnnual: string;
+  buyoutAmount: string;
+  calculationMethod: CommercialOfferCalculationMethod;
   comment: string;
 };
 
@@ -74,14 +96,48 @@ function formatInitialInterestRate(value: number | null): string {
 
 function parseNumberInput(value: string): number | null {
   if (!value) return null;
-  const digits = value.replace(/[^\d.,-]/g, "").replace(",", ".");
-  const parsed = Number(digits);
+  // Remove all whitespace
+  let clean = value.replace(/\s/g, "");
+  
+  // If format is like 1,234,567.89 (US) - mixed dots and commas
+  if (clean.includes(".") && clean.includes(",")) {
+    // If dot is last, it's decimal (US)
+    if (clean.lastIndexOf(".") > clean.lastIndexOf(",")) {
+      clean = clean.replace(/,/g, "");
+    } else {
+      // Comma is last, it's decimal (EU) -> 1.234.567,89
+      clean = clean.replace(/\./g, "").replace(",", ".");
+    }
+  } else if ((clean.match(/,/g) || []).length > 1) {
+    // Multiple commas -> thousands (1,000,000)
+    clean = clean.replace(/,/g, "");
+  } else {
+    // Single comma or no comma
+    // If single comma, treat as dot (assuming 0,5 or 1000,50)
+    // Note: This might be ambiguous for "1,000" (could be 1000 or 1.0)
+    // But in this context (large amounts), users might type "1,000".
+    // However, if they type "24,9", they mean 24.9.
+    // Let's assume comma is decimal if it's a single comma.
+    clean = clean.replace(",", ".");
+  }
+  
+  const parsed = Number(clean);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 function formatNumericInput(value: number | null, fractionDigits: number): string {
   if (value == null || Number.isNaN(value)) return "";
   return value.toFixed(fractionDigits).replace(/\.?0+$/, "");
+}
+
+function formatCurrencyAED(value: number | null): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `AED ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function formatPercent(value: number | null): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
 }
 
 export function CommercialOfferForm({
@@ -111,6 +167,8 @@ export function CommercialOfferForm({
       downPaymentSource: initialSource,
       interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
       insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? 4),
+      buyoutAmount: formatInitialNumber(offer?.buyoutAmount ?? null),
+      calculationMethod: offer?.calculationMethod ?? "standard",
       comment: offer?.comment ?? "",
     };
   });
@@ -167,6 +225,8 @@ export function CommercialOfferForm({
           : form.downPaymentPercent || null,
       interestRateAnnual: form.interestRateAnnual || null,
       insuranceRateAnnual: form.insuranceRateAnnual || null,
+      buyoutAmount: form.buyoutAmount || null,
+      calculationMethod: form.calculationMethod,
       comment: form.comment || offer?.comment || null,
       preparedBy,
       preparedByPhone: offer?.updatedByPhone ?? null,
@@ -239,6 +299,14 @@ export function CommercialOfferForm({
     handleInputChange("interestRateAnnual", normalized.toString());
   }
 
+  function handleMethodChange(value: string) {
+    setResult(null);
+    setForm((prev) => ({
+      ...prev,
+      calculationMethod: value as CommercialOfferCalculationMethod,
+    }));
+  }
+
   const interestRateValue = useMemo(
     () => normalizeInterestRate(Number.parseFloat(form.interestRateAnnual)),
     [form.interestRateAnnual],
@@ -281,6 +349,8 @@ export function CommercialOfferForm({
       downPaymentSource: offer?.downPaymentPercent != null ? "percent" : "amount",
       interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
       insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? 4),
+      buyoutAmount: formatInitialNumber(offer?.buyoutAmount ?? null),
+      calculationMethod: offer?.calculationMethod ?? "standard",
       comment: offer?.comment ?? "",
     });
     setResult(null);
@@ -310,6 +380,8 @@ export function CommercialOfferForm({
         downPaymentSource: form.downPaymentSource,
         interestRateAnnual: form.interestRateAnnual,
         insuranceRateAnnual: form.insuranceRateAnnual,
+        buyoutAmount: form.buyoutAmount,
+        calculationMethod: form.calculationMethod,
         comment: form.comment,
       });
       setResult(response);
@@ -340,67 +412,80 @@ export function CommercialOfferForm({
       downPaymentSource: form.downPaymentSource,
       interestRateAnnual: form.interestRateAnnual,
       insuranceRateAnnual: form.insuranceRateAnnual,
+      calculationMethod: form.calculationMethod,
       comment: form.comment,
     });
     setResult(response);
   };
 
-  const calculations = useMemo(() => {
-    const formatCurrencyAED = (value: number | null): string => {
-      if (value == null || Number.isNaN(value)) return "—";
-      return `AED ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-    };
-    const formatPercent = (value: number | null): string => {
-      if (value == null || Number.isNaN(value)) return "—";
-      return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
-    };
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
+  const calculationResult = useMemo(() => {
     const price = priceValue;
     const termMonths = parseNumberInput(form.termMonths);
     const downPayment = resolvedDownPayment.amount ?? 0;
     const annualRate = parseNumberInput(form.interestRateAnnual);
     const insuranceAnnualRate = parseNumberInput(form.insuranceRateAnnual);
+    const buyoutAmount = parseNumberInput(form.buyoutAmount);
 
-    const principal = price != null ? Math.max(0, price - downPayment) : null;
-    const monthlyRatePercent = annualRate != null ? annualRate / 12 : null;
-    const periodRatePercent =
-      annualRate != null && termMonths != null ? (annualRate * termMonths) / 12 : null;
-    const totalInterestAmount =
-      principal != null && annualRate != null && termMonths != null && termMonths > 0
-        ? principal * (annualRate / 100) * (termMonths / 12)
-        : null;
-    const payoffWithInterest =
-      principal != null && totalInterestAmount != null ? principal + totalInterestAmount : null;
-    const monthlyLeasePayment =
-      payoffWithInterest != null && termMonths != null && termMonths > 0
-        ? payoffWithInterest / termMonths
-        : null;
-    const insuranceTotal =
-      price != null && insuranceAnnualRate != null && termMonths != null && termMonths > 0
-        ? price * (insuranceAnnualRate / 100) * (termMonths / 12)
-        : null;
-    const totalForClient =
-      payoffWithInterest != null && insuranceTotal != null
-        ? payoffWithInterest + insuranceTotal + downPayment
-        : null;
+    if (
+      price == null ||
+      termMonths == null ||
+      annualRate == null ||
+      insuranceAnnualRate == null
+    ) {
+      return null;
+    }
 
-    return [
-      { label: "Месячная ставка, %", value: formatPercent(monthlyRatePercent) },
-      { label: "Ставка за срок, %", value: formatPercent(periodRatePercent) },
-      { label: "Финансируемая сумма", value: formatCurrencyAED(principal) },
-      { label: "Итого к погашению", value: formatCurrencyAED(payoffWithInterest) },
-      { label: "Ежемесячный платёж", value: formatCurrencyAED(monthlyLeasePayment) },
-      { label: "Доход по процентам", value: formatCurrencyAED(totalInterestAmount) },
-      { label: "Страховые платежи", value: formatCurrencyAED(insuranceTotal) },
-      { label: "Итого для покупателя (страх. + аванс)", value: formatCurrencyAED(totalForClient) },
-    ];
+    return calculateCommercialOffer({
+      priceVat: price,
+      downPaymentAmount: downPayment,
+      downPaymentSource: form.downPaymentSource,
+      termMonths,
+      interestRateAnnual: annualRate,
+      insuranceRateAnnual: insuranceAnnualRate,
+      buyoutAmount,
+      method: form.calculationMethod,
+    });
   }, [
     resolvedDownPayment.amount,
     form.insuranceRateAnnual,
     form.interestRateAnnual,
+    form.buyoutAmount,
     priceValue,
     form.termMonths,
+    form.downPaymentSource,
+    form.calculationMethod,
   ]);
+
+  const calculations = useMemo(() => {
+    if (!calculationResult) {
+      return [
+        { label: "Месячная ставка, %", value: "—" },
+        { label: "Ставка за срок, %", value: "—" },
+        { label: "Финансируемая сумма", value: "—" },
+        { label: "Итого к погашению", value: "—" },
+        { label: "Ежемесячный платёж", value: "—" },
+        { label: "Доход по процентам", value: "—" },
+        { label: "Страховые платежи", value: "—" },
+        { label: "Сумма первого месяца", value: "—" },
+        { label: "Итого для покупателя (страх. + аванс)", value: "—" },
+      ];
+    }
+
+    const result = calculationResult;
+    return [
+      { label: "Месячная ставка, %", value: formatPercent(result.rates.monthly) },
+      { label: "Ставка за срок, %", value: formatPercent(result.rates.period) },
+      { label: "Финансируемая сумма", value: formatCurrencyAED(result.financedAmount) },
+      { label: "Итого к погашению", value: formatCurrencyAED(result.financedAmount + result.totalInterest) },
+      { label: "Ежемесячный платёж", value: formatCurrencyAED(result.monthlyPayment) },
+      { label: "Доход по процентам", value: formatCurrencyAED(result.totalInterest) },
+      { label: "Страховые платежи", value: formatCurrencyAED(result.totalInsurance) },
+      { label: "Сумма первого месяца", value: formatCurrencyAED(result.initialPayment) },
+      { label: "Итого для покупателя (страх. + аванс)", value: formatCurrencyAED(result.totalClientCost) },
+    ];
+  }, [calculationResult]);
 
   return (
     <div className="space-y-4">
@@ -417,6 +502,27 @@ export function CommercialOfferForm({
       </div>
 
       <form id="commercial-offer-form" className="space-y-3" onSubmit={handleSubmit}>
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3">
+          <div className="space-y-1">
+            <Label htmlFor="calculationMethod" className="text-xs font-medium text-amber-900">
+              Алгоритм расчёта
+            </Label>
+            <Select
+              value={form.calculationMethod}
+              onValueChange={handleMethodChange}
+              name="calculationMethod"
+            >
+              <SelectTrigger id="calculationMethod" className="h-9 border-amber-200 bg-white/50">
+                <SelectValue placeholder="Выберите метод" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="standard">Стандартный (Annuity)</SelectItem>
+                <SelectItem value="inclusive_vat">С выкупной стоимостью</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-2">
           {FIELD_CONFIG.map((field) => (
             <div key={field.id} className="space-y-1">
@@ -465,34 +571,49 @@ export function CommercialOfferForm({
             </div>
           </div>
           <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="interestRateAnnual">{INTEREST_RATE_LABEL}</Label>
-                <span className="text-sm font-semibold text-foreground">
-                  {interestRateValue.toFixed(1)}%
-                </span>
+            {form.calculationMethod === "inclusive_vat" ? (
+              <div className="space-y-1">
+                <Label htmlFor="buyoutAmount">Выкупная стоимость, AED</Label>
+                <Input
+                  id="buyoutAmount"
+                  name="buyoutAmount"
+                  value={form.buyoutAmount}
+                  onChange={(event) => handleInputChange("buyoutAmount", event.target.value)}
+                  placeholder="10000"
+                  className="rounded-lg"
+                  inputMode="decimal"
+                />
               </div>
-              <input
-                id="interestRateAnnual"
-                name="interestRateAnnual"
-                type="range"
-                min={INTEREST_RATE_MIN}
-                max={INTEREST_RATE_MAX}
-                step={INTEREST_RATE_STEP}
-                value={interestRateValue}
-                onChange={(event) => handleInterestRateChange(Number.parseFloat(event.target.value))}
-                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-                aria-valuemin={INTEREST_RATE_MIN}
-                aria-valuemax={INTEREST_RATE_MAX}
-                aria-valuenow={interestRateValue}
-                aria-valuetext={`${interestRateValue.toFixed(1)}%`}
-              />
-              <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span>{INTEREST_RATE_MIN}%</span>
-                <span>Шаг 0.5%</span>
-                <span>{INTEREST_RATE_MAX}%</span>
+            ) : (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="interestRateAnnual">{INTEREST_RATE_LABEL}</Label>
+                  <span className="text-sm font-semibold text-foreground">
+                    {interestRateValue.toFixed(1)}%
+                  </span>
+                </div>
+                <input
+                  id="interestRateAnnual"
+                  name="interestRateAnnual"
+                  type="range"
+                  min={INTEREST_RATE_MIN}
+                  max={INTEREST_RATE_MAX}
+                  step={INTEREST_RATE_STEP}
+                  value={interestRateValue}
+                  onChange={(event) => handleInterestRateChange(Number.parseFloat(event.target.value))}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+                  aria-valuemin={INTEREST_RATE_MIN}
+                  aria-valuemax={INTEREST_RATE_MAX}
+                  aria-valuenow={interestRateValue}
+                  aria-valuetext={`${interestRateValue.toFixed(1)}%`}
+                />
+                <div className="flex justify-between text-[11px] text-muted-foreground">
+                  <span>{INTEREST_RATE_MIN}%</span>
+                  <span>Шаг 0.5%</span>
+                  <span>{INTEREST_RATE_MAX}%</span>
+                </div>
               </div>
-            </div>
+            )}
             <div className="space-y-1">
               <Label htmlFor="insuranceRateAnnual">Ставка страхования, % годовых</Label>
               <Input
@@ -500,9 +621,9 @@ export function CommercialOfferForm({
                 name="insuranceRateAnnual"
                 value={form.insuranceRateAnnual}
                 onChange={(event) => handleInputChange("insuranceRateAnnual", event.target.value)}
-                placeholder="4.0"
+                placeholder="4"
                 className="rounded-lg"
-                disabled
+                inputMode="decimal"
               />
             </div>
           </div>
@@ -520,6 +641,71 @@ export function CommercialOfferForm({
             ))}
           </dl>
         </div>
+        {calculationResult?.schedule && calculationResult.schedule.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-3">
+            <button
+              type="button"
+              onClick={() => setIsScheduleOpen(!isScheduleOpen)}
+              className="flex w-full items-center justify-between text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span>График платежей</span>
+              {isScheduleOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+
+            {isScheduleOpen && (
+              <div className="mt-3 overflow-hidden rounded-md border bg-background">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 text-xs hover:bg-muted/50">
+                      <TableHead className="w-[50px]">#</TableHead>
+                      <TableHead>Описание</TableHead>
+                      <TableHead className="text-right">Платёж</TableHead>
+                      <TableHead className="text-right">Тело</TableHead>
+                      <TableHead className="text-right">Проценты</TableHead>
+                      <TableHead className="text-right">VAT</TableHead>
+                      <TableHead className="text-right">Остаток</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {calculationResult.schedule.map((row) => (
+                      <TableRow key={row.month} className="text-xs">
+                        <TableCell className="font-medium">{row.month}</TableCell>
+                        <TableCell>{row.label}</TableCell>
+                        <TableCell className="text-right">{formatCurrencyAED(row.amount)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {formatCurrencyAED(row.principal)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {formatCurrencyAED(row.interest)}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">
+                          {formatCurrencyAED(row.vat)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrencyAED(row.balance)}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/50 text-xs font-semibold hover:bg-muted/50">
+                      <TableCell colSpan={2}>Итого</TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.amount, 0))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.principal, 0))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.interest, 0))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.vat, 0))}
+                      </TableCell>
+                      <TableCell className="text-right">—</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
         <div className="space-y-1">
           <Label htmlFor="offer-comment">Комментарий (виден в КП)</Label>
           <Textarea
