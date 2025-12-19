@@ -1817,7 +1817,7 @@ export function TaskDetailView({
 
 
                   // Handle participant ID fields with human-readable names
-                  if (["buyer_id", "client_id", "seller_id", "broker_id"].includes(fieldId)) {
+                  if (["buyer_id", "client_id", "seller_id", "broker_id"].includes(fieldId) && type !== "profile_selector" && type !== "profile_viewer") {
                     let displayName = effectiveValue as string;
                     let displaySubtext = "";
                     

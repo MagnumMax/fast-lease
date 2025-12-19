@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage";
 
 export type ProfileSearchResult = {
@@ -31,7 +31,7 @@ export type ProfileSummaryPayload = {
 };
 
 export async function getProfileSummary(userId: string): Promise<ProfileSummaryPayload | null> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServiceClient();
   
   // 1. Get Profile
   const { data: profile, error: profileError } = await supabase
@@ -104,7 +104,7 @@ export async function searchProfiles(
   query: string,
   roleFilter?: "buyer" | "seller" | "broker" | "all",
 ): Promise<ProfileSearchResult[]> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServiceClient();
 
   let role: string | null = null;
   if (roleFilter === "buyer") role = "CLIENT";
@@ -145,7 +145,7 @@ export async function searchProfiles(
 }
 
 export async function getProfile(userId: string): Promise<ProfileSearchResult | null> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServiceClient();
   const { data, error } = await supabase
     .from("profiles")
     .select("user_id, full_name, phone, entity_type")
