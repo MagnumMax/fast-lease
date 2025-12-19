@@ -284,7 +284,7 @@ ON CONFLICT (code) DO NOTHING;
 -- ---------- Сиды: статусы (канбан-порядок) ----------
 INSERT INTO deal_statuses (code, title, sort_order) VALUES
   ('NEW',               'Новая заявка',                 1),
-  ('OFFER_PREP',        'Подготовка предложения',       2),
+  ('OFFER_PREP',        'Подтверждение авто и участников',       2),
   ('VEHICLE_CHECK',     'Проверка авто',                3),
   ('DOCS_COLLECT_BUYER',      'Сбор документов покупателя',   4),
   ('DOCS_COLLECT_SELLER', 'Сбор документов продавца',    5),

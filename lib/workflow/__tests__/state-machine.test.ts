@@ -42,8 +42,8 @@ describe("WorkflowStateMachine", () => {
   it("rejects transition when guard conditions fail", async () => {
     await expect(
       machine.performTransition({
-        from: "DOCS_REVIEW_BUYER",
-        to: "DOCS_REVIEW_SELLER",
+        from: "NEW",
+        to: "OFFER_PREP",
         actorRole: "OP_MANAGER",
       }),
     ).rejects.toMatchObject({
@@ -56,13 +56,11 @@ describe("WorkflowStateMachine", () => {
 
   it("executes entry actions when guards pass", async () => {
     const result = await machine.performTransition({
-      from: "DOCS_REVIEW_BUYER",
-      to: "DOCS_REVIEW_SELLER",
+      from: "NEW",
+      to: "OFFER_PREP",
       actorRole: "OP_MANAGER",
       guardContext: {
-        buyer: {
-          verified: true,
-        },
+        quotationPrepared: true,
       },
       actionContext: {
         dealId: "deal-123",
@@ -70,8 +68,8 @@ describe("WorkflowStateMachine", () => {
       },
     });
 
-    expect(result.newStatus.code).toBe("DOCS_REVIEW_SELLER");
-    expect(executed).toHaveLength((template.stages.DOCS_REVIEW_SELLER.entryActions ?? []).length);
+    expect(result.newStatus.code).toBe("OFFER_PREP");
+    expect(executed).toHaveLength((template.stages.OFFER_PREP.entryActions ?? []).length);
     expect(executed[0]?.context.dealId).toBe("deal-123");
   });
 

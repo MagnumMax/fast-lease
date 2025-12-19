@@ -166,14 +166,14 @@ describe("WorkflowService", () => {
         id: "deal-1",
         workflowId: "fast-lease-v1",
         workflowVersionId: null,
-        status: "DOCS_REVIEW_SELLER",
+        status: "NEW",
         payload: null,
       },
       {
         id: "deal-guard",
         workflowId: "fast-lease-v1",
         workflowVersionId: null,
-        status: "DOCS_REVIEW_SELLER",
+        status: "NEW",
         payload: null,
       },
     ]);
@@ -190,48 +190,38 @@ describe("WorkflowService", () => {
   it("updates deal status and logs audit when transition succeeds", async () => {
     const output = await workflowService.transitionDeal({
       dealId: "deal-1",
-      targetStatus: "RISK_REVIEW",
+      targetStatus: "OFFER_PREP",
       actorRole: "OP_MANAGER",
       guardContext: {
-        seller: {
-          verified: true,
-        },
-        deal: {
-          broker_id: null,
-        },
+        quotationPrepared: true,
       },
     });
 
-    expect(output.newStatus).toBe("RISK_REVIEW");
+    expect(output.newStatus).toBe("OFFER_PREP");
     const updatedDeal = dealRepository.getCurrent("deal-1");
-    expect(updatedDeal.status).toBe("RISK_REVIEW");
+    expect(updatedDeal.status).toBe("OFFER_PREP");
     expect(updatedDeal.workflowVersionId).toBe(activeVersion.id);
 
     expect(auditLogger.entries).toHaveLength(1);
     expect(auditLogger.entries[0]).toMatchObject({
       dealId: "deal-1",
-      toStatus: "RISK_REVIEW",
+      toStatus: "OFFER_PREP",
     });
   });
 
   it("allows supervisor roles to bypass transition role restrictions", async () => {
     const output = await workflowService.transitionDeal({
       dealId: "deal-1",
-      targetStatus: "RISK_REVIEW",
+      targetStatus: "OFFER_PREP",
       actorRole: "ADMIN",
       guardContext: {
-        seller: {
-          verified: true,
-        },
-        deal: {
-          broker_id: null,
-        },
+        quotationPrepared: true,
       },
     });
 
-    expect(output.newStatus).toBe("RISK_REVIEW");
+    expect(output.newStatus).toBe("OFFER_PREP");
     const updatedDeal = dealRepository.getCurrent("deal-1");
-    expect(updatedDeal.status).toBe("RISK_REVIEW");
+    expect(updatedDeal.status).toBe("OFFER_PREP");
   });
 
   it("throws when guard conditions fail", async () => {
@@ -242,7 +232,7 @@ describe("WorkflowService", () => {
     await expect(
       workflowService.transitionDeal({
         dealId: "deal-guard",
-        targetStatus: "RISK_REVIEW",
+        targetStatus: "OFFER_PREP",
         actorRole: "OP_MANAGER",
       }),
     ).rejects.toBeInstanceOf(WorkflowTransitionError);

@@ -86,11 +86,6 @@
   "kanban_order": [
     "NEW",
     "OFFER_PREP",
-    "VEHICLE_CHECK",
-    "DOCS_REVIEW_BUYER",
-    "DOCS_REVIEW_SELLER",
-    "DOCS_REVIEW_BROKER",
-    "RISK_REVIEW",
     "FINANCE_REVIEW",
     "INVESTOR_PENDING",
     "CONTRACT_PREP",
@@ -101,66 +96,6 @@
     "CANCELLED"
   ],
   "schemas": {
-    "review_buyer_profile": {
-      "version": "1.0",
-      "fields": [
-        {
-          "id": "client_full_name",
-          "type": "text",
-          "label": "ФИО Покупателя",
-          "readonly": true
-        },
-        {
-          "id": "client_phone",
-          "type": "text",
-          "label": "Телефон Покупателя",
-          "readonly": true
-        },
-        {
-          "id": "buyer_profile_link",
-          "type": "link",
-          "label": "Редактировать профиль покупателя",
-          "link_target": "/ops/clients/{{deal.client_id}}",
-          "readonly": true
-        },
-        {
-          "id": "buyer_verification_status",
-          "type": "boolean",
-          "label": "Данные покупателя проверены и актуальны",
-          "required": true
-        }
-      ]
-    },
-    "review_seller_profile": {
-      "version": "1.0",
-      "fields": [
-        {
-          "id": "seller_full_name",
-          "type": "text",
-          "label": "ФИО/Название Продавца",
-          "readonly": true
-        },
-        {
-          "id": "seller_phone",
-          "type": "text",
-          "label": "Телефон Продавца",
-          "readonly": true
-        },
-        {
-          "id": "seller_profile_link",
-          "type": "link",
-          "label": "Редактировать профиль продавца",
-          "link_target": "/ops/sellers/{{deal.seller_id}}",
-          "readonly": true
-        },
-        {
-          "id": "seller_verification_status",
-          "type": "boolean",
-          "label": "Данные продавца проверены и актуальны (IBAN, Лицензия)",
-          "required": true
-        }
-      ]
-    },
     "buyer_docs_company": {
       "version": "1.0",
       "save_to_buyer_profile": [
@@ -403,50 +338,39 @@
         }
       ]
     },
-    "review_broker_profile": {
-      "version": "1.0",
+    "confirm_participants_v1": {
+      "version": "1.1",
       "fields": [
         {
-          "id": "broker_full_name",
-          "type": "text",
-          "label": "ФИО Брокера",
-          "readonly": true
-        },
-        {
-          "id": "broker_phone",
-          "type": "text",
-          "label": "Телефон Брокера",
-          "readonly": true
-        },
-        {
-          "id": "broker_profile_link",
-          "type": "link",
-          "label": "Редактировать профиль брокера",
-          "link_target": "/ops/brokers/{{deal.broker_id}}",
-          "readonly": true
-        },
-        {
-          "id": "broker_verification_status",
-          "type": "boolean",
-          "label": "Данные брокера проверены и актуальны",
-          "required": true
-        },
-        {
-          "id": "doc_broker_invoice",
-          "type": "file",
-          "label": "Счет на оплату комиссии (Broker Invoice)",
-          "document_type": "invoice",
-          "required": false
-        }
-      ]
-    },
-    "confirm_car_and_participants": {
-      "version": "1.0",
-      "fields": [
-        {
-          "id": "section_participants",
+          "id": "section_buyer",
           "type": "section_header",
-          "label": "Участники сделки"
+          "label": "Покупатель"
+        },
+        {
+          "id": "client_id",
+          "type": "profile_selector",
+          "label": "Покупатель",
+          "required": true,
+          "readonly": true,
+          "filter": "client"
+        },
+        {
+          "id": "client_info",
+          "type": "profile_viewer",
+          "label": "Данные покупателя",
+          "depends_on": "client_id",
+          "source_field": "client_id"
+        },
+        {
+          "id": "doc_aecb_credit_report",
+          "type": "file",
+          "label": "AECB Credit Report",
+          "document_type": "aecb_credit_report"
+        },
+        {
+          "id": "section_seller",
+          "type": "section_header",
+          "label": "Продавец"
         },
         {
           "id": "seller_id",
@@ -461,6 +385,18 @@
           "label": "Продавец плательщик VAT"
         },
         {
+          "id": "seller_info",
+          "type": "profile_viewer",
+          "label": "Данные продавца",
+          "depends_on": "seller_id",
+          "source_field": "seller_id"
+        },
+        {
+          "id": "section_broker",
+          "type": "section_header",
+          "label": "Брокер"
+        },
+        {
           "id": "broker_id",
           "type": "profile_selector",
           "label": "Брокер (опционально)",
@@ -468,11 +404,31 @@
           "filter": "broker"
         },
         {
+          "id": "broker_info",
+          "type": "profile_viewer",
+          "label": "Данные брокера",
+          "depends_on": "broker_id",
+          "source_field": "broker_id"
+        },
+        {
           "id": "broker_commission",
           "type": "currency",
           "label": "Комиссия брокера (AED)",
           "required": false,
           "depends_on": "broker_id"
+        },
+        {
+          "id": "doc_broker_invoice",
+          "type": "file",
+          "label": "Счет на оплату комиссии (Broker Invoice)",
+          "document_type": "invoice",
+          "required": false,
+          "depends_on": "broker_id"
+        },
+        {
+          "id": "section_commissions",
+          "type": "section_header",
+          "label": "Комиссии менеджеров"
         },
         {
           "id": "renty_manager_commission",
@@ -484,7 +440,12 @@
           "id": "showroom_manager_fee",
           "type": "currency",
           "label": "Комиссия менеджера салона (AED)"
-        },
+        }
+      ]
+    },
+    "confirm_car_v3": {
+      "version": "1.0",
+      "fields": [
         {
           "id": "section_vehicle",
           "type": "section_header",
@@ -515,6 +476,85 @@
           "id": "technical_inspection_amount",
           "type": "currency",
           "label": "Сумма за технический осмотр авто (AED)"
+        },
+        {
+          "id": "doc_technical_report",
+          "type": "file",
+          "label": "Технический отчёт",
+          "document_type": "technical_report",
+          "required": true
+        },
+        {
+          "id": "analog_market_url_1",
+          "type": "text",
+          "label": "Аналоги на площадках #1"
+        },
+        {
+          "id": "analog_market_pdf_1",
+          "type": "file",
+          "label": "PDF Страница #1",
+          "document_type": "other",
+          "required": false
+        },
+        {
+          "id": "analog_market_url_2",
+          "type": "text",
+          "label": "Аналоги на площадках #2"
+        },
+        {
+          "id": "analog_market_pdf_2",
+          "type": "file",
+          "label": "PDF Страница #2",
+          "document_type": "other",
+          "required": false
+        },
+        {
+          "id": "analog_market_url_3",
+          "type": "text",
+          "label": "Аналоги на площадках #3"
+        },
+        {
+          "id": "analog_market_pdf_3",
+          "type": "file",
+          "label": "PDF Страница #3",
+          "document_type": "other",
+          "required": false
+        },
+        {
+          "id": "analog_market_plus1_url_1",
+          "type": "text",
+          "label": "Аналоги на площадках +1 год #1"
+        },
+        {
+          "id": "analog_market_plus1_pdf_1",
+          "type": "file",
+          "label": "PDF Страница +1 год #1",
+          "document_type": "other",
+          "required": false
+        },
+        {
+          "id": "analog_market_plus1_url_2",
+          "type": "text",
+          "label": "Аналоги на площадках +1 год #2"
+        },
+        {
+          "id": "analog_market_plus1_pdf_2",
+          "type": "file",
+          "label": "PDF Страница +1 год #2",
+          "document_type": "other",
+          "required": false
+        },
+        {
+          "id": "analog_market_plus1_url_3",
+          "type": "text",
+          "label": "Аналоги на площадках +1 год #3"
+        },
+        {
+          "id": "analog_market_plus1_pdf_3",
+          "type": "file",
+          "label": "PDF Страница +1 год #3",
+          "document_type": "other",
+          "required": false
         }
       ]
     }
@@ -869,128 +909,6 @@
         {
           "type": "TASK_CREATE",
           "task": {
-            "template_id": "confirm_car_v2",
-            "type": "CONFIRM_CAR",
-            "title": "Подтверждение авто и участников сделки",
-            "assignee_role": "OP_MANAGER",
-            "guard_key": "tasks.confirmCar.completed",
-            "sla": {
-              "hours": 2
-            },
-            "schema": {
-              "version": "1.0",
-              "fields": [
-                {
-                  "id": "section_participants",
-                  "type": "section_header",
-                  "label": "Участники сделки"
-                },
-                {
-                  "id": "seller_id",
-                  "type": "profile_selector",
-                  "label": "Продавец",
-                  "required": true,
-                  "filter": "seller"
-                },
-                {
-                  "id": "seller_vat_payer",
-                  "type": "boolean",
-                  "label": "Продавец плательщик VAT"
-                },
-                {
-                  "id": "broker_id",
-                  "type": "profile_selector",
-                  "label": "Брокер (опционально)",
-                  "required": false,
-                  "filter": "broker"
-                },
-                {
-                  "id": "broker_commission",
-                  "type": "currency",
-                  "label": "Комиссия брокера (AED)",
-                  "required": false,
-                  "depends_on": "broker_id"
-                },
-                {
-                  "id": "renty_manager_commission",
-                  "type": "text",
-                  "label": "Комиссия менеджера Fast Lease (%)",
-                  "readonly": true
-                },
-                {
-                  "id": "showroom_manager_fee",
-                  "type": "currency",
-                  "label": "Комиссия менеджера салона (AED)"
-                },
-                {
-                  "id": "section_vehicle",
-                  "type": "section_header",
-                  "label": "Автомобиль и Документы"
-                },
-                {
-                  "id": "vehicle_price",
-                  "type": "currency",
-                  "label": "Стоимость авто (AED)",
-                  "required": true
-                },
-                {
-                  "id": "seller_vehicle_price_with_vat",
-                  "type": "boolean",
-                  "label": "Авто продается с VAT"
-                },
-                {
-                  "id": "insurance_amount",
-                  "type": "currency",
-                  "label": "Стоимость авто от страховой (AED)"
-                },
-                {
-                  "id": "registration_amount",
-                  "type": "currency",
-                  "label": "Сумма регистрации (AED)"
-                },
-                {
-                  "id": "technical_inspection_amount",
-                  "type": "currency",
-                  "label": "Сумма за технический осмотр авто (AED)"
-                }
-              ]
-            },
-            "defaults": {
-              "instruction_short": "Подтвердите авто, выберите продавца и брокера, приложите первичные документы.",
-              "registration_amount": "2500",
-              "technical_inspection_amount": "1000",
-              "broker_commission": "0",
-              "seller_vehicle_price_with_vat": false,
-              "seller_vat_payer": false
-            },
-            "bindings": {
-              "deal_id": "{{deal.id}}",
-              "current_status": "{{deal.status}}"
-            }
-          }
-        },
-        {
-          "type": "NOTIFY",
-          "to_roles": [
-            "OP_MANAGER"
-          ],
-          "template": "new_deal_created"
-        }
-      ],
-      "exit_requirements": [
-        {
-          "key": "tasks.confirmCar.completed",
-          "rule": "== true",
-          "message": "Авто и участники не подтверждены."
-        }
-      ]
-    },
-    "OFFER_PREP": {
-      "title": "Подготовка предложения",
-      "entry_actions": [
-        {
-          "type": "TASK_CREATE",
-          "task": {
             "template_id": "prepare_quote_v1",
             "type": "PREPARE_QUOTE",
             "title": "Подписание покупателем коммерческого предложения",
@@ -1024,6 +942,13 @@
               "deal_id": "{{deal.id}}"
             }
           }
+        },
+        {
+          "type": "NOTIFY",
+          "to_roles": [
+            "OP_MANAGER"
+          ],
+          "template": "new_deal_created"
         }
       ],
       "exit_requirements": [
@@ -1034,27 +959,53 @@
         }
       ]
     },
-    "VEHICLE_CHECK": {
-      "title": "Проверка авто",
+    "OFFER_PREP": {
+      "title": "Подтверждение авто и участников",
       "entry_actions": [
         {
           "type": "TASK_CREATE",
           "task": {
-            "template_id": "verify_vehicle_v1",
-            "type": "VERIFY_VEHICLE",
-            "title": "Проверка тех состояния и оценочной стоимости авто",
-            "assignee_role": "TECH_SPECIALIST",
-            "guard_key": "vehicle.verified",
+            "template_id": "confirm_car_v3",
+            "type": "CONFIRM_CAR",
+            "title": "Подтверждение авто",
+            "assignee_role": "OP_MANAGER",
+            "guard_key": "tasks.confirmCar.completed",
             "sla": {
-              "hours": 8
+              "hours": 1
             },
             "schema": {
               "version": "1.0",
               "fields": [
                 {
-                  "id": "deal_id",
-                  "type": "badge",
-                  "label": "ID сделки"
+                  "id": "section_vehicle",
+                  "type": "section_header",
+                  "label": "Автомобиль и Документы"
+                },
+                {
+                  "id": "vehicle_price",
+                  "type": "currency",
+                  "label": "Стоимость авто (AED)",
+                  "required": true
+                },
+                {
+                  "id": "seller_vehicle_price_with_vat",
+                  "type": "boolean",
+                  "label": "Авто продается с VAT"
+                },
+                {
+                  "id": "insurance_amount",
+                  "type": "currency",
+                  "label": "Стоимость авто от страховой (AED)"
+                },
+                {
+                  "id": "registration_amount",
+                  "type": "currency",
+                  "label": "Сумма регистрации (AED)"
+                },
+                {
+                  "id": "technical_inspection_amount",
+                  "type": "currency",
+                  "label": "Сумма за технический осмотр авто (AED)"
                 },
                 {
                   "id": "doc_technical_report",
@@ -1138,8 +1089,138 @@
               ]
             },
             "defaults": {
-              "instruction_short": "Проверьте техсостояние авто, оценку стоимости и приложите отчёт.",
+              "instruction_short": "Подтвердите стоимость авто и доп. расходы.",
+              "registration_amount": "2500",
+              "technical_inspection_amount": "1000",
+              "seller_vehicle_price_with_vat": false,
               "doc_technical_report": ""
+            },
+            "bindings": {
+              "deal_id": "{{deal.id}}",
+              "current_status": "{{deal.status}}"
+            }
+          }
+        },
+        {
+          "type": "TASK_CREATE",
+          "task": {
+            "template_id": "confirm_participants_v1",
+            "type": "CONFIRM_PARTICIPANTS",
+            "title": "Подтверждение участников сделки",
+            "assignee_role": "OP_MANAGER",
+            "guard_key": "tasks.confirmParticipants.completed",
+            "sla": {
+              "hours": 1
+            },
+            "schema": {
+              "version": "1.1",
+              "fields": [
+                {
+                  "id": "section_buyer",
+                  "type": "section_header",
+                  "label": "Покупатель"
+                },
+                {
+                  "id": "client_id",
+                  "type": "profile_selector",
+                  "label": "Покупатель",
+                  "required": true,
+                  "readonly": true,
+                  "filter": "client"
+                },
+                {
+                  "id": "client_info",
+                  "type": "profile_viewer",
+                  "label": "Данные покупателя",
+                  "depends_on": "client_id",
+                  "source_field": "client_id"
+                },
+                {
+                  "id": "doc_aecb_credit_report",
+                  "type": "file",
+                  "label": "AECB Credit Report",
+                  "document_type": "aecb_credit_report"
+                },
+                {
+                  "id": "section_seller",
+                  "type": "section_header",
+                  "label": "Продавец"
+                },
+                {
+                  "id": "seller_id",
+                  "type": "profile_selector",
+                  "label": "Продавец",
+                  "required": true,
+                  "filter": "seller"
+                },
+                {
+                  "id": "seller_vat_payer",
+                  "type": "boolean",
+                  "label": "Продавец плательщик VAT"
+                },
+                {
+                  "id": "seller_info",
+                  "type": "profile_viewer",
+                  "label": "Данные продавца",
+                  "depends_on": "seller_id",
+                  "source_field": "seller_id"
+                },
+                {
+                  "id": "section_broker",
+                  "type": "section_header",
+                  "label": "Брокер"
+                },
+                {
+                  "id": "broker_id",
+                  "type": "profile_selector",
+                  "label": "Брокер (опционально)",
+                  "required": false,
+                  "filter": "broker"
+                },
+                {
+                  "id": "broker_info",
+                  "type": "profile_viewer",
+                  "label": "Данные брокера",
+                  "depends_on": "broker_id",
+                  "source_field": "broker_id"
+                },
+                {
+                  "id": "broker_commission",
+                  "type": "currency",
+                  "label": "Комиссия брокера (AED)",
+                  "required": false,
+                  "depends_on": "broker_id"
+                },
+                {
+                  "id": "doc_broker_invoice",
+                  "type": "file",
+                  "label": "Счет на оплату комиссии (Broker Invoice)",
+                  "document_type": "invoice",
+                  "required": false,
+                  "depends_on": "broker_id"
+                },
+                {
+                  "id": "section_commissions",
+                  "type": "section_header",
+                  "label": "Комиссии менеджеров"
+                },
+                {
+                  "id": "renty_manager_commission",
+                  "type": "text",
+                  "label": "Комиссия менеджера Fast Lease (%)",
+                  "readonly": true
+                },
+                {
+                  "id": "showroom_manager_fee",
+                  "type": "currency",
+                  "label": "Комиссия менеджера салона (AED)"
+                }
+              ]
+            },
+            "defaults": {
+              "instruction_short": "Выберите продавца и брокера (если есть).",
+              "broker_commission": "0",
+              "seller_vat_payer": false
             },
             "bindings": {
               "deal_id": "{{deal.id}}"
@@ -1149,292 +1230,16 @@
       ],
       "exit_requirements": [
         {
-          "key": "vehicle.verified",
+          "key": "tasks.confirmCar.completed",
           "rule": "== true",
-          "message": "Технический отчёт и оценка авто не подтверждены."
-        }
-      ]
-    },
-    "DOCS_REVIEW_BUYER": {
-      "title": "Проверка документов покупателя",
-      "entry_actions": [
-        {
-          "type": "TASK_CREATE",
-          "task": {
-            "template_id": "review_buyer_docs_v1",
-            "type": "REVIEW_BUYER",
-            "title": "Проверка данных покупателя (Review & Confirm)",
-            "assignee_role": "OP_MANAGER",
-            "guard_key": "buyer.verified",
-            "sla": {
-              "hours": 24
-            },
-            "schema": {
-              "version": "1.0",
-              "fields": [
-                {
-                  "id": "client_full_name",
-                  "type": "text",
-                  "label": "ФИО Покупателя",
-                  "readonly": true
-                },
-                {
-                  "id": "client_phone",
-                  "type": "text",
-                  "label": "Телефон Покупателя",
-                  "readonly": true
-                },
-                {
-                  "id": "buyer_profile_link",
-                  "type": "link",
-                  "label": "Редактировать профиль покупателя",
-                  "link_target": "/ops/clients/{{deal.client_id}}",
-                  "readonly": true
-                },
-                {
-                  "id": "buyer_verification_status",
-                  "type": "boolean",
-                  "label": "Данные покупателя проверены и актуальны",
-                  "required": true
-                }
-              ]
-            },
-            "defaults": {
-              "instruction_short": "Перейдите в профиль покупателя, убедитесь, что все документы актуальны и подтвердите это.",
-              "buyer_verification_status": false
-            },
-            "bindings": {
-              "deal_id": "{{deal.id}}",
-              "client_id": "{{deal.client_id}}",
-              "client_full_name": "{{client.full_name}}",
-              "client_phone": "{{client.phone}}"
-            }
-          }
-        }
-      ],
-      "exit_requirements": [
-        {
-          "key": "buyer.verified",
-          "rule": "== true",
-          "message": "Данные покупателя не подтверждены."
-        }
-      ]
-    },
-    "DOCS_REVIEW_SELLER": {
-      "title": "Проверка документов продавца",
-      "entry_actions": [
-        {
-          "type": "TASK_CREATE",
-          "task": {
-            "template_id": "review_seller_docs_v1",
-            "type": "REVIEW_SELLER",
-            "title": "Проверка данных продавца (Review & Confirm)",
-            "assignee_role": "OP_MANAGER",
-            "guard_key": "seller.verified",
-            "sla": {
-              "hours": 24
-            },
-            "schema": {
-              "version": "1.0",
-              "fields": [
-                {
-                  "id": "seller_full_name",
-                  "type": "text",
-                  "label": "ФИО/Название Продавца",
-                  "readonly": true
-                },
-                {
-                  "id": "seller_phone",
-                  "type": "text",
-                  "label": "Телефон Продавца",
-                  "readonly": true
-                },
-                {
-                  "id": "seller_profile_link",
-                  "type": "link",
-                  "label": "Редактировать профиль продавца",
-                  "link_target": "/ops/sellers/{{deal.seller_id}}",
-                  "readonly": true
-                },
-                {
-                  "id": "seller_verification_status",
-                  "type": "boolean",
-                  "label": "Данные продавца проверены и актуальны (IBAN, Лицензия)",
-                  "required": true
-                }
-              ]
-            },
-            "defaults": {
-              "instruction_short": "Перейдите в профиль продавца, убедитесь в наличии IBAN и Лицензии, подтвердите.",
-              "seller_verification_status": false
-            },
-            "bindings": {
-              "deal_id": "{{deal.id}}",
-              "seller_id": "{{deal.seller_id}}",
-              "seller_full_name": "{{seller.full_name}}",
-              "seller_phone": "{{seller.phone}}"
-            }
-          }
-        }
-      ],
-      "exit_requirements": [
-        {
-          "key": "seller.verified",
-          "rule": "== true",
-          "message": "Данные продавца не подтверждены."
-        }
-      ]
-    },
-    "DOCS_REVIEW_BROKER": {
-      "title": "Проверка документов брокера",
-      "entry_actions": [
-        {
-          "type": "TASK_CREATE",
-          "task": {
-            "template_id": "review_broker_docs_v1",
-            "type": "REVIEW_BROKER",
-            "title": "Проверка данных брокера и сбор счета",
-            "assignee_role": "OP_MANAGER",
-            "guard_key": "broker.verified",
-            "sla": {
-              "hours": 24
-            },
-            "schema": {
-              "version": "1.0",
-              "fields": [
-                {
-                  "id": "broker_full_name",
-                  "type": "text",
-                  "label": "ФИО Брокера",
-                  "readonly": true
-                },
-                {
-                  "id": "broker_phone",
-                  "type": "text",
-                  "label": "Телефон Брокера",
-                  "readonly": true
-                },
-                {
-                  "id": "broker_profile_link",
-                  "type": "link",
-                  "label": "Редактировать профиль брокера",
-                  "link_target": "/ops/brokers/{{deal.broker_id}}",
-                  "readonly": true
-                },
-                {
-                  "id": "broker_verification_status",
-                  "type": "boolean",
-                  "label": "Данные брокера проверены и актуальны",
-                  "required": true
-                },
-                {
-                  "id": "doc_broker_invoice",
-                  "type": "file",
-                  "label": "Счет на оплату комиссии (Broker Invoice)",
-                  "document_type": "invoice",
-                  "required": false
-                }
-              ]
-            },
-            "defaults": {
-              "instruction_short": "Проверьте профиль брокера и загрузите инвойс на комиссию.",
-              "broker_verification_status": false
-            },
-            "bindings": {
-              "deal_id": "{{deal.id}}",
-              "broker_id": "{{deal.broker_id}}",
-              "broker_full_name": "{{broker.full_name}}",
-              "broker_phone": "{{broker.phone}}"
-            },
-            "conditions": [
-              {
-                "key": "deal.broker_id",
-                "rule": "!= null"
-              }
-            ]
-          }
-        }
-      ],
-      "exit_requirements": [
-        {
-          "key": "broker.verified",
-          "rule": "== true",
-          "message": "Данные брокера не подтверждены или инвойс не загружен."
-        }
-      ]
-    },
-    "RISK_REVIEW": {
-      "title": "Проверка риска",
-      "entry_actions": [
-        {
-          "type": "TASK_CREATE",
-          "task": {
-            "defaults": {
-              "instruction_short": "Проведите AECB скоринг/проверку; при наличии загрузите AECB Credit Report.",
-              "doc_aecb_credit_report": ""
-            },
-            "template_id": "aecb_check_v1",
-            "type": "AECB_CHECK",
-            "title": "Провести проверку и внутренний скоринг",
-            "assignee_role": "RISK_MANAGER",
-            "guard_key": "risk.approved",
-            "sla": {
-              "hours": 24
-            },
-            "schema": {
-              "version": "1.0",
-              "fields": [
-                {
-                  "id": "doc_aecb_credit_report",
-                  "type": "file",
-                  "label": "AECB Credit Report",
-                  "document_type": "aecb_credit_report"
-                }
-              ]
-            }
-          }
+          "message": "Данные об авто не подтверждены."
         },
         {
-          "type": "WEBHOOK",
-          "endpoint": "aecb.request",
-          "payload": {
-            "dealId": "{{deal.id}}",
-            "clientId": "{{deal.client_id}}"
-          }
-        }
-      ],
-      "exit_requirements": [
-        {
-          "key": "risk.approved",
+          "key": "tasks.confirmParticipants.completed",
           "rule": "== true",
-          "message": "Отсутствует одобрение отдела рисков."
+          "message": "Участники сделки не подтверждены."
         }
-      ],
-      "sla": {
-        "max_hours": 24,
-        "escalation": [
-          {
-            "after_hours": 18,
-            "action": {
-              "type": "NOTIFY",
-              "to_roles": [
-                "RISK_MANAGER"
-              ],
-              "template": "sla_warning"
-            }
-          },
-          {
-            "after_hours": 24,
-            "action": {
-              "type": "ESCALATE",
-              "to_roles": [
-                "ADMIN"
-              ],
-              "template": "sla_breach"
-            }
-          }
-        ]
-      }
+      ]
     },
     "FINANCE_REVIEW": {
       "title": "Финансовое утверждение",
@@ -1918,109 +1723,24 @@
       ],
       "guards": [
         {
-          "key": "tasks.confirmCar.completed",
-          "rule": "== true"
-        }
-      ]
-    },
-    {
-      "from": "OFFER_PREP",
-      "to": "VEHICLE_CHECK",
-      "by_roles": [
-        "OP_MANAGER",
-        "TECH_SPECIALIST"
-      ],
-      "guards": [
-        {
           "key": "quotationPrepared",
           "rule": "== true"
         }
       ]
     },
     {
-      "from": "VEHICLE_CHECK",
-      "to": "DOCS_REVIEW_BUYER",
-      "by_roles": [
-        "OP_MANAGER",
-        "TECH_SPECIALIST"
-      ],
-      "guards": [
-        {
-          "key": "vehicle.verified",
-          "rule": "== true"
-        }
-      ]
-    },
-    {
-      "from": "DOCS_REVIEW_BUYER",
-      "to": "DOCS_REVIEW_SELLER",
-      "by_roles": [
-        "OP_MANAGER"
-      ],
-      "guards": [
-        {
-          "key": "buyer.verified",
-          "rule": "== true"
-        }
-      ]
-    },
-    {
-      "from": "DOCS_REVIEW_SELLER",
-      "to": "DOCS_REVIEW_BROKER",
-      "by_roles": [
-        "OP_MANAGER"
-      ],
-      "guards": [
-        {
-          "key": "seller.verified",
-          "rule": "== true"
-        },
-        {
-          "key": "deal.broker_id",
-          "rule": "!= null"
-        }
-      ]
-    },
-    {
-      "from": "DOCS_REVIEW_SELLER",
-      "to": "RISK_REVIEW",
-      "by_roles": [
-        "OP_MANAGER"
-      ],
-      "guards": [
-        {
-          "key": "seller.verified",
-          "rule": "== true"
-        },
-        {
-          "key": "deal.broker_id",
-          "rule": "== null"
-        }
-      ]
-    },
-    {
-      "from": "DOCS_REVIEW_BROKER",
-      "to": "RISK_REVIEW",
-      "by_roles": [
-        "OP_MANAGER"
-      ],
-      "guards": [
-        {
-          "key": "broker.verified",
-          "rule": "== true"
-        }
-      ]
-    },
-    {
-      "from": "RISK_REVIEW",
+      "from": "OFFER_PREP",
       "to": "FINANCE_REVIEW",
       "by_roles": [
-        "OP_MANAGER",
-        "RISK_MANAGER"
+        "OP_MANAGER"
       ],
       "guards": [
         {
-          "key": "risk.approved",
+          "key": "tasks.confirmParticipants.completed",
+          "rule": "== true"
+        },
+        {
+          "key": "tasks.confirmCar.completed",
           "rule": "== true"
         }
       ]
@@ -2127,42 +1847,6 @@
       ]
     },
     {
-      "from": "VEHICLE_CHECK",
-      "to": "CANCELLED",
-      "by_roles": [
-        "OP_MANAGER",
-        "TECH_SPECIALIST"
-      ]
-    },
-    {
-      "from": "DOCS_REVIEW_BUYER",
-      "to": "CANCELLED",
-      "by_roles": [
-        "OP_MANAGER"
-      ]
-    },
-    {
-      "from": "DOCS_REVIEW_SELLER",
-      "to": "CANCELLED",
-      "by_roles": [
-        "OP_MANAGER"
-      ]
-    },
-    {
-      "from": "DOCS_REVIEW_BROKER",
-      "to": "CANCELLED",
-      "by_roles": [
-        "OP_MANAGER"
-      ]
-    },
-    {
-      "from": "RISK_REVIEW",
-      "to": "CANCELLED",
-      "by_roles": [
-        "OP_MANAGER"
-      ]
-    },
-    {
       "from": "FINANCE_REVIEW",
       "to": "CANCELLED",
       "by_roles": [
@@ -2232,11 +1916,6 @@
           "allowed_from": [
             "NEW",
             "OFFER_PREP",
-            "VEHICLE_CHECK",
-            "DOCS_REVIEW_BUYER",
-            "DOCS_REVIEW_SELLER",
-            "DOCS_REVIEW_BROKER",
-            "RISK_REVIEW",
             "FINANCE_REVIEW",
             "INVESTOR_PENDING",
             "CONTRACT_PREP",
@@ -2248,14 +1927,7 @@
         {
           "role": "TECH_SPECIALIST",
           "allowed_from": [
-            "VEHICLE_CHECK",
             "VEHICLE_DELIVERY"
-          ]
-        },
-        {
-          "role": "RISK_MANAGER",
-          "allowed_from": [
-            "RISK_REVIEW"
           ]
         },
         {
@@ -2298,21 +1970,6 @@
   "metrics": {
     "enabled": true,
     "timers": [
-      {
-        "name": "t_docs_collect_buyer",
-        "from": "DOCS_REVIEW_BUYER",
-        "to": "DOCS_REVIEW_SELLER"
-      },
-      {
-        "name": "t_docs_collect_seller",
-        "from": "DOCS_REVIEW_SELLER",
-        "to": "RISK_REVIEW"
-      },
-      {
-        "name": "t_risk_review",
-        "from": "RISK_REVIEW",
-        "to": "FINANCE_REVIEW"
-      },
       {
         "name": "t_fin_approval",
         "from": "FINANCE_REVIEW",

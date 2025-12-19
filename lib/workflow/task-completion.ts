@@ -155,7 +155,52 @@ function resolveGuardKey(
   });
 }
 
-function setNestedGuardFlag(target: Record<string, unknown>, guardKey: string): void {
+function resolveGuardValue(
+  taskType: string | null,
+  taskPayload: Record<string, unknown> | null,
+): boolean {
+  if (!taskType || !taskPayload) {
+    return true;
+  }
+
+  const getValue = (key: string): boolean => {
+     // Check root level first (priority for recent updates)
+     const rootVal = taskPayload[key];
+     if (typeof rootVal === "boolean") return rootVal;
+     if (typeof rootVal === "string" && (rootVal === "true" || rootVal === "false")) {
+       return rootVal === "true";
+     }
+     
+     // Check nested fields if present
+     if (
+       taskPayload.fields &&
+       typeof taskPayload.fields === "object" &&
+       !Array.isArray(taskPayload.fields)
+     ) {
+       const fields = taskPayload.fields as Record<string, unknown>;
+       const fieldVal = fields[key];
+       if (typeof fieldVal === "boolean") return fieldVal;
+       if (typeof fieldVal === "string" && (fieldVal === "true" || fieldVal === "false")) {
+         return fieldVal === "true";
+       }
+     }
+     
+     return false;
+   };
+
+  switch (taskType) {
+    case "REVIEW_SELLER":
+      return getValue("seller_verification_status");
+    case "REVIEW_BUYER":
+      return getValue("buyer_verification_status");
+    case "REVIEW_BROKER":
+      return getValue("broker_verification_status");
+    default:
+      return true;
+  }
+}
+
+function setNestedGuardFlag(target: Record<string, unknown>, guardKey: string, value: boolean): void {
   if (!guardKey) return;
   const segments = guardKey.split(".").filter((segment) => segment.length > 0);
   if (segments.length === 0) return;
@@ -170,7 +215,7 @@ function setNestedGuardFlag(target: Record<string, unknown>, guardKey: string): 
     cursor = cursor[segment] as Record<string, unknown>;
   }
 
-  cursor[segments[segments.length - 1]] = true;
+  cursor[segments[segments.length - 1]] = value;
 }
 
 function deriveTaskStorageKey(guardKey: string): string {
@@ -334,6 +379,21 @@ export async function handleTaskCompletion(
 
   try {
     trace("start");
+
+    // Проверяем guard value до завершения задачи
+    const preCheckGuardValue = resolveGuardValue(context.taskType, context.taskPayload);
+    if (!preCheckGuardValue) {
+      console.warn("[workflow] task completion blocked: guard value is false", {
+        taskId: context.taskId,
+        taskType: context.taskType,
+      });
+      return {
+        taskUpdated: false,
+        transitionAttempted: false,
+        error: "Для завершения задачи необходимо выполнить все обязательные условия (отметить чекбокс).",
+      };
+    }
+
     // Обновляем статус задачи на DONE
     const { data: updatedTask, error: taskUpdateError } = await supabase
       .from("tasks")
@@ -413,8 +473,13 @@ export async function handleTaskCompletion(
     const dealPayload = ensureWorkflowPayloadBranches(context.dealPayload);
 
     const taskStorageKey = deriveTaskStorageKey(guardKey);
+    
+    // Определяем значение guard на основе payload задачи
+    const guardValue = resolveGuardValue(context.taskType, context.taskPayload);
+    trace("guard-value-resolved", { guardKey, guardValue });
+
     // Обновляем guard флаги в payload
-    setNestedGuardFlag(dealPayload, guardKey);
+    setNestedGuardFlag(dealPayload, guardKey, guardValue);
 
     // Обновляем информацию о задаче в payload
     const currentEntry = dealPayload.tasks[taskStorageKey];

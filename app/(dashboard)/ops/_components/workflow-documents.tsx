@@ -40,7 +40,7 @@ export type WorkflowDocumentEntry = {
   value: string;
   status?: string | null;
   url?: string | null;
-  kind?: "document" | "parameter";
+  kind?: "document" | "parameter" | "section";
 };
 
 export type WorkflowDocumentGroupEntry = {
@@ -95,7 +95,20 @@ export function WorkflowDocuments({ groups, additional, financedAmount, classNam
                   ) : null}
                 </div>
                 <div className="flex flex-col px-4 py-2">
-                  {group.documents.map((doc, idx) => (
+                  {group.documents.map((doc, idx) => {
+                    if (doc.kind === "section") {
+                      return (
+                        <div
+                          key={`${group.taskTemplateId}-doc-${idx}-${doc.label}`}
+                          className="col-span-full mt-3 mb-2"
+                        >
+                          <div className="flex items-center gap-2 border-l-[4px] border-primary/40 bg-muted/20 py-2 pl-3 pr-3 rounded-r-md">
+                            <h4 className="text-xs font-bold text-foreground tracking-tight uppercase opacity-80">{doc.label}</h4>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
                     <div
                       key={`${group.taskTemplateId}-doc-${idx}-${doc.label}`}
                       className="flex items-start justify-between gap-3 py-2 text-[11px]"
@@ -129,7 +142,8 @@ export function WorkflowDocuments({ groups, additional, financedAmount, classNam
                         </Badge>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

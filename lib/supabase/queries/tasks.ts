@@ -26,6 +26,7 @@ export type WorkspaceTask = {
   dealSellerId: string | null;
   dealClientName: string | null;
   dealSellerName: string | null;
+  dealBrokerName: string | null;
   dealVehicleName: string | null;
   isWorkflow: boolean;
   workflowStageKey: string | null;
@@ -97,6 +98,24 @@ function resolveDealSellerName(payload: Record<string, unknown> | null | undefin
     const keys = ["full_name", "name", "title"];
     for (const key of keys) {
       const value = sellerRecord[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value;
+      }
+    }
+  }
+  return null;
+}
+
+function resolveDealBrokerName(payload: Record<string, unknown> | null | undefined): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  const broker = payload["broker"];
+  if (broker && typeof broker === "object" && !Array.isArray(broker)) {
+    const brokerRecord = broker as Record<string, unknown>;
+    const keys = ["full_name", "name", "title"];
+    for (const key of keys) {
+      const value = brokerRecord[key];
       if (typeof value === "string" && value.trim().length > 0) {
         return value;
       }
@@ -186,6 +205,7 @@ export function mapTaskRow(row: TaskRow): WorkspaceTask {
     dealSellerId: dealRef?.seller_id ?? null,
     dealClientName: resolveDealCustomerName(dealPayload),
     dealSellerName: resolveDealSellerName(dealPayload),
+    dealBrokerName: resolveDealBrokerName(dealPayload),
     dealVehicleName: resolveDealVehicleName(dealPayload),
     isWorkflow: Boolean(row.action_hash),
     workflowStageKey,

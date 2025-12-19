@@ -151,8 +151,10 @@ test.describe.serial("Deal Lifecycle Full Flow", () => {
     const dealData = {
         reference: "",
         clientName: "",
+        clientEmail: "",
         carVin: "",
-        clientEmail: ""
+        sellerName: "",
+        sellerEmail: ""
     };
 
     // Data (moved inside test where applicable)
@@ -234,7 +236,29 @@ test.describe.serial("Deal Lifecycle Full Flow", () => {
         await page.getByLabel("Email").fill(dealData.clientEmail);
         await page.getByLabel("Телефон").fill("+971501234567");
         await page.getByRole("button", { name: "Сохранить" }).click();
-        await expect(page.getByText(dealData.clientName)).toBeVisible({ timeout: 30000 });
+        await page.waitForLoadState("networkidle");
+        await expect(page.getByText(dealData.clientName)).toBeVisible({ timeout: 60000 });
+    });
+
+    test("1.5. OPS: Create seller", async ({ page }) => {
+        console.log("Stage 1.5 - Create Seller");
+        const timestamp = Date.now();
+        const suffix = `${timestamp}-${Math.floor(Math.random() * 1000)}`;
+        dealData.sellerName = `LC Seller ${suffix}`;
+        dealData.sellerEmail = `seller-${suffix}@test.com`;
+
+        await loginViaUi(page, { email: opsEmail, password });
+
+        await page.goto("/ops/sellers");
+        await page.getByRole("button", { name: "Новый продавец" }).click();
+        
+        await page.locator("input#seller-name").fill(dealData.sellerName);
+        await page.locator("input#seller-email").fill(dealData.sellerEmail);
+        await page.locator("input#seller-phone").fill("+971500000000");
+        
+        await page.getByRole("button", { name: "Сохранить" }).click();
+        await page.waitForLoadState("networkidle");
+        await expect(page.getByText(dealData.sellerName)).toBeVisible({ timeout: 60000 });
     });
 
     test("2. OPS: Create car", async ({ page }) => {
@@ -309,22 +333,37 @@ test.describe.serial("Deal Lifecycle Full Flow", () => {
         return "Some text";
     };
 
-    test("4. OPS: Confirm Car Task", async ({ page }) => {
-        console.log("Stage 4 - Confirm Car");
+    test("4. OPS: Prepare Quote Task", async ({ page }) => {
+        console.log("Stage 4 - Prepare Quote");
         expect(dealData.reference).not.toBe("");
-        await loginViaUi(page, { email: opsEmail, password });
-        await goToDeal(page, dealData.reference);
-        await openTaskByTitle(page, /Подтвердить авто/);
-        await submitWorkflowTask(page, { textMapper: confirmCarMapper });
-        await waitForAnyStatus(page, ["Подготовка предложения"], 30000);
-    });
-
-    test("5. OPS: Prepare Quote Task", async ({ page }) => {
-        console.log("Stage 5 - Prepare Quote");
         await loginViaUi(page, { email: opsEmail, password });
         await goToDeal(page, dealData.reference);
         await openTaskByTitle(page, /Коммерческого предложения|Подготовить КП/);
         await submitWorkflowTask(page, { filePath: dummyPdfPath });
+        await waitForAnyStatus(page, ["Подтверждение авто и участников"], 30000);
+    });
+
+    test("5a. OPS: Confirm Car Task", async ({ page }) => {
+        console.log("Stage 5a - Confirm Car");
+        await loginViaUi(page, { email: opsEmail, password });
+        await goToDeal(page, dealData.reference);
+        await openTaskByTitle(page, /Подтверждение авто/);
+        await submitWorkflowTask(page, { textMapper: confirmCarMapper });
+    });
+
+    test("5b. OPS: Confirm Participants Task", async ({ page }) => {
+        console.log("Stage 5b - Confirm Participants");
+        await loginViaUi(page, { email: opsEmail, password });
+        await goToDeal(page, dealData.reference);
+        await openTaskByTitle(page, /Подтверждение участников сделки/);
+        
+        // Select Seller
+        await page.locator("div.space-y-2", { hasText: "Продавец" })
+             .getByRole("combobox")
+             .click();
+        await page.getByRole("option", { name: dealData.sellerName }).first().click();
+        
+        await submitWorkflowTask(page);
         await waitForAnyStatus(page, ["Проверка авто"], 30000);
     });
 
@@ -332,7 +371,7 @@ test.describe.serial("Deal Lifecycle Full Flow", () => {
         console.log("Stage 6 - Verify Vehicle");
         await loginViaUi(page, { email: techEmail, password });
         await goToDeal(page, dealData.reference);
-        await waitForAnyStatus(page, ["Подготовка предложения", "Проверка авто"], 30000);
+        await waitForAnyStatus(page, ["Подтверждение авто и участников", "Проверка авто"], 30000);
         await openTaskByTitle(page, /Проверка тех состояния|технического состояния/);
         await submitWorkflowTask(page, { filePath: dummyPdfPath });
         await waitForAnyStatus(page, ["Сбор документов покупателя", "Сбор документов продавца"], 60000);

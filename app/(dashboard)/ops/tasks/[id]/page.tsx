@@ -48,6 +48,59 @@ type GuardDocumentLink = {
   url: string | null;
 };
 
+async function buildProfileDocumentsWithUrls(
+  docsData: Array<{
+    id: string;
+    document_type: string | null;
+    title: string | null;
+    status: string | null;
+    storage_path: string | null;
+    metadata?: unknown;
+    uploaded_at?: string | null;
+  }>,
+): Promise<ProfileDocumentWithUrl[]> {
+  return Promise.all(
+    docsData.map(async (doc) => {
+      const metadata = (doc.metadata as Record<string, unknown> | null) ?? null;
+      const metaBucket = metadata && typeof metadata.bucket === "string" ? (metadata.bucket as string) : null;
+      const preferredBuckets = metaBucket
+        ? [metaBucket, "profile-documents", DEAL_STORAGE_BUCKET, CLIENT_STORAGE_BUCKET]
+        : ["profile-documents", DEAL_STORAGE_BUCKET, CLIENT_STORAGE_BUCKET];
+      const uniqueBuckets = Array.from(new Set(preferredBuckets));
+      let signedUrl: string | null = null;
+
+      if (doc.storage_path) {
+        for (const bucket of uniqueBuckets) {
+          signedUrl = await createSignedStorageUrl({ bucket, path: doc.storage_path });
+          if (signedUrl) break;
+        }
+      }
+
+      return {
+        id: doc.id,
+        document_type: doc.document_type,
+        title: doc.title,
+        status: doc.status ?? null,
+        storage_path: doc.storage_path ?? null,
+        metadata,
+        signedUrl,
+        uploaded_at: doc.uploaded_at ?? null,
+      };
+    }),
+  );
+}
+
+type ProfileDocumentWithUrl = ClientDocumentWithUrl & {
+  uploaded_at?: string | null;
+  storage_path: string | null;
+};
+type ProfileSummaryPayload = {
+  name: string | null;
+  entityType: string | null;
+  email: string | null;
+  phone: string | null;
+  documents: ProfileDocumentWithUrl[];
+};
 type TaskPageParams = {
   params: Promise<{ id: string }>;
 };
@@ -88,6 +141,10 @@ const ALLOWED_PROFILE_DOC_TYPES = [
   // Generic / Registry (Company)
   "corporate_documents",
   "company_bank_statement",
+  // Broker specific
+  "doc_broker_invoice",
+  "broker_invoice",
+  "invoice",
 ];
 
 const DEAL_STORAGE_BUCKET = "deal-documents";
@@ -99,7 +156,7 @@ type SummaryDocumentEntry = {
   value: string;
   status?: string | null;
   url?: string | null;
-  kind?: "document" | "parameter";
+  kind?: "document" | "parameter" | "section";
 };
 type WorkflowDocumentDefinition = {
   documentType: string;
@@ -107,7 +164,8 @@ type WorkflowDocumentDefinition = {
 };
 type TaskSchemaEntry =
   | { kind: "document"; id: string; label: string; documentType: string }
-  | { kind: "parameter"; id: string; label: string; value: string };
+  | { kind: "parameter"; id: string; label: string; value: string }
+  | { kind: "section"; id: string; label: string };
 type WorkflowDocumentGroupEntry = {
   stageKey: string;
   stageTitle: string;
@@ -380,7 +438,10 @@ function formatTaskFieldValue(value: unknown): string {
   return String(value);
 }
 
-function extractOrderedSchemaEntriesFromPayload(payload: Record<string, unknown> | null): TaskSchemaEntry[] {
+function extractOrderedSchemaEntriesFromPayload(
+  payload: Record<string, unknown> | null,
+  participantNames?: Record<string, string>
+): TaskSchemaEntry[] {
   const schemaBranch =
     payload && typeof payload.schema === "object" && !Array.isArray(payload.schema)
       ? (payload.schema as Record<string, unknown>)
@@ -416,13 +477,38 @@ function extractOrderedSchemaEntriesFromPayload(payload: Record<string, unknown>
       return;
     }
 
+    if (fieldType === "section_header") {
+      entries.push({
+        kind: "section",
+        id,
+        label: labelRaw.trim().length > 0 ? labelRaw : id,
+      });
+      return;
+    }
+
     if (EXCLUDED_FIELD_LABELS.has(normalizedLabel)) return;
+
+    let displayValue = formatTaskFieldValue(resolveTaskFieldValue(id, payload));
+
+    // Try to resolve participant name if available
+    if (participantNames && (id === "client_id" || id === "buyer_id" || id === "seller_id" || id === "broker_id")) {
+      const rawValue = resolveTaskFieldValue(id, payload);
+      if (typeof rawValue === "string" && participantNames[rawValue]) {
+        displayValue = participantNames[rawValue];
+      } else if (id === "client_id" && participantNames["client"]) {
+         // Fallback for client_id if value matches the deal client
+         const val = resolveTaskFieldValue(id, payload);
+         // We don't have deal client ID here easily to compare, but usually client_id in task matches deal client
+         // But better to rely on value lookup.
+         // If we passed a map like { "uuid": "Name" }, then the lookup above works.
+      }
+    }
 
     entries.push({
       kind: "parameter",
       id,
       label: labelRaw.trim().length > 0 ? labelRaw : id,
-      value: formatTaskFieldValue(resolveTaskFieldValue(id, payload)),
+      value: displayValue,
     });
   });
 
@@ -500,6 +586,14 @@ function buildTaskDocumentGroups(
           status: null,
           url: null,
           kind: "parameter",
+        });
+      } else if (entry.kind === "section") {
+        groupDocs.push({
+          label: entry.label,
+          value: "",
+          status: null,
+          url: null,
+          kind: "section",
         });
       }
     });
@@ -696,15 +790,36 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     sellerType?: string | null;
     sellerEmail?: string | null;
     sellerPhone?: string | null;
+    brokerName?: string | null;
+    brokerPhone?: string | null;
+    brokerEmail?: string | null;
     vehicleId: string | null;
     buyerEmail?: string | null;
     buyerPhone?: string | null;
     buyerType?: string | null;
   } | null = null;
+  let buyerType: string | null = null;
+  let buyerEmail: string | null = null;
+  let buyerPhone: string | null = null;
+  let sellerProfileId: string | null = null;
+  let sellerType: string | null = null;
+  let sellerEmail: string | null = null;
+  let sellerPhone: string | null = null;
+  let sellerName: string | null = null;
+  let buyerProfileId: string | null = null;
+  let buyerProfileName: string | null = null;
+  let brokerProfileId: string | null = null;
+  let brokerName: string | null = null;
+  let brokerPhone: string | null = null;
+  let brokerType: string | null = null;
+  let brokerEmail: string | null = null;
   let clientChecklist: ClientDocumentChecklist | null = null;
   let guardDocuments: GuardDocumentLink[] = [];
   let financeSnapshot: FinanceReviewSnapshot | null = null;
   let dealDocuments: DealDocumentWithUrl[] = [];
+  let buyerProfileDocuments: ProfileDocumentWithUrl[] = [];
+  let sellerProfileDocuments: ProfileDocumentWithUrl[] = [];
+  let brokerProfileDocuments: ProfileDocumentWithUrl[] = [];
   let clientDocuments: ClientDocumentWithUrl[] = [];
   let relatedTasks: DealTaskSnapshot[] = [];
   let commercialOffer: CommercialOfferExtract | null = null;
@@ -722,7 +837,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           seller_id,
           broker_id,
           seller:profiles!deals_seller_id_fkey(id, full_name, entity_type, phone, metadata),
-          broker:profiles!deals_broker_id_fkey(full_name, phone),
+          broker:profiles!deals_broker_id_fkey(id, full_name, entity_type, phone, metadata),
           vehicle_id,
           status,
           monthly_payment,
@@ -757,19 +872,18 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     if (dealRow) {
       const effectiveClientId = (dealRow.client_id as string | null) ?? null;
 
-      let buyerEmail: string | null = null;
-      let buyerPhone: string | null = null;
-      let buyerType: string | null = null;
 
       // Try fetching from profiles (using client_id)
       if (effectiveClientId) {
         const { data: profileData } = await serviceClient
           .from("profiles")
-          .select("phone, metadata, entity_type")
+          .select("id, full_name, phone, metadata, entity_type")
           .eq("user_id", effectiveClientId)
           .maybeSingle();
 
         if (profileData) {
+          buyerProfileId = profileData.id ?? buyerProfileId;
+          buyerProfileName = profileData.full_name ?? buyerProfileName;
           buyerType = profileData.entity_type;
           if (!buyerPhone) buyerPhone = profileData.phone;
           // Try to get email from metadata if not found
@@ -801,11 +915,11 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         }
       }
 
-      let sellerType = ((dealRow.seller as unknown) as { entity_type: string | null } | null)?.entity_type ?? null;
-      let sellerProfileId = ((dealRow.seller as unknown) as { id: string | null } | null)?.id ?? null;
-      let sellerPhone = ((dealRow.seller as unknown) as { phone: string | null } | null)?.phone ?? null;
+      sellerType = ((dealRow.seller as unknown) as { entity_type: string | null } | null)?.entity_type ?? sellerType;
+      sellerProfileId = ((dealRow.seller as unknown) as { id: string | null } | null)?.id ?? sellerProfileId;
+      sellerPhone = ((dealRow.seller as unknown) as { phone: string | null } | null)?.phone ?? sellerPhone;
       let sellerMetadata = ((dealRow.seller as unknown) as { metadata: Record<string, unknown> | null } | null)?.metadata ?? null;
-      let sellerEmail: string | null = null;
+      sellerName = ((dealRow.seller as unknown) as { full_name: string | null } | null)?.full_name ?? sellerName;
 
       if (sellerMetadata && typeof sellerMetadata === "object" && "email" in sellerMetadata) {
         sellerEmail = (sellerMetadata as { email?: string }).email ?? null;
@@ -842,13 +956,62 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         }
       }
 
+      const brokerProfile = ((dealRow.broker as unknown) as {
+        id?: string | null;
+        full_name?: string | null;
+        entity_type?: string | null;
+        phone?: string | null;
+        metadata?: Record<string, unknown> | null;
+      } | null) ?? null;
+      brokerProfileId = brokerProfile?.id ?? brokerProfileId;
+      brokerPhone = brokerProfile?.phone ?? brokerPhone;
+      brokerType = brokerProfile?.entity_type ?? brokerType;
+      brokerName = brokerProfile?.full_name ?? brokerName;
+      let brokerMetadata = brokerProfile?.metadata ?? null;
+
+      if (brokerMetadata && typeof brokerMetadata === "object" && "email" in brokerMetadata) {
+        brokerEmail = (brokerMetadata as { email?: string }).email ?? null;
+      }
+
+      if ((!brokerProfileId || !brokerPhone || !brokerType) && dealRow.broker_id) {
+        const { data: brokerData } = await serviceClient
+          .from("profiles")
+          .select("id, entity_type, phone, metadata, full_name")
+          .eq("user_id", dealRow.broker_id)
+          .maybeSingle();
+        if (brokerData) {
+          brokerProfileId = brokerProfileId ?? brokerData.id ?? null;
+          brokerPhone = brokerPhone ?? brokerData.phone ?? null;
+          brokerType = brokerType ?? brokerData.entity_type ?? null;
+          brokerMetadata = brokerMetadata ?? ((brokerData.metadata as Record<string, unknown> | null) ?? null);
+          if (!brokerEmail && brokerMetadata && typeof brokerMetadata === "object" && "email" in brokerMetadata) {
+            brokerEmail = (brokerMetadata as { email?: string }).email ?? null;
+          }
+        }
+      }
+
+      if (!brokerEmail && dealRow.broker_id) {
+        try {
+          const { data: userData, error: userError } = await serviceClient.auth.admin.getUserById(
+            dealRow.broker_id,
+          );
+          if (!userError && userData?.user?.email) {
+            brokerEmail = userData.user.email;
+          }
+        } catch (err) {
+          console.warn("[workflow] failed to fetch broker email", err);
+        }
+      }
+
       dealSummary = {
         id: dealRow.id,
         dealNumber: dealRow.deal_number ?? null,
         clientId: effectiveClientId,
         sellerId: (dealRow.seller_id as string | null) ?? null,
         brokerId: (dealRow.broker_id as string | null) ?? null,
-        sellerName: ((dealRow.seller as unknown) as { full_name: string | null } | null)?.full_name ?? null,
+        brokerName,
+        brokerPhone,
+        sellerName,
         sellerType,
         sellerEmail,
         sellerPhone,
@@ -867,6 +1030,48 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       if (tasksError) {
         console.error("[workflow] failed to load related tasks for finance snapshot", tasksError);
       } else if (Array.isArray(tasksData)) {
+        // Collect participant IDs from all tasks to resolve names
+        const participantIds = new Set<string>();
+        if (dealSummary?.clientId) participantIds.add(dealSummary.clientId);
+        if (dealSummary?.sellerId) participantIds.add(dealSummary.sellerId);
+        if (dealSummary?.brokerId) participantIds.add(dealSummary.brokerId);
+
+        tasksData.forEach((row) => {
+          const p =
+            row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
+              ? (row.payload as { fields?: Record<string, unknown> })
+              : null;
+          if (p?.fields) {
+            if (typeof p.fields.seller_id === "string") participantIds.add(p.fields.seller_id);
+            if (typeof p.fields.broker_id === "string") participantIds.add(p.fields.broker_id);
+            if (typeof p.fields.client_id === "string") participantIds.add(p.fields.client_id);
+            if (typeof p.fields.buyer_id === "string") participantIds.add(p.fields.buyer_id);
+          }
+        });
+
+        const idsToFetch = Array.from(participantIds).filter((id) => typeof id === "string" && id.length > 20);
+        const namesMap = new Map<string, string>();
+        
+        // Pre-fill with known names
+        if (dealSummary?.clientId && buyerProfileName) namesMap.set(dealSummary.clientId, buyerProfileName);
+        if (dealSummary?.sellerId && sellerName) namesMap.set(dealSummary.sellerId, sellerName);
+        if (dealSummary?.brokerId && brokerName) namesMap.set(dealSummary.brokerId, brokerName);
+
+        if (idsToFetch.length > 0) {
+          const { data: profiles } = await serviceClient
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", idsToFetch);
+          
+          if (profiles) {
+            profiles.forEach((p) => {
+              if (p.user_id && p.full_name) {
+                namesMap.set(p.user_id, p.full_name);
+              }
+            });
+          }
+        }
+
         relatedTasks = tasksData.map((row) => {
           const payload =
             row.payload && typeof row.payload === "object" && !Array.isArray(row.payload)
@@ -884,7 +1089,13 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
                 ? ((payload.status as Record<string, unknown>).key as string)
                 : null;
           const stageTitle = stageKey && OPS_WORKFLOW_STATUS_MAP[stageKey] ? OPS_WORKFLOW_STATUS_MAP[stageKey].title : stageKey;
-          const schemaEntriesBase = extractOrderedSchemaEntriesFromPayload(payload);
+          
+          const participantNames: Record<string, string> = {};
+          namesMap.forEach((val, key) => {
+            participantNames[key] = val;
+          });
+
+          const schemaEntriesBase = extractOrderedSchemaEntriesFromPayload(payload, participantNames);
 
           const checklist = extractChecklistFromTaskPayload(payload);
           let extendedChecklist = [...checklist];
@@ -1012,9 +1223,6 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       );
 
       if (sellerProfileId) {
-        // Only fetch documents that are actually relevant to the seller profile (Entity documents).
-        // Vehicle/Deal specific documents (Mulkia, Passing, etc.) should not be pulled from the seller profile
-        // as they are bound to the specific deal/vehicle, not the seller entity.
         const { data: sellerDocsData, error: sellerDocsError } = await serviceClient
           .from("profile_documents")
           .select("id, document_type, title, status, storage_path, metadata, uploaded_at")
@@ -1024,65 +1232,49 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         if (sellerDocsError) {
           console.error("[workflow] failed to load seller documents", sellerDocsError);
         } else if (Array.isArray(sellerDocsData)) {
-          const sellerDocs = await Promise.all(
-            sellerDocsData.map(async (doc) => {
-              const metadata = (doc.metadata as Record<string, unknown> | null) ?? null;
-              const metaBucket =
-                metadata && typeof metadata.bucket === "string" ? (metadata.bucket as string) : null;
-              
-              let signedUrl: string | null = null;
-              if (doc.storage_path) {
-                 const bucketsToTry = metaBucket
-                  ? [metaBucket, "profile-documents", DEAL_STORAGE_BUCKET, CLIENT_STORAGE_BUCKET]
-                  : ["profile-documents", DEAL_STORAGE_BUCKET, CLIENT_STORAGE_BUCKET];
-                 
-                 // Remove duplicates
-                 const uniqueBuckets = Array.from(new Set(bucketsToTry));
-
-                 for (const bucket of uniqueBuckets) {
-                   const url = await createSignedStorageUrl({ bucket, path: doc.storage_path });
-                   if (url) {
-                     signedUrl = url;
-                     break;
-                   }
-                 }
-              }
-
-              return {
-                id: doc.id,
-                document_type: doc.document_type,
-                title: doc.title,
-                status: doc.status,
-                storage_path: doc.storage_path,
-                created_at: doc.uploaded_at,
-                metadata,
-                signedUrl,
-              };
-            }),
-          );
-          dealDocuments = [...dealDocuments, ...sellerDocs];
+          sellerProfileDocuments = await buildProfileDocumentsWithUrls(sellerDocsData);
+          dealDocuments = [
+            ...dealDocuments,
+            ...sellerProfileDocuments.map((doc) => ({
+              id: doc.id,
+              document_type: doc.document_type,
+              title: doc.title,
+              status: doc.status,
+              storage_path: doc.storage_path ?? null,
+              created_at: doc.uploaded_at ?? null,
+              metadata: doc.metadata ?? null,
+              signedUrl: doc.signedUrl,
+            })),
+          ];
         }
       }
 
-      if (effectiveClientId) {
-        const { data: clientDocsData, error: clientDocsError } = await supabase
-          .from("client_documents")
-          .select("id, document_type, title, status, storage_path, metadata")
-          .eq("client_id", effectiveClientId)
+      if (buyerProfileId) {
+        const { data: buyerDocsData, error: buyerDocsError } = await serviceClient
+          .from("profile_documents")
+          .select("id, document_type, title, status, storage_path, metadata, uploaded_at")
+          .eq("profile_id", buyerProfileId)
           .in("document_type", ALLOWED_PROFILE_DOC_TYPES);
 
-        if (clientDocsError) {
-          console.error("[workflow] failed to load client documents for task page", clientDocsError);
-        } else if (Array.isArray(clientDocsData)) {
-          const documents = clientDocsData as ClientDocumentSummary[];
-          clientDocuments = await Promise.all(
-            documents.map(async (doc) => ({
-              ...doc,
-              signedUrl: doc.storage_path
-                ? await createSignedStorageUrl({ bucket: CLIENT_STORAGE_BUCKET, path: doc.storage_path })
-                : null,
-            })),
-          );
+        if (buyerDocsError) {
+          console.error("[workflow] failed to load buyer documents", buyerDocsError);
+        } else if (Array.isArray(buyerDocsData)) {
+          buyerProfileDocuments = await buildProfileDocumentsWithUrls(buyerDocsData);
+          clientDocuments = buyerProfileDocuments;
+        }
+      }
+
+      if (brokerProfileId) {
+        const { data: brokerDocsData, error: brokerDocsError } = await serviceClient
+          .from("profile_documents")
+          .select("id, document_type, title, status, storage_path, metadata, uploaded_at")
+          .eq("profile_id", brokerProfileId)
+          .in("document_type", ALLOWED_PROFILE_DOC_TYPES);
+
+        if (brokerDocsError) {
+          console.error("[workflow] failed to load broker documents", brokerDocsError);
+        } else if (Array.isArray(brokerDocsData)) {
+          brokerProfileDocuments = await buildProfileDocumentsWithUrls(brokerDocsData);
         }
       }
 
@@ -1533,6 +1725,39 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
     }
   }
 
+  const buyerProfileSummary: ProfileSummaryPayload | null =
+    buyerProfileName || task.dealClientName || buyerProfileDocuments.length > 0 || buyerPhone || buyerEmail
+      ? {
+          name: task.dealClientName ?? buyerProfileName ?? null,
+          entityType: buyerType ?? null,
+          email: buyerEmail ?? null,
+          phone: buyerPhone ?? null,
+          documents: buyerProfileDocuments,
+        }
+      : null;
+
+  const sellerProfileSummary: ProfileSummaryPayload | null =
+    sellerName || sellerProfileDocuments.length > 0 || sellerPhone || sellerEmail
+      ? {
+          name: sellerName ?? null,
+          entityType: sellerType ?? null,
+          email: sellerEmail ?? null,
+          phone: sellerPhone ?? null,
+          documents: sellerProfileDocuments,
+        }
+      : null;
+
+  const brokerProfileSummary: ProfileSummaryPayload | null =
+    brokerName || brokerProfileDocuments.length > 0 || brokerPhone || brokerEmail
+      ? {
+          name: brokerName ?? null,
+          entityType: brokerType ?? null,
+          email: brokerEmail ?? null,
+          phone: brokerPhone ?? null,
+          documents: brokerProfileDocuments,
+        }
+      : null;
+
   return (
     <TaskDetailView
       task={task}
@@ -1552,6 +1777,11 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       stageTitle={stageMeta?.title ?? null}
       guardDocuments={guardDocuments}
       clientDocuments={[...clientDocuments, ...dealDocuments]}
+      profileSummaries={{
+        buyer: buyerProfileSummary,
+        seller: sellerProfileSummary,
+        broker: brokerProfileSummary,
+      }}
       financeSnapshot={financeSnapshot}
       commercialOfferPriceVat={commercialOffer?.priceVat ?? null}
       completeAction={completeTaskFormAction}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useMemo, useState, startTransition, type JSX } from "react";
+import { useActionState, useEffect, useMemo, useState, useRef, startTransition, type JSX } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -42,10 +42,17 @@ import {
 import { filterChecklistTypes, type ClientDocumentChecklist, type ClientDocumentSummary } from "@/lib/workflow/documents-checklist";
 import { WorkflowDocuments } from "@/app/(dashboard)/ops/_components/workflow-documents";
 import { ProfileSelector } from "@/app/(dashboard)/ops/_components/profile-selector";
+import { getProfileSummary, type ProfileSummaryPayload } from "@/app/(dashboard)/ops/actions";
 
 import { deleteTaskGuardDocumentAction, getUploadUrlAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
 
 type ClientDocumentWithUrl = ClientDocumentSummary & { signedUrl: string | null };
+
+type ProfileSummaryMap = {
+  buyer?: ProfileSummaryPayload | null;
+  seller?: ProfileSummaryPayload | null;
+  broker?: ProfileSummaryPayload | null;
+};
 
 type TaskDetailViewProps = {
   task: WorkspaceTask;
@@ -78,6 +85,7 @@ type TaskDetailViewProps = {
   stageTitle: string | null;
   guardDocuments: GuardDocumentLink[];
   clientDocuments?: ClientDocumentWithUrl[];
+  profileSummaries?: ProfileSummaryMap | null;
   financeSnapshot?: FinanceReviewSnapshot | null;
   commercialOfferPriceVat?: number | null;
   completeAction: (state: FormStatus, formData: FormData) => Promise<FormStatus>;
@@ -252,6 +260,29 @@ function formatDate(value: string | null | undefined): string {
   }
 }
 
+function formatDateOnly(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("ru-RU");
+}
+
+function resolveEntityTypeLabel(entityType: string | null | undefined): string {
+  if (entityType === "company") return "Юр. лицо";
+  if (entityType === "personal") return "Физ. лицо";
+  return entityType ?? "—";
+}
+
+function getMetadataString(metadata: unknown, key: string): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+  const value = (metadata as Record<string, unknown>)[key];
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function resolveFieldValue(fieldId: string, payload: TaskPayload | undefined): string {
   if (!payload) return "";
   const fields = payload.fields ?? {};
@@ -322,6 +353,7 @@ export function TaskDetailView({
   deal,
   guardDocuments,
   clientDocuments,
+  profileSummaries,
   financeSnapshot,
   commercialOfferPriceVat,
   completeAction,
@@ -347,6 +379,7 @@ export function TaskDetailView({
   const [docFieldWarnings, setDocFieldWarnings] = useState<Record<string, string>>({});
   const [draftWarnings, setDraftWarnings] = useState<Record<string, string>>({});
   const [requiredDocErrors, setRequiredDocErrors] = useState<Record<string, string>>({});
+  const [fieldValidationErrors, setFieldValidationErrors] = useState<Record<string, string>>({});
   const [isAdditionalDocsOpen, setIsAdditionalDocsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const pending = serverPending || isUploading;
@@ -414,11 +447,66 @@ export function TaskDetailView({
         if (initial[k] === undefined) initial[k] = v;
       });
     }
+
+    // Auto-select profiles if not set and available in deal context
+    if (deal) {
+        if (deal.clientId && !initial['client_id']) initial['client_id'] = deal.clientId;
+        if (deal.sellerId && !initial['seller_id']) initial['seller_id'] = deal.sellerId;
+        if (deal.brokerId && !initial['broker_id']) initial['broker_id'] = deal.brokerId;
+    }
+
     return initial;
   });
 
+  // Track loaded profile summaries
+  const [loadedProfiles, setLoadedProfiles] = useState<ProfileSummaryMap>({});
+  const [loadingProfiles, setLoadingProfiles] = useState<Record<string, boolean>>({});
+  const prevProfileIds = useRef<{ buyer?: string | null; seller?: string | null; broker?: string | null }>({});
+
+  useEffect(() => {
+    const buyerId = fieldValues['client_id'] as string | undefined;
+    const sellerId = fieldValues['seller_id'] as string | undefined;
+    const brokerId = fieldValues['broker_id'] as string | undefined;
+
+    const fetchProfile = async (id: string, type: keyof ProfileSummaryMap) => {
+        setLoadingProfiles(prev => ({ ...prev, [type]: true }));
+        try {
+            const summary = await getProfileSummary(id);
+            if (summary) {
+                setLoadedProfiles(prev => ({ ...prev, [type]: summary }));
+            }
+        } catch (e) {
+            console.error(`Failed to fetch ${type} profile`, e);
+        } finally {
+            setLoadingProfiles(prev => ({ ...prev, [type]: false }));
+        }
+    };
+
+    if (buyerId && buyerId !== prevProfileIds.current.buyer) {
+        fetchProfile(buyerId, 'buyer');
+    }
+    prevProfileIds.current.buyer = buyerId;
+
+    if (sellerId && sellerId !== prevProfileIds.current.seller) {
+        fetchProfile(sellerId, 'seller');
+    }
+    prevProfileIds.current.seller = sellerId;
+
+    if (brokerId && brokerId !== prevProfileIds.current.broker) {
+        fetchProfile(brokerId, 'broker');
+    }
+    prevProfileIds.current.broker = brokerId;
+    
+  }, [fieldValues]);
+
   function handleFieldValueChange(fieldId: string, value: unknown) {
     setFieldValues((prev) => ({ ...prev, [fieldId]: value }));
+    setFieldValidationErrors((prev) => {
+        if (!prev[fieldId]) return prev;
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+    });
   }
 
   const schemaFieldsRaw = payload?.schema?.fields;
@@ -435,6 +523,9 @@ export function TaskDetailView({
       ? rawFieldsFromPayload
       : (fallbackTemplate?.schema?.fields as TaskFieldDefinition[] | undefined) ?? [];
   const editableFields = rawFields.filter((field) => isEditableField(field) && field.id !== "instructions");
+  const isBuyerReviewTask = guardKeyResolved === "buyer.verified" || task.type === "REVIEW_BUYER";
+  const isSellerReviewTask = guardKeyResolved === "seller.verified" || task.type === "REVIEW_SELLER";
+  const isBrokerReviewTask = guardKeyResolved === "broker.verified" || task.type === "REVIEW_BROKER";
   let visibleFields = editableFields;
   const statusMeta = getTaskStatusMeta(task.status);
   const canReopen = task.status.toUpperCase() === "DONE";
@@ -524,8 +615,9 @@ export function TaskDetailView({
     control: JSX.Element;
     useTwoColumn: boolean;
     rowClass: string;
+    error?: string | null;
   }) {
-    const { id, label, required, control, useTwoColumn, rowClass } = opts;
+    const { id, label, required, control, useTwoColumn, rowClass, error } = opts;
     const labelNode = (
       <Label
         htmlFor={`field-${id}`}
@@ -539,18 +631,29 @@ export function TaskDetailView({
         ) : null}
       </Label>
     );
+    
+    const errorNode = error ? (
+      <Badge variant="danger" className="mt-1 rounded-sm px-2 py-0.5 text-[11px] font-normal bg-red-600 text-white hover:bg-red-700">
+        {error}
+      </Badge>
+    ) : null;
+
     if (useTwoColumn) {
       return (
-        <div key={id} className={rowClass}>
+        <div key={id} id={`field-row-${id}`} className={rowClass}>
           <div className="flex flex-col gap-1">{labelNode}</div>
-          <div className="space-y-2">{control}</div>
+          <div className="space-y-2">
+            {control}
+            {errorNode}
+          </div>
         </div>
       );
     }
     return (
-      <div key={id} className={rowClass}>
+      <div key={id} id={`field-row-${id}`} className={rowClass}>
         {labelNode}
         {control}
+        {errorNode}
       </div>
     );
   }
@@ -558,6 +661,130 @@ export function TaskDetailView({
   const documentSectionDescription =
     "Загрузите дополнительные файлы по сделке. Поддерживаются PDF, JPG и PNG.";
   const documentEmptyStateText = "Дополнительные документы пока не выбраны.";
+  const dealSlug = deal ? buildSlugWithId(deal.dealNumber ?? null, deal.id) || deal.id : null;
+  const clientSlug = deal?.clientId
+    ? buildSlugWithId(task.dealClientName ?? null, deal.clientId) || deal.clientId
+    : null;
+  const vehicleSlug = deal?.vehicleId
+    ? buildSlugWithId(task.dealVehicleName ?? null, deal.vehicleId) || deal.vehicleId
+    : null;
+  const sellerSlug = deal?.sellerId
+    ? buildSlugWithId(task.dealSellerName ?? null, deal.sellerId) || deal.sellerId
+    : null;
+  const brokerSlug = deal?.brokerId
+    ? buildSlugWithId(deal.brokerName ?? null, deal.brokerId) || deal.brokerId
+    : null;
+
+  const summaryMap = profileSummaries ?? {};
+  const activeProfileSummary =
+    isBuyerReviewTask ? summaryMap.buyer : isSellerReviewTask ? summaryMap.seller : isBrokerReviewTask ? summaryMap.broker : null;
+  const activeProfileLabel = isBuyerReviewTask
+    ? "Профиль покупателя"
+    : isSellerReviewTask
+      ? "Профиль продавца"
+      : isBrokerReviewTask
+        ? "Профиль брокера"
+        : null;
+  const profileSummaryDocuments = activeProfileSummary?.documents ?? [];
+  const profileLinkHref = isBuyerReviewTask
+    ? clientSlug
+      ? `/ops/clients/${clientSlug}`
+      : deal?.clientId
+        ? `/ops/clients/${deal.clientId}`
+        : null
+    : isSellerReviewTask
+      ? sellerSlug
+        ? `/ops/sellers/${sellerSlug}`
+        : deal?.sellerId
+          ? `/ops/sellers/${deal.sellerId}`
+          : null
+      : isBrokerReviewTask
+        ? brokerSlug
+          ? `/ops/brokers/${brokerSlug}`
+          : deal?.brokerId
+            ? `/ops/brokers/${deal.brokerId}`
+            : null
+        : null;
+  const profileLinkLabel = isBuyerReviewTask
+    ? "Редактировать профиль покупателя"
+    : isSellerReviewTask
+      ? "Редактировать профиль продавца"
+      : isBrokerReviewTask
+        ? "Редактировать профиль брокера"
+        : null;
+  const profileSummaryBlock =
+    activeProfileSummary && activeProfileLabel ? (
+      <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/20 px-4 py-4">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{activeProfileLabel}</p>
+          <p className="text-lg font-semibold text-foreground">{activeProfileSummary.name ?? "—"}</p>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span>Тип: {resolveEntityTypeLabel(activeProfileSummary.entityType)}</span>
+            <span>Email: {activeProfileSummary.email ?? "—"}</span>
+            <span>Телефон: {activeProfileSummary.phone ?? "—"}</span>
+          </div>
+          {profileLinkHref && profileLinkLabel ? (
+            <Link
+              href={profileLinkHref}
+              target="_blank"
+              className="inline-flex items-center gap-2 text-sm font-medium text-brand-600 hover:underline"
+            >
+              {profileLinkLabel}
+              <ExternalLink className="h-4 w-4" />
+            </Link>
+          ) : null}
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Документы профиля</p>
+          {profileSummaryDocuments.length > 0 ? (
+            <ul className="space-y-2">
+              {profileSummaryDocuments.map((doc) => {
+                const baseLabel =
+                  (doc.title && doc.title.trim().length > 0 ? doc.title : null) ??
+                  (doc.document_type
+                    ? getClientDocumentLabel(doc.document_type as ClientDocumentTypeValue) ??
+                      getDealDocumentLabel(doc.document_type) ??
+                      doc.document_type
+                    : "Документ");
+                const typeLabel =
+                  doc.document_type
+                    ? getClientDocumentLabel(doc.document_type as ClientDocumentTypeValue) ??
+                      getDealDocumentLabel(doc.document_type) ??
+                      doc.document_type
+                    : null;
+                const documentNumber = getMetadataString(doc.metadata, "document_number");
+                const expireRaw = getMetadataString(doc.metadata, "expire_date");
+                const expireDisplay = formatDateOnly(expireRaw);
+                return (
+                  <li
+                    key={doc.id}
+                    className="flex flex-col gap-2 rounded-xl border border-border/60 bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">{baseLabel}</p>
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        {typeLabel ? <span>Тип: {typeLabel}</span> : null}
+                        <span>№: {documentNumber ?? "—"}</span>
+                        <span>Срок: {expireDisplay}</span>
+                      </div>
+                    </div>
+                    {doc.signedUrl ? (
+                      <Button asChild size="sm" variant="outline" className="rounded-lg">
+                        <Link href={doc.signedUrl} target="_blank">
+                          Открыть
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground">Документы не загружены.</p>
+          )}
+        </div>
+      </div>
+    ) : null;
   useEffect(() => {
     if (process.env.NODE_ENV !== "production") {
       // Debug output to verify required doc flags in UI
@@ -682,19 +909,6 @@ export function TaskDetailView({
     (instructionsDefaults && instructionsDefaults.trim().length > 0 ? instructionsDefaults.trim() : null) ||
     instructionShortRaw ||
     null;
-  const dealSlug = deal ? buildSlugWithId(deal.dealNumber ?? null, deal.id) || deal.id : null;
-  const clientSlug = deal?.clientId
-    ? buildSlugWithId(task.dealClientName ?? null, deal.clientId) || deal.clientId
-    : null;
-  const vehicleSlug = deal?.vehicleId
-    ? buildSlugWithId(task.dealVehicleName ?? null, deal.vehicleId) || deal.vehicleId
-    : null;
-  const sellerSlug = deal?.sellerId
-    ? buildSlugWithId(task.dealSellerName ?? null, deal.sellerId) || deal.sellerId
-    : null;
-  const brokerSlug = deal?.brokerId
-    ? buildSlugWithId(deal.brokerName ?? null, deal.brokerId) || deal.brokerId
-    : null;
 
   const rentyManagerFeeDefault = useMemo(
     () => deriveRentyManagerFee(commercialOfferPriceVat),
@@ -807,6 +1021,59 @@ export function TaskDetailView({
     setDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
     setUploadValidationError(null);
     setDraftWarning(id, null);
+  }
+
+  function validateFieldsBeforeSubmit(): boolean {
+    const nextFieldErrors: Record<string, string> = {};
+
+    for (const field of visibleFields) {
+      // Skip document fields (handled by validateUploadsBeforeSubmit)
+      if (getFieldDocumentType(field) || field.type === "file") continue;
+      
+      // Skip read-only fields or section headers/links
+      if (field.readonly || field.type === "section_header" || field.type === "link" || field.type === "profile_viewer") continue;
+
+      if (field.required) {
+        const fieldId = field.id;
+        let value = fieldValues[fieldId] !== undefined ? fieldValues[fieldId] : resolveFieldValue(fieldId, payload);
+        
+        // Auto-select profiles fallback (logic mirrored from render loop)
+        if ((value === "" || value == null) && deal) {
+             if (fieldId === "client_id" && deal.clientId) value = deal.clientId;
+             else if (fieldId === "seller_id" && deal.sellerId) value = deal.sellerId;
+             else if (fieldId === "broker_id" && deal.brokerId) value = deal.brokerId;
+        }
+
+        let hasValue = false;
+        if (typeof value === "string") {
+            hasValue = value.trim().length > 0;
+        } else if (value != null) {
+            hasValue = true;
+        }
+
+        if (!hasValue) {
+          nextFieldErrors[fieldId] = "Поле обязательно для заполнения";
+        }
+      }
+    }
+
+    setFieldValidationErrors(nextFieldErrors);
+    const hasErrors = Object.keys(nextFieldErrors).length > 0;
+    
+    if (hasErrors) {
+        if (typeof console !== "undefined") {
+            console.warn("[task-form] field validation failed", nextFieldErrors);
+        }
+        // Scroll to the first error
+        const firstErrorFieldId = Object.keys(nextFieldErrors)[0];
+        const element = document.getElementById(`field-${firstErrorFieldId}`);
+        if (element) {
+            element.scrollIntoView({ behavior: "smooth", block: "center" });
+            element.focus();
+        }
+    }
+    
+    return !hasErrors;
   }
 
   function validateUploadsBeforeSubmit(): boolean {
@@ -1062,7 +1329,10 @@ export function TaskDetailView({
     }
     event.preventDefault();
 
-    if (!validateUploadsBeforeSubmit()) {
+    const fieldsValid = validateFieldsBeforeSubmit();
+    const uploadsValid = validateUploadsBeforeSubmit();
+
+    if (!fieldsValid || !uploadsValid) {
       return;
     }
 
@@ -1392,6 +1662,7 @@ export function TaskDetailView({
             {guardMeta ? <input type="hidden" name="guardKey" value={guardMeta.key} /> : null}
             {guardMeta ? <input type="hidden" name="guardLabel" value={guardMeta.label} /> : null}
 
+            {profileSummaryBlock}
             {taskInstruction ? (
               <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3 text-sm text-foreground">
                 {taskInstruction}
@@ -1414,7 +1685,15 @@ export function TaskDetailView({
               >
                 {visibleFields.map((field, index) => {
                   const fieldId = field.id;
-                  const value = fieldValues[fieldId] !== undefined ? fieldValues[fieldId] : resolveFieldValue(fieldId, payload);
+                  let value = fieldValues[fieldId] !== undefined ? fieldValues[fieldId] : resolveFieldValue(fieldId, payload);
+                  
+                  // Auto-select profiles if not set and available in deal context
+                  if ((value === "" || value == null) && deal) {
+                     if (fieldId === "client_id" && deal.clientId) value = deal.clientId;
+                     else if (fieldId === "seller_id" && deal.sellerId) value = deal.sellerId;
+                     else if (fieldId === "broker_id" && deal.brokerId) value = deal.brokerId;
+                  }
+
                   const rawValue =
                     payload?.fields && fieldId in (payload.fields as Record<string, unknown>)
                       ? (payload.fields as Record<string, unknown>)[fieldId]
@@ -1479,15 +1758,17 @@ export function TaskDetailView({
                       control,
                       useTwoColumn: useTwoColumnFieldLayout,
                       rowClass,
+                      error: fieldValidationErrors[fieldId],
                     });
 
                   // --- New Field Types ---
                   if (type === "section_header") {
                      return (
-                        <div key={field.id} className="col-span-full mt-6 mb-2">
-                           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{label}</h3>
-                           {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
-                           <hr className="mt-2 border-border/60" />
+                        <div key={field.id} className="col-span-full mt-8 mb-4">
+                           <div className="flex items-center gap-2 border-l-[6px] border-primary bg-primary/10 py-4 pl-4 pr-4 rounded-r-lg shadow-sm">
+                              <h3 className="text-xl font-bold text-foreground tracking-tight">{label}</h3>
+                           </div>
+                           {hint && <p className="text-sm text-muted-foreground mt-2 px-1 italic">{hint}</p>}
                         </div>
                      );
                   }
@@ -1534,6 +1815,33 @@ export function TaskDetailView({
                     );
                   }
 
+
+                  // Handle participant ID fields with human-readable names
+                  if (["buyer_id", "client_id", "seller_id", "broker_id"].includes(fieldId)) {
+                    let displayName = effectiveValue as string;
+                    let displaySubtext = "";
+                    
+                    if (fieldId === "buyer_id" || fieldId === "client_id") {
+                      displayName = task.dealClientName || (deal?.clientId ? "Клиент" : displayName);
+                      if (deal?.buyerEmail) displaySubtext = deal.buyerEmail;
+                    } else if (fieldId === "seller_id") {
+                      displayName = task.dealSellerName || deal?.sellerName || (deal?.sellerId ? "Продавец" : displayName);
+                      if (deal?.sellerEmail) displaySubtext = deal.sellerEmail;
+                    } else if (fieldId === "broker_id") {
+                      displayName = task.dealBrokerName || deal?.brokerName || (deal?.brokerId ? "Брокер" : displayName);
+                      if (deal?.brokerPhone) displaySubtext = deal.brokerPhone;
+                    }
+
+                    return renderRow(
+                      <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
+                        <div className="font-medium text-foreground">{displayName}</div>
+                        {displaySubtext && <div className="text-xs text-muted-foreground">{displaySubtext}</div>}
+                        <div className="mt-1 text-[10px] text-muted-foreground/60 font-mono">{effectiveValue as string}</div>
+                        <input type="hidden" name={`field:${fieldId}`} value={(effectiveValue as string) ?? ""} />
+                      </div>
+                    );
+                  }
+
                   if (type === "profile_selector") {
                      const profileSelectorControl = (
                         <>
@@ -1551,6 +1859,65 @@ export function TaskDetailView({
                         </>
                      );
                      return renderRow(profileSelectorControl);
+                  }
+
+                  if (type === "profile_viewer") {
+                    const profileType = (fieldId.includes("buyer") || fieldId.includes("client"))
+                      ? "buyer"
+                      : fieldId.includes("seller")
+                        ? "seller"
+                        : "broker";
+                    const profileData = loadedProfiles[profileType as keyof ProfileSummaryMap] ?? profileSummaries?.[profileType as keyof ProfileSummaryMap];
+                    const isLoading = loadingProfiles[profileType as keyof ProfileSummaryMap];
+
+                    const viewerControl = (
+                      <>
+                        {isLoading ? (
+                          <div className="flex items-center gap-2 py-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">Загрузка профиля...</span>
+                          </div>
+                        ) : profileData ? (
+                          <div className="rounded-lg border border-border/70 bg-muted/30 px-3 py-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold">{profileData.name || "Профиль"}</span>
+                              <span className="text-xs text-muted-foreground">{resolveEntityTypeLabel(profileData.entityType)}</span>
+                            </div>
+                            {profileData.email && <div className="text-xs text-muted-foreground">{profileData.email}</div>}
+                            {profileData.phone && <div className="text-xs text-muted-foreground">{profileData.phone}</div>}
+                            {profileData.documents && profileData.documents.length > 0 && (
+                              <div className="mt-2 text-xs">
+                                <span className="font-semibold text-muted-foreground">Документы:</span>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {profileData.documents.map((doc) => {
+                                    const label = getClientDocumentLabel(doc.document_type as ClientDocumentTypeValue) ?? doc.document_type ?? doc.title;
+                                    const badge = (
+                                      <Badge variant="secondary" className="rounded-lg font-normal hover:bg-secondary/80 transition-colors">
+                                        {label}
+                                        {doc.signedUrl && <ExternalLink className="ml-1.5 h-3 w-3 inline-block opacity-50" />}
+                                      </Badge>
+                                    );
+
+                                    if (doc.signedUrl) {
+                                      return (
+                                        <Link key={doc.id} href={doc.signedUrl} target="_blank" rel="noopener noreferrer">
+                                          {badge}
+                                        </Link>
+                                      );
+                                    }
+                                    
+                                    return <div key={doc.id}>{badge}</div>;
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">Профиль не выбран</p>
+                        )}
+                      </>
+                    );
+                    return renderRow(viewerControl);
                   }
 
                   // Hide company contact fields for individuals
@@ -1722,6 +2089,7 @@ export function TaskDetailView({
                           checked={normalizedBoolean}
                           onCheckedChange={(checked) => {
                             setBooleanFieldValues((prev) => ({ ...prev, [fieldId]: checked }));
+                            handleFieldValueChange(fieldId, checked);
                           }}
                           disabled={pending || isReadOnly}
                         />
@@ -1969,6 +2337,39 @@ export function TaskDetailView({
                     }
                   }
 
+                  // Handle generic fields with options (Dropdowns)
+                  if (field.options && field.options.length > 0) {
+                     const selectedOption = field.options.find(opt => opt.value === (effectiveValue as string));
+                     const displayLabel = selectedOption ? selectedOption.label : undefined;
+
+                     const selectControl = (
+                        <>
+                           <Select
+                              value={(effectiveValue as string) || ""}
+                              onValueChange={(val) => handleFieldValueChange(fieldId, val)}
+                              disabled={pending || isReadOnly || field.readonly}
+                           >
+                              <SelectTrigger id={`field-${fieldId}`} className="rounded-lg">
+                                 {displayLabel ? (
+                                    <span className="text-sm">{displayLabel}</span>
+                                 ) : (
+                                    <SelectValue placeholder="Выберите значение" />
+                                 )}
+                              </SelectTrigger>
+                              <SelectContent>
+                                 {field.options.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                       {opt.label}
+                                    </SelectItem>
+                                 ))}
+                              </SelectContent>
+                           </Select>
+                           <input type="hidden" name={`field:${fieldId}`} value={(effectiveValue as string) || ""} />
+                        </>
+                     );
+                     return renderRow(selectControl);
+                  }
+
                   const inputControl = (
                     <>
                       <Input
@@ -2068,7 +2469,9 @@ export function TaskDetailView({
                                 disabled={pending || isReadOnly || isPrefilled}
                               >
                                 <SelectTrigger className="rounded-lg">
-                                  <SelectValue placeholder="Выберите тип документа" />
+                                  <SelectValue placeholder="Выберите тип документа">
+                                    {draft.type ? (getClientDocumentLabel(draft.type as ClientDocumentTypeValue) ?? getDealDocumentLabel(draft.type) ?? draft.type) : null}
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent className="max-h-72 overflow-y-auto">
                                   <SelectItem value={DOCUMENT_TYPE_EMPTY_VALUE}>Не выбран</SelectItem>
