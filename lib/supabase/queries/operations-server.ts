@@ -487,6 +487,7 @@ type CommercialOfferExtract = {
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
   buyoutAmount: number | null;
+  calculationMethod?: "standard" | "inclusive_vat" | null;
   comment: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
@@ -507,6 +508,10 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
   const interestRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["interest_rate_annual"]);
   const insuranceRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["insurance_rate_annual"]);
   const buyoutAmount = parseQuoteNumber((payload as Record<string, unknown>)["buyout_amount"]);
+  const calculationMethod = getString((payload as Record<string, unknown>)["calculation_method"]) as
+    | "standard"
+    | "inclusive_vat"
+    | null;
 
   const metaBranch =
     (payload as Record<string, unknown>)["quote_meta"] &&
@@ -528,6 +533,7 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
     interestRateAnnual,
     insuranceRateAnnual,
     buyoutAmount,
+    calculationMethod,
     comment,
     updatedAt: getString(metaBranch["updated_at"]),
     updatedBy: getString(metaBranch["updated_by"]),
