@@ -45,7 +45,7 @@ const FIELD_CONFIG: Array<{
 ];
 const INTEREST_RATE_LABEL = "Ставка финансирования, % годовых";
 const INTEREST_RATE_MIN = 16;
-const INTEREST_RATE_MAX = 25;
+const INTEREST_RATE_MAX = 30;
 const INTEREST_RATE_STEP = 0.5;
 
 type FormState = {
