@@ -39,7 +39,7 @@ function shouldLogAction(result: { data: unknown; error: { code?: string } | nul
   return Boolean(result.data);
 }
 
-function computeSlaDueAt(hours: number | undefined): string | null {
+export function computeSlaDueAt(hours: number | undefined): string | null {
   if (!hours || Number.isNaN(hours)) {
     return null;
   }
@@ -76,7 +76,7 @@ async function loadDealSnapshot(client: SupabaseClient, dealId: string): Promise
   return (data as DealSnapshot) ?? null;
 }
 
-function resolvePath(context: Record<string, unknown>, path: string): unknown {
+export function resolvePath(context: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((acc, key) => {
     if (acc === null || acc === undefined) {
       return undefined;
@@ -88,7 +88,7 @@ function resolvePath(context: Record<string, unknown>, path: string): unknown {
   }, context);
 }
 
-function parseConditionExpectedValue(raw: string): unknown {
+export function parseConditionExpectedValue(raw: string): unknown {
   const value = raw.trim();
   if (value === "true") return true;
   if (value === "false") return false;
