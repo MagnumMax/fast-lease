@@ -191,44 +191,57 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     }
 
   } else {
-    // Standard logic: Principal = PriceVat - DownPaymentTotal
-    principal = Math.max(0, priceVat - downPaymentTotal);
-    buyoutAmount = 0; // Standard method usually doesn't have buyout in this simple form, or it's 0
+    // Standard logic: 
+    // "1 month payment = Advance" (Advance includes insurance)
+    // Equity = Advance - Insurance
+    const equityDownPayment = downPaymentTotal - insuranceAnnual;
+    
+    // Principal = PriceVat - Equity
+    principal = Math.max(0, priceVat - equityDownPayment);
+    buyoutAmount = 0; 
 
-    // Interest calculation
+    // Interest calculation (Flat Rate on Principal)
+    // Interest is usually calculated for the full term?
+    // If Month 1 is Advance, then we finance the rest for (Term - 1) months?
+    // Standard usually means "Interest on Principal for Term".
     totalInterest = principal * (interestRateAnnual / 100) * (termMonths / 12);
     
     // Payoff
     const payoffWithInterest = principal + totalInterest;
 
+    // Number of regular payments (Month 2 to Term)
+    const numRegularPayments = Math.max(1, termMonths - 1);
+
     // Monthly Payment
-    monthlyLeasePayment = termMonths > 0 ? payoffWithInterest / termMonths : 0;
+    // We amortize the Payoff over the remaining months
+    monthlyLeasePayment = payoffWithInterest / numRegularPayments;
     
     // Rates
     effectiveMonthlyRate = interestRateAnnual / 12;
     effectivePeriodRate = (interestRateAnnual * termMonths) / 12;
 
     // Total Client Cost
-    // Standard: Payoff + Insurance + DownPayment
-    totalClientCost = (monthlyLeasePayment * termMonths) + buyoutAmount + totalInsurance + downPaymentTotal;
+    // Advance + (MonthlyPayment * numRegularPayments)
+    totalClientCost = downPaymentTotal + (monthlyLeasePayment * numRegularPayments);
 
     // Schedule
     let currentPrincipalBalance = principal;
-    const monthlyPrincipal = principal / termMonths; // Simple linear amortization
-    const monthlyInterest = totalInterest / termMonths;
+    const monthlyPrincipal = principal / numRegularPayments; 
+    const monthlyInterest = totalInterest / numRegularPayments;
 
-    const initialPayment = downPaymentTotal + insuranceAnnual;
+    // Month 1: Advance
     schedule.push({
         month: 1,
-        label: "Аванс + Страховка",
-        amount: initialPayment,
-        principal: downPaymentTotal,
+        label: "Аванс",
+        amount: downPaymentTotal,
+        principal: downPaymentTotal, // Visual: Amount = Principal (assuming VAT 0/included)
         interest: 0,
         vat: 0, 
-        balance: currentPrincipalBalance
+        balance: currentPrincipalBalance // Balance reflects actual debt (Price - Equity)
     });
 
-    for (let i = 0; i < termMonths; i++) {
+    // Months 2..Term
+    for (let i = 0; i < numRegularPayments; i++) {
         currentPrincipalBalance -= monthlyPrincipal;
         schedule.push({
             month: i + 2,
@@ -243,11 +256,8 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
   }
 
   // Initial Payment (First Month Sum)
-  // For inclusive_vat, it's just the Down Payment Total (which includes insurance).
-  // For standard, it might still be Down Payment + Insurance? 
-  // Standard logic above used: const initialPayment = downPaymentTotal + insuranceAnnual;
-  // Let's keep it consistent with the schedule logic.
-  const initialPayment = method === "inclusive_vat" ? downPaymentTotal : downPaymentTotal + insuranceAnnual;
+  // Now consistent for both methods: just the Advance amount.
+  const initialPayment = downPaymentTotal;
 
   return {
     method,

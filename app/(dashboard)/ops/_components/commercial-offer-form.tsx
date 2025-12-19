@@ -188,7 +188,7 @@ export function CommercialOfferForm({
     if (source === "percent" && percentValue != null && priceValue != null) {
       resolvedAmount = Number(((percentValue / 100) * priceValue).toFixed(2));
     } else if (source === "amount" && amountValue != null && priceValue != null && priceValue !== 0) {
-      resolvedPercent = Number(((amountValue / priceValue) * 100).toFixed(2));
+      resolvedPercent = (amountValue / priceValue) * 100;
     }
 
     return { amount: resolvedAmount, percent: resolvedPercent, source, price: priceValue };
@@ -367,7 +367,7 @@ export function CommercialOfferForm({
           : form.downPaymentAmount;
       const downPaymentPercentPayload =
         resolvedDownPayment.percent != null
-          ? formatNumericInput(resolvedDownPayment.percent, 2)
+          ? resolvedDownPayment.percent.toString()
           : form.downPaymentPercent;
 
       const response = await saveCommercialOffer({
@@ -399,7 +399,7 @@ export function CommercialOfferForm({
         : form.downPaymentAmount;
     const downPaymentPercentPayload =
       resolvedDownPayment.percent != null
-        ? formatNumericInput(resolvedDownPayment.percent, 2)
+        ? resolvedDownPayment.percent.toString()
         : form.downPaymentPercent;
     // Триггерим сохранение перед генерацией, чтобы payload был актуален
     const response = await saveCommercialOffer({
@@ -517,7 +517,7 @@ export function CommercialOfferForm({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="standard">Стандартный (Annuity)</SelectItem>
-                <SelectItem value="inclusive_vat">С выкупной стоимостью</SelectItem>
+                <SelectItem value="inclusive_vat">С выкупной стоимостью (Buyout)</SelectItem>
               </SelectContent>
             </Select>
           </div>
