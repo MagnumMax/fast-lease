@@ -60,8 +60,10 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
 
   // Common Insurance Calculation
   // Insurance = PriceVat * (InsuranceRate / 100)
+  // Insurance is always calculated for full years (rounded up)
   const insuranceAnnual = priceVat * (insuranceRateAnnual / 100);
-  const totalInsurance = insuranceAnnual * (termMonths / 12);
+  const insuranceYears = Math.ceil(termMonths / 12);
+  const totalInsurance = insuranceAnnual * insuranceYears;
 
   // Schedule container
   const schedule: PaymentScheduleItem[] = [];
