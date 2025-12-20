@@ -4418,6 +4418,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
         interestRateAnnual: commercialOfferExtract.interestRateAnnual,
         insuranceRateAnnual: commercialOfferExtract.insuranceRateAnnual,
         buyoutAmount: commercialOfferExtract.buyoutAmount,
+        calculationMethod: commercialOfferExtract.calculationMethod,
         comment: commercialOfferExtract.comment,
         updatedAt: commercialOfferExtract.updatedAt,
         updatedBy: commercialOfferExtract.updatedBy,
