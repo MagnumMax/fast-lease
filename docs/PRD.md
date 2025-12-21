@@ -180,3 +180,5 @@
   - **BPMN** — Business Process Model and Notation.
   - **KYC** — Know Your Customer.
   - **PWA** — Progressive Web App.
+- **Дополнительные материалы:**
+  - [Предложения по расширению функционала](./feature_proposals.md)
