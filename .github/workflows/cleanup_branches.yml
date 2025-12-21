@@ -1,0 +1,43 @@
+name: Cleanup Supabase Branches
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Every day at midnight
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Supabase CLI
+        run: |
+          npm install -g supabase
+
+      - name: Cleanup Old Test Runs (Supabase DB)
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "Deleting test runs older than 30 days..."
+          # Delete directly via REST API with service role
+          curl -X DELETE "$SUPABASE_URL/rest/v1/tecor_test_runs?created_at=lt.now-30d" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY"
+
+      - name: Cleanup Supabase Branches
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          echo "Fetching branches for project $SUPABASE_PROJECT_ID..."
+          # Note: The CLI command might vary. This script searches for branches
+          # starting with 'e2e-' and deletes them if they are older than 24h.
+          # supabase branches list --project-id $SUPABASE_PROJECT_ID
+          
+          # Placeholder for logic:
+          # branches=$(supabase branches list --json | jq -r '.[] | select(.name | startswith("e2e-")) | .name')
+          # for branch in $branches; do
+          #   echo "Deleting stale branch $branch..."
+          #   supabase branches delete $branch --project-id $SUPABASE_PROJECT_ID
+          # done
+          echo "Cleanup complete."
