@@ -2,8 +2,8 @@ export type CommercialOfferCalculationMethod = "standard" | "inclusive_vat";
 
 export interface CalculationInput {
   priceVat: number; // Стоимость с НДС
-  downPaymentAmount: number; // Аванс (введенный пользователем)
-  downPaymentSource: "amount" | "percent"; // Источник ввода аванса
+  firstPaymentAmount: number; // First payment (введенный пользователем)
+  firstPaymentSource: "amount" | "percent"; // Источник ввода First payment
   termMonths: number;
   interestRateAnnual: number; // Годовая ставка в %
   insuranceRateAnnual: number; // Годовая страховка в %
@@ -24,14 +24,14 @@ export interface PaymentScheduleItem {
 export interface CalculationResult {
   method: CommercialOfferCalculationMethod;
   priceVat: number;
-  downPaymentTotal: number; // Итоговый аванс (с НДС)
+  firstPaymentTotal: number; // Итоговый First payment (с НДС)
   financedAmount: number; // Тело долга (или база для амортизации)
   monthlyPayment: number;
   totalInterest: number;
   insuranceAnnual: number; // Годовая страховка
   totalInsurance: number;
-  totalClientCost: number; // Итого для клиента (Аванс + Платежи + Выкуп если есть)
-  initialPayment: number; // Сумма первого месяца (Аванс + Страховка)
+  totalClientCost: number; // Итого для клиента (First payment + Платежи + Выкуп если есть)
+  initialPayment: number; // Сумма первого месяца (First payment + Страховка)
   buyoutAmount: number; // Выкупная стоимость (для вывода)
   schedule: PaymentScheduleItem[];
   rates: {
@@ -46,8 +46,8 @@ export interface CalculationResult {
 export function calculateCommercialOffer(input: CalculationInput): CalculationResult {
   const { priceVat, termMonths, interestRateAnnual, insuranceRateAnnual, method } = input;
   
-  // 1. Determine Down Payment Amount
-  let downPaymentTotal = input.downPaymentAmount;
+  // 1. Determine First Payment Amount
+  let firstPaymentTotal = input.firstPaymentAmount;
   
   // 2. Initialize variables
   let principal = 0;
@@ -70,27 +70,27 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
 
   if (method === "inclusive_vat") {
     // "Excel" Logic (Leasing with Buyout / Custom Depreciation)
-    // The "Advance" (downPaymentTotal) entered by the user is the TOTAL initial payment.
+    // The "First payment" (firstPaymentTotal) entered by the user is the TOTAL initial payment.
     // It includes:
     // 1. Insurance (Annual)
     // 2. Admin Fee (1% of Price VAT) - hidden fee in Excel logic
-    // 3. Equity Down Payment (The part that actually reduces the principal)
+    // 3. Equity First Payment (The part that actually reduces the principal)
 
     // Hidden Admin Fee (1% of Price) to match Excel discrepancies
     const adminFee = priceVat * 0.01;
 
-    // Calculate Equity part of the Down Payment
-    // Equity = Total Advance - Insurance - Admin Fee
-    const downPaymentEquityGross = downPaymentTotal - insuranceAnnual - adminFee;
+    // Calculate Equity part of the First Payment
+    // Equity = Total First payment - Insurance - Admin Fee
+    const firstPaymentEquityGross = firstPaymentTotal - insuranceAnnual - adminFee;
     
     // Net Equity (removing VAT from the equity part)
-    // Note: In Excel, the entire Advance is VAT inclusive.
-    const downPaymentNet = downPaymentEquityGross / 1.05;
+    // Note: In Excel, the entire First payment is VAT inclusive.
+    const firstPaymentNet = firstPaymentEquityGross / 1.05;
 
     // Principal (Funded Amount)
-    // This is the Net Price minus the Net Equity Down Payment
+    // This is the Net Price minus the Net Equity First Payment
     const priceNet = priceVat / 1.05;
-    principal = Math.max(0, priceNet - downPaymentNet);
+    principal = Math.max(0, priceNet - firstPaymentNet);
 
     // 3. Interest Logic
     // The Excel calculation uses a specific fixed rate of 24.9% for this method
@@ -102,7 +102,7 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     const monthlyInterest = principal * (excelInterestRate / 100 / 12);
 
     // Total Interest
-    // Paid for (termMonths - 1) months (excluding down payment month)
+    // Paid for (termMonths - 1) months (excluding First payment month)
     // Both regular payments and the buyout payment include this interest amount
     totalInterest = monthlyInterest * Math.max(0, termMonths - 1);
 
@@ -132,18 +132,18 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     effectivePeriodRate = (excelInterestRate * Math.max(0, termMonths - 1)) / 12;
 
     // 6. Total Client Cost
-    // DownPayment (Total Advance) + (MonthlyPayment * numRegularPayments) + Buyout
-    // Note: Insurance is already inside DownPayment
+    // FirstPayment (Total First payment) + (MonthlyPayment * numRegularPayments) + Buyout
+    // Note: Insurance is already inside FirstPayment
     // But we need to check if totalInsurance is Annual * Term/12. 
-    // If the first year is paid in Advance, subsequent years might be extra?
-    // User instruction: "Advance + Insurance" is the 1st payment.
-    // For now, TotalClientCost = Advance + Payments + Buyout.
+    // If the first year is paid in First payment, subsequent years might be extra?
+    // User instruction: "First payment + Insurance" is the 1st payment.
+    // For now, TotalClientCost = First payment + Payments + Buyout.
     // However, if term > 12 months, usually insurance is renewed.
     // The previous logic added totalInsurance separately.
-    // If term is 36 months, 1st year is in Advance. 2nd and 3rd year are extra?
+    // If term is 36 months, 1st year is in First payment. 2nd and 3rd year are extra?
     // Excel "Total" column matches sum of payments.
     // Let's assume TotalClientCost = Sum of all schedule payments.
-    const sumOfPayments = downPaymentTotal + (monthlyLeasePayment * numRegularPayments) + buyoutAmount;
+    const sumOfPayments = firstPaymentTotal + (monthlyLeasePayment * numRegularPayments) + buyoutAmount;
     totalClientCost = sumOfPayments; // + (totalInsurance - insuranceAnnual)? 
     // If Excel total matches sum of payments, then extra insurance is not in the schedule or total?
     // We'll stick to Sum of Schedule for now.
@@ -151,12 +151,12 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     // 7. Generate Schedule
     let currentPrincipalBalance = principal;
     
-    // Initial Payment (Advance)
-    // The user wants strictly "Advance" amount here.
-    const initialPayment = downPaymentTotal;
+    // Initial Payment (First payment)
+    // The user wants strictly "First payment" amount here.
+    const initialPayment = firstPaymentTotal;
     schedule.push({
         month: 1,
-        label: "Аванс",
+        label: "First payment",
         amount: initialPayment,
         principal: initialPayment / 1.05, // Show full Net amount to make the row sum up (Principal + VAT = Amount)
         interest: 0,
@@ -194,17 +194,17 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
 
   } else {
     // Standard logic: 
-    // "1 month payment = Advance" (Advance includes insurance)
-    // Equity = Advance - Insurance
-    const equityDownPayment = downPaymentTotal - insuranceAnnual;
+    // "1 month payment = First payment" (First payment includes insurance)
+    // Equity = First payment - Insurance
+    const equityFirstPayment = firstPaymentTotal - insuranceAnnual;
     
     // Principal = PriceVat - Equity
-    principal = Math.max(0, priceVat - equityDownPayment);
+    principal = Math.max(0, priceVat - equityFirstPayment);
     buyoutAmount = 0; 
 
     // Interest calculation (Flat Rate on Principal)
     // Interest is usually calculated for the full term?
-    // If Month 1 is Advance, then we finance the rest for (Term - 1) months?
+    // If Month 1 is First payment, then we finance the rest for (Term - 1) months?
     // Standard usually means "Interest on Principal for Term".
     totalInterest = principal * (interestRateAnnual / 100) * (termMonths / 12);
     
@@ -223,20 +223,20 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     effectivePeriodRate = (interestRateAnnual * termMonths) / 12;
 
     // Total Client Cost
-    // Advance + (MonthlyPayment * numRegularPayments)
-    totalClientCost = downPaymentTotal + (monthlyLeasePayment * numRegularPayments);
+    // First payment + (MonthlyPayment * numRegularPayments)
+    totalClientCost = firstPaymentTotal + (monthlyLeasePayment * numRegularPayments);
 
     // Schedule
     let currentPrincipalBalance = principal;
     const monthlyPrincipal = principal / numRegularPayments; 
     const monthlyInterest = totalInterest / numRegularPayments;
 
-    // Month 1: Advance
+    // Month 1: First payment
     schedule.push({
         month: 1,
-        label: "Аванс",
-        amount: downPaymentTotal,
-        principal: downPaymentTotal, // Visual: Amount = Principal (assuming VAT 0/included)
+        label: "First payment",
+        amount: firstPaymentTotal,
+        principal: firstPaymentTotal, // Visual: Amount = Principal (assuming VAT 0/included)
         interest: 0,
         vat: 0, 
         balance: currentPrincipalBalance // Balance reflects actual debt (Price - Equity)
@@ -258,13 +258,13 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
   }
 
   // Initial Payment (First Month Sum)
-  // Now consistent for both methods: just the Advance amount.
-  const initialPayment = downPaymentTotal;
+  // Now consistent for both methods: just the First payment amount.
+  const initialPayment = firstPaymentTotal;
 
   return {
     method,
     priceVat,
-    downPaymentTotal,
+    firstPaymentTotal,
     financedAmount: principal,
     monthlyPayment: monthlyLeasePayment,
     totalInterest,

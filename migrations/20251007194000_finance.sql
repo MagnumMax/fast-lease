@@ -7,7 +7,7 @@ do $$ begin
   ) then
     create type public.invoice_type as enum (
       'monthly_payment',
-      'down_payment',
+      'first_payment',
       'processing_fee',
       'late_fee',
       'insurance',

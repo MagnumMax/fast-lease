@@ -594,7 +594,7 @@
         },
         {
           "value": "lease_agreement",
-          "label": "Договор лизинга",
+          "label": "Договор долгосрочной аренды",
           "context": "deal"
         },
         {
@@ -1534,7 +1534,7 @@
           "task": {
             "template_id": "receive_advance_v1",
             "type": "RECEIVE_ADVANCE",
-            "title": "Создание инвойса на оплату аванса клиенту",
+            "title": "Создание инвойса на оплату первого взноса клиенту",
             "assignee_role": "FINANCE",
             "guard_key": "payments.advanceReceived",
             "sla": {
@@ -1546,14 +1546,14 @@
                 {
                   "id": "tax_invoice",
                   "type": "file",
-                  "label": "Инвойс на аванс",
+                  "label": "Инвойс на первый взнос",
                   "document_type": "tax_invoice",
                   "required": true
                 }
               ]
             },
             "defaults": {
-              "instruction_short": "Проверьте получение аванса и приложите подтверждение (инвойс)."
+              "instruction_short": "Проверьте получение первого взноса и приложите подтверждение (инвойс)."
             }
           }
         },

@@ -188,7 +188,7 @@ type FinanceReviewSnapshot = {
 type CommercialOfferExtract = {
   priceVat: number | null;
   termMonths: number | null;
-  downPaymentAmount: number | null;
+  firstPaymentAmount: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
   comment: string | null;
@@ -697,7 +697,7 @@ function extractCommercialOfferFromPayload(payload: unknown): CommercialOfferExt
   const branch = payload as Record<string, unknown>;
   const priceVat = parseQuoteNumber(branch["price_vat"]);
   const termMonths = parseQuoteNumber(branch["term_months"]);
-  const downPaymentAmount = parseQuoteNumber(branch["down_payment_amount"]);
+  const firstPaymentAmount = parseQuoteNumber(branch["first_payment_amount"]);
   const interestRateAnnual = parseQuoteNumber(branch["interest_rate_annual"]);
   const insuranceRateAnnual = parseQuoteNumber(branch["insurance_rate_annual"]);
 
@@ -711,7 +711,7 @@ function extractCommercialOfferFromPayload(payload: unknown): CommercialOfferExt
   const offer: CommercialOfferExtract = {
     priceVat,
     termMonths,
-    downPaymentAmount,
+    firstPaymentAmount,
     interestRateAnnual,
     insuranceRateAnnual,
     comment,
@@ -725,7 +725,7 @@ function extractCommercialOfferFromPayload(payload: unknown): CommercialOfferExt
   const hasValue =
     offer.priceVat != null ||
     offer.termMonths != null ||
-    offer.downPaymentAmount != null ||
+    offer.firstPaymentAmount != null ||
     offer.interestRateAnnual != null ||
     offer.insuranceRateAnnual != null ||
     (offer.comment && offer.comment.length > 0);
@@ -845,7 +845,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           total_amount,
           principal_amount,
           interest_rate,
-          down_payment_amount,
+          first_payment_amount,
           term_months,
           contract_start_date,
           contract_end_date,
@@ -1472,10 +1472,10 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
               value: formatCurrencyValue(commercialOffer.priceVat),
             });
           }
-          if (commercialOffer.downPaymentAmount != null) {
+          if (commercialOffer.firstPaymentAmount != null) {
             commercialOfferEntries.push({
-              label: "Аванс (КП), AED",
-              value: formatCurrencyValue(commercialOffer.downPaymentAmount),
+              label: "Первый взнос (КП), AED",
+              value: formatCurrencyValue(commercialOffer.firstPaymentAmount),
             });
           }
           if (commercialOffer.termMonths != null) {
@@ -1512,11 +1512,11 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
 
           const price = commercialOffer.priceVat;
           const termMonths = commercialOffer.termMonths;
-          const downPayment = commercialOffer.downPaymentAmount ?? 0;
+          const firstPayment = commercialOffer.firstPaymentAmount ?? 0;
           const annualRate = commercialOffer.interestRateAnnual;
           const insuranceAnnualRate = commercialOffer.insuranceRateAnnual;
 
-          const principal = price != null ? Math.max(0, price - downPayment) : null;
+          const principal = price != null ? Math.max(0, price - firstPayment) : null;
           const monthlyRatePercent = annualRate != null ? annualRate / 12 : null;
           const periodRatePercent =
             annualRate != null && termMonths != null ? (annualRate * termMonths) / 12 : null;
@@ -1536,7 +1536,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
               : null;
           const totalForClient =
             payoffWithInterest != null && insuranceTotal != null
-              ? payoffWithInterest + insuranceTotal + downPayment
+              ? payoffWithInterest + insuranceTotal + firstPayment
               : null;
 
           const calculationEntries: SummaryDataPoint[] = [
@@ -1547,7 +1547,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             { label: "Ежемесячный платёж", value: formatCurrencyValue(monthlyLeasePayment) },
             { label: "Доход по процентам", value: formatCurrencyValue(totalInterestAmount) },
             { label: "Страховые платежи", value: formatCurrencyValue(insuranceTotal) },
-            { label: "Итого для покупателя (страх. + аванс)", value: formatCurrencyValue(totalForClient) },
+            { label: "Итого для покупателя (страх. + первый взнос)", value: formatCurrencyValue(totalForClient) },
           ];
 
           dealDataPoints.push(...calculationEntries);

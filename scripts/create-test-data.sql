@@ -56,7 +56,7 @@ INSERT INTO deals (
   monthly_payment,
   term_months,
   interest_rate,
-  down_payment_amount,
+  first_payment_amount,
   security_deposit,
   processing_fee,
   contract_start_date,

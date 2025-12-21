@@ -8,7 +8,7 @@ describe("extractQuoteFieldsFromTaskPayload", () => {
       fields: {
         price_vat: "1 234 500",
         term_months: "36",
-        down_payment_amount: "15000",
+        first_payment_amount: "15000",
         interest_rate_annual: "7,5",
         insurance_rate_annual: 3.2,
       },
@@ -19,7 +19,7 @@ describe("extractQuoteFieldsFromTaskPayload", () => {
     expect(result).toEqual({
       price_vat: 1234500,
       term_months: 36,
-      down_payment_amount: 15000,
+      first_payment_amount: 15000,
       interest_rate_annual: 7.5,
       insurance_rate_annual: 3.2,
     });
@@ -30,7 +30,7 @@ describe("extractQuoteFieldsFromTaskPayload", () => {
       fields: {
         price_vat: "",
         term_months: "48",
-        down_payment_amount: "NaN",
+        first_payment_amount: "NaN",
         interest_rate_annual: null,
         insurance_rate_annual: undefined,
       },

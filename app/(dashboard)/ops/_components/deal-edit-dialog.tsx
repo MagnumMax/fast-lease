@@ -62,7 +62,7 @@ type FormState = {
   monthlyPayment: string;
   monthlyLeaseRate: string;
   interestRate: string;
-  downPaymentAmount: string;
+  firstPaymentAmount: string;
   termMonths: string;
   contractStartDate: string;
   contractEndDate: string;
@@ -212,7 +212,7 @@ export function DealEditDialog({
       monthlyPayment: formatNumberInput(defaults.monthlyPayment, 2),
       monthlyLeaseRate: formatNumberInput(defaults.monthlyLeaseRate, 4),
       interestRate: formatNumberInput(defaults.interestRate, 4),
-      downPaymentAmount: formatNumberInput(defaults.downPaymentAmount, 2),
+      firstPaymentAmount: formatNumberInput(defaults.firstPaymentAmount, 2),
       termMonths:
         defaults.termMonths != null && Number.isFinite(defaults.termMonths)
           ? String(defaults.termMonths)
@@ -449,9 +449,9 @@ export function DealEditDialog({
         totalAmount: form.totalAmount,
         monthlyPayment: form.monthlyPayment,
         monthlyLeaseRate: form.monthlyLeaseRate,
-        interestRate: form.interestRate,
-        downPaymentAmount: form.downPaymentAmount,
-        termMonths: form.termMonths,
+    interestRate: form.interestRate,
+    firstPaymentAmount: form.firstPaymentAmount,
+    termMonths: form.termMonths,
         contractStartDate: form.contractStartDate,
         contractEndDate: form.contractEndDate,
         firstPaymentDate: form.firstPaymentDate,

@@ -93,9 +93,9 @@ const saveCommercialOfferSchema = z.object({
   slug: z.string().min(1),
   priceVat: z.string().optional(),
   termMonths: z.string().optional(),
-  downPayment: z.string().optional(),
-  downPaymentPercent: z.string().optional(),
-  downPaymentSource: z.enum(["amount", "percent"]).optional(),
+  firstPaymentAmount: z.string().optional(),
+  firstPaymentPercent: z.string().optional(),
+  firstPaymentSource: z.enum(["amount", "percent"]).optional(),
   interestRateAnnual: z.string().optional(),
   insuranceRateAnnual: z.string().optional(),
   buyoutAmount: z.string().optional(),
@@ -343,14 +343,14 @@ export async function saveCommercialOffer(
     slug,
     priceVat,
     termMonths,
-    downPayment,
+    firstPaymentAmount,
     interestRateAnnual,
     insuranceRateAnnual,
     buyoutAmount,
     calculationMethod,
     comment,
   } = parsed.data;
-  const { downPaymentPercent, downPaymentSource } = parsed.data;
+  const { firstPaymentPercent, firstPaymentSource } = parsed.data;
 
   try {
     const supabase = await createSupabaseServiceClient();
@@ -374,58 +374,61 @@ export async function saveCommercialOffer(
 
     const priceValue = parseCommercialNumber(priceVat);
     const termMonthsValue = parseCommercialNumber(termMonths);
-    const downPaymentAmountValue = parseCommercialNumber(downPayment);
-    const downPaymentPercentValue = parseCommercialNumber(downPaymentPercent);
-    const resolvedSource = downPaymentSource === "percent" || downPaymentSource === "amount" ? downPaymentSource : null;
+    const firstPaymentAmountValue = parseCommercialNumber(firstPaymentAmount);
+    const firstPaymentPercentValue = parseCommercialNumber(firstPaymentPercent);
+    const resolvedSource = firstPaymentSource === "percent" || firstPaymentSource === "amount" ? firstPaymentSource : null;
 
-    let resolvedDownPaymentAmount = downPaymentAmountValue;
-    let resolvedDownPaymentPercent = downPaymentPercentValue;
+    let resolvedFirstPaymentAmount = firstPaymentAmountValue;
+    let resolvedFirstPaymentPercent = firstPaymentPercentValue;
 
     if (
       resolvedSource === "percent" &&
-      downPaymentPercentValue != null &&
+      firstPaymentPercentValue != null &&
       priceValue != null
     ) {
-      resolvedDownPaymentAmount = Number(((downPaymentPercentValue / 100) * priceValue).toFixed(2));
-    }
-
-    if (
+      resolvedFirstPaymentAmount = Number(((firstPaymentPercentValue / 100) * priceValue).toFixed(2));
+    } else if (
       resolvedSource === "amount" &&
-      downPaymentAmountValue != null &&
+      firstPaymentAmountValue != null &&
       priceValue != null &&
       priceValue !== 0
     ) {
-      resolvedDownPaymentPercent = Number(((downPaymentAmountValue / priceValue) * 100).toFixed(2));
+      resolvedFirstPaymentPercent = Number(((firstPaymentAmountValue / priceValue) * 100).toFixed(2));
     }
 
-    if (
-      !resolvedSource &&
-      downPaymentPercentValue != null &&
-      resolvedDownPaymentAmount == null &&
-      priceValue != null
-    ) {
-      resolvedDownPaymentAmount = Number(((downPaymentPercentValue / 100) * priceValue).toFixed(2));
-    }
+    const now = new Date().toISOString();
+    const { data: authData } = await sessionClient.auth.getUser();
 
-    if (
-      !resolvedSource &&
-      downPaymentAmountValue != null &&
-      resolvedDownPaymentPercent == null &&
-      priceValue != null &&
-      priceValue !== 0
-    ) {
-      resolvedDownPaymentPercent = Number(((downPaymentAmountValue / priceValue) * 100).toFixed(2));
-    }
+    // Обновляем поля коммерческого предложения в payload
+    Object.assign(nextPayload, {
+      commercial_offer_price_vat: priceValue,
+      commercial_offer_term_months: termMonthsValue,
+      commercial_offer_first_payment_amount: resolvedFirstPaymentAmount,
+      commercial_offer_first_payment_percent: resolvedFirstPaymentPercent,
+      commercial_offer_interest_rate_annual: parseCommercialNumber(interestRateAnnual),
+      commercial_offer_insurance_rate_annual: parseCommercialNumber(insuranceRateAnnual),
+      commercial_offer_buyout_amount: parseCommercialNumber(buyoutAmount),
+      commercial_offer_calculation_method: calculationMethod ?? "standard",
+      commercial_offer_comment: comment?.trim() || null,
+      commercial_offer_updated_at: now,
+      commercial_offer_updated_by: authData?.user?.id ?? null,
+      commercial_offer_updated_by_name: authData?.user?.user_metadata?.full_name ?? null,
+      commercial_offer_updated_by_email: authData?.user?.email ?? null,
+      commercial_offer_updated_by_phone: authData?.user?.phone ?? null,
+    });
 
-    nextPayload.price_vat = priceValue;
-    nextPayload.term_months = termMonthsValue;
-    nextPayload.down_payment_amount = resolvedDownPaymentAmount;
-    nextPayload.down_payment_percent = resolvedDownPaymentPercent;
-    nextPayload.down_payment_source = resolvedSource ?? undefined;
-    nextPayload.interest_rate_annual = parseCommercialNumber(interestRateAnnual);
-    nextPayload.insurance_rate_annual = parseCommercialNumber(insuranceRateAnnual);
-    nextPayload.buyout_amount = parseCommercialNumber(buyoutAmount);
-    nextPayload.calculation_method = calculationMethod ?? undefined;
+    // Update root fields to sync with commercial offer
+    Object.assign(nextPayload, {
+      price_vat: priceValue,
+      term_months: termMonthsValue,
+      first_payment_amount: resolvedFirstPaymentAmount,
+      first_payment_percent: resolvedFirstPaymentPercent,
+      first_payment_source: resolvedSource ?? undefined,
+      interest_rate_annual: parseCommercialNumber(interestRateAnnual),
+      insurance_rate_annual: parseCommercialNumber(insuranceRateAnnual),
+      buyout_amount: parseCommercialNumber(buyoutAmount),
+      calculation_method: calculationMethod ?? undefined,
+    });
 
     const metaBranch =
       nextPayload.quote_meta &&
@@ -435,13 +438,11 @@ export async function saveCommercialOffer(
         : {};
 
     const normalizedComment = typeof comment === "string" && comment.trim().length > 0 ? comment.trim() : null;
-    const now = new Date().toISOString();
-    const { data: auth } = await sessionClient.auth.getUser();
 
     metaBranch.updated_at = now;
     metaBranch.updated_by = sessionUser.user.id;
-    metaBranch.updated_by_name = sessionUser.profile?.full_name ?? auth?.user?.email ?? sessionUser.user.id;
-    metaBranch.updated_by_email = auth?.user?.email ?? null;
+    metaBranch.updated_by_name = sessionUser.profile?.full_name ?? authData?.user?.email ?? sessionUser.user.id;
+    metaBranch.updated_by_email = authData?.user?.email ?? null;
     metaBranch.updated_by_phone = sessionUser.profile?.phone ?? null;
     metaBranch.comment = normalizedComment;
 
@@ -449,13 +450,18 @@ export async function saveCommercialOffer(
 
     const { error: updateError } = await supabase
       .from("deals")
-      .update({ payload: nextPayload })
+      .update({
+        payload: nextPayload,
+        updated_at: now,
+        first_payment_amount: resolvedFirstPaymentAmount,
+      })
       .eq("id", dealId);
 
     if (updateError) {
       console.error("[operations] failed to save commercial offer", updateError);
       return { success: false, error: "Не удалось сохранить КП." };
     }
+
 
     for (const path of getWorkspacePaths("deals")) {
       revalidatePath(path);
@@ -499,7 +505,7 @@ const updateDealSchema = z.object({
   monthlyPayment: z.string().optional(),
   monthlyLeaseRate: z.string().optional(),
   interestRate: z.string().optional(),
-  downPaymentAmount: z.string().optional(),
+  firstPaymentAmount: z.string().optional(),
   termMonths: z.string().optional(),
   contractStartDate: z.string().optional(),
   contractEndDate: z.string().optional(),
@@ -807,7 +813,7 @@ export async function updateOperationsDeal(
     monthlyPayment,
     monthlyLeaseRate,
     interestRate,
-    downPaymentAmount,
+    firstPaymentAmount,
     termMonths,
     contractStartDate,
     contractEndDate,
@@ -839,7 +845,7 @@ export async function updateOperationsDeal(
     monthly_payment: parseDecimalInput(monthlyPayment),
     monthly_lease_rate: parseDecimalInput(monthlyLeaseRate),
     interest_rate: parseDecimalInput(interestRate),
-    down_payment_amount: parseDecimalInput(downPaymentAmount),
+    first_payment_amount: parseDecimalInput(firstPaymentAmount),
     term_months: parseIntegerInput(termMonths),
     contract_start_date: normalizeDateInput(contractStartDate),
     contract_end_date: normalizeDateInput(contractEndDate),

@@ -288,7 +288,7 @@ function OfferConfigurationPage() {
                         {plan.name}
                       </span>
                       <span className="text-xs uppercase tracking-[0.3em]">
-                        {plan.termMonths} мес · {plan.downPaymentPercent}% аванс
+                        {plan.termMonths} мес · {plan.firstPaymentPercent}% первый взнос
                       </span>
                       <span className="text-sm font-semibold text-foreground">
                         {formatCurrency(plan.priceAED)} / мес

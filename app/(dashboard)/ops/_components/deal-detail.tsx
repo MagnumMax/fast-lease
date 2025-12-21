@@ -416,32 +416,32 @@ export function DealDetailView({ detail }: DealDetailProps) {
         : parseCurrencyValue(
             commercialOffer?.priceVat != null ? String(commercialOffer.priceVat) : null,
           );
-    const downPaymentAmount =
-      typeof commercialOffer?.downPaymentAmount === "number"
-        ? commercialOffer.downPaymentAmount
+    const firstPaymentAmount =
+      typeof commercialOffer?.firstPaymentAmount === "number"
+        ? commercialOffer.firstPaymentAmount
         : parseCurrencyValue(
-            commercialOffer?.downPaymentAmount != null
-              ? String(commercialOffer.downPaymentAmount)
+            commercialOffer?.firstPaymentAmount != null
+              ? String(commercialOffer.firstPaymentAmount)
               : null,
           );
-    const downPaymentPercent =
-      typeof commercialOffer?.downPaymentPercent === "number"
-        ? commercialOffer.downPaymentPercent
+    const firstPaymentPercent =
+      typeof commercialOffer?.firstPaymentPercent === "number"
+        ? commercialOffer.firstPaymentPercent
         : parseCurrencyValue(
-            commercialOffer?.downPaymentPercent != null
-              ? String(commercialOffer.downPaymentPercent)
+            commercialOffer?.firstPaymentPercent != null
+              ? String(commercialOffer.firstPaymentPercent)
               : null,
           );
 
     if (price != null && Number.isFinite(price)) {
-      const resolvedDownPayment =
-        downPaymentAmount != null && Number.isFinite(downPaymentAmount)
-          ? downPaymentAmount
-          : downPaymentPercent != null && Number.isFinite(downPaymentPercent)
-            ? (price * downPaymentPercent) / 100
+      const resolvedFirstPayment =
+        firstPaymentAmount != null && Number.isFinite(firstPaymentAmount)
+          ? firstPaymentAmount
+          : firstPaymentPercent != null && Number.isFinite(firstPaymentPercent)
+            ? (price * firstPaymentPercent) / 100
             : null;
-      if (resolvedDownPayment != null) {
-        const principal = price - resolvedDownPayment;
+      if (resolvedFirstPayment != null) {
+        const principal = price - resolvedFirstPayment;
         return Number.isFinite(principal) ? Math.max(0, principal) : null;
       }
     }

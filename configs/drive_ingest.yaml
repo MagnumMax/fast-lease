@@ -98,8 +98,8 @@ gemini:
     - lease_start: string|null
     - lease_end: string|null
     - monthly_payment: number|null
-    - down_payment: number|null
-    - total_lease_value: number|null
+  - first_payment: number|null
+  - total_lease_value: number|null
     - interest_rate: number|null
     - balloon_payment: number|null
     - currency: string|null

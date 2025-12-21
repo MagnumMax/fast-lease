@@ -28,9 +28,9 @@ export type CommercialOfferData = {
   vehicleVin?: string | null;
   priceVat?: string | null;
   termMonths?: string | null;
-  downPayment?: string | null;
-  downPaymentPercent?: string | null;
-  downPaymentSource?: "amount" | "percent";
+  firstPayment?: string | null;
+  firstPaymentPercent?: string | null;
+  firstPaymentSource?: "amount" | "percent";
   interestRateAnnual?: string | null;
   insuranceRateAnnual?: string | null;
   buyoutAmount?: string | null;
@@ -99,7 +99,7 @@ function formatCurrencyAED(value: number | null): string | null {
 
 function calculateMonthlyPayment(data: CommercialOfferData): string | null {
   const price = parseNumber(data.priceVat);
-  const downPayment = parseNumber(data.downPayment) ?? 0;
+  const firstPayment = parseNumber(data.firstPayment) ?? 0;
   const termMonths = parseNumber(data.termMonths);
   const rateAnnual = parseNumber(data.interestRateAnnual);
   const insuranceRate = parseNumber(data.insuranceRateAnnual);
@@ -117,8 +117,8 @@ function calculateMonthlyPayment(data: CommercialOfferData): string | null {
 
   const result = calculateCommercialOffer({
     priceVat: price,
-    downPaymentAmount: downPayment,
-    downPaymentSource: data.downPaymentSource ?? "amount",
+    firstPaymentAmount: firstPayment,
+    firstPaymentSource: data.firstPaymentSource ?? "amount",
     termMonths,
     interestRateAnnual: rateAnnual,
     insuranceRateAnnual: insuranceRate,
@@ -131,7 +131,7 @@ function calculateMonthlyPayment(data: CommercialOfferData): string | null {
 
 function estimateInsuranceAnnual(data: CommercialOfferData): string | null {
   const price = parseNumber(data.priceVat);
-  const downPayment = parseNumber(data.downPayment) ?? 0;
+  const firstPayment = parseNumber(data.firstPayment) ?? 0;
   const termMonths = parseNumber(data.termMonths);
   const rateAnnual = parseNumber(data.interestRateAnnual);
   const insuranceRate = parseNumber(data.insuranceRateAnnual);
@@ -154,8 +154,8 @@ function estimateInsuranceAnnual(data: CommercialOfferData): string | null {
 
   const result = calculateCommercialOffer({
     priceVat: price,
-    downPaymentAmount: downPayment,
-    downPaymentSource: data.downPaymentSource ?? "amount",
+    firstPaymentAmount: firstPayment,
+    firstPaymentSource: data.firstPaymentSource ?? "amount",
     termMonths,
     interestRateAnnual: rateAnnual,
     insuranceRateAnnual: insuranceRate,
@@ -469,9 +469,9 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
               <Text style={styles.asideValue}>{monthly}</Text>
             </View>
             <View style={{ gap: 1 }}>
-              <Text style={styles.asideLabel}>Tenor · Down payment</Text>
+              <Text style={styles.asideLabel}>Tenor · First payment</Text>
               <Text style={styles.rowValue}>
-                {data.termMonths ? `${data.termMonths} mo.` : "—"} · {normalizeMoney(data.downPayment) ?? "—"}
+                {data.termMonths ? `${data.termMonths} mo.` : "—"} · {normalizeMoney(data.firstPayment) ?? "—"}
               </Text>
             </View>
           </View>
@@ -486,8 +486,8 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
                 <Text style={styles.rowValue}>{normalizeMoney(data.priceVat) ?? "—"}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={styles.rowLabel}>Down payment</Text>
-                <Text style={styles.rowValue}>{normalizeMoney(data.downPayment) ?? "—"}</Text>
+                <Text style={styles.rowLabel}>First payment</Text>
+                <Text style={styles.rowValue}>{normalizeMoney(data.firstPayment) ?? "—"}</Text>
               </View>
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>Tenor</Text>
@@ -515,7 +515,7 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
               </View>
             </View>
             <Text style={styles.footnote}>
-              Paid separately from down payment. Final premium may decrease based on insurer depreciation.
+              Paid separately from first payment. Final premium may decrease based on insurer depreciation.
             </Text>
           </View>
         </View>
@@ -524,7 +524,7 @@ function RentyStyleDocument({ data }: { data: CommercialOfferData }) {
           <Text style={styles.sectionTitle}>Benefits</Text>
           <View style={[styles.benefits, { marginTop: 8, rowGap: 6 }]}>
             <Benefit>
-              <Text style={{ fontWeight: 700 }}>Car ready</Text> in 48h after signing & down payment
+              <Text style={{ fontWeight: 700 }}>Car ready</Text> in 48h after signing & first payment
             </Benefit>
             <Benefit>
               <Text style={{ fontWeight: 700 }}>Certified inspection</Text> and prep before handover

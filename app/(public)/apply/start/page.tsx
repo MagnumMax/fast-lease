@@ -372,7 +372,7 @@ function ApplicationStartContent() {
               <div className="rounded-2xl border border-border bg-surface-subtle px-4 py-3 text-sm text-muted-foreground">
                 <p className="font-semibold text-foreground">{selectedPlan.name}</p>
                 <p>
-                  {selectedPlan.termMonths} мес · аванс {selectedPlan.downPaymentPercent}%
+                  {selectedPlan.termMonths} мес · первый взнос {selectedPlan.firstPaymentPercent}%
                 </p>
                 <p>AED {selectedPlan.priceAED.toLocaleString("en-GB")} / месяц</p>
                 {draft.source.referralCode ? (

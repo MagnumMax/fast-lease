@@ -279,9 +279,9 @@ vehicle_id: uuid → vehicles(id) (SET NULL)
 status: application_status ('draft', 'submitted', 'in_review', 'on_hold', 'approved', 'rejected', 'cancelled', 'converted')
 requested_amount: numeric(16,2)
 term_months: integer
-down_payment: numeric(16,2)
 monthly_payment: numeric(16,2)
 interest_rate: numeric(8,4)
+first_payment: numeric(16,2)
 personal_info: jsonb ({}'::jsonb)
 financial_info: jsonb ({}'::jsonb)
 employment_info: jsonb ({}'::jsonb)
@@ -334,7 +334,7 @@ total_amount: numeric(16,2)
 monthly_payment: numeric(16,2)
 term_months: integer
 interest_rate: numeric(8,4)
-down_payment_amount: numeric(16,2)
+first_payment_amount: numeric(16,2)
 contract_start_date: date
 contract_end_date: date
 first_payment_date: date
@@ -420,7 +420,7 @@ uploaded_by: uuid → auth.users(id)
 id: uuid (PK)
 invoice_number: text (unique)
 deal_id: uuid → deals(id) (CASCADE)
-invoice_type: invoice_type ('monthly_payment', 'down_payment', 'processing_fee', 'late_fee', 'insurance', 'buyout')
+invoice_type: invoice_type ('monthly_payment', 'first_payment', 'processing_fee', 'late_fee', 'insurance', 'buyout')
 amount: numeric(16,2) (обязательно)
 tax_amount: numeric(16,2) (default 0)
 total_amount: numeric(16,2) (обязательно)
@@ -1006,7 +1006,7 @@ vehicle_id: null
 status: submitted
 requested_amount: 30000.00
 term_months: 36
-down_payment: 5000.00
+first_payment: 5000.00
 monthly_payment: 850.00
 interest_rate: 0.0450
 personal_info: {
@@ -1040,7 +1040,7 @@ total_amount: 1025000.00
 monthly_payment: 29800.00
 term_months: 36
 interest_rate: 0.0450
-down_payment_amount: 195000.00
+first_payment_amount: 195000.00
 contract_start_date: "2025-10-15"
 contract_end_date: "2027-12-15"
 first_payment_date: "2025-10-27"

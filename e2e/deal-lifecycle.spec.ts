@@ -455,7 +455,7 @@ test.describe.serial("Deal Lifecycle Full Flow", () => {
         console.log("Stage 14 - Create Invoice");
         await loginViaUi(page, { email: financeEmail, password });
         await goToDeal(page, dealData.reference);
-        await openTaskByTitle(page, new RegExp(escapeRegExp("Создание инвойса на оплату аванса")));
+        await openTaskByTitle(page, new RegExp(escapeRegExp("Создание инвойса на оплату первого взноса")));
         await submitWorkflowTask(page, { filePath: dummyPdfPath });
     });
 

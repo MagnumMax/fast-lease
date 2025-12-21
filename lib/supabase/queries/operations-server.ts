@@ -482,8 +482,8 @@ function formatJsonObject(value: Record<string, unknown> | null | undefined): {
 type CommercialOfferExtract = {
   priceVat: number | null;
   termMonths: number | null;
-  downPaymentAmount: number | null;
-  downPaymentPercent: number | null;
+  firstPaymentAmount: number | null;
+  firstPaymentPercent: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
   buyoutAmount: number | null;
@@ -503,8 +503,10 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
 
   const priceVat = parseQuoteNumber((payload as Record<string, unknown>)["price_vat"]);
   const termMonths = parseQuoteNumber((payload as Record<string, unknown>)["term_months"]);
-  const downPaymentAmount = parseQuoteNumber((payload as Record<string, unknown>)["down_payment_amount"]);
-  const downPaymentPercent = parseQuoteNumber((payload as Record<string, unknown>)["down_payment_percent"]);
+  const firstPaymentAmount =
+    parseQuoteNumber((payload as Record<string, unknown>)["first_payment_amount"]);
+  const firstPaymentPercent =
+    parseQuoteNumber((payload as Record<string, unknown>)["first_payment_percent"]);
   const interestRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["interest_rate_annual"]);
   const insuranceRateAnnual = parseQuoteNumber((payload as Record<string, unknown>)["insurance_rate_annual"]);
   const buyoutAmount = parseQuoteNumber((payload as Record<string, unknown>)["buyout_amount"]);
@@ -528,8 +530,8 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
   const result: CommercialOfferExtract = {
     priceVat,
     termMonths,
-    downPaymentAmount,
-    downPaymentPercent,
+    firstPaymentAmount,
+    firstPaymentPercent,
     interestRateAnnual,
     insuranceRateAnnual,
     buyoutAmount,
@@ -543,29 +545,29 @@ function extractCommercialOffer(payload: Record<string, unknown> | null | undefi
   };
 
   if (
-    result.downPaymentPercent == null &&
-    result.downPaymentAmount != null &&
+    result.firstPaymentPercent == null &&
+    result.firstPaymentAmount != null &&
     result.priceVat != null &&
     result.priceVat !== 0
   ) {
-    const percent = (result.downPaymentAmount / result.priceVat) * 100;
-    result.downPaymentPercent = Number(percent.toFixed(2));
+    const percent = (result.firstPaymentAmount / result.priceVat) * 100;
+    result.firstPaymentPercent = Number(percent.toFixed(2));
   }
 
   if (
-    result.downPaymentAmount == null &&
-    result.downPaymentPercent != null &&
+    result.firstPaymentAmount == null &&
+    result.firstPaymentPercent != null &&
     result.priceVat != null
   ) {
-    const amount = (result.priceVat * result.downPaymentPercent) / 100;
-    result.downPaymentAmount = Number(amount.toFixed(2));
+    const amount = (result.priceVat * result.firstPaymentPercent) / 100;
+    result.firstPaymentAmount = Number(amount.toFixed(2));
   }
 
   const hasValue =
     result.priceVat != null ||
     result.termMonths != null ||
-    result.downPaymentAmount != null ||
-    result.downPaymentPercent != null ||
+    result.firstPaymentAmount != null ||
+    result.firstPaymentPercent != null ||
     result.interestRateAnnual != null ||
     result.insuranceRateAnnual != null ||
     (result.comment && result.comment.length > 0);
@@ -3260,7 +3262,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     total_amount,
     principal_amount,
     interest_rate,
-    down_payment_amount,
+    first_payment_amount,
     payload,
     contract_terms,
     insurance_details,
@@ -3294,7 +3296,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     total_amount: number | null;
     principal_amount: number | null;
     interest_rate: number | null;
-    down_payment_amount: number | null;
+    first_payment_amount: number | null;
     payload: Record<string, unknown> | null;
     contract_terms: Record<string, unknown> | null;
     insurance_details: Record<string, unknown> | null;
@@ -4413,8 +4415,8 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     ? {
         priceVat: commercialOfferExtract.priceVat,
         termMonths: commercialOfferExtract.termMonths,
-        downPaymentAmount: commercialOfferExtract.downPaymentAmount,
-        downPaymentPercent: commercialOfferExtract.downPaymentPercent,
+        firstPaymentAmount: commercialOfferExtract.firstPaymentAmount,
+        firstPaymentPercent: commercialOfferExtract.firstPaymentPercent,
         interestRateAnnual: commercialOfferExtract.interestRateAnnual,
         insuranceRateAnnual: commercialOfferExtract.insuranceRateAnnual,
         buyoutAmount: commercialOfferExtract.buyoutAmount,
@@ -4435,16 +4437,16 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
       value: formatCurrency(commercialOfferExtract.priceVat),
     });
   }
-  if (commercialOfferExtract?.downPaymentAmount != null) {
+  if (commercialOfferExtract?.firstPaymentAmount != null) {
     quotedFinancials.push({
-      label: "Quoted down payment",
-      value: formatCurrency(commercialOfferExtract.downPaymentAmount),
+      label: "Quoted first payment",
+      value: formatCurrency(commercialOfferExtract.firstPaymentAmount),
     });
   }
-  if (commercialOfferExtract?.downPaymentPercent != null) {
+  if (commercialOfferExtract?.firstPaymentPercent != null) {
     quotedFinancials.push({
-      label: "Quoted down payment (%)",
-      value: formatRate(commercialOfferExtract.downPaymentPercent),
+      label: "Quoted first payment (%)",
+      value: formatRate(commercialOfferExtract.firstPaymentPercent),
     });
   }
   if (commercialOfferExtract?.termMonths != null) {
@@ -4491,7 +4493,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     { label: "Monthly payment", value: formatCurrency(dealRow.monthly_payment) },
     { label: "Monthly lease rate", value: formatRate(dealRow.monthly_lease_rate) },
     { label: "Interest rate", value: formatRate(dealRow.interest_rate) },
-    { label: "Down payment", value: formatCurrency(dealRow.down_payment_amount) },
+    { label: "First payment", value: formatCurrency(dealRow.first_payment_amount) },
   ];
 
   const contractDetails: OpsDealDetailsEntry[] = [
@@ -4704,7 +4706,7 @@ export async function getOperationsDealDetail(slug: string): Promise<DealDetailR
     monthlyPayment: getNumber(dealRow.monthly_payment),
     monthlyLeaseRate: getNumber(dealRow.monthly_lease_rate),
     interestRate: getNumber(dealRow.interest_rate),
-    downPaymentAmount: getNumber(dealRow.down_payment_amount),
+    firstPaymentAmount: getNumber(dealRow.first_payment_amount),
     termMonths:
       typeof dealRow.term_months === "number"
         ? dealRow.term_months

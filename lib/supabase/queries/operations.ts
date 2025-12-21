@@ -556,7 +556,7 @@ export type OpsDealEditDefaults = {
   monthlyPayment: number | null;
   monthlyLeaseRate: number | null;
   interestRate: number | null;
-  downPaymentAmount: number | null;
+  firstPaymentAmount: number | null;
   termMonths: number | null;
   contractStartDate: string | null;
   contractEndDate: string | null;
@@ -568,8 +568,8 @@ export type OpsDealEditDefaults = {
 export type OpsCommercialOffer = {
   priceVat: number | null;
   termMonths: number | null;
-  downPaymentAmount: number | null;
-  downPaymentPercent: number | null;
+  firstPaymentAmount: number | null;
+  firstPaymentPercent: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
   buyoutAmount: number | null;

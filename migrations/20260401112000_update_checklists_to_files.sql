@@ -40,8 +40,8 @@ WITH defs AS (
   FROM (VALUES
     (
       'receive_advance_v1',
-      '{"version":"1.0","fields":[{"id":"tax_invoice","type":"file","label":"Инвойс на аванс","document_type":"tax_invoice","required":true}]}'::jsonb,
-      '{"instruction_short":"Проверьте получение аванса и приложите подтверждение (инвойс)."}'::jsonb
+      '{"version":"1.0","fields":[{"id":"tax_invoice","type":"file","label":"Инвойс на первый взнос","document_type":"tax_invoice","required":true}]}'::jsonb,
+      '{"instruction_short":"Проверьте получение первого взноса и приложите подтверждение (инвойс)."}'::jsonb
     ),
     (
       'pay_supplier_v1',
@@ -91,8 +91,8 @@ WITH defs AS (
     ),
     (
       'receive_advance_v1',
-      '{"version":"1.0","fields":[{\"id\":\"tax_invoice\",\"type\":\"file\",\"label\":\"Инвойс на аванс\",\"document_type\":\"tax_invoice\",\"required\":true}]}'::jsonb,
-      '{"instruction_short":"Проверьте получение аванса и приложите подтверждение (инвойс)."}'::jsonb
+      '{"version":"1.0","fields":[{\"id\":\"tax_invoice\",\"type\":\"file\",\"label\":\"Инвойс на первый взнос\",\"document_type\":\"tax_invoice\",\"required\":true}]}'::jsonb,
+      '{"instruction_short":"Проверьте получение первого взноса и приложите подтверждение (инвойс)."}'::jsonb
     ),
     (
       'pay_supplier_v1',
@@ -118,8 +118,8 @@ WITH defs AS (
     ),
     (
       'receive_advance_v1',
-      '{"version":"1.0","fields":[{\"id\":\"tax_invoice\",\"type\":\"file\",\"label\":\"Инвойс на аванс\",\"document_type\":\"tax_invoice\",\"required\":true}]}'::jsonb,
-      '{"instruction_short":"Проверьте получение аванса и приложите подтверждение (инвойс)."}'::jsonb
+      '{"version":"1.0","fields":[{\"id\":\"tax_invoice\",\"type\":\"file\",\"label\":\"Инвойс на первый взнос\",\"document_type\":\"tax_invoice\",\"required\":true}]}'::jsonb,
+      '{"instruction_short":"Проверьте получение первого взноса и приложите подтверждение (инвойс)."}'::jsonb
     ),
     (
       'pay_supplier_v1',

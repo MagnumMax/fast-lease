@@ -359,7 +359,7 @@ document_types:
         label: "Passing Certificate"
         context: deal
       - value: lease_agreement
-        label: "Договор лизинга"
+        label: "Договор долгосрочной аренды"
         context: deal
       - value: signed_lease_agreement
         label: "Подписанный договор лизинга"
@@ -824,7 +824,7 @@ statuses:
         task:
           template_id: receive_advance_v1
           type: RECEIVE_ADVANCE
-          title: "Создание инвойса на оплату аванса клиенту"
+          title: "Создание инвойса на оплату первого взноса клиенту"
           assignee_role: FINANCE
           guard_key: "payments.advanceReceived"
           sla: { hours: 24 }
@@ -833,11 +833,11 @@ statuses:
             fields:
               - id: tax_invoice
                 type: file
-                label: "Инвойс на аванс"
+                label: "Инвойс на первый взнос"
                 document_type: tax_invoice
                 required: true
           defaults:
-            instruction_short: "Проверьте получение аванса и приложите подтверждение (инвойс)."
+            instruction_short: "Проверьте получение первого взноса и приложите подтверждение (инвойс)."
       - type: TASK_CREATE
         task:
           template_id: pay_supplier_v1

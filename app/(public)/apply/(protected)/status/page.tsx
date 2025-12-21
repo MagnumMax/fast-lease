@@ -157,7 +157,7 @@ export default function ApplicationStatusPage() {
               </p>
               <p>AED {selectedPlan.priceAED.toLocaleString("en-GB")} / месяц</p>
               <p>
-                {selectedPlan.termMonths} мес · аванс {selectedPlan.downPaymentPercent}%
+                {selectedPlan.termMonths} мес · первый взнос {selectedPlan.firstPaymentPercent}%
               </p>
             </div>
           ) : (

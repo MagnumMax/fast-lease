@@ -99,7 +99,7 @@ const DEFAULT_GUARD_PAYLOAD: Record<string, unknown> = {
   delivery: { confirmed: false },
   price_vat: null,
   term_months: null,
-  down_payment_amount: null,
+  first_payment_amount: null,
   interest_rate_annual: null,
   insurance_rate_annual: null,
 };

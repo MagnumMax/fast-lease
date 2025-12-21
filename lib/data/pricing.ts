@@ -4,7 +4,7 @@ export type PricingPlan = {
   description: string;
   priceAED: number;
   termMonths: number;
-  downPaymentPercent: number;
+  firstPaymentPercent: number;
   includes: string[];
   recommended?: boolean;
 };
@@ -29,7 +29,7 @@ export const pricingPlans: PricingPlan[] = [
       "Perfect for clients leasing a vehicle for the first time. Supports basic service package and transparent buy-out.",
     priceAED: 1750,
     termMonths: 36,
-    downPaymentPercent: 15,
+    firstPaymentPercent: 15,
     includes: [
       "5/2 support, SLA 6 hours",
       "Basic telematics and insurance",
@@ -43,7 +43,7 @@ export const pricingPlans: PricingPlan[] = [
       "For growing families and small businesses. Additional insurance, services and flexible buyout terms.",
     priceAED: 3200,
     termMonths: 48,
-    downPaymentPercent: 12,
+    firstPaymentPercent: 12,
     includes: [
       "7/7 support, SLA 3 hours",
       "Extended telematics and comprehensive insurance",
@@ -59,7 +59,7 @@ export const pricingPlans: PricingPlan[] = [
       "Corporate fleet with personal manager, insurance and Fast Lease Premium services.",
     priceAED: 5600,
     termMonths: 60,
-    downPaymentPercent: 10,
+    firstPaymentPercent: 10,
     includes: [
       "24/7 dedicated concierge, SLA 1 hour",
       "Full insurance package + extended GAP",

@@ -100,7 +100,7 @@ export async function ensureApplicationDraftAction(
         financial_info: financialInfo,
         references_info: referencesInfo,
         term_months: plan?.termMonths ?? null,
-        down_payment: plan ? Number(plan.downPaymentPercent) : null,
+        first_payment: plan ? Number(plan.firstPaymentPercent) : null,
         monthly_payment:
           plan?.priceAED ?? Number(payload.preferences.monthlyBudget),
       })
@@ -132,7 +132,7 @@ export async function ensureApplicationDraftAction(
       financial_info: financialInfo,
       references_info: referencesInfo,
       term_months: plan?.termMonths ?? null,
-      down_payment: plan ? Number(plan.downPaymentPercent) : null,
+      first_payment: plan ? Number(plan.firstPaymentPercent) : null,
       monthly_payment:
         plan?.priceAED ?? Number(payload.preferences.monthlyBudget),
     })
@@ -292,7 +292,7 @@ export async function submitApplicationAction(
         referralCode: payload.referralCode ?? null,
       },
       term_months: plan?.termMonths ?? null,
-      down_payment: plan ? Number(plan.downPaymentPercent) : null,
+      first_payment: plan ? Number(plan.firstPaymentPercent) : null,
       monthly_payment:
         plan?.priceAED ?? Number(payload.preferences.monthlyBudget),
     })

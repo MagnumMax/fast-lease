@@ -300,7 +300,7 @@ function normalizeAggregated(raw) {
     lessor: trimString(deal.lessor),
     investor: trimString(deal.investor),
     seller: trimString(deal.seller),
-    downPayment: normalizeNumber(deal.down_payment || deal.initial_payment),
+    firstPayment: normalizeNumber(deal.first_payment || deal.initial_payment),
     monthlyPayment: normalizeNumber(deal.monthly_payment),
     interestRate: normalizeNumber(deal.interest_rate),
     balloonPayment: normalizeNumber(deal.balloon_payment),
@@ -389,7 +389,7 @@ function printSummary(normalized) {
     leaseStart: normalized.deal.leaseStart,
     leaseEnd: normalized.deal.leaseEnd,
     termMonths: normalized.deal.termMonths,
-    downPayment: normalized.deal.downPayment,
+    firstPayment: normalized.deal.firstPayment,
     monthlyPayment: normalized.deal.monthlyPayment,
     totalLeaseValue: normalized.deal.totalLeaseValue,
     currency: normalized.deal.currency,
@@ -635,7 +635,7 @@ async function ensureApplication(supabase, normalized, userId, vehicleId) {
     status: normalized.deal.leaseStart ? "converted" : "approved",
     requested_amount: normalized.deal.totalLeaseValue,
     term_months: normalized.deal.termMonths,
-    down_payment: normalized.deal.downPayment,
+    first_payment: normalized.deal.firstPayment,
     monthly_payment: normalized.deal.monthlyPayment,
     interest_rate: null,
     personal_info: {
@@ -645,7 +645,7 @@ async function ensureApplication(supabase, normalized, userId, vehicleId) {
     financial_info: {
       currency: normalized.deal.currency,
       total_lease_value: normalized.deal.totalLeaseValue,
-      down_payment: normalized.deal.downPayment,
+      first_payment: normalized.deal.firstPayment,
     },
     employment_info: {
       occupation: normalized.client.occupation,
@@ -698,7 +698,7 @@ async function ensureDeal(supabase, normalized, applicationId, vehicleId, client
     monthly_lease_rate: normalized.deal.monthlyPayment,
     term_months: normalized.deal.termMonths,
     interest_rate: null,
-    down_payment_amount: normalized.deal.downPayment,
+    first_payment_amount: normalized.deal.firstPayment,
     contract_start_date: normalized.deal.leaseStart,
     contract_end_date: normalized.deal.leaseEnd,
     contract_terms: {

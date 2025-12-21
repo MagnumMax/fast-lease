@@ -51,9 +51,9 @@ const INTEREST_RATE_STEP = 0.5;
 type FormState = {
   priceVat: string;
   termMonths: string;
-  downPaymentAmount: string;
-  downPaymentPercent: string;
-  downPaymentSource: "amount" | "percent";
+  firstPaymentAmount: string;
+  firstPaymentPercent: string;
+  firstPaymentSource: "amount" | "percent";
   interestRateAnnual: string;
   insuranceRateAnnual: string;
   buyoutAmount: string;
@@ -151,20 +151,20 @@ export function CommercialOfferForm({
 }: CommercialOfferFormProps) {
   const [form, setForm] = useState<FormState>(() => {
     const initialPrice = offer?.priceVat ?? null;
-    const initialAmount = offer?.downPaymentAmount ?? null;
+    const initialAmount = offer?.firstPaymentAmount ?? null;
     const initialPercent =
-      offer?.downPaymentPercent ??
+      offer?.firstPaymentPercent ??
       (initialPrice != null && initialPrice !== 0 && initialAmount != null
         ? Number(((initialAmount / initialPrice) * 100).toFixed(2))
         : null);
-    const initialSource: "amount" | "percent" = offer?.downPaymentPercent != null ? "percent" : "amount";
+    const initialSource: "amount" | "percent" = offer?.firstPaymentPercent != null ? "percent" : "amount";
 
     return {
       priceVat: formatInitialNumber(initialPrice),
       termMonths: formatInitialNumber(offer?.termMonths ?? null),
-      downPaymentAmount: formatInitialNumber(initialAmount),
-      downPaymentPercent: formatInitialNumber(initialPercent, 2),
-      downPaymentSource: initialSource,
+      firstPaymentAmount: formatInitialNumber(initialAmount),
+      firstPaymentPercent: formatInitialNumber(initialPercent, 2),
+      firstPaymentSource: initialSource,
       interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
       insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? 4),
       buyoutAmount: formatInitialNumber(offer?.buyoutAmount ?? null),
@@ -177,10 +177,10 @@ export function CommercialOfferForm({
 
   const priceValue = useMemo(() => parseNumberInput(form.priceVat), [form.priceVat]);
 
-  const resolvedDownPayment = useMemo(() => {
-    const amountValue = parseNumberInput(form.downPaymentAmount);
-    const percentValue = parseNumberInput(form.downPaymentPercent);
-    const source = form.downPaymentSource;
+  const resolvedFirstPayment = useMemo(() => {
+    const amountValue = parseNumberInput(form.firstPaymentAmount);
+    const percentValue = parseNumberInput(form.firstPaymentPercent);
+    const source = form.firstPaymentSource;
 
     let resolvedAmount = amountValue;
     let resolvedPercent = percentValue;
@@ -192,14 +192,14 @@ export function CommercialOfferForm({
     }
 
     return { amount: resolvedAmount, percent: resolvedPercent, source, price: priceValue };
-  }, [form.downPaymentAmount, form.downPaymentPercent, form.downPaymentSource, priceValue]);
+  }, [form.firstPaymentAmount, form.firstPaymentPercent, form.firstPaymentSource, priceValue]);
 
   const offerData: CommercialOfferData | null = useMemo(() => {
     const hasValues =
       form.priceVat.trim() ||
       form.termMonths.trim() ||
-      form.downPaymentAmount.trim() ||
-      form.downPaymentPercent.trim() ||
+      form.firstPaymentAmount.trim() ||
+      form.firstPaymentPercent.trim() ||
       form.interestRateAnnual.trim() ||
       form.insuranceRateAnnual.trim();
 
@@ -215,14 +215,14 @@ export function CommercialOfferForm({
       vehicleVin: null,
       priceVat: form.priceVat || null,
       termMonths: form.termMonths || null,
-      downPayment:
-        resolvedDownPayment.amount != null
-          ? formatNumericInput(resolvedDownPayment.amount, 2)
-          : form.downPaymentAmount || null,
-      downPaymentPercent:
-        resolvedDownPayment.percent != null
-          ? formatNumericInput(resolvedDownPayment.percent, 2)
-          : form.downPaymentPercent || null,
+      firstPayment:
+        resolvedFirstPayment.amount != null
+          ? formatNumericInput(resolvedFirstPayment.amount, 2)
+          : form.firstPaymentAmount || null,
+      firstPaymentPercent:
+        resolvedFirstPayment.percent != null
+          ? formatNumericInput(resolvedFirstPayment.percent, 2)
+          : form.firstPaymentPercent || null,
       interestRateAnnual: form.interestRateAnnual || null,
       insuranceRateAnnual: form.insuranceRateAnnual || null,
       buyoutAmount: form.buyoutAmount || null,
@@ -240,8 +240,8 @@ export function CommercialOfferForm({
     clientName,
     form,
     offer,
-    resolvedDownPayment.amount,
-    resolvedDownPayment.percent,
+    resolvedFirstPayment.amount,
+    resolvedFirstPayment.percent,
     vehicleName,
   ]);
 
@@ -257,7 +257,7 @@ export function CommercialOfferForm({
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function handleDownPaymentAmountChange(value: string) {
+  function handleFirstPaymentAmountChange(value: string) {
     setResult(null);
     setForm((prev) => {
       const price = parseNumberInput(prev.priceVat);
@@ -269,14 +269,14 @@ export function CommercialOfferForm({
 
       return {
         ...prev,
-        downPaymentSource: "amount",
-        downPaymentAmount: value,
-        downPaymentPercent: percentValue != null ? formatNumericInput(percentValue, 2) : "",
+        firstPaymentSource: "amount",
+        firstPaymentAmount: value,
+        firstPaymentPercent: percentValue != null ? formatNumericInput(percentValue, 2) : "",
       };
     });
   }
 
-  function handleDownPaymentPercentChange(value: string) {
+  function handleFirstPaymentPercentChange(value: string) {
     setResult(null);
     setForm((prev) => {
       const price = parseNumberInput(prev.priceVat);
@@ -287,9 +287,9 @@ export function CommercialOfferForm({
 
       return {
         ...prev,
-        downPaymentSource: "percent",
-        downPaymentPercent: value,
-        downPaymentAmount: amountValue != null ? formatNumericInput(amountValue, 2) : "",
+        firstPaymentSource: "percent",
+        firstPaymentPercent: value,
+        firstPaymentAmount: amountValue != null ? formatNumericInput(amountValue, 2) : "",
       };
     });
   }
@@ -317,36 +317,36 @@ export function CommercialOfferForm({
       return;
     }
 
-    if (form.downPaymentSource === "amount") {
-      const amountValue = parseNumberInput(form.downPaymentAmount);
+    if (form.firstPaymentSource === "amount") {
+      const amountValue = parseNumberInput(form.firstPaymentAmount);
       const nextPercent =
         amountValue != null ? formatNumericInput(Math.max(0, Math.min((amountValue / priceValue) * 100, 100)), 2) : "";
-      if (nextPercent !== form.downPaymentPercent) {
-        setForm((prev) => ({ ...prev, downPaymentPercent: nextPercent }));
+      if (nextPercent !== form.firstPaymentPercent) {
+        setForm((prev) => ({ ...prev, firstPaymentPercent: nextPercent }));
       }
     } else {
-      const percentValue = parseNumberInput(form.downPaymentPercent);
+      const percentValue = parseNumberInput(form.firstPaymentPercent);
       const nextAmount =
         percentValue != null ? formatNumericInput(Math.max(0, (percentValue / 100) * priceValue), 2) : "";
-      if (nextAmount !== form.downPaymentAmount) {
-        setForm((prev) => ({ ...prev, downPaymentAmount: nextAmount }));
+      if (nextAmount !== form.firstPaymentAmount) {
+        setForm((prev) => ({ ...prev, firstPaymentAmount: nextAmount }));
       }
     }
-  }, [form.downPaymentAmount, form.downPaymentPercent, form.downPaymentSource, priceValue]);
+  }, [form.firstPaymentAmount, form.firstPaymentPercent, form.firstPaymentSource, priceValue]);
 
   function resetToPayload() {
     setForm({
       priceVat: formatInitialNumber(offer?.priceVat ?? null),
       termMonths: formatInitialNumber(offer?.termMonths ?? null),
-      downPaymentAmount: formatInitialNumber(offer?.downPaymentAmount ?? null),
-      downPaymentPercent: formatInitialNumber(
-        offer?.downPaymentPercent ??
-          (offer?.priceVat && offer?.priceVat !== 0 && offer?.downPaymentAmount != null
-            ? Number(((offer.downPaymentAmount / offer.priceVat) * 100).toFixed(2))
+      firstPaymentAmount: formatInitialNumber(offer?.firstPaymentAmount ?? null),
+      firstPaymentPercent: formatInitialNumber(
+        offer?.firstPaymentPercent ??
+          (offer?.priceVat && offer?.priceVat !== 0 && offer?.firstPaymentAmount != null
+            ? Number(((offer.firstPaymentAmount / offer.priceVat) * 100).toFixed(2))
             : null),
         2,
       ),
-      downPaymentSource: offer?.downPaymentPercent != null ? "percent" : "amount",
+      firstPaymentSource: offer?.firstPaymentPercent != null ? "percent" : "amount",
       interestRateAnnual: formatInitialInterestRate(offer?.interestRateAnnual ?? INTEREST_RATE_MIN),
       insuranceRateAnnual: formatInitialNumber(offer?.insuranceRateAnnual ?? 4),
       buyoutAmount: formatInitialNumber(offer?.buyoutAmount ?? null),
@@ -361,23 +361,23 @@ export function CommercialOfferForm({
     setResult(null);
 
     startTransition(async () => {
-      const downPaymentAmountPayload =
-        resolvedDownPayment.amount != null
-          ? formatNumericInput(resolvedDownPayment.amount, 2)
-          : form.downPaymentAmount;
-      const downPaymentPercentPayload =
-        resolvedDownPayment.percent != null
-          ? resolvedDownPayment.percent.toString()
-          : form.downPaymentPercent;
+      const firstPaymentAmountPayload =
+        resolvedFirstPayment.amount != null
+          ? formatNumericInput(resolvedFirstPayment.amount, 2)
+          : form.firstPaymentAmount;
+      const firstPaymentPercentPayload =
+        resolvedFirstPayment.percent != null
+          ? resolvedFirstPayment.percent.toString()
+          : form.firstPaymentPercent;
 
       const response = await saveCommercialOffer({
         dealId,
         slug,
         priceVat: form.priceVat,
         termMonths: form.termMonths,
-        downPayment: downPaymentAmountPayload,
-        downPaymentPercent: downPaymentPercentPayload,
-        downPaymentSource: form.downPaymentSource,
+        firstPaymentAmount: firstPaymentAmountPayload,
+        firstPaymentPercent: firstPaymentPercentPayload,
+        firstPaymentSource: form.firstPaymentSource,
         interestRateAnnual: form.interestRateAnnual,
         insuranceRateAnnual: form.insuranceRateAnnual,
         buyoutAmount: form.buyoutAmount,
@@ -393,23 +393,23 @@ export function CommercialOfferForm({
     if (!offerData) return;
 
     setResult(null);
-    const downPaymentAmountPayload =
-      resolvedDownPayment.amount != null
-        ? formatNumericInput(resolvedDownPayment.amount, 2)
-        : form.downPaymentAmount;
-    const downPaymentPercentPayload =
-      resolvedDownPayment.percent != null
-        ? resolvedDownPayment.percent.toString()
-        : form.downPaymentPercent;
+    const firstPaymentAmountPayload =
+      resolvedFirstPayment.amount != null
+        ? formatNumericInput(resolvedFirstPayment.amount, 2)
+        : form.firstPaymentAmount;
+    const firstPaymentPercentPayload =
+      resolvedFirstPayment.percent != null
+        ? resolvedFirstPayment.percent.toString()
+        : form.firstPaymentPercent;
     // Триггерим сохранение перед генерацией, чтобы payload был актуален
     const response = await saveCommercialOffer({
       dealId,
       slug,
       priceVat: form.priceVat,
       termMonths: form.termMonths,
-      downPayment: downPaymentAmountPayload,
-      downPaymentPercent: downPaymentPercentPayload,
-      downPaymentSource: form.downPaymentSource,
+      firstPaymentAmount: firstPaymentAmountPayload,
+      firstPaymentPercent: firstPaymentPercentPayload,
+      firstPaymentSource: form.firstPaymentSource,
       interestRateAnnual: form.interestRateAnnual,
       insuranceRateAnnual: form.insuranceRateAnnual,
       calculationMethod: form.calculationMethod,
@@ -423,7 +423,7 @@ export function CommercialOfferForm({
   const calculationResult = useMemo(() => {
     const price = priceValue;
     const termMonths = parseNumberInput(form.termMonths);
-    const downPayment = resolvedDownPayment.amount ?? 0;
+    const firstPayment = resolvedFirstPayment.amount ?? 0;
     const annualRate = parseNumberInput(form.interestRateAnnual);
     const insuranceAnnualRate = parseNumberInput(form.insuranceRateAnnual);
     const buyoutAmount = parseNumberInput(form.buyoutAmount);
@@ -439,8 +439,8 @@ export function CommercialOfferForm({
 
     return calculateCommercialOffer({
       priceVat: price,
-      downPaymentAmount: downPayment,
-      downPaymentSource: form.downPaymentSource,
+      firstPaymentAmount: firstPayment,
+      firstPaymentSource: form.firstPaymentSource,
       termMonths,
       interestRateAnnual: annualRate,
       insuranceRateAnnual: insuranceAnnualRate,
@@ -448,13 +448,13 @@ export function CommercialOfferForm({
       method: form.calculationMethod,
     });
   }, [
-    resolvedDownPayment.amount,
+    resolvedFirstPayment.amount,
     form.insuranceRateAnnual,
     form.interestRateAnnual,
     form.buyoutAmount,
     priceValue,
     form.termMonths,
-    form.downPaymentSource,
+    form.firstPaymentSource,
     form.calculationMethod,
   ]);
 
@@ -469,7 +469,7 @@ export function CommercialOfferForm({
         { label: "Доход по процентам", value: "—" },
         { label: "Страховые платежи", value: "—" },
         { label: "Сумма первого месяца", value: "—" },
-        { label: "Итого для покупателя (страх. + аванс)", value: "—" },
+        { label: "Итого для покупателя (страх. + первый взнос)", value: "—" },
       ];
     }
 
@@ -483,7 +483,7 @@ export function CommercialOfferForm({
       { label: "Доход по процентам", value: formatCurrencyAED(result.totalInterest) },
       { label: "Страховые платежи", value: formatCurrencyAED(result.totalInsurance) },
       { label: "Сумма первого месяца", value: formatCurrencyAED(result.initialPayment) },
-      { label: "Итого для покупателя (страх. + аванс)", value: formatCurrencyAED(result.totalClientCost) },
+      { label: "Итого для покупателя (страх. + first payment)", value: formatCurrencyAED(result.totalClientCost) },
     ];
   }, [calculationResult]);
 
@@ -541,28 +541,28 @@ export function CommercialOfferForm({
           <div className="space-y-2 md:col-span-2">
             <div className="grid gap-2 sm:grid-cols-2">
               <div className="space-y-1">
-                <Label htmlFor="downPaymentAmount" className="text-xs text-muted-foreground">
-                  Аванс, AED
+                <Label htmlFor="firstPaymentAmount" className="text-xs text-muted-foreground">
+                  First payment, AED
                 </Label>
                 <Input
-                  id="downPaymentAmount"
-                  name="downPaymentAmount"
-                  value={form.downPaymentAmount}
-                  onChange={(event) => handleDownPaymentAmountChange(event.target.value)}
+                  id="firstPaymentAmount"
+                  name="firstPaymentAmount"
+                  value={form.firstPaymentAmount}
+                  onChange={(event) => handleFirstPaymentAmountChange(event.target.value)}
                   placeholder="20000"
                   className="rounded-lg"
                   inputMode="decimal"
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="downPaymentPercent" className="text-xs text-muted-foreground">
-                  Аванс, %
+                <Label htmlFor="firstPaymentPercent" className="text-xs text-muted-foreground">
+                  First payment, %
                 </Label>
                 <Input
-                  id="downPaymentPercent"
-                  name="downPaymentPercent"
-                  value={form.downPaymentPercent}
-                  onChange={(event) => handleDownPaymentPercentChange(event.target.value)}
+                  id="firstPaymentPercent"
+                  name="firstPaymentPercent"
+                  value={form.firstPaymentPercent}
+                  onChange={(event) => handleFirstPaymentPercentChange(event.target.value)}
                   placeholder="10"
                   className="rounded-lg"
                   inputMode="decimal"

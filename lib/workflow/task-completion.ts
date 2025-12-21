@@ -70,7 +70,7 @@ type TaskCompletionSnapshot = {
 const QUOTE_FIELD_KEYS = [
   "price_vat",
   "term_months",
-  "down_payment_amount",
+  "first_payment_amount",
   "interest_rate_annual",
   "insurance_rate_annual",
 ] as const;

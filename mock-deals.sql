@@ -21,7 +21,7 @@
 
 INSERT INTO applications (
     id, application_number, user_id, vehicle_id, status, requested_amount,
-    term_months, down_payment, monthly_payment, interest_rate,
+    term_months, first_payment, monthly_payment, interest_rate,
     personal_info, financial_info, employment_info, references_info,
     scoring_results, risk_assessment, assigned_to, submitted_at, approved_at
 ) VALUES 
@@ -139,7 +139,7 @@ INSERT INTO applications (
 -- Добавляем еще 75 одобренных заявок (всего 80)
 INSERT INTO applications (
     id, application_number, user_id, vehicle_id, status, requested_amount,
-    term_months, down_payment, monthly_payment, interest_rate,
+    term_months, first_payment, monthly_payment, interest_rate,
     personal_info, financial_info, employment_info, references_info,
     scoring_results, risk_assessment, assigned_to, submitted_at, approved_at
 ) 
@@ -182,7 +182,7 @@ FROM generate_series(6, 80) as applications;
 
 INSERT INTO applications (
     id, application_number, user_id, vehicle_id, status, requested_amount,
-    term_months, down_payment, monthly_payment, interest_rate,
+    term_months, first_payment, monthly_payment, interest_rate,
     personal_info, financial_info, employment_info, references_info,
     scoring_results, risk_assessment, assigned_to, submitted_at
 ) 
@@ -219,7 +219,7 @@ FROM generate_series(81, 115) as applications;
 
 INSERT INTO applications (
     id, application_number, user_id, vehicle_id, status, requested_amount,
-    term_months, down_payment, monthly_payment, interest_rate,
+    term_months, first_payment, monthly_payment, interest_rate,
     personal_info, financial_info, employment_info, references_info,
     scoring_results, risk_assessment, assigned_to, submitted_at, rejected_at, rejection_reason
 ) 
@@ -266,7 +266,7 @@ FROM generate_series(116, 140) as applications;
 
 INSERT INTO applications (
     id, application_number, user_id, vehicle_id, status, requested_amount,
-    term_months, down_payment, monthly_payment, interest_rate,
+    term_months, first_payment, monthly_payment, interest_rate,
     personal_info, financial_info, employment_info, references_info,
     scoring_results, risk_assessment, assigned_to, submitted_at, rejected_at, rejection_reason
 ) 
@@ -329,7 +329,7 @@ WITH approved_applications AS (
 INSERT INTO deals (
     id, deal_number, application_id, vehicle_id, client_id, status,
     principal_amount, total_amount, monthly_payment, monthly_lease_rate,
-    term_months, interest_rate, down_payment_amount, security_deposit,
+    term_months, interest_rate, first_payment_amount, security_deposit,
     processing_fee, contract_start_date, contract_end_date, first_payment_date,
     contract_terms, insurance_details, assigned_account_manager, activated_at
 )
@@ -347,13 +347,13 @@ SELECT
         WHEN ra.global_seq <= 65 THEN 'active'
         ELSE 'suspended'
     END,
-    (ra.requested_amount - ra.down_payment)::numeric(16,2),
+    (ra.requested_amount - ra.first_payment)::numeric(16,2),
     ra.requested_amount::numeric(16,2),
     ra.monthly_payment,
     (ra.monthly_payment / ra.requested_amount * 12)::numeric(16,6),
     ra.term_months,
     ra.interest_rate,
-    ra.down_payment,
+    ra.first_payment,
     (ra.monthly_payment * 2)::numeric(16,2),
     (ra.requested_amount * 0.01)::numeric(16,2),
     CURRENT_DATE + INTERVAL '7 days',
@@ -445,8 +445,8 @@ SELECT
     END,
     jsonb_build_object(
         'event_description', 'Событие по сделке ' || d.deal_number,
-        'amount', CASE WHEN RANDOM() > 0.5 THEN d.down_payment_amount ELSE d.monthly_payment END,
-        'timestamp', EXTRACT(EPOCH FROM NOW())
+        'amount', CASE WHEN RANDOM() > 0.5 THEN d.first_payment_amount ELSE d.monthly_payment END,
+    'timestamp', EXTRACT(EPOCH FROM NOW())
     ),
     d.assigned_account_manager,
     (d.created_at + (RANDOM() * INTERVAL '30 days'))::timestamptz
@@ -468,21 +468,21 @@ SELECT
     'INV-2025-' || LPAD((ROW_NUMBER() OVER())::text, 4, '0'),
     d.id,
     CASE 
-        WHEN ROW_NUMBER() OVER() = 1 THEN 'down_payment'
+        WHEN ROW_NUMBER() OVER() = 1 THEN 'first_payment'
         ELSE 'monthly_payment'
     END,
     CASE 
-        WHEN ROW_NUMBER() OVER() = 1 THEN d.down_payment_amount
+        WHEN ROW_NUMBER() OVER() = 1 THEN d.first_payment_amount
         ELSE d.monthly_payment
     END,
     CASE 
-        WHEN ROW_NUMBER() OVER() = 1 THEN (d.down_payment_amount * 0.05)::numeric(16,2)
+        WHEN ROW_NUMBER() OVER() = 1 THEN (d.first_payment_amount * 0.05)::numeric(16,2)
         ELSE (d.monthly_payment * 0.05)::numeric(16,2)
     END,
-    CASE 
-        WHEN ROW_NUMBER() OVER() = 1 THEN (d.down_payment_amount * 1.05)::numeric(16,2)
-        ELSE (d.monthly_payment * 1.05)::numeric(16,2)
-    END,
+    (CASE 
+        WHEN ROW_NUMBER() OVER() = 1 THEN d.first_payment_amount
+        ELSE d.monthly_payment
+    END * 1.05)::numeric(16,2),
     'AED',
     CASE 
         WHEN ROW_NUMBER() OVER() = 1 THEN d.contract_start_date
@@ -493,28 +493,26 @@ SELECT
         ELSE d.first_payment_date + ((ROW_NUMBER() OVER() - 2) || ' months')::interval
     END,
     CASE 
-        WHEN ROW_NUMBER() OVER() = 1 THEN 'paid'  -- Аванс обычно оплачен
-        WHEN d.status = 'active' AND ROW_NUMBER() OVER() <= 6 THEN 'paid'  -- Последние 6 платежей оплачены
-        WHEN ROW_NUMBER() OVER() <= 3 THEN 'overdue'
+        WHEN CASE WHEN ROW_NUMBER() OVER() = 1 THEN 'paid' WHEN d.status = 'active' AND ROW_NUMBER() OVER() <= 6 THEN 'paid' ELSE 'pending' END = 'paid' THEN 'paid'
         ELSE 'pending'
     END,
     jsonb_build_array(
         jsonb_build_object(
-            'description', CASE WHEN ROW_NUMBER() OVER() = 1 THEN 'Авансовый платеж по договору' ELSE 'Ежемесячный лизинговый платеж' END,
+            'description', CASE WHEN ROW_NUMBER() OVER() = 1 THEN 'First payment' ELSE 'Monthly Lease Payment' END,
             'quantity', 1,
-            'unit_price', CASE WHEN ROW_NUMBER() OVER() = 1 THEN d.down_payment_amount ELSE d.monthly_payment END,
-            'total', CASE WHEN ROW_NUMBER() OVER() = 1 THEN d.down_payment_amount ELSE d.monthly_payment END
+            'unit_price', CASE WHEN ROW_NUMBER() OVER() = 1 THEN d.first_payment_amount ELSE d.monthly_payment END,
+            'total', CASE WHEN ROW_NUMBER() OVER() = 1 THEN d.first_payment_amount ELSE d.monthly_payment END
         )
     ),
     jsonb_build_array(
         jsonb_build_object(
             'tax_rate', 0.05,
-            'tax_amount', CASE WHEN ROW_NUMBER() OVER() = 1 THEN (d.down_payment_amount * 0.05)::numeric(16,2) ELSE (d.monthly_payment * 0.05)::numeric(16,2) END,
-            'taxable_amount', CASE WHEN ROW_NUMBER() OVER() = 1 THEN d.down_payment_amount ELSE d.monthly_payment END
+            'tax_amount', CASE WHEN ROW_NUMBER() OVER() = 1 THEN (d.first_payment_amount * 0.05)::numeric(16,2) ELSE (d.monthly_payment * 0.05)::numeric(16,2) END,
+            'taxable_amount', CASE WHEN ROW_NUMBER() OVER() = 1 THEN d.first_payment_amount ELSE d.monthly_payment END
         )
     ),
     CASE 
-        WHEN ROW_NUMBER() OVER() = 1 THEN 'Оплата при подписании договора'
+        WHEN ROW_NUMBER() OVER() = 1 THEN 'Оплата первого взноса'
         ELSE 'Ежемесячная оплата до 27 числа'
     END,
     CASE 
@@ -523,7 +521,7 @@ SELECT
         ELSE NULL
     END
 FROM deals d
-CROSS JOIN generate_series(1, 12);  -- 12 инвойсов на сделку (аванс + 11 месяцев)
+CROSS JOIN generate_series(1, 12);  -- 12 инвойсов на сделку (первый взнос + 11 месяцев)
 
 -- =====================================================================
 -- 3.4 ПЛАТЕЖИ (payments)

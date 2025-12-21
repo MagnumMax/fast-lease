@@ -61,7 +61,7 @@ export function printSummaryEnhanced(normalized) {
     returnConditions: normalized.deal.returnConditions,
     notes: normalized.deal.notes,
     monthlyPayment: normalized.deal.monthlyPayment,
-    downPayment: normalized.deal.downPayment,
+    firstPayment: normalized.deal.firstPayment,
     interestRate: normalized.deal.interestRate,
     balloonPayment: normalized.deal.balloonPayment,
     currency: normalized.deal.currency,
