@@ -1122,7 +1122,7 @@ export async function completeTaskFormAction(
   }
 
   const dealSlug = typeof dealRow.deal_number === "string" ? (dealRow.deal_number as string) : null;
-  const taskRedirectPath = dealSlug ? `/ops/deals/${dealSlug}` : `/ops/deals/${dealId}`;
+  const taskRedirectPath = dealSlug ? `/ops/deals/${dealSlug}#tasks` : `/ops/deals/${dealId}#tasks`;
   const revalidateRelatedPaths = () => {
     for (const path of buildPathsToRevalidate(taskId, dealId, dealSlug)) {
       revalidatePath(path);
