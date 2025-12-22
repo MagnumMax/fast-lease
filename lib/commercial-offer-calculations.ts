@@ -93,13 +93,11 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     principal = Math.max(0, priceNet - firstPaymentNet);
 
     // 3. Interest Logic
-    // The Excel calculation uses a specific fixed rate of 24.9% for this method
-    // regardless of the hidden input field.
-    const excelInterestRate = 24.9;
+    // We use the interest rate provided in the input
     
     // Monthly Interest (Flat Rate on Initial Principal)
     // Interest = Principal * (Rate / 100 / 12)
-    const monthlyInterest = principal * (excelInterestRate / 100 / 12);
+    const monthlyInterest = principal * (interestRateAnnual / 100 / 12);
 
     // Total Interest
     // Paid for (termMonths - 1) months (excluding First payment month)
@@ -128,8 +126,8 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     monthlyLeasePayment = (monthlyPrincipal + monthlyInterest) * 1.05;
 
     // Rates for display
-    effectiveMonthlyRate = excelInterestRate / 12;
-    effectivePeriodRate = (excelInterestRate * Math.max(0, termMonths - 1)) / 12;
+    effectiveMonthlyRate = interestRateAnnual / 12;
+    effectivePeriodRate = (interestRateAnnual * Math.max(0, termMonths - 1)) / 12;
 
     // 6. Total Client Cost
     // FirstPayment (Total First payment) + (MonthlyPayment * numRegularPayments) + Buyout

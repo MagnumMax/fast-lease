@@ -567,49 +567,34 @@ export function CommercialOfferForm({
             </div>
           </div>
           <div className="grid gap-3 md:col-span-2 md:grid-cols-2">
-            {form.calculationMethod === "inclusive_vat" ? (
-              <div className="space-y-1">
-                <Label htmlFor="buyoutAmount">Выкупная стоимость, AED</Label>
-                <Input
-                  id="buyoutAmount"
-                  name="buyoutAmount"
-                  value={form.buyoutAmount}
-                  onChange={(event) => handleInputChange("buyoutAmount", event.target.value)}
-                  placeholder="10000"
-                  className="rounded-lg"
-                  inputMode="decimal"
-                />
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="interestRateAnnual">{INTEREST_RATE_LABEL}</Label>
+                <span className="text-sm font-semibold text-foreground">
+                  {interestRateValue.toFixed(1)}%
+                </span>
               </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="interestRateAnnual">{INTEREST_RATE_LABEL}</Label>
-                  <span className="text-sm font-semibold text-foreground">
-                    {interestRateValue.toFixed(1)}%
-                  </span>
-                </div>
-                <input
-                  id="interestRateAnnual"
-                  name="interestRateAnnual"
-                  type="range"
-                  min={INTEREST_RATE_MIN}
-                  max={INTEREST_RATE_MAX}
-                  step={INTEREST_RATE_STEP}
-                  value={interestRateValue}
-                  onChange={(event) => handleInterestRateChange(Number.parseFloat(event.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-                  aria-valuemin={INTEREST_RATE_MIN}
-                  aria-valuemax={INTEREST_RATE_MAX}
-                  aria-valuenow={interestRateValue}
-                  aria-valuetext={`${interestRateValue.toFixed(1)}%`}
-                />
-                <div className="flex justify-between text-[11px] text-muted-foreground">
-                  <span>{INTEREST_RATE_MIN}%</span>
-                  <span>Шаг 0.5%</span>
-                  <span>{INTEREST_RATE_MAX}%</span>
-                </div>
+              <input
+                id="interestRateAnnual"
+                name="interestRateAnnual"
+                type="range"
+                min={INTEREST_RATE_MIN}
+                max={INTEREST_RATE_MAX}
+                step={INTEREST_RATE_STEP}
+                value={interestRateValue}
+                onChange={(event) => handleInterestRateChange(Number.parseFloat(event.target.value))}
+                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+                aria-valuemin={INTEREST_RATE_MIN}
+                aria-valuemax={INTEREST_RATE_MAX}
+                aria-valuenow={interestRateValue}
+                aria-valuetext={`${interestRateValue.toFixed(1)}%`}
+              />
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>{INTEREST_RATE_MIN}%</span>
+                <span>Шаг 0.5%</span>
+                <span>{INTEREST_RATE_MAX}%</span>
               </div>
-            )}
+            </div>
             <div className="space-y-1">
               <Label htmlFor="insuranceRateAnnual">Ставка страхования, % годовых</Label>
               <Input
@@ -622,6 +607,20 @@ export function CommercialOfferForm({
                 inputMode="decimal"
               />
             </div>
+            {form.calculationMethod === "inclusive_vat" && (
+              <div className="space-y-1 md:col-span-2">
+                <Label htmlFor="buyoutAmount">Выкупная стоимость, AED</Label>
+                <Input
+                  id="buyoutAmount"
+                  name="buyoutAmount"
+                  value={form.buyoutAmount}
+                  onChange={(event) => handleInputChange("buyoutAmount", event.target.value)}
+                  placeholder="10000"
+                  className="rounded-lg"
+                  inputMode="decimal"
+                />
+              </div>
+            )}
           </div>
         </div>
         <div className="space-y-2 rounded-lg border border-border/70 bg-muted/30 p-3">
