@@ -239,4 +239,45 @@ describe("WorkflowService", () => {
 
     sleepSpy.mockRestore();
   });
+
+  it("resyncs deal version and triggers entry actions", async () => {
+    // 1. Create a deal with old/null version
+    // (deal-1 already has null version and status NEW)
+    
+    // 2. Mock action executor
+    const actionExecutor = vi.fn();
+    workflowService = new WorkflowService({
+      versionService,
+      dealRepository,
+      auditLogger,
+      actionExecutor,
+    });
+
+    // 3. Call resync
+    const output = await workflowService.resyncDeal("deal-1");
+
+    // 4. Assertions
+    expect(output.newStatus).toBe("NEW");
+    expect(output.workflowVersionId).toBe(activeVersion.id);
+    
+    // Check DB update
+    const updatedDeal = dealRepository.getCurrent("deal-1");
+    expect(updatedDeal.workflowVersionId).toBe(activeVersion.id);
+
+    // Check actions executed
+    expect(actionExecutor).toHaveBeenCalled();
+    expect(actionExecutor).toHaveBeenCalledTimes(2);
+    
+    // Verify first call is TASK_CREATE
+    const calls = actionExecutor.mock.calls;
+    const taskAction = calls.find(call => call[0].type === "TASK_CREATE");
+    expect(taskAction).toBeDefined();
+    expect(taskAction?.[0].task.templateId).toBe("prepare_quote_v1");
+    
+    // Verify context
+    const context = taskAction?.[1];
+    expect(context?.transition?.from).toBe("NEW");
+    expect(context?.transition?.to).toBe("NEW");
+    expect(context?.actorRole).toBe("ADMIN");
+  });
 });

@@ -348,4 +348,73 @@ export class WorkflowService {
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
+
+  async resyncDeal(dealId: string): Promise<WorkflowTransitionOutput> {
+    const deal = await this.dealRepository.getDealById(dealId);
+    if (!deal) {
+      throw new Error(`Deal '${dealId}' not found`);
+    }
+
+    // Always get the latest active version
+    const version = await this.versionService.getActiveVersion(deal.workflowId);
+    if (!version) {
+      throw new Error(`No active workflow version found for workflow '${deal.workflowId}'`);
+    }
+
+    // Update version in DB if it mismatches
+    if (deal.workflowVersionId !== version.id) {
+      await this.dealRepository.updateDealStatus({
+        dealId: deal.id,
+        previousStatus: deal.status,
+        status: deal.status,
+        workflowVersionId: version.id,
+        // System action, no specific actor
+        actorId: undefined,
+      });
+      console.log(`[WorkflowService] Updated deal ${deal.id} to version ${version.id}`);
+    }
+
+    const stateMachine = new WorkflowStateMachine(version.template, {
+      guardEvaluator: this.guardEvaluator,
+      actionExecutor: this.actionExecutor,
+    });
+
+    const statusDef = stateMachine.getStatus(deal.status);
+    if (!statusDef) {
+      throw new Error(`Status '${deal.status}' is not defined in the active workflow version`);
+    }
+
+    const executedActions: WorkflowAction[] = [];
+    const entryActions = statusDef.entryActions ?? [];
+
+    if (this.actionExecutor && entryActions.length > 0) {
+      const context: WorkflowActionContext = {
+        dealId: deal.id,
+        actorRole: "ADMIN", // System role for resync
+        transition: {
+          from: deal.status,
+          to: deal.status,
+        },
+        template: version.template,
+        payload: deal.payload ?? undefined,
+      };
+
+      for (const action of entryActions) {
+        await this.actionExecutor(action, context);
+        executedActions.push(action);
+      }
+    }
+
+    return {
+      dealId: deal.id,
+      previousStatus: deal.status,
+      newStatus: deal.status,
+      workflowVersionId: version.id,
+      executedActions,
+      transition: {
+        newStatus: statusDef,
+        executedActions,
+      },
+    };
+  }
 }
