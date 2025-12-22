@@ -717,7 +717,28 @@ function buildTaskDocumentGroups(
 }
 
 function buildAdditionalDocumentEntries(dealDocuments: DealDocumentWithUrl[]): SummaryDocumentEntry[] {
-  const optionalDocs = dealDocuments.filter((doc) => isOptionalGuardDocument(doc.metadata));
+  const optionalDocs = dealDocuments.filter((doc) => {
+    const meta = doc.metadata as Record<string, unknown> | null;
+    if (!isOptionalGuardDocument(meta)) return false;
+
+    // Filter out documents that accidentally got their title from validation error messages
+    const guardLabel =
+      meta && typeof meta.guard_label === "string" ? (meta.guard_label as string) : "";
+    
+    if (
+      (doc.title &&
+        (doc.title.startsWith("Не все обязательные") ||
+          doc.title.includes("документы покупателя загружены") ||
+          doc.title.includes("документы продавца загружены"))) ||
+      (guardLabel &&
+        (guardLabel.startsWith("Не все обязательные") ||
+          guardLabel.includes("документы покупателя загружены") ||
+          guardLabel.includes("документы продавца загружены")))
+    ) {
+      return false;
+    }
+    return true;
+  });
   return optionalDocs.map((doc) => {
     const metadata =
       doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)

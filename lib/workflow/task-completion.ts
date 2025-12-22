@@ -553,7 +553,7 @@ export async function handleTaskCompletion(
     trace("payload-updated");
 
     // --- SNAPSHOT & SYNC LOGIC ---
-    if ((context.taskType === "CONFIRM_CAR" || context.taskType === "REVIEW_SELLER" || context.taskType === "REVIEW_BROKER") && context.taskPayload) {
+    if ((context.taskType === "CONFIRM_CAR" || context.taskType === "REVIEW_SELLER" || context.taskType === "REVIEW_BROKER" || context.taskType === "CONFIRM_PARTICIPANTS") && context.taskPayload) {
       // Extract fields from payload or payload.fields
       const payloadData = (
         context.taskPayload.fields && typeof context.taskPayload.fields === "object" && !Array.isArray(context.taskPayload.fields)
