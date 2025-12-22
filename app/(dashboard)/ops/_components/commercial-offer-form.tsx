@@ -502,25 +502,21 @@ export function CommercialOfferForm({
       </div>
 
       <form id="commercial-offer-form" className="space-y-3" onSubmit={handleSubmit}>
-        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-800/50 dark:bg-amber-900/10">
-          <div className="space-y-1">
-            <Label htmlFor="calculationMethod" className="text-xs font-medium text-amber-900 dark:text-amber-400">
-              Алгоритм расчёта
-            </Label>
-            <Select
-              value={form.calculationMethod}
-              onValueChange={handleMethodChange}
-              name="calculationMethod"
-            >
-              <SelectTrigger id="calculationMethod" className="h-9 border-amber-200 bg-white/50 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-100">
-                <SelectValue placeholder="Выберите метод" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="standard">Стандартный (Annuity)</SelectItem>
-                <SelectItem value="inclusive_vat">С выкупной стоимостью (Buyout)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-1">
+          <Label htmlFor="calculationMethod">Алгоритм расчёта</Label>
+          <Select
+            value={form.calculationMethod}
+            onValueChange={handleMethodChange}
+            name="calculationMethod"
+          >
+            <SelectTrigger id="calculationMethod" className="rounded-lg">
+              <SelectValue placeholder="Выберите метод" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="standard">Стандартный (Annuity)</SelectItem>
+              <SelectItem value="inclusive_vat">С выкупной стоимостью (Buyout)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
