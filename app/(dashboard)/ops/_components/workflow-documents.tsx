@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { ProfileCardMini } from "./profile-card-mini";
+import type { ProfileSummaryPayload } from "../actions";
+
 const COMMISSION_LABELS = new Set(["комиссия менеджера renty", "комиссия менеджера салона"]);
 
 function normalizeLabel(label: string): string {
@@ -40,7 +43,8 @@ export type WorkflowDocumentEntry = {
   value: string;
   status?: string | null;
   url?: string | null;
-  kind?: "document" | "parameter" | "section";
+  kind?: "document" | "parameter" | "section" | "profile_card";
+  profileData?: ProfileSummaryPayload | null;
 };
 
 export type WorkflowDocumentGroupEntry = {
@@ -104,6 +108,21 @@ export function WorkflowDocuments({ groups, additional, financedAmount, classNam
                         >
                           <div className="flex items-center gap-2 border-l-[4px] border-primary/40 bg-muted/20 py-2 pl-3 pr-3 rounded-r-md">
                             <h4 className="text-xs font-bold text-foreground tracking-tight uppercase opacity-80">{doc.label}</h4>
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (doc.kind === "profile_card" && doc.profileData) {
+                      return (
+                        <div
+                          key={`${group.taskTemplateId}-doc-${idx}-${doc.label}`}
+                          className="flex items-start justify-between gap-3 py-2 text-[11px]"
+                        >
+                          <div className="flex flex-col gap-1 pt-1 shrink-0">
+                            <span className="text-xs font-semibold text-foreground">{doc.label}</span>
+                          </div>
+                          <div className="w-full max-w-[75%]">
+                            <ProfileCardMini label={doc.label} profile={doc.profileData} />
                           </div>
                         </div>
                       );

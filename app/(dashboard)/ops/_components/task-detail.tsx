@@ -162,6 +162,8 @@ type FinanceReviewSnapshot = {
   deal: FinanceEntitySnapshot;
   vehicle?: FinanceEntitySnapshot | null;
   client?: FinanceEntitySnapshot | null;
+  seller?: FinanceEntitySnapshot | null;
+  broker?: FinanceEntitySnapshot | null;
 };
 
 const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
@@ -1249,7 +1251,13 @@ export function TaskDetailView({
 
   function renderFinanceSnapshot(snapshot: FinanceReviewSnapshot | null) {
     if (!snapshot) return null;
-    const entities = [snapshot.deal, snapshot.vehicle, snapshot.client].filter(Boolean) as FinanceEntitySnapshot[];
+    const entities = [
+      snapshot.deal,
+      snapshot.vehicle,
+      snapshot.client,
+      snapshot.seller,
+      snapshot.broker,
+    ].filter(Boolean) as FinanceEntitySnapshot[];
     if (!entities.length) return null;
     const dealEntity = snapshot.deal;
     const financedAmount = (() => {

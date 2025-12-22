@@ -156,7 +156,8 @@ type SummaryDocumentEntry = {
   value: string;
   status?: string | null;
   url?: string | null;
-  kind?: "document" | "parameter" | "section";
+  kind?: "document" | "parameter" | "section" | "profile_card";
+  profileData?: ProfileSummaryPayload | null;
 };
 type WorkflowDocumentDefinition = {
   documentType: string;
@@ -165,7 +166,8 @@ type WorkflowDocumentDefinition = {
 type TaskSchemaEntry =
   | { kind: "document"; id: string; label: string; documentType: string }
   | { kind: "parameter"; id: string; label: string; value: string }
-  | { kind: "section"; id: string; label: string };
+  | { kind: "section"; id: string; label: string }
+  | { kind: "profile_card"; id: string; label: string; profileRole: "buyer" | "seller" | "broker"; profileData: ProfileSummaryPayload | null };
 type WorkflowDocumentGroupEntry = {
   stageKey: string;
   stageTitle: string;
@@ -184,6 +186,8 @@ type FinanceReviewSnapshot = {
   deal: FinanceEntitySnapshot;
   vehicle?: FinanceEntitySnapshot | null;
   client?: FinanceEntitySnapshot | null;
+  seller?: FinanceEntitySnapshot | null;
+  broker?: FinanceEntitySnapshot | null;
 };
 type CommercialOfferExtract = {
   priceVat: number | null;
@@ -518,6 +522,7 @@ function extractOrderedSchemaEntriesFromPayload(
 
 type DealTaskSnapshot = {
   id: string;
+  type: string | null;
   title: string;
   guardKey: string | null;
   stageKey: string | null;
@@ -531,6 +536,11 @@ type DealTaskSnapshot = {
 function buildTaskDocumentGroups(
   tasks: DealTaskSnapshot[],
   dealDocuments: DealDocumentWithUrl[],
+  profileSummaries?: {
+    buyer: ProfileSummaryPayload | null;
+    seller: ProfileSummaryPayload | null;
+    broker: ProfileSummaryPayload | null;
+  }
 ): WorkflowDocumentGroupEntry[] {
   const taskByGuard = new Map<string | null, DealTaskSnapshot>();
   tasks.forEach((task) => {
@@ -581,6 +591,46 @@ function buildTaskDocumentGroups(
           docMap.set(normalized, docEntry);
         }
       } else if (isParameterSchemaEntry(entry)) {
+        if (task.type === "CONFIRM_PARTICIPANTS" && profileSummaries) {
+          const labelLower = entry.label.trim().toLowerCase();
+          
+          if (
+            (entry.id === "client_data" || entry.id === "buyer_data" || labelLower === "данные покупателя") &&
+            profileSummaries.buyer
+          ) {
+            groupDocs.push({
+              label: entry.label,
+              value: "",
+              kind: "profile_card",
+              profileData: profileSummaries.buyer,
+            });
+            return;
+          }
+          if (
+            (entry.id === "seller_data" || labelLower === "данные продавца") &&
+            profileSummaries.seller
+          ) {
+            groupDocs.push({
+              label: entry.label,
+              value: "",
+              kind: "profile_card",
+              profileData: profileSummaries.seller,
+            });
+            return;
+          }
+          if (
+            (entry.id === "broker_data" || labelLower === "данные брокера") &&
+            profileSummaries.broker
+          ) {
+            groupDocs.push({
+              label: entry.label,
+              value: "",
+              kind: "profile_card",
+              profileData: profileSummaries.broker,
+            });
+            return;
+          }
+        }
         groupDocs.push({
           label: entry.label ?? entry.id,
           value: entry.value ?? "—",
@@ -826,6 +876,9 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
   let clientDocuments: ClientDocumentWithUrl[] = [];
   let relatedTasks: DealTaskSnapshot[] = [];
   let commercialOffer: CommercialOfferExtract | null = null;
+  let buyerProfileSummary: ProfileSummaryPayload | null = null;
+  let sellerProfileSummary: ProfileSummaryPayload | null = null;
+  let brokerProfileSummary: ProfileSummaryPayload | null = null;
 
   if (task.dealId) {
     const supabase = await createSupabaseServerClient();
@@ -1033,6 +1086,74 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
       if (tasksError) {
         console.error("[workflow] failed to load related tasks for finance snapshot", tasksError);
       } else if (Array.isArray(tasksData)) {
+        // Attempt to recover missing deal participants from CONFIRM_PARTICIPANTS task payload
+        if (dealSummary) {
+          const confirmTask = tasksData.find((t) => t.type === "CONFIRM_PARTICIPANTS");
+          if (confirmTask) {
+            const p =
+              confirmTask.payload &&
+              typeof confirmTask.payload === "object" &&
+              !Array.isArray(confirmTask.payload)
+                ? (confirmTask.payload as { fields?: Record<string, unknown> })
+                : null;
+
+            if (p?.fields) {
+              const foundSellerId = typeof p.fields.seller_id === "string" ? p.fields.seller_id : null;
+              const foundBrokerId = typeof p.fields.broker_id === "string" ? p.fields.broker_id : null;
+
+              const missingSeller = !dealSummary.sellerId && foundSellerId;
+              const missingBroker = !dealSummary.brokerId && foundBrokerId;
+
+              if (missingSeller && foundSellerId) dealSummary.sellerId = foundSellerId;
+              if (missingBroker && foundBrokerId) dealSummary.brokerId = foundBrokerId;
+
+              if (missingSeller || missingBroker) {
+                const idsToBackfill: string[] = [];
+                if (missingSeller && foundSellerId) idsToBackfill.push(foundSellerId);
+                if (missingBroker && foundBrokerId) idsToBackfill.push(foundBrokerId);
+
+                if (idsToBackfill.length > 0) {
+                  const { data: backfillProfiles } = await serviceClient
+                    .from("profiles")
+                    .select("id, user_id, full_name, entity_type, phone, metadata")
+                    .in("user_id", idsToBackfill);
+
+                  if (backfillProfiles) {
+                    backfillProfiles.forEach((prof) => {
+                      if (missingSeller && prof.user_id === foundSellerId) {
+                        sellerProfileId = prof.id;
+                        sellerName = prof.full_name;
+                        sellerType = prof.entity_type;
+                        sellerPhone = prof.phone;
+                        if (
+                          prof.metadata &&
+                          typeof prof.metadata === "object" &&
+                          "email" in prof.metadata
+                        ) {
+                          sellerEmail = (prof.metadata as { email?: string }).email ?? null;
+                        }
+                      }
+                      if (missingBroker && prof.user_id === foundBrokerId) {
+                        brokerProfileId = prof.id;
+                        brokerName = prof.full_name;
+                        brokerType = prof.entity_type;
+                        brokerPhone = prof.phone;
+                        if (
+                          prof.metadata &&
+                          typeof prof.metadata === "object" &&
+                          "email" in prof.metadata
+                        ) {
+                          brokerEmail = (prof.metadata as { email?: string }).email ?? null;
+                        }
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+
         // Collect participant IDs from all tasks to resolve names
         const participantIds = new Set<string>();
         if (dealSummary?.clientId) participantIds.add(dealSummary.clientId);
@@ -1183,6 +1304,7 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
 
           return {
             id: row.id,
+            type: row.type,
             title: typeof row.title === "string" && row.title.trim().length > 0 ? row.title : "Задача",
             guardKey,
             stageKey,
@@ -1460,6 +1582,39 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
         }
       }
 
+      buyerProfileSummary =
+        buyerProfileName || task.dealClientName || buyerProfileDocuments.length > 0 || buyerPhone || buyerEmail
+          ? {
+              name: task.dealClientName ?? buyerProfileName ?? null,
+              entityType: buyerType ?? null,
+              email: buyerEmail ?? null,
+              phone: buyerPhone ?? null,
+              documents: buyerProfileDocuments,
+            }
+          : null;
+
+      sellerProfileSummary =
+        sellerName || sellerProfileDocuments.length > 0 || sellerPhone || sellerEmail
+          ? {
+              name: sellerName ?? null,
+              entityType: sellerType ?? null,
+              email: sellerEmail ?? null,
+              phone: sellerPhone ?? null,
+              documents: sellerProfileDocuments,
+            }
+          : null;
+
+      brokerProfileSummary =
+        brokerName || brokerProfileDocuments.length > 0 || brokerPhone || brokerEmail
+          ? {
+              name: brokerName ?? null,
+              entityType: brokerType ?? null,
+              email: brokerEmail ?? null,
+              phone: brokerPhone ?? null,
+              documents: brokerProfileDocuments,
+            }
+          : null;
+
       if (
         task.type === FINANCE_REVIEW_TASK_TYPE ||
         task.type === INVESTOR_APPROVAL_TASK_TYPE ||
@@ -1574,7 +1729,11 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           getDealDocumentLabel,
           dealDocuments,
         );
-        const workflowDocuments = buildTaskDocumentGroups(relatedTasks, dealDocuments);
+        const workflowDocuments = buildTaskDocumentGroups(relatedTasks, dealDocuments, {
+          buyer: buyerProfileSummary,
+          seller: sellerProfileSummary,
+          broker: brokerProfileSummary,
+        });
         const additionalDocuments = buildAdditionalDocumentEntries(dealDocuments);
 
         let vehicleSnapshot: FinanceEntitySnapshot | null = null;
@@ -1725,6 +1884,97 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           }
         }
 
+        let sellerSnapshot: FinanceEntitySnapshot | null = null;
+        if (dealSummary?.sellerId) {
+          const { data: profileRow, error: profileError } = await supabase
+            .from("profiles")
+            .select(
+              "full_name, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth, address, employment_info, financial_profile",
+            )
+            .eq("user_id", dealSummary.sellerId)
+            .maybeSingle();
+
+          if (profileError) {
+            console.error("[workflow] failed to load seller profile", profileError);
+          } else if (profileRow) {
+            const employmentInfo =
+              profileRow.employment_info && typeof profileRow.employment_info === "object" && !Array.isArray(profileRow.employment_info)
+                ? (profileRow.employment_info as Record<string, unknown>)
+                : null;
+            const addressBranch =
+              profileRow.address && typeof profileRow.address === "object" && !Array.isArray(profileRow.address)
+                ? (profileRow.address as Record<string, unknown>)
+                : null;
+
+            const employer = pickString(employmentInfo, "company") ?? pickString(employmentInfo, "employer");
+            const position = pickString(employmentInfo, "position") ?? pickString(employmentInfo, "role");
+            const city = pickString(addressBranch, "city") ?? pickString(addressBranch, "city_name");
+
+            const sellerDataPoints: SummaryDataPoint[] = [
+              { label: "ФИО / Название", value: formatStringValue(profileRow.full_name) },
+              { label: "Телефон", value: formatStringValue(profileRow.phone) },
+              { label: "Гражданство", value: formatStringValue(profileRow.nationality) },
+              { label: "Город", value: formatStringValue(city) },
+              { label: "Работодатель", value: formatStringValue(employer) },
+              { label: "Должность", value: formatStringValue(position) },
+            ];
+
+            const sellerDocumentEntries = buildDocumentEntries(
+              CLIENT_DOCUMENT_TYPES,
+              normalizeClientDocumentType,
+              getClientDocumentLabel,
+              sellerProfileDocuments,
+            );
+
+            sellerSnapshot = {
+              title: "Продавец",
+              data: sellerDataPoints,
+              documents: sellerDocumentEntries,
+            };
+          }
+        }
+
+        let brokerSnapshot: FinanceEntitySnapshot | null = null;
+        if (dealSummary?.brokerId) {
+          const { data: profileRow, error: profileError } = await supabase
+            .from("profiles")
+            .select(
+              "full_name, phone, emirates_id, passport_number, nationality, residency_status, date_of_birth, address, employment_info, financial_profile",
+            )
+            .eq("user_id", dealSummary.brokerId)
+            .maybeSingle();
+
+          if (profileError) {
+            console.error("[workflow] failed to load broker profile", profileError);
+          } else if (profileRow) {
+             const addressBranch =
+              profileRow.address && typeof profileRow.address === "object" && !Array.isArray(profileRow.address)
+                ? (profileRow.address as Record<string, unknown>)
+                : null;
+            const city = pickString(addressBranch, "city") ?? pickString(addressBranch, "city_name");
+
+            const brokerDataPoints: SummaryDataPoint[] = [
+              { label: "ФИО / Название", value: formatStringValue(profileRow.full_name) },
+              { label: "Телефон", value: formatStringValue(profileRow.phone) },
+              { label: "Гражданство", value: formatStringValue(profileRow.nationality) },
+              { label: "Город", value: formatStringValue(city) },
+            ];
+
+            const brokerDocumentEntries = buildDocumentEntries(
+              CLIENT_DOCUMENT_TYPES,
+              normalizeClientDocumentType,
+              getClientDocumentLabel,
+              brokerProfileDocuments,
+            );
+
+            brokerSnapshot = {
+              title: "Брокер",
+              data: brokerDataPoints,
+              documents: brokerDocumentEntries,
+            };
+          }
+        }
+
         financeSnapshot = {
           deal: {
             title: "Сделка",
@@ -1735,43 +1985,12 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
           },
           vehicle: vehicleSnapshot,
           client: clientSnapshot,
+          seller: sellerSnapshot,
+          broker: brokerSnapshot,
         };
       }
     }
   }
-
-  const buyerProfileSummary: ProfileSummaryPayload | null =
-    buyerProfileName || task.dealClientName || buyerProfileDocuments.length > 0 || buyerPhone || buyerEmail
-      ? {
-          name: task.dealClientName ?? buyerProfileName ?? null,
-          entityType: buyerType ?? null,
-          email: buyerEmail ?? null,
-          phone: buyerPhone ?? null,
-          documents: buyerProfileDocuments,
-        }
-      : null;
-
-  const sellerProfileSummary: ProfileSummaryPayload | null =
-    sellerName || sellerProfileDocuments.length > 0 || sellerPhone || sellerEmail
-      ? {
-          name: sellerName ?? null,
-          entityType: sellerType ?? null,
-          email: sellerEmail ?? null,
-          phone: sellerPhone ?? null,
-          documents: sellerProfileDocuments,
-        }
-      : null;
-
-  const brokerProfileSummary: ProfileSummaryPayload | null =
-    brokerName || brokerProfileDocuments.length > 0 || brokerPhone || brokerEmail
-      ? {
-          name: brokerName ?? null,
-          entityType: brokerType ?? null,
-          email: brokerEmail ?? null,
-          phone: brokerPhone ?? null,
-          documents: brokerProfileDocuments,
-        }
-      : null;
 
   return (
     <TaskDetailView
