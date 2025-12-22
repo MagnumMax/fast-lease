@@ -191,6 +191,7 @@ type CommercialOfferExtract = {
   firstPaymentAmount: number | null;
   interestRateAnnual: number | null;
   insuranceRateAnnual: number | null;
+  calculationMethod: string | null;
   comment: string | null;
   updatedAt: string | null;
   updatedBy: string | null;
@@ -700,6 +701,7 @@ function extractCommercialOfferFromPayload(payload: unknown): CommercialOfferExt
   const firstPaymentAmount = parseQuoteNumber(branch["first_payment_amount"]);
   const interestRateAnnual = parseQuoteNumber(branch["interest_rate_annual"]);
   const insuranceRateAnnual = parseQuoteNumber(branch["insurance_rate_annual"]);
+  const calculationMethod = getStringValue(branch["calculation_method"]);
 
   const metaBranch =
     branch["quote_meta"] && typeof branch["quote_meta"] === "object" && !Array.isArray(branch["quote_meta"])
@@ -714,6 +716,7 @@ function extractCommercialOfferFromPayload(payload: unknown): CommercialOfferExt
     firstPaymentAmount,
     interestRateAnnual,
     insuranceRateAnnual,
+    calculationMethod,
     comment,
     updatedAt: getStringValue(metaBranch["updated_at"]),
     updatedBy: getStringValue(metaBranch["updated_by"]),
@@ -1494,6 +1497,18 @@ export default async function TaskDetailPage({ params }: TaskPageParams) {
             commercialOfferEntries.push({
               label: "Ставка страхования, % годовых",
               value: formatPercentValue(commercialOffer.insuranceRateAnnual),
+            });
+          }
+          if (commercialOffer.calculationMethod) {
+            const methodLabel =
+              commercialOffer.calculationMethod === "inclusive_vat"
+                ? "С выкупной стоимостью (Buyout)"
+                : commercialOffer.calculationMethod === "standard"
+                  ? "Стандартный (Annuity)"
+                  : commercialOffer.calculationMethod;
+            commercialOfferEntries.push({
+              label: "Алгоритм расчёта",
+              value: methodLabel,
             });
           }
           if (commercialOffer.comment) {
