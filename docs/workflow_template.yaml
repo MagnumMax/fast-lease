@@ -358,8 +358,11 @@ document_types:
       - value: passing_certificate
         label: "Passing Certificate"
         context: deal
-      - value: lease_agreement
+      - value: rental_contract
         label: "Договор долгосрочной аренды"
+        context: deal
+      - value: lease_agreement
+        label: "Договор лизинга"
         context: deal
       - value: signed_lease_agreement
         label: "Подписанный договор лизинга"
@@ -889,8 +892,8 @@ statuses:
             fields:
               - id: doc_rental_contract
                 type: file
-                label: "Договор лизинга"
-                document_type: lease_agreement
+                label: "Договор долгосрочной аренды"
+                document_type: rental_contract
                 required: true
               - id: doc_insurance_policy
                 type: file

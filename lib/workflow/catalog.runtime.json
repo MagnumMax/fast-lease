@@ -593,8 +593,13 @@
           "context": "deal"
         },
         {
-          "value": "lease_agreement",
+          "value": "rental_contract",
           "label": "Договор долгосрочной аренды",
+          "context": "deal"
+        },
+        {
+          "value": "lease_agreement",
+          "label": "Договор лизинга",
           "context": "deal"
         },
         {
@@ -1631,8 +1636,8 @@
                 {
                   "id": "doc_rental_contract",
                   "type": "file",
-                  "label": "Договор лизинга",
-                  "document_type": "lease_agreement",
+                  "label": "Договор долгосрочной аренды",
+                  "document_type": "rental_contract",
                   "required": true
                 },
                 {
