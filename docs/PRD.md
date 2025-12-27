@@ -1,184 +1,220 @@
-# Fast Lease — Product Requirements Document
+# Product Requirements Document (PRD): Fast Lease Platform
 
-## 1. Обзор
-- **Формат продукта:** цифровая экосистема лизинга автомобилей класса премиум/люкс для рынка ОАЭ, покрывающая путь покупателя от подбора автомобиля до полного выкупа и экосистемные роли (покупатель, операционный менеджер, администратор, инвестор).
-- **Текущее состояние:** в репозитории доступны высокоуровневые интерактивные прототипы (`index.html`, `application/new/index.html`, `client/*`, `ops/*`, `admin/*`, `investor/*`), задающие целевую UX-архитектуру и ключевые блоки данных.
-- **Цель PRD:** зафиксировать единую картину бизнес-требований, границы MVP/GA и критерии успеха для разработки промышленной версии платформы.
+## 1. Executive Summary
 
-## 2. Контекст и проблема
-- Рынок премиального каршеринга/лизинга в Дубае требует прозрачности, быстрого онбординга и доказуемой надежности при взаимодействии с банками, страховыми и инвесторами.
-- Текущие процессы фрагментированы: заявки обрабатываются вручную, документация распределена между ERP (Odoo), скоринг-системами (BKI) и телематикой (Aurora), что ведет к задержкам и отсутствию единой «правды» по сделкам.
-- Инвесторы требуют near real-time отчетности по активам, а покупатели — самообслуживания (оплаты, сервис, поддержка) без участия менеджера.
+### Product Vision
+Fast Lease is a next-generation, automation-first car leasing platform designed to unify operations, finance, risk management, and client experience into a single, cohesive ecosystem. By leveraging AI-driven workflows, real-time telemetry, and seamless integrations, Fast Lease aims to eliminate manual friction in the vehicle lifecycle—from procurement and leasing to maintenance and resale—empowering stakeholders with transparent data and actionable insights.
 
-## 3. Продуктовое видение и цели
-### 3.1 Vision
-Сформировать единую цифровую платформу Fast Lease, где каждая роль получает персонализированную панель управления, автоматизированные процессы и прозрачную аналитику по всему жизненному циклу lease-to-own.
+### Goals & Objectives
+*   **Operational Efficiency**: Reduce deal processing time by 40% through automated workflows and document generation.
+*   **Financial Integrity**: Automate 90% of fine management (traffic/Salik) and payment collections to minimize revenue leakage.
+*   **Client Experience**: Provide a self-service mobile-first portal for clients to manage contracts, payments, and services, targeting a CSAT score > 4.5/5.
+*   **Risk Mitigation**: Proactive document expiry monitoring and geofencing alerts to ensure compliance and asset security.
+*   **Scalability**: Support multi-role access (Investors, Partners) with strict RBAC and data isolation.
 
-### 3.2 Основные цели (12 месяцев)
-1. Сократить цикл активации лизинга до < 24 часов за счет автоматизации скоринга и документооборота.
-2. Удерживать NPS покупателей ≥ 60, обеспечив полный self-service (платежи, сервис, поддержка).
-3. Достичь точности финансового отчета для инвесторов на уровне ±1% и публикации обновлений не реже 1 часа.
-4. Повысить операционную эффективность (операторы на сделку < 0.6 FTE) через единый таск-менеджмент и канбан пайплайн.
+### Target Audience
+*   **Primary (Internal)**: Operations Managers, Finance Team, Risk Managers, Legal, Tech Specialists.
+*   **Secondary (External)**: Clients (Lessees), Investors, Partners (Brokers/Sellers).
 
-### 3.3 Не цели (Out of Scope)
-- Маркетинговая автоматизация (email nurture, paid campaigns) поверх текущего лендинга.
-- Поддержка правовых юрисдикций вне ОАЭ.
-- Полная автоматизация бухгалтерского учета (фокус — интеграция с существующими ERP). 
+### Key Value Propositions
+*   **For Business**: End-to-end visibility of fleet assets and deal pipelines; automated compliance and billing.
+*   **For Clients**: Frictionless "manage-anywhere" experience for payments, docs, and support.
+*   **For Investors**: Real-time portfolio performance tracking and ROI transparency.
 
-### 3.4 KPI / Success Metrics
-- Конверсия «заявка → активный договор»: ≥ 35%.
-- Средняя скорость обработки заявления (submission → decision): < 4 часа.
-- Метрика «On-Time Activations» в операционном дашборде (`ops/dashboard/index.html`): ≥ 95%.
-- Квартальное количество эскалаций SLA в поддержке (`client/support/index.html`): ≤ 3% от тикетов.
-- Время публикации инвесторских отчетов (`investor/reports/index.html`): < 15 минут от закрытия периода.
+### High-Level Success Metrics (KPIs)
+*   **Automation %**: >80% of fine processing and invoice generation automated.
+*   **Process Time**: Deal closure time reduced from days to hours.
+*   **Adoption**: 100% of active clients using the Client Portal.
+*   **Collection Rate**: Reduction in overdue payments (DSO) by 25%.
 
-## 4. Персоны и боли
-### Покупатель (High Net Worth / Expats)
-- Ожидает premium-уровень сервиса, прозрачные платежи, цифровые контракты, подтверждение состояния авто (`client/my-vehicle/index.html`).
-- Боли: длительный сбор документов, неудобные оплаты, отсутствие статуса по сервису.
+---
 
-### Операционный менеджер
-- Руководит пайплайном сделок, задачами и покупателями (`ops/deals/index.html`, `ops/tasks/index.html`, `ops/clients/index.html`).
-- Боли: дублирование работы между ERP/таблицами, отсутствие алертов по SLA, сложность в управлении документами.
+## 2. Product Scope, Features & Modules
 
-### Администратор / CTO
-- Управляет процессами, ролями, интеграциями (`admin/bpm/index.html`, `admin/users/index.html`, `admin/integrations/index.html`).
-- Боли: сложная настройка процессов, непрозрачность статусов интеграций, отсутствие versioning для BPM.
+### Features List
 
-### Инвестор (VC, частный фонд)
-- Следит за доходностью и рисками портфеля (`investor/dashboard/index.html`, `investor/portfolio/index.html`, `investor/assets/asset-001/index.html`).
-- Боли: задержки отчетов, отсутствие единого доступа к платежам, невозможность оперативно увидеть состояние актива.
+| Feature | Module | Tags | Priority | Success Metrics | Primary Persona | Dependencies |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Unified Auth & RBAC** | Auth | [I], [S] | P1 | 100% secure role segregation | All | Supabase Auth |
+| **Deal Workflow Engine** | Operations | [A], [B] | P1 | Zero manual state errors | Ops Manager | BPM Service |
+| **Client Self-Service Hub** | Client Portal | [I], [UX] | P1 | >50% reduction in support tickets | Client | Supabase Realtime |
+| **Automated Fines Mgmt** | Finance | [A], [I] | P1 | <24h fine rebilling latency | Finance | RTA/Salik Mock/API |
+| **Smart Collections** | Finance | [A], [AI] | P2 | 15% drop in late payments | Finance | Messaging Provider |
+| **Vehicle Telematics** | Fleet | [I], [IoT] | P2 | 100% mileage accuracy | Tech Specialist | IoT Provider |
+| **Doc Expiry Watchdog** | Compliance | [A] | P2 | 0 expired active driver docs | Legal/Risk | Storage/OCR |
+| **Investor Dashboard** | Investor | [B] | P3 | Real-time asset visibility | Investor | Accounting Data |
 
-## 5. Ключевые пользовательские сценарии
-1. **Покупатель**: поиск автомобиля → регистрация (`register/index.html`) → подача заявки (`application/new/index.html`) → загрузка документов → отслеживание статуса (`client/dashboard/index.html`) → e-sign контракта → управление платежами/сервисом (`client/invoices/index.html`, `client/my-vehicle/index.html`) → запрос поддержки.
-2. **Операционный менеджер**: принимает заявку → ведет сделку в канбане (`ops/deals/index.html`) → распределяет задачи (`ops/tasks/index.html`) → взаимодействует с покупателем/интеграциями → закрывает сделку → контролирует SLA на дашборде.
-3. **Администратор**: проектирует BPMN-процессы (`admin/bpm/index.html`), назначает роли и доступы (`admin/users/index.html`), следит за интеграциями с Odoo, BKI, телематикой (`admin/integrations/index.html`).
-4. **Инвестор**: просматривает агрегированные KPI (`investor/dashboard/index.html`), фильтрует портфель (`investor/portfolio/index.html`), проваливается в актив с детальной финансовой и технической информацией (`investor/assets/asset-001/index.html`), формирует отчет (`investor/reports/index.html`).
+**Tags**: [B] Backend, [I] Integration, [A] Automation, [AI] Artificial Intelligence, [S] Security, [UX] User Experience.
 
-## 6. Область охвата и функциональные требования
-Каждый подпункт содержит **Must** (M), **Should** (S), **Could** (C).
+### User Personas
+*   **Ops Manager**: Orchestrates the daily fleet movement and deal closing. Needs speed and clarity.
+*   **Client**: Rents the car. Wants zero hassle, transparency, and easy payments.
+*   **Finance Officer**: Manages cash flow. Needs accurate automated billing and collection tools.
+*   **Risk Manager**: Protects assets. Needs early warnings on credit risk and asset location.
 
-### 6.1 Маркетинговый сайт & каталог
-- (M) Адаптивный каталог с фильтрами и ценами (`index.html`), обновление цен через `assets/pricing.json`.
-- (M) CTA на регистрацию/логин (`login/index.html`, `register/index.html`).
-- (S) SEO-оптимизация: метатеги, structured data для моделей.
-- (C) Доступность реального видео-тестдрайва и отзывов (`cars/*/index.html`).
+### Traceability Matrix
+*   **Goal: Operational Efficiency** ↔ **Module: Operations (Deal Workflow)** ↔ **KPI: Process Time**
+*   **Goal: Financial Integrity** ↔ **Module: Finance (Fines/Collections)** ↔ **KPI: Collection Rate**
+*   **Goal: Client Experience** ↔ **Module: Client Portal** ↔ **KPI: Adoption/CSAT**
 
-### 6.2 Поток заявки и онбординг
-- (M) Многошаговый мастер с динамическими требованиями документов (`application/new/index.html`).
-- (M) Проверка качества файлов (форматы, размер, completeness).
-- (M) Интеграция с скорингом (BKI API) и ERP (Odoo) для создания сделки.
-- (S) Предзаполнение данных при повторной заявке (через профиль `profile/index.html`).
-- (C) Поддержка co-signer / корпоративных покупателей.
+---
 
-### 6.3 Покупательский кабинет
-- **Дашборд (`client/dashboard/index.html`):**
-  - (M) Таймлайн статуса сделки с AL/alerts (например, требование регистрации авто).
-  - (M) Компонент сделки + KPI (ежемесячный платеж, ближайший платеж, остаток).
-  - (M) Нотификации и напоминания; push/e-mail триггеры.
-- **Платежи (`client/invoices/index.html`):**
-  - (M) График платежей + история, статусы «Paid / Pending / Overdue».
-  - (M) Поддержка нескольких способов оплаты (банковская карта, прямой дебет).
-  - (S) Выгрузка SOA (PDF) и квитанций.
-- **Автомобиль (`client/my-vehicle/index.html`):**
-  - (M) Статусы сервисов, подтверждение обслуживания через загрузку 6 фото (компонент `service-schedule-component.js`).
-  - (M) Спецификация автомобиля, страхование, VIN.
-  - (S) Интеграция с телематикой (пробег, предупреждения).
-- **Реферальная программа (`client/referrals/index.html`):**
-  - (S) Генерация персональных ссылок, отслеживание наград.
-- **Поддержка (`client/support/index.html`):**
-  - (M) Создание тикета со SLA по типу заявки.
-  - (S) Встроенный чат или интеграция с helpdesk.
+## 3. Module Specifications
 
-### 6.4 Операционная платформа
-- **Дашборд (`ops/dashboard/index.html`):**
-  - (M) KPI по on-time activation, cycle time, automation coverage, backlog.
-  - (S) Настраиваемые виджеты и фильтры по периода.
-- **Задачи (`ops/tasks/index.html`):**
-  - (M) Канбан-доска с drag-n-drop (SortableJS), статусы `new/in-progress/done/cancelled`.
-  - (M) Создание/назначение задач, модалка создания задания.
-  - (S) Автоматические задачи от систем (AI, ERP) с маркерами источника.
-- **Сделки (`ops/deals/index.html`):**
-  - (M) Канбан стадий (Applications → Underwriting → Handover → Active).
-  - (M) Вариант табличного вида, поиск/фильтры, создание сделки.
-  - (S) Быстрые действия: запрос документов, запуск BPM шага.
-  - (M) Выпадающие справочники «Покупатель» и «Автомобиль» в модалке создания сделки ограничиваются по высоте (≥320px) и поддерживают прокрутку для длинных списков, чтобы не перекрывать диалог.
-  - (M) Нумерация сделок строго по шаблону `LTR-DDMMYY-XXXX`, где дата = фактическая дата создания (для исторических данных — `contract_start_date`), а `XXXX` — последние четыре символа VIN с паддингом нулями. Значение должно быть уникальным; при конфликте добавляем суффикс `-02`, `-03`, ... без изменения базового шаблона.
-- **Покупатели (`ops/clients/index.html`):**
-  - (M) Список/карточки покупателей, фильтры, создание покупателя.
-  - (S) Индикаторы overdue и риск-профиля.
-- **Автопарк (`ops/cars/index.html`):**
-  - (M) Каталог автомобилей, статусы поставки, интеграция с дилерами.
-  - (C) Планирование сервисов и запасных деталей.
+### 3.1. Authentication & Portals
+*   **Name**: Multi-Portal Auth System
+*   **Goal**: Secure, routed access for diverse personas using a single credential system.
+*   **Description**: Centralized login handling role resolution, portal redirection (App, Client, Investor), and session management.
+*   **User Stories**:
+    *   As a User, I want to log in once and be directed to my specific dashboard.
+    *   As an Admin, I want to create internal users and assign roles without manual DB entry.
+*   **Technical Constraints**: Supabase Auth, RBAC middleware, Portal detection logic.
+*   **Priority**: P1
 
-### 6.5 Инвесторский модуль
-- (M) KPI панели (`investor/dashboard/index.html`): AUM, Yield, Overdue.
-- (M) Портфель (`investor/portfolio/index.html`): фильтры, IRR, payout, drill-down.
-- (M) Детализация актива (`investor/assets/asset-001/index.html`): финансовый график, сервисная история, риск-профиль.
-- (S) Отчеты (`investor/reports/index.html`): выгрузка PDF/Excel, периодические подписки.
-- (C) Симулятор доходности по новым продуктам.
+### 3.2. Operations Dashboard & Deal Workflow
+*   **Name**: Ops Command Center
+*   **Goal**: Streamline deal lifecycle from application to handover.
+*   **Description**: Kanban-style deal board, task management, and document checklist enforcement.
+*   **UX Flow**: Login → Ops Dashboard → Deals Board → Click Deal → View Tasks/Docs → Approve/Reject.
+*   **Automation**: Auto-transition states based on task completion; webhook triggers for external events (e.g., e-sign).
+*   **Priority**: P1
 
-### 6.6 Администрирование и безопасность
-- (M) Управление BPMN-процессами (версии, статусы) — `admin/bpm/index.html`.
-- (M) Управление пользователями/ролями (`admin/users/index.html`), RBAC, MFA.
-- (M) Мониторинг интеграций (`admin/integrations/index.html`): статус, latency, лог запросов.
-- (S) Управление конфигурацией уведомлений и триггеров.
+### 3.3. Client Personal Dashboard
+*   **Name**: Client Hub
+*   **Goal**: Empower clients to manage their lease independently.
+*   **Description**: Mobile-responsive dashboard for viewing car details, paying invoices, uploading docs, and requesting service.
+*   **User Stories**:
+    *   As a Client, I want to see my next payment date and pay via Apple Pay.
+    *   As a Client, I want to download my contract and insurance certificate.
+*   **Acceptance Criteria**:
+    *   Client sees only their active vehicles/deals.
+    *   Payment status updates in real-time.
+*   **Priority**: P1
 
-### 6.7 Общие сервисы
-- (M) Единая дизайн-система (shadcn/ui, Tailwind, Geist) — соответствие прототипам `assets/style.css`.
-- (M) Локализация: английский (baseline) + поддержка арабского в roadmap.
-- (M) Логирование/аудит действий (особенно для финансовых операций).
-- (S) Mobile-first навигация (sticky bottom-nav) как в `client/*` и `investor/*`.
-- (S) Offline-ready (PWA) для покупателей (доступ к платежным данным).
+### 3.4. Automated Fines & Tolls
+*   **Name**: Traffic Fine Manager
+*   **Goal**: Automate the retrieval, payment, and rebilling of fines.
+*   **Description**: Cron jobs fetch fines (simulated or API), match to vehicle/client, pay provider, and invoice client + admin fee.
+*   **Integration**: RTA/Police/Salik (Mock/API).
+*   **Automation**: Daily checks; Auto-invoice generation; Push notification to client.
+*   **Priority**: P1
 
-## 7. Данные, интеграции и архитектура
-- **ERP (Odoo):** единственный источник для договоров, платежей, остатков; двусторонняя синхронизация.
-- **Скоринг (BKI):** REST API, SLA 2 мин, требуется ретрай и статус «Warning» как в `admin/integrations/index.html`.
-- **Telematics (Aurora):** данные по маршрутам/состоянию, сверка пробега с сервисными событиями.
-- **Документооборот:** хранение в защищенном объектном хранилище (S3-совместимое, регион ОАЭ), автоматические проверки качества.
-- **Уведомления:** интеграция с SMS/Email провайдерами, будущий push через мобильное приложение.
-- **Аналитика:** централизованное хранилище (Snowflake/BigQuery), сбор событий с веб-покупателя.
+### 3.5. Smart Collections
+*   **Name**: Intelligent Dunning System
+*   **Goal**: Recover payments efficiently.
+*   **Description**: Multi-channel reminder system (Email, SMS, WhatsApp) with escalating urgency based on due date.
+*   **Logic**: T-3 (Friendly), T+1 (Urgent), T+5 (Alert Ops).
+*   **Priority**: P2
 
-## 8. Нефункциональные требования
-- **Доступность:** WCAG 2.1 AA, фокус-стили применяются (`assets/shared.js:applyGlobalAccessibilityAndUI`).
-- **Производительность:** TTFB < 500 мс для authenticated SPA, LCP < 2.5s на 4G.
-- **Надежность:** 99.5% uptime для client/ops, 99% для инвесторских API.
-- **Безопасность:** SOC2/GDPR-aligned процессы, шифрование PII (at rest + in transit), журнал аудита, MFA.
-- **Соответствие:** Central Bank UAE, юридическое хранение контрактов (e-signature, timestamping).
+### 3.6. Document Expiry Watchdog
+*   **Name**: Compliance Sentinel
+*   **Goal**: Prevent legal risks from expired documents.
+*   **Description**: Nightly scan of `expiry_date` on all active profiles. Triggers alerts/tasks if <30 days.
+*   **Priority**: P2
 
-## 9. План релизов
-1. **MVP (3 месяца):** публичный каталог, поток заявки, операционный канбан, базовый покупательский дашборд с платежами, интеграция с Odoo/BKI.
-2. **Beta (6 месяцев):** сервисы покупателей (vehicle, support, referrals), автоматизация задач, мониторинг интеграций, базовые инвесторские отчеты.
-3. **GA (9–12 месяцев):** полный инвесторский модуль, конфигурируемые BPMN, телематика, локализация, SLA алерты, мобильный PWA.
-4. **Post-GA:** AI-аналитика, прогнозирование остаточной стоимости, открытый API для партнеров.
+---
 
-## 10. Риски и смягчения
-- **Интеграционные зависимости:** нестабильность BKI → буферы, очереди, graceful degradation (статус "Warning").
-- **Данные покупателей:** высокий объём документов → инструменты проверки качества и автоматическое архивирование.
-- **Комплаенс:** e-signature и KYC → выбрать сертифицированных провайдеров (например, DocuSign UAE).
-- **Принятие инвесторами:** необходимы гарантии точности данных → двойная сверка с ERP и телематикой.
-- **Сложность UX:** multi-role SPA → провести user testing на каждом прототипе, обеспечить responsive UX (как в существующих макетах).
+## 4. Sitemap & Interaction Flows
 
-## 11. Открытые вопросы
-1. Требуется ли поддержка корпоративных/флотных покупателей в первой волне?
-2. Какой юридический механизм e-signature (UAE Pass, DocuSign)?
-3. Нужны ли валютные сценарии помимо AED (USD, EUR)?
-4. Интеграция с банковским авто-дебетом — собственный шлюз или провайдер (Network International)?
-5. Требования к хранению телематических данных (длительность, анонимизация).
+### App Directory Structure
+*   `app/(auth)`: `/login`, `/register`, `/forgot-password` (Shared Auth)
+*   `app/(dashboard)/admin`: User mgmt, BPM config, System logs.
+*   `app/(dashboard)/ops`: Deals, Cars, Clients, Tasks (Main Ops View).
+*   `app/(dashboard)/client`: Dashboard, Payments, Documents, Support (Client View).
+*   `app/(dashboard)/finance`: Invoices, Receivables, Reports.
+*   `app/(dashboard)/investor`: Portfolio, ROI Reports.
+*   `app/api`:
+    *   `/webhooks`: Handlers for Banks, E-sign, Telematics.
+    *   `/cron`: Fine checks, Doc expiry, Recurring invoices.
 
-## 12. Приложения
-- **Ссылки на прототипы:**
-  - Публичные страницы: `index.html`, `cars/*`.
-  - Онбординг: `register/index.html`, `application/new/index.html`, `application/submitted/index.html`.
-  - Client SPA: `client/dashboard/index.html`, `client/my-vehicle/index.html`, `client/invoices/index.html`, `client/support/index.html`.
-  - Operations: `ops/dashboard/index.html`, `ops/deals/index.html`, `ops/tasks/index.html`, `ops/clients/index.html`, `ops/cars/index.html`.
-  - Admin: `admin/bpm/index.html`, `admin/users/index.html`, `admin/integrations/index.html`.
-  - Investor: `investor/dashboard/index.html`, `investor/portfolio/index.html`, `investor/assets/asset-001/index.html`, `investor/reports/index.html`.
-- **Глоссарий:**
-  - **AUM** — Assets Under Management.
-  - **SLA** — Service Level Agreement.
-  - **BPMN** — Business Process Model and Notation.
-  - **KYC** — Know Your Customer.
-  - **PWA** — Progressive Web App.
-- **Дополнительные материалы:**
-  - [Предложения по расширению функционала](./feature_proposals.md)
+### Core Flows
+1.  **Deal Creation**: Ops/Sales creates Deal → Uploads Client Docs → Risk Review → Finance Approval → Contract Gen → E-Sign → Handover.
+2.  **Fine Processing**: Cron Job → Fetch Fines → Match Vehicle → Create Expense & Invoice → Notify Client → Charge Client.
+
+---
+
+## 5. User Experience & Design Requirements
+
+### Design Philosophy
+*   **Aesthetics**: Minimalist, professional, data-dense but legible. "Vercel-like" aesthetic.
+*   **System**: Shadcn/ui + Tailwind CSS.
+*   **Theme**: Light/Dark mode support (System default).
+
+### Core Components
+*   **Navigation**: Collapsible sidebar for desktop, bottom/burger menu for mobile.
+*   **Data Display**: Sortable/filterable DataTables (TanStack Table) for fleets/invoices.
+*   **Boards**: Kanban for Deal stages.
+*   **Forms**: Multi-step wizards with Zod validation.
+
+### Accessibility
+*   WCAG 2.1 AA compliance.
+*   Keyboard navigation support for all high-frequency operational tasks.
+
+---
+
+## 6. Technical Specifications
+
+### System Architecture
+*   **Frontend**: Next.js 14+ (App Router), React Server Components.
+*   **Backend**: Serverless Actions, Supabase (PostgreSQL, Auth, Storage, Edge Functions).
+*   **State Mgmt**: React Query (server state), Zustand (client UI state).
+
+### Data Model (ERD Summary)
+*   `profiles`: Users (linked to `auth.users`), roles, status.
+*   `vehicles`: Fleet assets, specs, status, license plate.
+*   `deals`: Leasing contracts, linking Client + Vehicle.
+*   `tasks`: Workflow units (manual or automated).
+*   `invoices`: Financial records (payable/receivable).
+*   `documents`: Files linked to entities (expiry, type).
+
+### Integrations [I]
+*   **Supabase**: Auth, DB, Realtime, Storage (ID: `/supabase/supabase`).
+*   **Payment Gateway**: Stripe or similar (ID: `/stripe/stripe-js` / `/stripe/react-stripe-js`).
+*   **Messaging**: Twilio/SendGrid (for notifications).
+*   **Map/Location**: Mapbox or Google Maps (for Telematics viz).
+
+### Automation [A] & AI [AI]
+*   **Workflow**: Custom State Machine triggered by Task completion or Webhooks.
+*   **Cron**: Supabase Edge Functions (pg_cron or scheduled functions) for periodic tasks (Fines, Expiry).
+*   **AI**: (Future) Predictive maintenance models, Risk scoring based on profile data.
+
+---
+
+## 7. Delivery & Operations
+
+### Implementation Roadmap
+*   **Phase 1 (Core)**: Auth, Ops Dashboard, Deal Workflow, Basic Vehicle/Client Mgmt.
+*   **Phase 2 (Finance/Client)**: Client Portal, Billing/Invoicing, Fine Automation.
+*   **Phase 3 (Advanced)**: Investor Portal, Telematics, Smart Collections, AI Risk.
+
+### Testing Strategy
+*   **Unit**: Vitest for utility logic and state machines.
+*   **Integration**: API route testing (Supabase interactions).
+*   **E2E**: Playwright for critical flows (Login → Create Deal → Close).
+
+### Risks
+*   **Data Privacy**: Handling sensitive client docs (Passport/ID). Mitigation: RLS policies + Signed URLs.
+*   **Integration Failures**: API downtime (RTA/Bank). Mitigation: Queue-based retries + Dead Letter Queues.
+
+---
+
+## 8. Appendices
+
+### Reference Docs (Context7)
+
+| Library ID | Source | Relevance | Version |
+| :--- | :--- | :--- | :--- |
+| `/vercel/next.js` | https://nextjs.org/docs | Framework Core | 14.x (App Router) |
+| `/supabase/supabase` | https://supabase.com/docs | Backend/Auth/DB | v2 |
+| `/tailwindlabs/tailwindcss` | https://tailwindcss.com/docs | Styling | v3.4 |
+| `/shadcn/ui` | https://ui.shadcn.com | UI Components | Latest |
+| `/tanstack/table` | https://tanstack.com/table | Data Grids | v8 |
+| `/colinhacks/zod` | https://zod.dev | Validation | v3 |
+| `/lucide-icons/lucide` | https://lucide.dev | Iconography | Latest |
+
+### Glossary
+*   **RBAC**: Role-Based Access Control.
+*   **BPM**: Business Process Management.
+*   **RTA**: Roads and Transport Authority (Dubai).
+*   **Salik**: Dubai Road Toll System.
+*   **NOC**: No Objection Certificate.
