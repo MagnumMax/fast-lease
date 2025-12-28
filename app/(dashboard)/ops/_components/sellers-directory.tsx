@@ -356,121 +356,131 @@ export function OpsSellersDirectory({ initialSellers }: OpsSellersDirectoryProps
         action={createDialog}
       />
 
-      <Card className="border border-border/70 bg-card/70 backdrop-blur">
+      <Card className="border border-border/80 bg-card/80 backdrop-blur">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[200px]">Полное имя</TableHead>
-                <TableHead className="min-w-[120px]">Статус</TableHead>
-                <TableHead className="min-w-[200px]">Контакты</TableHead>
-                <TableHead className="min-w-[240px]">Сделки</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentSellers.length ? (
-                currentSellers.map((seller) => (
-                  <TableRow key={seller.id} className="align-top">
-                    <TableCell className="max-w-[240px]">
-                      <Link
-                        href={seller.detailHref}
-                        className="text-sm font-semibold text-foreground underline-offset-2 hover:underline"
-                      >
-                        {seller.name}
-                      </Link>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[11px] uppercase">
-                          {resolveSellerTypeLabel(seller.entityType)}
-                        </Badge>
-                        {seller.segment ? (
-                          <Badge variant="outline" className="rounded-lg text-xs">
-                            {seller.segment}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveSellerStatusToneClass(
-                          seller.status,
-                        )}`}
-                      >
-                        {seller.statusLabel}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span>{seller.email || "—"}</span>
-                      </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{seller.phone}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {seller.deals && seller.deals.length ? (
-                        <>
-                          <div className="flex flex-col gap-2">
-                            {(() => {
-                              const lastDeal = seller.deals[seller.deals.length - 1];
-                              return (
-                                <div key={lastDeal.id} className="space-y-1">
-                                  <Link
-                                    href={lastDeal.href}
-                                    className="flex items-center gap-2 font-medium text-foreground hover:underline"
-                                  >
-                                    <CarFront className="h-4 w-4 text-muted-foreground" />
-                                    <span>{lastDeal.vehicle}</span>
-                                  </Link>
-                                  <div className="text-xs text-muted-foreground">
-                                    <span className="font-semibold">{lastDeal.number}</span>
-                                    {lastDeal.vin ? <span className="ml-2">VIN {lastDeal.vin}</span> : null}
-                                    <span className="ml-2">{lastDeal.amount}</span>
-                                    <span className="ml-2">{lastDeal.since}</span>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          {seller.deals.length > 1 ? (
-                            <Link
-                              href={`${seller.detailHref}#seller-deals`}
-                              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                              + ещё {seller.deals.length - 1}
-                            </Link>
-                          ) : null}
-                        </>
-                      ) : seller.leasing && seller.leasing.dealId ? (
-                        <div className="space-y-1">
+          <div className="rounded-md border border-border overflow-x-auto">
+            <Table className="min-w-[1000px]">
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-[300px]">Имя / Компания</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Телефон</TableHead>
+                  <TableHead>Лизинг</TableHead>
+                  <TableHead>Теги</TableHead>
+                  <TableHead className="text-right">Статус</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentSellers.length ? (
+                  currentSellers.map((seller) => {
+                    const statusTone = resolveSellerStatusToneClass(seller.status);
+
+                    return (
+                      <TableRow key={seller.id} className="group">
+                        <TableCell className="font-medium">
                           <Link
-                            href={`/ops/deals/${seller.leasing.dealId}`}
-                            className="flex items-center gap-2 font-medium text-foreground hover:underline"
+                            href={seller.detailHref}
+                            className="flex items-center gap-2 text-foreground transition-colors hover:text-primary"
                           >
-                            <CarFront className="h-4 w-4 text-muted-foreground" />
-                            <span>{seller.leasing.vehicle}</span>
+                            <span>{seller.name}</span>
                           </Link>
-                          {seller.leasing.dealNumber ? (
-                            <p className="text-xs text-muted-foreground">{seller.leasing.dealNumber}</p>
-                          ) : null}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
+                          {seller.entityType === "company" && (
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              Юридическое лицо
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {seller.email ? (
+                            <a
+                              href={`mailto:${seller.email}`}
+                              className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                              {seller.email}
+                            </a>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {seller.phone ? (
+                            <a
+                              href={`tel:${seller.phone}`}
+                              className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <Phone className="h-3.5 w-3.5" />
+                              {seller.phone}
+                            </a>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {seller.leasing ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5 text-sm font-medium">
+                                <CarFront className="h-3.5 w-3.5 text-muted-foreground" />
+                                {seller.leasing.vehicle}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                VIN: {seller.leasing.vin}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {seller.tags.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {seller.tags.map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="rounded-md px-1.5 py-0 text-[10px] font-medium text-muted-foreground"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge
+                            variant="outline"
+                            className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusTone}`}
+                          >
+                            {seller.status || "Unknown"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <p>Продавцы не найдены</p>
+                        <Button
+                          variant="ghost"
+                          className="text-primary hover:text-primary/80"
+                          onClick={() => {
+                            setFormState(createDefaultSellerFormState());
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          Создать первого продавца
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                    Подходящих продавцов не найдено. Измените фильтры или создайте нового продавца.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
         {pageCount > 1 ? (
           <CardFooter className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">

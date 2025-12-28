@@ -112,11 +112,11 @@ function DashboardHeader({
 
       <div className="flex flex-1 items-center justify-center px-2 md:px-8">
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground md:top-2.5 md:h-4 md:w-4 top-3 h-5 w-5" />
           <Input
             type="search"
             placeholder="Поиск..."
-            className="h-9 w-full bg-background pl-8 md:w-[300px] lg:w-[400px]"
+            className="h-10 w-full bg-background pl-10 md:h-9 md:pl-8 md:w-[300px] lg:w-[400px]"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -125,8 +125,8 @@ function DashboardHeader({
 
       <div className="flex items-center gap-2">
         {headerActions}
-        <Button variant="ghost" size="icon" className="text-muted-foreground">
-          <Bell className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="text-muted-foreground h-10 w-10 md:h-9 md:w-9">
+          <Bell className="h-6 w-6 md:h-5 md:w-5" />
           <span className="sr-only">Уведомления</span>
         </Button>
       </div>
@@ -262,17 +262,17 @@ export function DashboardLayout({
         {sidebarOpen && (
           <div className="fixed inset-0 z-50 lg:hidden">
             <div 
-              className="fixed inset-0 bg-black/80" 
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm" 
               onClick={() => setSidebarOpen(false)}
             />
-            <div className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-background p-4 shadow-lg">
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-lg font-bold">{brand.title}</span>
-                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)}>
-                  <PanelLeftClose className="h-5 w-5" />
+            <div className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-background p-4 shadow-lg flex flex-col pt-safe-top pb-safe-bottom pl-safe-left">
+              <div className="mb-6 flex items-center justify-between">
+                <span className="text-xl font-bold tracking-tight">{brand.title}</span>
+                <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-10 w-10">
+                  <PanelLeftClose className="h-6 w-6" />
                 </Button>
               </div>
-              <nav className="flex flex-col gap-2">
+              <nav className="flex-1 flex flex-col gap-2 overflow-y-auto">
                 {navItems.map((item) => {
                   const Icon = resolveNavIcon(item.icon);
                   const active = isActive(item.href);
@@ -281,14 +281,14 @@ export function DashboardLayout({
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors",
                         active
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
                       )}
                       onClick={() => setSidebarOpen(false)}
                     >
-                      <Icon className="h-5 w-5" />
+                      <Icon className="h-6 w-6" />
                       {item.label}
                     </Link>
                   );
@@ -323,7 +323,7 @@ export function DashboardLayout({
         <main className={cn(
           "flex-1 transition-all duration-300 ease-in-out p-4 md:p-6 lg:ml-16",
         )}>
-           <div className="mx-auto max-w-7xl">
+           <div className="mx-auto max-w-7xl space-y-4 md:space-y-6">
             <ReadOnlyBanner />
             {children}
            </div>

@@ -356,121 +356,131 @@ export function OpsBrokersDirectory({ initialBrokers }: OpsBrokersDirectoryProps
         action={createDialog}
       />
 
-      <Card className="border border-border/70 bg-card/70 backdrop-blur">
+      <Card className="border border-border/80 bg-card/80 backdrop-blur">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[200px]">Полное имя</TableHead>
-                <TableHead className="min-w-[120px]">Статус</TableHead>
-                <TableHead className="min-w-[200px]">Контакты</TableHead>
-                <TableHead className="min-w-[240px]">Сделки</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentBrokers.length ? (
-                currentBrokers.map((broker) => (
-                  <TableRow key={broker.id} className="align-top">
-                    <TableCell className="max-w-[240px]">
-                      <Link
-                        href={broker.detailHref}
-                        className="text-sm font-semibold text-foreground underline-offset-2 hover:underline"
-                      >
-                        {broker.name}
-                      </Link>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[11px] uppercase">
-                          {resolveBrokerTypeLabel(broker.entityType)}
-                        </Badge>
-                        {broker.segment ? (
-                          <Badge variant="outline" className="rounded-lg text-xs">
-                            {broker.segment}
-                          </Badge>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${resolveBrokerStatusToneClass(
-                          broker.status,
-                        )}`}
-                      >
-                        {broker.statusLabel}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span>{broker.email || "—"}</span>
-                      </div>
-                      <div className="mt-1 flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{broker.phone}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {broker.deals && broker.deals.length ? (
-                        <>
-                          <div className="flex flex-col gap-2">
-                            {(() => {
-                              const lastDeal = broker.deals[broker.deals.length - 1];
-                              return (
-                                <div key={lastDeal.id} className="space-y-1">
-                                  <Link
-                                    href={lastDeal.href}
-                                    className="flex items-center gap-2 font-medium text-foreground hover:underline"
-                                  >
-                                    <CarFront className="h-4 w-4 text-muted-foreground" />
-                                    <span>{lastDeal.vehicle}</span>
-                                  </Link>
-                                  <div className="text-xs text-muted-foreground">
-                                    <span className="font-semibold">{lastDeal.number}</span>
-                                    {lastDeal.vin ? <span className="ml-2">VIN {lastDeal.vin}</span> : null}
-                                    <span className="ml-2">{lastDeal.amount}</span>
-                                    <span className="ml-2">{lastDeal.since}</span>
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                          {broker.deals.length > 1 ? (
-                            <Link
-                              href={`${broker.detailHref}#broker-deals`}
-                              className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                            >
-                              + ещё {broker.deals.length - 1}
-                            </Link>
-                          ) : null}
-                        </>
-                      ) : broker.leasing && broker.leasing.dealId ? (
-                        <div className="space-y-1">
+          <div className="rounded-md border border-border overflow-x-auto">
+            <Table className="min-w-[1000px]">
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-[300px]">Имя / Компания</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Телефон</TableHead>
+                  <TableHead>Лизинг</TableHead>
+                  <TableHead>Теги</TableHead>
+                  <TableHead className="text-right">Статус</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {currentBrokers.length ? (
+                  currentBrokers.map((broker) => {
+                    const statusTone = resolveBrokerStatusToneClass(broker.status);
+
+                    return (
+                      <TableRow key={broker.id} className="group">
+                        <TableCell className="font-medium">
                           <Link
-                            href={`/ops/deals/${broker.leasing.dealId}`}
-                            className="flex items-center gap-2 font-medium text-foreground hover:underline"
+                            href={broker.detailHref}
+                            className="flex items-center gap-2 text-foreground transition-colors hover:text-primary"
                           >
-                            <CarFront className="h-4 w-4 text-muted-foreground" />
-                            <span>{broker.leasing.vehicle}</span>
+                            <span>{broker.name}</span>
                           </Link>
-                          {broker.leasing.dealNumber ? (
-                            <p className="text-xs text-muted-foreground">{broker.leasing.dealNumber}</p>
-                          ) : null}
-                        </div>
-                      ) : (
-                        "—"
-                      )}
+                          {broker.entityType === "company" && (
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              Юридическое лицо
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {broker.email ? (
+                            <a
+                              href={`mailto:${broker.email}`}
+                              className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                              {broker.email}
+                            </a>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {broker.phone ? (
+                            <a
+                              href={`tel:${broker.phone}`}
+                              className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                              <Phone className="h-3.5 w-3.5" />
+                              {broker.phone}
+                            </a>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {broker.leasing ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1.5 text-sm font-medium">
+                                <CarFront className="h-3.5 w-3.5 text-muted-foreground" />
+                                {broker.leasing.vehicle}
+                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                VIN: {broker.leasing.vin}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {broker.tags.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {broker.tags.map((tag) => (
+                                <Badge
+                                  key={tag}
+                                  variant="secondary"
+                                  className="rounded-md px-1.5 py-0 text-[10px] font-medium text-muted-foreground"
+                                >
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge
+                            variant="outline"
+                            className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusTone}`}
+                          >
+                            {broker.status || "Unknown"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-32 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <p>Брокеры не найдены</p>
+                        <Button
+                          variant="ghost"
+                          className="text-primary hover:text-primary/80"
+                          onClick={() => {
+                            setFormState(createDefaultBrokerFormState());
+                            setIsModalOpen(true);
+                          }}
+                        >
+                          Создать первого брокера
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-10 text-center text-sm text-muted-foreground">
-                    Подходящих брокеров не найдено. Измените фильтры или создайте нового брокера.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
         {pageCount > 1 ? (
           <CardFooter className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">

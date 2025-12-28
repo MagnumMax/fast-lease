@@ -1,5 +1,5 @@
 import "./globals.css";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -22,6 +22,18 @@ const geistSans = localFont({
   display: "swap",
   fallback: ["system-ui", "sans-serif"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "white" },
+    { media: "(prefers-color-scheme: dark)", color: "black" },
+  ],
+};
 
 export const metadata: Metadata = {
   title: "Fast Lease Platform",

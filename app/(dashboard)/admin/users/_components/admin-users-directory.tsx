@@ -1716,17 +1716,18 @@ export function AdminUsersDirectory({
           </CardContent>
         ) : null}
         <CardContent className="space-y-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <Checkbox
-                    checked={bulkDeleteState.selectedUserIds.size === paginatedUsers.length && paginatedUsers.length > 0}
-                    onCheckedChange={toggleSelectAll}
-                    disabled={actorIsReadOnly || paginatedUsers.length === 0}
-                    title={actorIsReadOnly ? readOnlyTooltip : undefined}
-                  />
-                </TableHead>
+          <div className="rounded-md border border-border overflow-x-auto">
+            <Table className="min-w-[1000px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={bulkDeleteState.selectedUserIds.size === paginatedUsers.length && paginatedUsers.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      disabled={actorIsReadOnly || paginatedUsers.length === 0}
+                      title={actorIsReadOnly ? readOnlyTooltip : undefined}
+                    />
+                  </TableHead>
                 <TableHead>
                   <button
                     type="button"
@@ -1922,6 +1923,7 @@ export function AdminUsersDirectory({
               ) : null}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
         {showPaginationFooter ? (
           <CardContent className="border-t border-border/60 pt-4">
@@ -2097,7 +2099,7 @@ export function AdminUsersDirectory({
                 </div>
                 <div className="space-y-3">
                   <Label>Roles</Label>
-                  <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="grid gap-2 grid-cols-1 md:grid-cols-2">
                     {AVAILABLE_ROLES.map((role) => {
                       const selection = manageState.roles.get(role);
                       const checked = selection?.selected ?? false;

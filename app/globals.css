@@ -163,6 +163,13 @@
     @apply min-h-screen bg-background font-sans antialiased text-foreground;
     background-image: var(--linear-surface, none);
   }
+  
+  /* Prevent auto-zoom on mobile */
+  @media screen and (max-width: 768px) {
+    input, textarea, select {
+      font-size: 16px !important;
+    }
+  }
 
   ::selection {
     background: rgba(37, 99, 235, 0.35);

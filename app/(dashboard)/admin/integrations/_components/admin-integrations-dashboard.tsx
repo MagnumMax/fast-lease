@@ -253,40 +253,42 @@ export function AdminIntegrationsDashboard({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Log ID</TableHead>
-                <TableHead>System</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((log) => {
-                const isWarning = log.status.includes("429") || log.status.includes("504");
-                const displayBadge: "success" | "warning" | "danger" = log.status.startsWith("2")
-                  ? "success"
-                  : isWarning
-                    ? "warning"
-                    : "danger";
-                return (
-                  <TableRow key={log.id}>
-                    <TableCell className="font-medium">{log.id}</TableCell>
-                    <TableCell>{log.system}</TableCell>
-                    <TableCell>
-                      <Badge variant={displayBadge}>{log.status}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-xs text-sm text-muted-foreground">
-                      {log.message}
-                    </TableCell>
-                    <TableCell>{formatTimestamp(log.occurredAt)}</TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <div className="rounded-md border border-border overflow-x-auto">
+            <Table className="min-w-[800px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[180px]">Log ID</TableHead>
+                  <TableHead>System</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Message</TableHead>
+                  <TableHead className="text-right">Timestamp</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logs.map((log) => {
+                  const isWarning = log.status.includes("429") || log.status.includes("504");
+                  const displayBadge: "success" | "warning" | "danger" = log.status.startsWith("2")
+                    ? "success"
+                    : isWarning
+                      ? "warning"
+                      : "danger";
+                  return (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">{log.id}</TableCell>
+                      <TableCell>{log.system}</TableCell>
+                      <TableCell>
+                        <Badge variant={displayBadge}>{log.status}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-xs text-sm text-muted-foreground">
+                        {log.message}
+                      </TableCell>
+                      <TableCell className="text-right">{formatTimestamp(log.occurredAt)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             BKI throttling events trigger on-call escalation when latency exceeds 1.5 seconds.
