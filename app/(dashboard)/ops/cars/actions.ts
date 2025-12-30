@@ -255,6 +255,9 @@ export async function createOperationsCar(
       .single();
 
     if (error) {
+      if (error.code === "23505") {
+        return { error: "Автомобиль с таким VIN уже существует." };
+      }
       console.error("[operations] failed to insert vehicle", error);
       return { error: "Не удалось сохранить автомобиль." };
     }
