@@ -410,6 +410,7 @@ export function TaskDetailView({
 
   const payload = (task.payload as TaskPayload | undefined) ?? undefined;
   const isPrepareQuoteTask = task.type === "PREPARE_QUOTE";
+  const isConfirmParticipantsTask = task.type === "CONFIRM_PARTICIPANTS";
   const guardKeyResolved = guardKey ?? guardMeta?.key ?? null;
   const isConfirmCarTask = guardKeyResolved === "tasks.confirmCar.completed";
   const isAecbTask = guardKeyResolved === AECB_GUARD_KEY;
@@ -563,7 +564,7 @@ export function TaskDetailView({
   const guardRequiresDocument = Boolean(guardMeta?.requiresDocument || requiresDocumentFlag);
   const documentsEnabled =
     isBuyerDocsTask || isSellerDocsTask || requiresDocument || isAecbTask || isPaySupplierTask;
-  const enableDocsSection = documentsEnabled || isPrepareQuoteTask || isReopenedTask;
+  const enableDocsSection = documentsEnabled || isPrepareQuoteTask || isReopenedTask || isConfirmParticipantsTask;
   const defaultDocumentType: ClientDocumentTypeValue | "" = "";
   const useTwoColumnFieldLayout = true;
   const workflowDocumentFields = visibleFields.filter((field) => getFieldDocumentType(field));

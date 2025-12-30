@@ -704,24 +704,42 @@ export function DealDetailView({ detail }: DealDetailProps) {
       groupDocTypeMap.set(task.id, docMap);
     });
 
-    const optionalDocs = documents.filter((doc) => isOptionalGuardDocument(doc.metadata));
-    const requiredDocs = documents.filter((doc) => !isOptionalGuardDocument(doc.metadata));
+    const additionalDocs: Array<{ label: string; value: string; status?: string | null; url?: string | null }> = [];
 
-    requiredDocs.forEach((doc) => {
+    documents.forEach((doc) => {
+      const isOptional = isOptionalGuardDocument(doc.metadata);
       const metadata =
         doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
           ? (doc.metadata as Record<string, unknown>)
           : null;
       const docGuard = metadata && typeof metadata.guard_key === "string" ? (metadata.guard_key as string) : null;
-      const targetTask = (docGuard ? taskByGuard.get(docGuard) : null) ?? defaultGuardlessTask;
-      const groupKey = targetTask ? targetTask.id : "deal-documents";
+      
+      let targetTask = (docGuard ? taskByGuard.get(docGuard) : null);
+      if (!targetTask && !isOptional) {
+        targetTask = defaultGuardlessTask;
+      }
+
+      if (!targetTask) {
+        // Handle as global additional document
+        const guardLabel =
+          metadata && typeof metadata.guard_label === "string" && metadata.guard_label.trim().length > 0
+            ? (metadata.guard_label as string)
+            : null;
+        const label = resolveDocumentLabelFromType(doc.documentType ?? null, guardLabel ?? doc.title ?? null);
+        const valueDate = formatDateValue(doc.uploadedAt ?? null);
+        const value = valueDate !== "—" ? valueDate : doc.status ?? "—";
+        additionalDocs.push({ label, value, status: doc.status ?? null, url: doc.url ?? null });
+        return;
+      }
+
+      const groupKey = targetTask.id;
       if (!groupDocTypeMap.has(groupKey)) {
         groupDocTypeMap.set(groupKey, new Map());
         groups.push({
           id: groupKey,
-          stageKey: targetTask?.stageKey ?? "deal",
-          stageTitle: targetTask?.stageTitle ?? "Сделка",
-          taskTitle: targetTask?.title ?? "Документы",
+          stageKey: targetTask.stageKey ?? "deal",
+          stageTitle: targetTask.stageTitle ?? "Сделка",
+          taskTitle: targetTask.title ?? "Документы",
           taskTemplateId: groupKey,
           documents: [],
         });
@@ -729,41 +747,35 @@ export function DealDetailView({ detail }: DealDetailProps) {
 
       const entryMap = groupDocTypeMap.get(groupKey) ?? new Map();
       const normalizedType = normalizeDocumentTypeValue(doc.documentType);
-      const existing = normalizedType ? entryMap.get(normalizedType) : null;
+      
+      // For optional docs, we don't want to deduplicate by type if they are "Other" or generic, 
+      // but current logic uses normalizedType as key.
+      // If normalizedType is null (e.g. "other"), it uses `${doc.id}`.
+      // If it is a specific type (e.g. "passport"), it dedupes.
+      // Additional docs might share types. 
+      // If we want multiple additional docs of same type, we should ensure unique keys if isOptional.
+      const entryKey = (normalizedType && !isOptional) ? normalizedType : `${doc.id}`;
+      
+      const existing = entryMap.get(entryKey);
 
       const label = resolveDocumentLabelFromType(doc.documentType ?? null, doc.title ?? null);
       const valueDate = formatDateValue(doc.uploadedAt ?? null);
       const value = valueDate !== "—" ? valueDate : doc.status ?? "—";
       const entry = existing ?? { label, value, status: doc.status ?? null, url: doc.url ?? null };
+      
+      // Update existing entry with actual values if it was just a placeholder
       entry.label = label;
       entry.value = value;
       entry.status = doc.status ?? null;
       entry.url = doc.url ?? null;
 
       if (!existing) {
-        entryMap.set(normalizedType ?? `${doc.id}`, entry);
+        entryMap.set(entryKey, entry);
         const group = groups.find((g) => g.id === groupKey);
         if (group) {
           group.documents.push({ ...entry, type: normalizedType });
         }
       }
-
-      groupDocTypeMap.set(groupKey, entryMap);
-    });
-
-    const additionalDocs = optionalDocs.map((doc) => {
-      const metadata =
-        doc.metadata && typeof doc.metadata === "object" && !Array.isArray(doc.metadata)
-          ? (doc.metadata as Record<string, unknown>)
-          : null;
-      const guardLabel =
-        metadata && typeof metadata.guard_label === "string" && metadata.guard_label.trim().length > 0
-          ? (metadata.guard_label as string)
-          : null;
-      const label = resolveDocumentLabelFromType(doc.documentType ?? null, guardLabel ?? doc.title ?? null);
-      const valueDate = formatDateValue(doc.uploadedAt ?? null);
-      const value = valueDate !== "—" ? valueDate : doc.status ?? "—";
-      return { label, value, status: doc.status ?? null, url: doc.url ?? null };
     });
 
     return {
