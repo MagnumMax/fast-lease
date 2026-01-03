@@ -71,8 +71,8 @@ export default function FinanceReportsPage() {
             <CardTitle className="text-2xl">Финансовые показатели</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
+        <CardContent className="p-0">
+          <Table containerClassName="border-0 rounded-none">
             <TableHeader>
               <TableRow>
                 <TableHead>Metric</TableHead>

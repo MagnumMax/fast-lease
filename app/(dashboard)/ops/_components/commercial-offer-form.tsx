@@ -648,8 +648,7 @@ export function CommercialOfferForm({
             </button>
 
             {isScheduleOpen && (
-              <div className="mt-3 overflow-hidden rounded-md border bg-background">
-                <Table>
+              <Table containerClassName="mt-3 border-0 rounded-none">
                   <TableHeader>
                     <TableRow className="bg-muted/50 text-xs hover:bg-muted/50">
                       <TableHead className="w-[50px]">#</TableHead>
@@ -697,7 +696,6 @@ export function CommercialOfferForm({
                     </TableRow>
                   </TableBody>
                 </Table>
-              </div>
             )}
           </div>
         )}

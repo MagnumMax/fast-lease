@@ -356,11 +356,9 @@ export function OpsSellersDirectory({ initialSellers }: OpsSellersDirectoryProps
         action={createDialog}
       />
 
-      <Card className="border border-border/80 bg-card/80 backdrop-blur">
-        <CardContent className="p-0">
-          <div className="rounded-md border border-border overflow-x-auto">
-            <Table className="min-w-[1000px]">
-              <TableHeader>
+      <Card className="overflow-hidden border border-border/80 bg-card/80 backdrop-blur">
+        <Table containerClassName="border-0 rounded-none" className="min-w-[1000px]">
+          <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-[300px]">Имя / Компания</TableHead>
                   <TableHead>Email</TableHead>
@@ -480,8 +478,6 @@ export function OpsSellersDirectory({ initialSellers }: OpsSellersDirectoryProps
                 )}
               </TableBody>
             </Table>
-          </div>
-        </CardContent>
         {pageCount > 1 ? (
           <CardFooter className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">

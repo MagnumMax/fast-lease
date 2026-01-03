@@ -147,7 +147,7 @@ export function InvestorPortfolioScreen({ snapshot }: InvestorPortfolioScreenPro
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-border/70">
-            <Table>
+            <Table containerClassName="border-0 rounded-none">
               <TableHeader className="bg-muted/40">
                 <TableRow className="border-border/60">
                   <TableHead className="text-xs uppercase tracking-[0.2em] text-muted-foreground">

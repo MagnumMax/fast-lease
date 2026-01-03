@@ -320,7 +320,7 @@ export function OpsDashboardScreen({ snapshotSet }: OpsDashboardScreenProps) {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-1">
-        <Card className="bg-card/60 backdrop-blur">
+        <Card className="bg-card/60 backdrop-blur overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between gap-3">
             <div>
               <CardDescription>Team</CardDescription>
@@ -330,8 +330,8 @@ export function OpsDashboardScreen({ snapshotSet }: OpsDashboardScreenProps) {
               Live
             </Badge>
           </CardHeader>
-          <CardContent>
-            <Table>
+          <CardContent className="p-0">
+            <Table containerClassName="border-0 rounded-none">
               <TableHeader>
                 <TableRow>
                   <TableHead>Specialist</TableHead>

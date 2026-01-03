@@ -252,10 +252,9 @@ export function AdminIntegrationsDashboard({
             Stream of recent integration events with health indicators, matching the /beta flows.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-md border border-border overflow-x-auto">
-            <Table className="min-w-[800px]">
-              <TableHeader>
+        <CardContent className="p-0">
+          <Table containerClassName="border-0 rounded-none" className="min-w-[800px]">
+            <TableHeader>
                 <TableRow>
                   <TableHead className="w-[180px]">Log ID</TableHead>
                   <TableHead>System</TableHead>
@@ -288,7 +287,6 @@ export function AdminIntegrationsDashboard({
                 })}
               </TableBody>
             </Table>
-          </div>
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             BKI throttling events trigger on-call escalation when latency exceeds 1.5 seconds.

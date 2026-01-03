@@ -39,8 +39,8 @@ export function PaymentScheduleTable({ entries }: PaymentScheduleTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="hidden overflow-x-auto rounded-2xl border border-border lg:block">
-        <Table className="min-w-[640px]">
+      <div className="hidden lg:block">
+        <Table className="min-w-[640px]" containerClassName="border-0 rounded-none">
           <TableHeader>
             <TableRow className="bg-surface-subtle">
               <TableHead className="w-12">#</TableHead>

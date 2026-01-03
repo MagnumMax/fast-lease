@@ -93,10 +93,12 @@ type SectionCardProps = {
   className?: string;
   actions?: ReactNode;
   id?: string;
+  contentClassName?: string;
 };
 
-function SectionCard({ title, description, children, className, actions, id }: SectionCardProps) {
+function SectionCard({ title, description, children, className, actions, id, contentClassName }: SectionCardProps) {
   const classes = ["border border-border/60 bg-card/70", className].filter(Boolean).join(" ");
+  const contentClasses = ["space-y-4 pt-4", contentClassName].filter(Boolean).join(" ");
   return (
     <Card id={id} className={classes}>
       <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
@@ -106,7 +108,7 @@ function SectionCard({ title, description, children, className, actions, id }: S
         </div>
         {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </CardHeader>
-      <CardContent className="space-y-4 pt-4">{children}</CardContent>
+      <CardContent className={contentClasses}>{children}</CardContent>
     </Card>
   );
 }
@@ -227,13 +229,13 @@ export function SellerDetailView({
         </SectionCard>
       </div>
 
-      <SectionCard id="seller-deals" title="Сделки" description={`Всего сделок: ${deals.length}`}>
+      <SectionCard id="seller-deals" title="Сделки" description={`Всего сделок: ${deals.length}`} contentClassName="p-0">
         {deals.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">
             Нет активных или завершенных сделок
           </div>
         ) : (
-          <Table>
+          <Table containerClassName="border-0 rounded-none">
             <TableHeader>
               <TableRow>
                 <TableHead>Номер сделки</TableHead>

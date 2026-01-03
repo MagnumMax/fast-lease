@@ -83,8 +83,8 @@ export default function LegalRequestsPage() {
           </Select>
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table>
+      <CardContent className="p-0">
+        <Table containerClassName="border-0 rounded-none">
           <TableHeader>
             <TableRow>
               <TableHead>Request</TableHead>

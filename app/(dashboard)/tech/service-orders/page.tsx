@@ -87,7 +87,7 @@ export default function TechServiceOrdersPage() {
   }
 
   return (
-    <Card className="border border-border bg-card/70">
+    <Card className="overflow-hidden border border-border bg-card/70">
       <CardHeader>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Service orders</p>
@@ -116,8 +116,8 @@ export default function TechServiceOrdersPage() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table>
+      <CardContent className="p-0 overflow-x-auto">
+        <Table containerClassName="border-0 rounded-none">
           <TableHeader>
             <TableRow>
               <TableHead>Order</TableHead>

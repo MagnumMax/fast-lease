@@ -85,7 +85,7 @@ export default function TechInspectionsPage() {
   }
 
   return (
-    <Card className="border border-border bg-card/70">
+    <Card className="overflow-hidden border border-border bg-card/70">
       <CardHeader>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Inspections</p>
@@ -118,8 +118,8 @@ export default function TechInspectionsPage() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table>
+      <CardContent className="p-0">
+        <Table containerClassName="border-0 rounded-none">
           <TableHeader>
             <TableRow>
               <TableHead>VIN</TableHead>

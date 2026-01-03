@@ -83,7 +83,7 @@ export default function AccountingLedgersPage() {
   }
 
   return (
-    <Card className="border border-border bg-card/70">
+    <Card className="overflow-hidden border border-border bg-card/70">
       <CardHeader>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -116,8 +116,8 @@ export default function AccountingLedgersPage() {
           </div>
         </div>
       </CardHeader>
-      <CardContent className="overflow-x-auto">
-        <Table>
+      <CardContent className="p-0 overflow-x-auto">
+        <Table containerClassName="border-0 rounded-none">
           <TableHeader>
             <TableRow>
               <TableHead>Entry</TableHead>

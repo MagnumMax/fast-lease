@@ -318,7 +318,7 @@ function DealTasksList({ tasks }: DealTasksListProps) {
 
   return (
     <div className="overflow-x-auto">
-      <Table>
+      <Table containerClassName="border-0 rounded-none">
         <TableHeader>
           <TableRow>
             <TableHead>Задача</TableHead>
@@ -1006,7 +1006,7 @@ export function DealDetailView({ detail }: DealDetailProps) {
               </button>
             </CardHeader>
             {!isAllTasksCollapsed ? (
-              <CardContent>
+              <CardContent className="p-0">
                 <DealTasksList tasks={dealTasksOrdered} />
               </CardContent>
             ) : null}

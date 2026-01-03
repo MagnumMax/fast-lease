@@ -1715,9 +1715,8 @@ export function AdminUsersDirectory({
             </div>
           </CardContent>
         ) : null}
-        <CardContent className="space-y-4">
-          <div className="rounded-md border border-border overflow-x-auto">
-            <Table className="min-w-[1000px]">
+        <CardContent className="p-0">
+            <Table className="min-w-[1000px]" containerClassName="border-0 rounded-none">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]">
@@ -1923,7 +1922,6 @@ export function AdminUsersDirectory({
               ) : null}
             </TableBody>
           </Table>
-          </div>
         </CardContent>
         {showPaginationFooter ? (
           <CardContent className="border-t border-border/60 pt-4">

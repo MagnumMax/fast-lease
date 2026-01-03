@@ -177,8 +177,8 @@ export default function FinanceDisbursementsPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
+        <CardContent className="p-0 overflow-x-auto">
+          <Table containerClassName="border-0 rounded-none">
             <TableHeader>
               <TableRow>
                 <TableHead>Batch</TableHead>

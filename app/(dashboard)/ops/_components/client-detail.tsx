@@ -94,10 +94,12 @@ type SectionCardProps = {
   children: ReactNode;
   className?: string;
   actions?: ReactNode;
+  contentClassName?: string;
 };
 
-function SectionCard({ title, description, children, className, actions }: SectionCardProps) {
-  const classes = ["border border-border/60 bg-card/70", className].filter(Boolean).join(" ");
+function SectionCard({ title, description, children, className, actions, contentClassName }: SectionCardProps) {
+  const classes = ["border border-border/60 bg-card/70 overflow-hidden", className].filter(Boolean).join(" ");
+  const contentClasses = ["space-y-4 pt-4", contentClassName].filter(Boolean).join(" ");
   return (
     <Card className={classes}>
       <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
@@ -107,7 +109,7 @@ function SectionCard({ title, description, children, className, actions }: Secti
         </div>
         {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </CardHeader>
-      <CardContent className="space-y-4 pt-4">{children}</CardContent>
+      <CardContent className={contentClasses}>{children}</CardContent>
     </Card>
   );
 }
@@ -303,9 +305,8 @@ export function ClientDetailView({
       </SectionCard>
 
       <SectionCard title="Сделки">
-        <div className="overflow-x-auto rounded-xl border border-border/60">
-          <Table>
-            <TableHeader>
+        <Table containerClassName="border-0">
+          <TableHeader>
               <TableRow>
                 <TableHead>Сделка</TableHead>
                 <TableHead>Автомобиль</TableHead>
@@ -359,7 +360,6 @@ export function ClientDetailView({
               )}
             </TableBody>
           </Table>
-        </div>
       </SectionCard>
 
       <SectionCard title="Коммуникации">

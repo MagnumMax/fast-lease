@@ -26,7 +26,6 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -1420,101 +1419,99 @@ export function OpsDealsBoard({
           </div>
         </section>
       ) : (
-        <Card className="bg-card/60 backdrop-blur">
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead aria-sort={getAriaSort("dealId")}>
-                    {renderSortButton("dealId", "Deal ID")}
-                  </TableHead>
-                  <TableHead aria-sort={getAriaSort("vehicle")}>
-                    {renderSortButton("vehicle", "Vehicle")}
-                  </TableHead>
-                  <TableHead aria-sort={getAriaSort("client")}>
-                    {renderSortButton("client", "Client")}
-                  </TableHead>
-                  <TableHead aria-sort={getAriaSort("seller")}>
-                    {renderSortButton("seller", "Seller")}
-                  </TableHead>
-                  <TableHead aria-sort={getAriaSort("status")}>
-                    {renderSortButton("status", "Status")}
-                  </TableHead>
-                  <TableHead aria-sort={getAriaSort("contractStartDate")}>
-                    {renderSortButton("contractStartDate", "Contract start")}
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedDeals.map((deal) => {
-                  const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
-                  const registrationLabel = deal.vehicleRegistration ?? deal.vehicleVin ?? null;
-                  const clientLinkHref = deal.clientId
-                    ? `/ops/clients/${buildSlugWithId(deal.client, deal.clientId) || deal.clientId}`
+        <div className="rounded-2xl bg-card/60 backdrop-blur">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead aria-sort={getAriaSort("dealId")}>
+                  {renderSortButton("dealId", "Deal ID")}
+                </TableHead>
+                <TableHead aria-sort={getAriaSort("vehicle")}>
+                  {renderSortButton("vehicle", "Vehicle")}
+                </TableHead>
+                <TableHead aria-sort={getAriaSort("client")}>
+                  {renderSortButton("client", "Client")}
+                </TableHead>
+                <TableHead aria-sort={getAriaSort("seller")}>
+                  {renderSortButton("seller", "Seller")}
+                </TableHead>
+                <TableHead aria-sort={getAriaSort("status")}>
+                  {renderSortButton("status", "Status")}
+                </TableHead>
+                <TableHead aria-sort={getAriaSort("contractStartDate")}>
+                  {renderSortButton("contractStartDate", "Contract start")}
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedDeals.map((deal) => {
+                const dealSlug = buildSlugWithId(deal.dealId, deal.id) || deal.id;
+                const registrationLabel = deal.vehicleRegistration ?? deal.vehicleVin ?? null;
+                const clientLinkHref = deal.clientId
+                  ? `/ops/clients/${buildSlugWithId(deal.client, deal.clientId) || deal.clientId}`
+                  : null;
+                const sellerLabel = deal.sellerName ?? "—";
+                const sellerLinkHref =
+                  deal.sellerId && deal.sellerName
+                    ? `/ops/sellers/${buildSlugWithId(deal.sellerName, deal.sellerId) || deal.sellerId}`
                     : null;
-                  const sellerLabel = deal.sellerName ?? "—";
-                  const sellerLinkHref =
-                    deal.sellerId && deal.sellerName
-                      ? `/ops/sellers/${buildSlugWithId(deal.sellerName, deal.sellerId) || deal.sellerId}`
-                      : null;
-                  return (
-                    <TableRow key={deal.id}>
-                      <TableCell className="font-medium">
+                return (
+                  <TableRow key={deal.id}>
+                    <TableCell className="font-medium">
+                      <Link
+                        className="text-foreground underline-offset-2 hover:underline"
+                        href={`/ops/deals/${dealSlug}`}
+                      >
+                        {deal.dealId}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span>{deal.vehicle}</span>
+                        {registrationLabel ? (
+                          <span className="text-xs text-muted-foreground">{registrationLabel}</span>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {clientLinkHref ? (
                         <Link
                           className="text-foreground underline-offset-2 hover:underline"
-                          href={`/ops/deals/${dealSlug}`}
+                          href={clientLinkHref}
                         >
-                          {deal.dealId}
+                          {deal.client}
                         </Link>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span>{deal.vehicle}</span>
-                          {registrationLabel ? (
-                            <span className="text-xs text-muted-foreground">{registrationLabel}</span>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {clientLinkHref ? (
-                          <Link
-                            className="text-foreground underline-offset-2 hover:underline"
-                            href={clientLinkHref}
-                          >
-                            {deal.client}
-                          </Link>
-                        ) : (
-                          deal.client
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {sellerLinkHref ? (
-                          <Link
-                            className="text-foreground underline-offset-2 hover:underline"
-                            href={sellerLinkHref}
-                          >
-                            {sellerLabel}
-                          </Link>
-                        ) : (
-                          sellerLabel
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={DEAL_STATUS_BADGE_VARIANTS[deal.statusKey]}
-                          className="rounded-lg"
+                      ) : (
+                        deal.client
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {sellerLinkHref ? (
+                        <Link
+                          className="text-foreground underline-offset-2 hover:underline"
+                          href={sellerLinkHref}
                         >
-                          {STATUS_LABELS[deal.statusKey]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                          {sellerLabel}
+                        </Link>
+                      ) : (
+                        sellerLabel
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={DEAL_STATUS_BADGE_VARIANTS[deal.statusKey]}
+                        className="rounded-lg"
+                      >
+                        {STATUS_LABELS[deal.statusKey]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDateLabel(deal.contractStartDate ?? "")}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );

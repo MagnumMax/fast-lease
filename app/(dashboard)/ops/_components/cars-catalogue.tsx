@@ -384,10 +384,9 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
         action={createDialog}
       />
 
-      <Card className="hidden border border-border bg-card/60 backdrop-blur md:block">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
+      <div className="hidden rounded-2xl border border-border bg-card/60 backdrop-blur overflow-hidden md:block">
+        <Table containerClassName="border-0 rounded-none">
+          <TableHeader>
               <TableRow>
                 <TableHead>Автомобиль</TableHead>
                 <TableHead>Госномер</TableHead>
@@ -458,7 +457,6 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
               )}
             </TableBody>
           </Table>
-        </CardContent>
         {pageCount > 1 ? (
           <CardFooter className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
@@ -490,7 +488,7 @@ export function OpsCarsCatalogue({ initialCars }: OpsCarsCatalogueProps) {
             </div>
           </CardFooter>
         ) : null}
-      </Card>
+      </div>
 
       <div className="grid gap-4 md:hidden">
         {currentCars.length ? currentCars.map((car) => (

@@ -327,8 +327,8 @@ export function AdminBpmOverview({
             </DialogContent>
           </Dialog>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Table>
+        <CardContent className="p-0">
+          <Table containerClassName="border-0 rounded-none">
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>

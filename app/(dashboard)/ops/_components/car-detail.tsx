@@ -309,19 +309,18 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
         ) : null}
       </div>
 
-      <Card className="bg-card/60 backdrop-blur">
+      <Card className="bg-card/60 backdrop-blur overflow-hidden">
         <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Сделки</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4 pt-0">
+        <CardContent className="p-0">
           {deals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Сделки не найдены.</p>
+            <p className="text-sm text-muted-foreground p-6">Сделки не найдены.</p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-border/60">
-              <Table>
-                <TableHeader>
+            <Table containerClassName="border-0 rounded-none">
+              <TableHeader>
                   <TableRow>
                     <TableHead>Сделка</TableHead>
                     <TableHead>Покупатель</TableHead>
@@ -384,8 +383,7 @@ export function CarDetailView({ slug, deals, vehicle, profile, documents, servic
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </div>
+            </Table>
           )}
         </CardContent>
       </Card>

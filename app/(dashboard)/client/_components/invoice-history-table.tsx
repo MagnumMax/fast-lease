@@ -45,8 +45,8 @@ export function InvoiceHistoryTable({ entries }: InvoiceHistoryTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="hidden overflow-x-auto rounded-2xl border border-border lg:block">
-        <Table className="min-w-[720px]">
+      <div className="hidden lg:block">
+        <Table className="min-w-[720px]" containerClassName="border-0 rounded-none">
           <TableHeader>
             <TableRow className="bg-surface-subtle">
               <TableHead>Invoice</TableHead>

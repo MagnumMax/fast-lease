@@ -97,8 +97,8 @@ export default function RiskReportsPage() {
             <CardTitle className="text-2xl">Портфель по отраслям</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
+        <CardContent className="p-0">
+          <Table containerClassName="border-0 rounded-none">
             <TableHeader>
               <TableRow>
                 <TableHead>Sector</TableHead>

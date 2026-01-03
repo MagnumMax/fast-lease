@@ -922,11 +922,11 @@ export function OpsTasksBoard({
           </label>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 p-0">
         {feedback ? (
           <div
             className={cn(
-              "rounded-md border px-4 py-2 text-sm",
+              "mx-6 mt-4 rounded-md border px-4 py-2 text-sm",
               feedback.type === "success"
                 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-200"
                 : "border-rose-500/40 bg-rose-500/10 text-rose-900 dark:text-rose-200",
@@ -937,7 +937,7 @@ export function OpsTasksBoard({
         ) : null}
 
         {filteredTasks.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 bg-muted/30 p-10 text-center text-muted-foreground">
+          <div className="mx-6 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/70 bg-muted/30 p-10 text-center text-muted-foreground">
             <Workflow className="h-10 w-10 text-muted-foreground" />
             <div className="space-y-1">
               <p className="text-sm font-medium text-foreground">Нет задач по текущим фильтрам</p>
@@ -947,19 +947,18 @@ export function OpsTasksBoard({
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Задача</TableHead>
-                  <TableHead>Этап сделки</TableHead>
-                  <TableHead>Сделка</TableHead>
-                  <TableHead>SLA</TableHead>
-                  <TableHead>Статус</TableHead>
-                  <TableHead>Ответственный</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <Table containerClassName="border-0 rounded-none">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Задача</TableHead>
+                <TableHead>Этап сделки</TableHead>
+                <TableHead>Сделка</TableHead>
+                <TableHead>SLA</TableHead>
+                <TableHead>Статус</TableHead>
+                <TableHead>Ответственный</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
                 {filteredTasks.map((task) => {
                   const slaMeta = task.slaStatus ? SLA_STATUS_META[task.slaStatus] : null;
                   const statusMeta = getStatusBadgeMeta(task.status);
@@ -1056,7 +1055,6 @@ export function OpsTasksBoard({
                 })}
               </TableBody>
             </Table>
-          </div>
         )}
       </CardContent>
     </Card>
