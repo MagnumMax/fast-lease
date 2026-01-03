@@ -157,6 +157,17 @@ export function DashboardLayout({
     setProfileMenuOpen(false);
   }, [pathname]);
 
+  React.useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [sidebarOpen]);
+
   const normalizedFullName = user?.fullName?.trim() || null;
   const dropdownName = normalizedFullName ?? user?.email ?? "No name";
   const showEmailInMenu = Boolean(user?.email && normalizedFullName);
@@ -260,19 +271,19 @@ export function DashboardLayout({
 
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="fixed inset-0 z-[100] lg:hidden">
             <div 
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm" 
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" 
               onClick={() => setSidebarOpen(false)}
             />
-            <div className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-background p-4 shadow-lg flex flex-col pt-safe-top pb-safe-bottom pl-safe-left">
-              <div className="mb-6 flex items-center justify-between">
+            <div className="fixed inset-y-0 left-0 w-3/4 max-w-xs bg-background shadow-lg flex flex-col animate-in slide-in-from-left duration-300 px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] pl-[calc(1rem+env(safe-area-inset-left))]">
+              <div className="mb-6 flex items-center justify-between shrink-0">
                 <span className="text-xl font-bold tracking-tight">{brand.title}</span>
                 <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-10 w-10">
                   <PanelLeftClose className="h-6 w-6" />
                 </Button>
               </div>
-              <nav className="flex-1 flex flex-col gap-2 overflow-y-auto">
+              <nav className="flex-1 flex flex-col gap-2 overflow-y-auto -mx-2 px-2">
                 {navItems.map((item) => {
                   const Icon = resolveNavIcon(item.icon);
                   const active = isActive(item.href);
@@ -281,7 +292,7 @@ export function DashboardLayout({
                       key={item.href}
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors",
+                        "flex items-center gap-3 rounded-md px-3 py-3 text-base font-medium transition-colors shrink-0",
                         active
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:bg-primary/10 hover:text-foreground"
@@ -294,23 +305,24 @@ export function DashboardLayout({
                   );
                 })}
               </nav>
-              <div className="absolute bottom-4 left-4 right-4">
-                 <div className="flex items-center gap-3 rounded-md border p-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <div className="mt-auto pt-4 shrink-0">
+                 <div className="flex items-center gap-3 rounded-md border p-3 bg-card">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 shrink-0">
                       <CircleUserRound className="h-6 w-6 text-primary" />
                     </div>
-                    <div className="overflow-hidden">
+                    <div className="overflow-hidden flex-1">
                       <p className="truncate text-sm font-medium">{dropdownName}</p>
                       <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                  </div>
-                 <div className="mt-2 grid grid-cols-2 gap-2">
-                    <form action={signOutAction}>
-                       <Button variant="outline" size="sm" className="w-full">
-                         <LogOut className="mr-2 h-4 w-4" /> Выйти
+                 <div className="mt-2 flex items-center gap-2">
+                    <form action={signOutAction} className="flex-1 min-w-0">
+                       <Button variant="outline" size="sm" className="w-full justify-start pl-3">
+                         <LogOut className="mr-2 h-4 w-4 shrink-0" />
+                         <span className="truncate">Выйти</span>
                        </Button>
                     </form>
-                    <div className="flex justify-center">
+                    <div className="shrink-0">
                         <ThemeToggle />
                     </div>
                  </div>
