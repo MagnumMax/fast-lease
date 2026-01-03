@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateMaskInput } from "@/components/ui/date-mask-input";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
 import type {
   OpsBrokerDocument,
   OpsBrokerProfile,
@@ -52,7 +53,10 @@ import {
   uploadOperationsBrokerDocuments,
   deleteOperationsBrokerDocument,
 } from "@/app/(dashboard)/ops/brokers/actions";
+import { getSignedUploadUrlAction } from "@/app/(dashboard)/ops/actions/storage";
 import { sortDocumentOptions } from "@/lib/documents/options";
+import { sanitizeFileName } from "@/lib/documents/upload";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { DocumentManager, type ManagedDocument } from "./document-manager";
 
 const EMPTY_SELECT_VALUE = "__empty";
@@ -120,7 +124,7 @@ function createDocumentDraft(): DocumentDraft {
   } satisfies DocumentDraft;
 }
 
-const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+const CLIENT_DOCUMENT_ACCEPT_TYPES = ALLOWED_ACCEPT_TYPES;
 const DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 
 function buildInitialState(profile: OpsBrokerProfile): FormState {
@@ -155,6 +159,7 @@ export function BrokerEditDialog({ profile, documents, onSubmit, onDelete }: Bro
   const [canConfirmDelete, setCanConfirmDelete] = useState(false);
   
   const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([]);
+  const { upload: uploadFile } = useFileUpload<{ bucket: string; path: string }>();
   const [documentActionError, setDocumentActionError] = useState<string | null>(null);
   const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
   const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
@@ -301,19 +306,47 @@ export function BrokerEditDialog({ profile, documents, onSubmit, onDelete }: Bro
         formData.append("brokerId", profile.userId);
         
         let hasFiles = false;
-        documentDrafts.forEach((draft, index) => {
-          if (draft.file && draft.type) {
-            formData.append(`documents[${index}][type]`, draft.type);
-            formData.append(`documents[${index}][file]`, draft.file);
-            if (draft.documentNumber) {
-              formData.append(`documents[${index}][document_number]`, draft.documentNumber);
+        
+        const processDrafts = async () => {
+          for (let index = 0; index < documentDrafts.length; index++) {
+            const draft = documentDrafts[index];
+            if (draft.file && draft.type) {
+              const file = draft.file;
+              const sanitizedName = sanitizeFileName(file.name);
+              const path = `brokers/${profile.userId}/${Date.now()}-${sanitizedName}`;
+
+              const result = await uploadFile(file, getSignedUploadUrlAction, {
+                bucket: "profile-documents",
+                path,
+              });
+
+              if (!result) {
+                throw new Error(`Не удалось загрузить файл ${file.name}.`);
+              }
+
+              formData.append(`documents[${index}][type]`, draft.type);
+              formData.append(`documents[${index}][path]`, result.path); // We store the path, not the signed URL
+              formData.append(`documents[${index}][size]`, String(file.size));
+              formData.append(`documents[${index}][mime]`, file.type || "application/octet-stream");
+              formData.append(`documents[${index}][name]`, file.name);
+              
+              if (draft.documentNumber) {
+                formData.append(`documents[${index}][document_number]`, draft.documentNumber);
+              }
+              if (draft.expireDate) {
+                formData.append(`documents[${index}][expire_date]`, draft.expireDate);
+              }
+              hasFiles = true;
             }
-            if (draft.expireDate) {
-              formData.append(`documents[${index}][expire_date]`, draft.expireDate);
-            }
-            hasFiles = true;
           }
-        });
+        };
+
+        try {
+          await processDrafts();
+        } catch (e: any) {
+          setErrorMessage(e.message || "Ошибка при загрузке файлов.");
+          return;
+        }
 
         if (hasFiles) {
           const uploadResult = await uploadOperationsBrokerDocuments(formData);

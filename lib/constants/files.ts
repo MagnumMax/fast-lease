@@ -1,0 +1,14 @@
+export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+export const MAX_FILE_SIZE_LABEL = "50 МБ";
+
+export const COMPRESSION_THRESHOLD_BYTES = 20 * 1024 * 1024; // 20 MB
+export const COMPRESSION_THRESHOLD_LABEL = "20 МБ";
+
+export const MAX_TOTAL_UPLOAD_BYTES = 100 * 1024 * 1024; // 100 MB
+
+export {
+  ALLOWED_ACCEPT_TYPES,
+  ALLOWED_FILE_EXTENSIONS,
+  ALLOWED_MIME_TYPES,
+  ALLOWED_MIME_TYPE_SET,
+} from "./uploads";

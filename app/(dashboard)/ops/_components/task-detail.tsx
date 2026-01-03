@@ -28,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { sortDocumentOptions } from "@/lib/documents/options";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
 import type { WorkspaceTask } from "@/lib/supabase/queries/tasks";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import {
@@ -43,7 +44,9 @@ import { filterChecklistTypes, type ClientDocumentChecklist, type ClientDocument
 import { WorkflowDocuments } from "@/app/(dashboard)/ops/_components/workflow-documents";
 import { ProfileSelector } from "@/app/(dashboard)/ops/_components/profile-selector";
 import { getProfileSummary, type ProfileSummaryPayload } from "@/app/(dashboard)/ops/actions";
+import { MAX_FILE_SIZE_BYTES, MAX_FILE_SIZE_LABEL, MAX_TOTAL_UPLOAD_BYTES } from "@/lib/constants/files";
 
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { deleteTaskGuardDocumentAction, getUploadUrlAction, type FormStatus } from "@/app/(dashboard)/ops/tasks/[id]/actions";
 
 type ClientDocumentWithUrl = ClientDocumentSummary & { signedUrl: string | null };
@@ -169,10 +172,6 @@ type FinanceReviewSnapshot = {
 const VEHICLE_VERIFICATION_TASK_TYPE = "VERIFY_VEHICLE";
 const VEHICLE_VERIFICATION_GUARD_KEY = "vehicle.verified";
 const TECHNICAL_REPORT_TYPE: ClientDocumentTypeValue = "technical_report";
-const COMPRESSION_HINT_THRESHOLD_BYTES = 20 * 1024 * 1024;
-const COMPRESSION_HINT_LABEL = "20 МБ";
-const MAX_TOTAL_UPLOAD_BYTES = Number.POSITIVE_INFINITY;
-const MAX_TOTAL_UPLOAD_LABEL = "без лимита";
 const AECB_GUARD_KEY = "risk.approved";
 const FINANCE_REVIEW_TASK_TYPE = "FIN_CALC";
 const INVESTOR_APPROVAL_TASK_TYPE = "INVESTOR_APPROVAL";
@@ -214,7 +213,7 @@ function normalizeBooleanValue(value: unknown): boolean {
   return false;
 }
 
-const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+const CLIENT_DOCUMENT_ACCEPT_TYPES = ALLOWED_ACCEPT_TYPES;
 const DOCUMENT_TYPE_EMPTY_VALUE = "__workflow-doc-none__";
 const CLIENT_DOCUMENT_OPTIONS = sortDocumentOptions(CLIENT_DOCUMENT_TYPES);
 const TASKS_LIST_ROUTE = "/ops/tasks";
@@ -362,6 +361,7 @@ export function TaskDetailView({
   reopenAction,
 }: TaskDetailViewProps) {
   const [formState, formAction, serverPending] = useActionState(completeAction, INITIAL_STATE);
+  const { upload: uploadFile } = useFileUpload<{ dealId: string; guardKey: string; fileName: string }>();
   const [reopenState, reopenFormAction, reopenPending] = useActionState(reopenAction, INITIAL_STATE);
   const [, setDraftRequiredValues] = useState<Record<string, string>>({});
   const router = useRouter();
@@ -378,8 +378,6 @@ export function TaskDetailView({
   const [pendingBuyerType, setPendingBuyerType] = useState<PartyTypeValue | "">("");
   const [reopenReason, setReopenReason] = useState<string>("quality");
   const [uploadValidationError, setUploadValidationError] = useState<string | null>(null);
-  const [docFieldWarnings, setDocFieldWarnings] = useState<Record<string, string>>({});
-  const [draftWarnings, setDraftWarnings] = useState<Record<string, string>>({});
   const [requiredDocErrors, setRequiredDocErrors] = useState<Record<string, string>>({});
   const [fieldValidationErrors, setFieldValidationErrors] = useState<Record<string, string>>({});
   const [isAdditionalDocsOpen, setIsAdditionalDocsOpen] = useState(false);
@@ -949,11 +947,6 @@ export function TaskDetailView({
     setDocumentDrafts((prev) => [...prev, createDocumentDraft(defaultDocumentType)]);
   }
 
-  function isFileLarge(file: File | null | undefined): boolean {
-    if (!file || typeof file.size !== "number") return false;
-    return file.size > COMPRESSION_HINT_THRESHOLD_BYTES;
-  }
-
   function getFileSize(file: File | null | undefined): number {
     return typeof file?.size === "number" ? file.size : 0;
   }
@@ -967,35 +960,15 @@ export function TaskDetailView({
     return docFieldTotal + draftTotal;
   }
 
-  function buildCompressionWarning() {
-    return `Файл больше ${COMPRESSION_HINT_LABEL}. Будет сжат перед загрузкой.`;
-  }
-
-  function setDocFieldWarning(fieldId: string, message: string | null) {
-    setDocFieldWarnings((prev) => {
-      if (!message) {
-        const next = { ...prev };
-        delete next[fieldId];
-        return next;
-      }
-      return { ...prev, [fieldId]: message };
-    });
-  }
-
-  function setDraftWarning(draftId: string, message: string | null) {
-    setDraftWarnings((prev) => {
-      if (!message) {
-        const next = { ...prev };
-        delete next[draftId];
-        return next;
-      }
-      return { ...prev, [draftId]: message };
-    });
+  function handleOversize(fileName: string) {
+    setUploadValidationError(
+      `Файл "${fileName}" превышает лимит ${MAX_FILE_SIZE_LABEL}. Выберите файл меньшего размера.`,
+    );
   }
 
   function handleTotalOversize() {
     setUploadValidationError(
-      `Суммарный объём загружаемых файлов превышает ${MAX_TOTAL_UPLOAD_LABEL}. Удалите часть файлов или выберите меньшие.`,
+      `Общий размер файлов превышает лимит ${Math.round(MAX_TOTAL_UPLOAD_BYTES / (1024 * 1024))} МБ.`
     );
   }
 
@@ -1023,7 +996,6 @@ export function TaskDetailView({
   function handleRemoveDocumentDraft(id: string) {
     setDocumentDrafts((prev) => prev.filter((draft) => draft.id !== id));
     setUploadValidationError(null);
-    setDraftWarning(id, null);
   }
 
   function validateFieldsBeforeSubmit(): boolean {
@@ -1378,30 +1350,17 @@ export function TaskDetailView({
       if (uploadsToPerform.length > 0) {
         await Promise.all(
           uploadsToPerform.map(async ({ file, fieldId, isDraft }) => {
-            // Get signed URL
-            const urlResult = await getUploadUrlAction({
+            const result = await uploadFile(file, getUploadUrlAction, {
               dealId: currentDealId,
               guardKey: currentGuardKey,
               fileName: file.name,
             });
 
-            if ("error" in urlResult) {
-              throw new Error(`Не удалось получить ссылку для загрузки файла ${file.name}: ${urlResult.error}`);
+            if (!result) {
+              throw new Error(`Не удалось загрузить файл ${file.name}`);
             }
 
-            // Upload to Supabase
-            const { url, path } = urlResult;
-            const uploadResult = await fetch(url, {
-              method: "PUT",
-              body: file,
-              headers: {
-                "Content-Type": file.type || "application/octet-stream",
-              },
-            });
-
-            if (!uploadResult.ok) {
-              throw new Error(`Ошибка загрузки файла ${file.name} в хранилище`);
-            }
+            const { path } = result;
 
             // Update FormData
             if (isDraft) {
@@ -2206,11 +2165,6 @@ export function TaskDetailView({
                                   setUploadValidationError(null);
                                 }
                                 setDocFieldFiles((prev) => ({ ...prev, [fieldId]: file }));
-                                if (file && isFileLarge(file)) {
-                                  setDocFieldWarning(fieldId, buildCompressionWarning());
-                                } else {
-                                  setDocFieldWarning(fieldId, null);
-                                }
                                 setRequiredDocErrors((prev) => {
                                   const next = { ...prev };
                                   delete next[fieldId];
@@ -2279,7 +2233,6 @@ export function TaskDetailView({
                                       resetFileInputValue(docFieldInputId);
                                       setDocFieldFiles((prev) => ({ ...prev, [fieldId]: null }));
                                       setDocFieldValues((prev) => ({ ...prev, [fieldId]: "" }));
-                                      setDocFieldWarning(fieldId, null);
                                     }}
                                     disabled={pending || deletingAttached || isReadOnly}
                                   >
@@ -2302,15 +2255,6 @@ export function TaskDetailView({
                               className="bg-red-600 text-white border-red-600 text-[11px] font-medium"
                             >
                               {requiredDocErrors[fieldId]}
-                            </Badge>
-                          </div>
-                        ) : docFieldWarnings[fieldId] ? (
-                          <div className="flex justify-end">
-                            <Badge
-                              variant="secondary"
-                              className="bg-amber-400 text-amber-950 border-amber-400 text-[11px] font-medium"
-                            >
-                              {docFieldWarnings[fieldId]}
                             </Badge>
                           </div>
                         ) : null}
@@ -2562,16 +2506,12 @@ export function TaskDetailView({
                                     accept={CLIENT_DOCUMENT_ACCEPT_TYPES}
                                     onChange={(event) => {
                                       const file = event.currentTarget.files?.[0] ?? null;
-                                      const currentTotal = getTotalUploadSize(docFieldFiles, documentDrafts);
-                                      const prevDraft = documentDrafts.find((entry) => entry.id === draft.id);
-                                      const prevSize = getFileSize(prevDraft?.file);
-                                      const nextTotal = currentTotal - prevSize + getFileSize(file);
-                                      if (nextTotal > MAX_TOTAL_UPLOAD_BYTES) {
-                                        handleTotalOversize();
+                                      
+                                      if (file && file.size > MAX_FILE_SIZE_BYTES) {
+                                        handleOversize(file.name);
                                       } else {
                                         setUploadValidationError(null);
                                       }
-                                      setDraftWarning(draft.id, file && isFileLarge(file) ? buildCompressionWarning() : null);
                                       handleDocumentDraftFileChange(draft.id, file);
                                     }}
                                     className="sr-only"
@@ -2619,7 +2559,6 @@ export function TaskDetailView({
                                           onClick={() => {
                                             resetFileInputValue(draftInputId);
                                             handleDocumentDraftFileChange(draft.id, null);
-                                            setDraftWarning(draft.id, null);
                                           }}
                                           disabled={pending || isReadOnly}
                                         >
@@ -2632,16 +2571,6 @@ export function TaskDetailView({
                                 </>
                               )}
                             </div>
-                            {draftWarnings[draft.id] ? (
-                              <div className="flex justify-end">
-                                <Badge
-                                  variant="secondary"
-                                  className="bg-amber-400 text-amber-950 border-amber-400 text-[11px] font-medium"
-                                >
-                                  {draftWarnings[draft.id]}
-                                </Badge>
-                              </div>
-                            ) : null}
                           </div>
                         </div>
                       );

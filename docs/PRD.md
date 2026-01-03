@@ -191,6 +191,7 @@ Fast Lease is a next-generation, automation-first car leasing platform designed 
 *   **Unit**: Vitest for utility logic and state machines.
 *   **Integration**: API route testing (Supabase interactions).
 *   **E2E**: Playwright for critical flows (Login → Create Deal → Close).
+*   **Uploads**: Unit/integration tests for signed URL flows, file validation, and error handling around document uploads.
 
 ### Risks
 *   **Data Privacy**: Handling sensitive client docs (Passport/ID). Mitigation: RLS policies + Signed URLs.

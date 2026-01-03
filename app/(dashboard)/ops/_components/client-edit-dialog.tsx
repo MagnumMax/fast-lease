@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
 import type {
   OpsClientDocument,
   OpsClientProfile,
@@ -56,7 +57,10 @@ import {
   deleteClientDocument,
   verifyClientDeletion,
 } from "@/app/(dashboard)/ops/clients/actions";
+import { getSignedUploadUrlAction } from "@/app/(dashboard)/ops/actions/storage";
 import { sortDocumentOptions } from "@/lib/documents/options";
+import { sanitizeFileName } from "@/lib/documents/upload";
+import { useFileUpload } from "@/hooks/use-file-upload";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import { DocumentManager, type ManagedDocument, type DocumentDraft } from "./document-manager";
 
@@ -138,7 +142,7 @@ function createDocumentDraft(): DocumentDraft {
   } satisfies DocumentDraft;
 }
 
-const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+const CLIENT_DOCUMENT_ACCEPT_TYPES = ALLOWED_ACCEPT_TYPES;
 const PERSON_DOCUMENT_OPTIONS = sortDocumentOptions(
   CLIENT_DOCUMENT_TYPES.filter((option) => option.context !== "company"),
 );
@@ -231,6 +235,7 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { upload: uploadFile } = useFileUpload<{ bucket: string; path: string }>();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCheckingDelete, setIsCheckingDelete] = useState(false);
   const [canConfirmDelete, setCanConfirmDelete] = useState(false);
@@ -563,13 +568,29 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
       formData.append("slug", detailSlug);
 
       let documentIndex = 0;
-      const appendDrafts = (
+      const processDrafts = async (
         drafts: Array<DocumentDraft & { type: ClientDocumentTypeValue; file: File }>,
         context: "personal" | "company",
       ) => {
-        drafts.forEach((draft) => {
+        for (const draft of drafts) {
+          const file = draft.file;
+          const sanitizedName = sanitizeFileName(file.name);
+          const path = `clients/${profile.userId}/${Date.now()}-${sanitizedName}`;
+
+          const result = await uploadFile(file, getSignedUploadUrlAction, {
+            bucket: "profile-documents",
+            path,
+          });
+
+          if (!result) {
+            throw new Error(`Не удалось загрузить файл ${file.name}`);
+          }
+
           formData.append(`documents[${documentIndex}][type]`, draft.type);
-          formData.append(`documents[${documentIndex}][file]`, draft.file);
+          formData.append(`documents[${documentIndex}][path]`, result.path);
+          formData.append(`documents[${documentIndex}][size]`, String(file.size));
+          formData.append(`documents[${documentIndex}][mime]`, file.type || "application/octet-stream");
+          formData.append(`documents[${documentIndex}][name]`, file.name);
           formData.append(`documents[${documentIndex}][context]`, context);
           if (draft.documentNumber) {
             formData.append(`documents[${documentIndex}][document_number]`, draft.documentNumber);
@@ -578,11 +599,16 @@ export function ClientEditDialog({ profile, documents, onSubmit, onDelete }: Cli
             formData.append(`documents[${documentIndex}][expire_date]`, draft.expireDate);
           }
           documentIndex += 1;
-        });
+        }
       };
 
-      appendDrafts(readyPersonalDrafts, "personal");
-      appendDrafts(readyCompanyDrafts, "company");
+      try {
+        await processDrafts(readyPersonalDrafts, "personal");
+        await processDrafts(readyCompanyDrafts, "company");
+      } catch (e: any) {
+        setErrorMessage(e.message || "Ошибка при загрузке файлов.");
+        return;
+      }
 
       const uploadResult = await uploadClientDocuments(formData);
 

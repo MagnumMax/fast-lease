@@ -149,36 +149,67 @@ export async function ensureApplicationDraftAction(
   };
 }
 
+export async function getApplySignedUploadUrl(input: {
+  applicationId: string;
+  documentId: string;
+  fileName: string;
+}): Promise<{ success: true; url: string; path: string } | { success: false; error: string }> {
+  const { applicationId, documentId, fileName } = input;
+  const service = await createSupabaseServiceClient();
+
+  // Validate session
+  const supabase = await createSupabaseServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return { success: false, error: "Unauthorized" };
+  }
+  
+  // Verify application belongs to user
+  const { data: appData } = await service
+    .from("applications")
+    .select("id")
+    .eq("id", applicationId)
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+
+  if (!appData) {
+     return { success: false, error: "Application not found or access denied" };
+  }
+
+  const originalName = fileName || `${documentId}.dat`;
+  const extension = originalName.includes(".") ? originalName.split(".").pop() ?? "dat" : "dat";
+  const storagePath = `${applicationId}/${sanitizeFileName(documentId)}-${randomUUID()}.${extension}`;
+
+  const { data, error } = await service.storage
+    .from("application-documents")
+    .createSignedUploadUrl(storagePath);
+
+  if (error || !data) {
+    console.error("Failed to create signed url for application", error);
+    return { success: false, error: "Failed to generate upload URL" };
+  }
+
+  return { success: true, url: data.signedUrl, path: data.path };
+}
+
 export async function uploadApplicationDocumentAction(formData: FormData) {
   const applicationId = formData.get("applicationId");
   const documentId = formData.get("documentId");
-  const file = formData.get("file");
+  const path = formData.get("path");
+  const name = formData.get("name");
+  const mime = formData.get("mime");
+  const size = formData.get("size");
 
   if (
     typeof applicationId !== "string" ||
     typeof documentId !== "string" ||
-    !isFileLike(file)
+    typeof path !== "string"
   ) {
-    throw new Error("Некорректные данные для загрузки документа.");
+    throw new Error("Некорректные данные для сохранения документа.");
   }
 
   const service = await createSupabaseServiceClient();
-
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-  const originalName = getFileName(file) || `${documentId}.dat`;
-  const extension = originalName.includes(".") ? originalName.split(".").pop() ?? "dat" : "dat";
-  const storagePath = `${applicationId}/${sanitizeFileName(documentId)}-${randomUUID()}.${extension}`;
-
-  const { error: uploadError } = await service.storage
-    .from("application-documents")
-    .upload(storagePath, fileBuffer, {
-      contentType: file.type,
-      upsert: true,
-    });
-
-  if (uploadError) {
-    throw uploadError;
-  }
+  const originalName = typeof name === "string" ? name : `${documentId}.dat`;
 
   const { data, error } = await service
     .from("application_documents")
@@ -187,10 +218,10 @@ export async function uploadApplicationDocumentAction(formData: FormData) {
         application_id: applicationId,
         document_type: documentId,
         original_filename: originalName,
-        stored_filename: storagePath,
-        storage_path: storagePath,
-        mime_type: file.type,
-        file_size: file.size,
+        stored_filename: path,
+        storage_path: path,
+        mime_type: typeof mime === "string" ? mime : null,
+        file_size: typeof size === "string" ? Number(size) : null,
         status: "uploaded",
       },
       { onConflict: "application_id,document_type" },

@@ -18,7 +18,6 @@ import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import {
-  uploadDocumentsBatch,
   type DocumentUploadCandidate,
   isFileLike,
   type FileLike,
@@ -571,21 +570,30 @@ export async function uploadOperationsBrokerDocuments(
     number,
     {
       type?: string;
-      file?: FileLike;
+      path?: string;
+      size?: number;
+      mime?: string;
+      name?: string;
       documentNumber?: string;
       expireDate?: string;
     }
   >();
 
   for (const [key, value] of formData.entries()) {
-    const match = /^documents\[(\d+)\]\[(type|file|document_number|expire_date)\]$/.exec(key);
+    const match = /^documents\[(\d+)\]\[(type|path|size|mime|name|document_number|expire_date)\]$/.exec(key);
     if (match) {
       const index = parseInt(match[1], 10);
       const field = match[2];
       const existing = documentsMap.get(index) || {};
 
-      if (field === "file" && isFileLike(value)) {
-        existing.file = value;
+      if (field === "path" && typeof value === "string") {
+        existing.path = value;
+      } else if (field === "size" && typeof value === "string") {
+        existing.size = Number(value);
+      } else if (field === "mime" && typeof value === "string") {
+        existing.mime = value;
+      } else if (field === "name" && typeof value === "string") {
+        existing.name = value;
       } else if (field === "type" && typeof value === "string") {
         existing.type = value;
       } else if (field === "document_number" && typeof value === "string") {
@@ -599,13 +607,14 @@ export async function uploadOperationsBrokerDocuments(
   }
 
   const rawDocuments = Array.from(documentsMap.values());
-  const hasFiles = rawDocuments.some((d) => d.file && d.type);
+  const hasFiles = rawDocuments.some((d) => d.path && d.type);
 
   if (!hasFiles) {
     return { success: false, error: "Не выбраны файлы для загрузки." };
   }
 
   const supabase = await createSupabaseServerClient();
+  const serviceClient = await createSupabaseServiceClient();
   const uploadedBy = sessionUser.user.id;
 
   // Resolve profile.id from user_id (brokerId)
@@ -622,48 +631,45 @@ export async function uploadOperationsBrokerDocuments(
 
   const profileId = profileData.id;
 
-  // We need to map files to candidates with types
-  const candidates: DocumentUploadCandidate[] = rawDocuments
-    .filter((d): d is { type: string; file: FileLike; documentNumber?: string; expireDate?: string } => 
-      !!(d.file && d.type)
-    )
-    .map((d) => {
-    const typeValue = d.type;
+  const documents = rawDocuments
+    .filter((d): d is { type: string; path: string; size: number; mime: string; name: string; documentNumber?: string; expireDate?: string } => 
+      !!(d.path && d.type)
+    );
+
+  let uploadedCount = 0;
+
+  for (const doc of documents) {
+    const typeValue = doc.type;
     const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[typeValue as ClientDocumentTypeValue] ?? "Документ";
     
-    return {
-      file: d.file,
-      title: typeLabel,
-      type: typeValue,
-      metadata: {
-          document_type: typeValue,
-          label: typeLabel,
-          uploaded_via: "ops_dashboard",
-          document_number: d.documentNumber || null,
-          expire_date: d.expireDate || null,
-      }
-    };
-  });
+    const { error: insertError } = await serviceClient.from("profile_documents").insert({
+        profile_id: profileId,
+        document_type: typeValue,
+        document_category: "identity", // Brokers usually personal identity
+        storage_path: doc.path,
+        mime_type: doc.mime,
+        file_size: doc.size,
+        title: typeLabel,
+        metadata: {
+            document_type: typeValue,
+            label: typeLabel,
+            uploaded_via: "ops_dashboard",
+            document_number: doc.documentNumber || null,
+            expire_date: doc.expireDate || null,
+            original_filename: doc.name,
+        },
+        uploaded_by: uploadedBy,
+    });
 
-  const uploadResult = await uploadDocumentsBatch<ClientDocumentTypeValue>(candidates, {
-    supabase,
-    bucket: BROKER_DOCUMENT_BUCKET,
-    table: "profile_documents",
-    entityColumn: "profile_id",
-    entityId: profileId,
-    storagePathPrefix: `brokers/${brokerId}`,
-    allowedTypes: BROKER_DOCUMENT_TYPE_VALUES,
-    typeLabelMap: CLIENT_DOCUMENT_TYPE_LABEL_MAP,
-    categoryColumn: "document_category",
-    uploadedBy,
-    logPrefix: "[operations] broker document",
-    messages: {
-      upload: "Не удалось загрузить документ.",
-    },
-  });
+    if (insertError) {
+        console.error("[operations] failed to insert broker document", insertError);
+    } else {
+        uploadedCount++;
+    }
+  }
 
-  if (!uploadResult.success) {
-    return { success: false, error: uploadResult.error };
+  if (uploadedCount === 0 && documents.length > 0) {
+     return { success: false, error: "Не удалось сохранить документы." };
   }
 
   for (const path of getWorkspacePaths("brokers")) {
@@ -672,9 +678,8 @@ export async function uploadOperationsBrokerDocuments(
   
   // Revalidate detail page
   revalidatePath(`/ops/brokers/${brokerId}`);
-  // Also revalidate by slug if possible, but ID is safest
   
-  return { success: true, uploaded: uploadResult.uploaded };
+  return { success: true, uploaded: uploadedCount };
 }
 
 export async function deleteOperationsBrokerDocument(

@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
 import { DEAL_DOCUMENT_TYPES, type DealDocumentTypeValue, type OpsDealDetail } from "@/lib/supabase/queries/operations";
 import {
   updateOperationsDeal,
@@ -38,6 +39,9 @@ import {
   type DeleteOperationsDealResult,
   type DeleteDealDocumentResult,
 } from "@/app/(dashboard)/ops/deals/[id]/actions";
+import { getSignedUploadUrlAction } from "@/app/(dashboard)/ops/actions/storage";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { sanitizeFileName } from "@/lib/documents/upload";
 import { sortDocumentOptions } from "@/lib/documents/options";
 import {
   DEAL_COMPANY_SELECT_OPTIONS,
@@ -185,10 +189,12 @@ export function DealEditDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const { upload: uploadFile } = useFileUpload<{ bucket: string; path: string }>();
+
   const [dealDocumentDrafts, setDealDocumentDrafts] = useState<DealDocumentDraft[]>([]);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCheckingDelete, setIsCheckingDelete] = useState(false);
   const [canConfirmDelete, setCanConfirmDelete] = useState(false);
@@ -485,10 +491,28 @@ export function DealEditDialog({
         documentsFormData.append("dealId", detail.dealUuid);
         documentsFormData.append("slug", detail.slug);
 
-        readyDealDocuments.forEach((draft, index) => {
+        for (let index = 0; index < readyDealDocuments.length; index++) {
+          const draft = readyDealDocuments[index];
+          const file = draft.file;
+          const sanitizedName = sanitizeFileName(file.name);
+          const path = `${detail.dealUuid}/docs/${Date.now()}-${sanitizedName}`;
+
+          const result = await uploadFile(file, getSignedUploadUrlAction, {
+            bucket: "deal-documents",
+            path,
+          });
+
+          if (!result) {
+            setErrorMessage(`Не удалось загрузить файл ${file.name}`);
+            return;
+          }
+
           documentsFormData.append(`documents[${index}][type]`, draft.type);
-          documentsFormData.append(`documents[${index}][file]`, draft.file);
-        });
+          documentsFormData.append(`documents[${index}][path]`, result.path);
+          documentsFormData.append(`documents[${index}][size]`, String(file.size));
+          documentsFormData.append(`documents[${index}][mime]`, file.type || "application/octet-stream");
+          documentsFormData.append(`documents[${index}][name]`, file.name);
+        }
 
         const uploadResult = await uploadDealDocuments(documentsFormData);
 
@@ -649,7 +673,7 @@ export function DealEditDialog({
                           <Label>Файл</Label>
                           <Input
                             type="file"
-                            accept=".pdf,.png,.jpg,.jpeg"
+                            accept={ALLOWED_ACCEPT_TYPES}
                             onChange={(event) =>
                               changeDealDocumentFile(
                                 draft.id,
@@ -687,7 +711,9 @@ export function DealEditDialog({
                     >
                       <Plus className="h-4 w-4" /> Добавить документ
                     </Button>
-                    <p className="text-xs text-muted-foreground">Допустимые форматы: PDF, JPG, PNG (до 10 МБ).</p>
+                    <p className="text-xs text-muted-foreground">
+                      Допустимые форматы: {ALLOWED_ACCEPT_TYPES.replace(/,/g, ", ")} (до 10 МБ).
+                    </p>
                   </div>
                   {dealDocumentsValidationMessage ? (
                     <p className="text-xs text-destructive">{dealDocumentsValidationMessage}</p>

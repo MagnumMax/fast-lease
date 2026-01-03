@@ -6,6 +6,7 @@ import { AlertTriangle, Check, FileUp, Paperclip } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { applicationDocuments } from "@/lib/data/application";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
 import { cn } from "@/lib/utils";
 
 import {
@@ -15,6 +16,7 @@ import {
   ensureApplicationDraftAction,
   uploadApplicationDocumentAction,
   updateDocumentStatusAction,
+  getApplySignedUploadUrl,
 } from "../../actions";
 
 export default function ApplicationDocumentsPage() {
@@ -116,10 +118,36 @@ export default function ApplicationDocumentsPage() {
       const applicationId = await ensureDraftId();
       setPendingDocId(id);
 
+      const urlResult = await getApplySignedUploadUrl({
+        applicationId,
+        documentId: id,
+        fileName: file.name,
+      });
+
+      if (!urlResult.success) {
+        throw new Error(urlResult.error);
+      }
+
+      const uploadResult = await fetch(urlResult.url, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "x-amz-acl": "private",
+        },
+      });
+
+      if (!uploadResult.ok) {
+        throw new Error("Не удалось загрузить файл.");
+      }
+
       const formData = new FormData();
       formData.append("applicationId", applicationId);
       formData.append("documentId", id);
-      formData.append("file", file);
+      formData.append("path", urlResult.path);
+      formData.append("name", file.name);
+      formData.append("size", String(file.size));
+      formData.append("mime", file.type || "application/octet-stream");
 
       const result = await uploadApplicationDocumentAction(formData);
 
@@ -299,7 +327,7 @@ export default function ApplicationDocumentsPage() {
                     }}
                     type="file"
                     className="hidden"
-                    accept=".pdf,.jpg,.jpeg,.png"
+                    accept={ALLOWED_ACCEPT_TYPES}
                     onChange={(event) =>
                       handleFileChange(doc.id, event.target.files?.[0] ?? undefined)
                     }

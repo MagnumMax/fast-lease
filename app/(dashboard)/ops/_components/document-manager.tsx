@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { DateMaskInput } from "@/components/ui/date-mask-input";
 import type { ReactNode } from "react";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
 
 // Reusable FormSection component (copied from dialogs to be self-contained)
 type FormSectionProps = {
@@ -81,7 +82,7 @@ type DocumentManagerProps = {
 };
 
 const EMPTY_SELECT_VALUE = "__empty";
-const DEFAULT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+const DEFAULT_ACCEPT_TYPES = ALLOWED_ACCEPT_TYPES;
 
 export function DocumentManager({
   title,

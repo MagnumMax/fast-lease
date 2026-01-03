@@ -1,23 +1,15 @@
 "use server";
 
-import { Buffer } from "node:buffer";
-import { promises as fs } from "node:fs";
-import { randomUUID } from "node:crypto";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { spawn } from "node:child_process";
-
-import { headers } from "next/headers";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { z } from "zod";
-
+import { headers } from "next/headers";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { handleTaskCompletion } from "@/lib/workflow/task-completion";
 import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
-import { isFileLike, type FileLike, getFileName, sanitizeFileName } from "@/lib/documents/upload";
+import { isFileLike, type FileLike, sanitizeFileName } from "@/lib/documents/upload";
 import {
   CLIENT_DOCUMENT_TYPE_LABEL_MAP,
   type ClientDocumentTypeValue,
@@ -25,7 +17,6 @@ import {
   DEAL_DOCUMENT_TYPES,
   normalizeDealDocumentType,
   DEAL_DOCUMENT_TYPE_LABEL_MAP,
-  getDealDocumentLabel,
 } from "@/lib/supabase/queries/operations";
 import {
   evaluateClientDocumentChecklist,
@@ -35,6 +26,7 @@ import {
   type ClientDocumentSummary,
 } from "@/lib/workflow/documents-checklist";
 import { ProfileSyncService } from "@/lib/workflow/profile-sync";
+import { MAX_FILE_SIZE_BYTES } from "@/lib/constants/files";
 
 export type FormStatus = { status: "idle" | "success" | "error"; message?: string; redirectTo?: string };
 type DeleteGuardDocumentInput = z.infer<typeof DELETE_GUARD_DOCUMENT_SCHEMA>;
@@ -72,31 +64,10 @@ const DEAL_DOCUMENT_CATEGORY_MAP: Record<string, string> = DEAL_DOCUMENT_TYPES.r
   acc[entry.value] = entry.category;
   return acc;
 }, {} as Record<string, string>);
-const STORAGE_OBJECT_MAX_BYTES = 50 * 1024 * 1024; // Supabase storage single-object limit
-const PDF_COMPRESSION_SETTINGS = [
-  "-sDEVICE=pdfwrite",
-  "-dCompatibilityLevel=1.4",
-  "-dPDFSETTINGS=/ebook",
-  "-dNOPAUSE",
-  "-dQUIET",
-  "-dBATCH",
-];
 
 function resolveDealDocumentCategory(value: string | null): string {
   if (!value) return "other";
   return DEAL_DOCUMENT_CATEGORY_MAP[value] ?? "other";
-}
-
-function formatBytes(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB"];
-  let index = 0;
-  let current = value;
-  while (current >= 1024 && index < units.length - 1) {
-    current /= 1024;
-    index += 1;
-  }
-  return `${Math.round(current * 10) / 10} ${units[index]}`;
 }
 
 function parseFieldEntries(formData: FormData): Record<string, unknown> {
@@ -122,8 +93,7 @@ function parseFieldEntries(formData: FormData): Record<string, unknown> {
 type ParsedDocumentUpload = {
   id: string;
   type: ClientDocumentTypeValue;
-  file?: FileLike;
-  existingPath?: string;
+  existingPath: string;
   fileSize?: number;
   mimeType?: string;
 };
@@ -132,7 +102,7 @@ const DOCUMENT_FIELD_REGEX = /^documents\[(.+?)\]\[(type|file|path|size|mime)\]$
 const DOC_FIELD_UPLOAD_REGEX = /^documentFields\[(.+?)\]\[(type|file|path|size|mime)\]$/;
 
 function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
-  const entries = new Map<string, { type?: string; file?: FileLike; path?: string; size?: number; mime?: string }>();
+  const entries = new Map<string, { type?: string; path?: string; size?: number; mime?: string }>();
 
   for (const [key, value] of formData.entries()) {
     const match = DOCUMENT_FIELD_REGEX.exec(key);
@@ -143,8 +113,6 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
     const current = entries.get(id) ?? {};
     if (field === "type" && typeof value === "string") {
       current.type = value.trim();
-    } else if (field === "file" && isFileLike(value) && value.size > 0) {
-      current.file = value;
     } else if (field === "path" && typeof value === "string" && value.trim().length > 0) {
       current.path = value.trim();
     } else if (field === "size" && typeof value === "string") {
@@ -163,8 +131,8 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
     if (!entry.type) {
       continue;
     }
-    // We need either a file or an existing path
-    if (!entry.file && !entry.path) {
+    // We require an existing path (uploaded by client)
+    if (!entry.path) {
       continue;
     }
 
@@ -175,7 +143,6 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
     uploads.push({
       id,
       type: normalized as ClientDocumentTypeValue,
-      file: entry.file,
       existingPath: entry.path,
       fileSize: entry.size,
       mimeType: entry.mime,
@@ -188,8 +155,7 @@ function extractDocumentUploads(formData: FormData): ParsedDocumentUpload[] {
 type FieldDocumentUpload = {
   fieldId: string;
   type: ClientDocumentTypeValue;
-  file?: FileLike;
-  existingPath?: string;
+  existingPath: string;
   fileSize?: number;
   mimeType?: string;
 };
@@ -198,7 +164,7 @@ function extractFieldDocumentUploads(
   formData: FormData,
   docFieldTypeMap: Record<string, ClientDocumentTypeValue>,
 ): FieldDocumentUpload[] {
-  const entries = new Map<string, { type?: string; file?: FileLike; path?: string; size?: number; mime?: string }>();
+  const entries = new Map<string, { type?: string; path?: string; size?: number; mime?: string }>();
 
   for (const [key, value] of formData.entries()) {
     const match = DOC_FIELD_UPLOAD_REGEX.exec(key);
@@ -207,8 +173,6 @@ function extractFieldDocumentUploads(
     const current = entries.get(fieldId) ?? {};
     if (field === "type" && typeof value === "string") {
       current.type = value.trim();
-    } else if (field === "file" && isFileLike(value) && value.size > 0) {
-      current.file = value;
     } else if (field === "path" && typeof value === "string" && value.trim().length > 0) {
       current.path = value.trim();
     } else if (field === "size" && typeof value === "string") {
@@ -224,8 +188,8 @@ function extractFieldDocumentUploads(
 
   const uploads: FieldDocumentUpload[] = [];
   for (const [fieldId, entry] of entries.entries()) {
-    // We need either a file or an existing path
-    if (!entry.file && !entry.path) continue;
+    // We require an existing path
+    if (!entry.path) continue;
 
     const docTypeFromSchema = docFieldTypeMap[fieldId];
     const normalizedType =
@@ -239,7 +203,6 @@ function extractFieldDocumentUploads(
     uploads.push({
       fieldId,
       type: normalizedType,
-      file: entry.file,
       existingPath: entry.path,
       fileSize: entry.size,
       mimeType: entry.mime,
@@ -289,53 +252,15 @@ function buildDocumentTypeMapFromSchema(
   return map;
 }
 
-async function compressPdfWithGhostscript(
-  buffer: Buffer<ArrayBufferLike>,
-): Promise<{ buffer: Buffer<ArrayBufferLike>; format: string; reduced: boolean }> {
-  const tmpBase = join(tmpdir(), `pdf-compress-${randomUUID()}`);
-  const inputPath = `${tmpBase}-in.pdf`;
-  const outputPath = `${tmpBase}-out.pdf`;
-
-  try {
-    await fs.writeFile(inputPath, buffer);
-
-    const args = [...PDF_COMPRESSION_SETTINGS, `-sOutputFile=${outputPath}`, inputPath];
-    await new Promise<void>((resolve, reject) => {
-      const proc = spawn("gs", args, { stdio: "ignore" });
-      proc.on("error", reject);
-      proc.on("close", (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`Ghostscript exited with code ${code}`));
-        }
-      });
-    });
-
-    const output = await fs.readFile(outputPath);
-    const reduced = output.length < buffer.length * 0.98;
-    return { buffer: reduced ? output : buffer, format: "pdf-gs", reduced };
-  } catch (error) {
-    console.warn("[workflow] PDF compression skipped", error);
-    return { buffer, format: "none", reduced: false };
-  } finally {
-    await Promise.allSettled([
-      fs.rm(inputPath, { force: true }),
-      fs.rm(outputPath, { force: true }),
-    ]);
-  }
-}
-
 async function uploadAttachment(options: {
   supabase: Awaited<ReturnType<typeof createSupabaseServiceClient>>;
   dealId: string;
   guardKey: string;
   guardLabel?: string;
-  file?: FileLike;
   documentType: ClientDocumentTypeValue;
   uploadedBy: string | null;
   isAdditional?: boolean;
-  existingPath?: string;
+  existingPath: string;
   fileSize?: number;
   mimeType?: string;
 }): Promise<{ path: string } | { error: string }> {
@@ -344,7 +269,6 @@ async function uploadAttachment(options: {
     dealId,
     guardKey,
     guardLabel,
-    file,
     documentType,
     uploadedBy,
     isAdditional = false,
@@ -353,9 +277,10 @@ async function uploadAttachment(options: {
     mimeType,
   } = options;
 
-  let path: string;
-  let uploadMime = mimeType || "application/octet-stream";
-  let uploadSize = fileSize || 0;
+  const path = existingPath;
+  const uploadMime = mimeType || "application/octet-stream";
+  const uploadSize = fileSize || 0;
+  
   const metadata: Record<string, unknown> = {
     upload_context: "workflow_task",
     guard_key: guardKey,
@@ -371,97 +296,6 @@ async function uploadAttachment(options: {
   };
   const documentCategory = resolveDealDocumentCategory(documentType);
   const typeLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? DEAL_DOCUMENT_TYPE_LABEL_MAP[documentType] ?? null;
-
-  if (existingPath) {
-    path = existingPath;
-    // When using existing path (client upload), we skip server-side compression
-    // and storage upload, but we still create the DB record.
-  } else {
-    if (!file) {
-      return { error: "Файл не предоставлен" };
-    }
-    
-    const arrayBuffer = await file.arrayBuffer();
-    const originalBuffer: Buffer<ArrayBufferLike> = Buffer.from(arrayBuffer);
-    let uploadBuffer: Buffer<ArrayBufferLike> = originalBuffer;
-    uploadMime = file.type || "application/octet-stream";
-    const originalSize = originalBuffer.length;
-    let compressedSize = originalSize;
-    let compressionFormat: string | null = null;
-    const baseName = getFileName(file) || guardKey || "attachment";
-    const sanitizedName = sanitizeFileName(baseName);
-    path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
-
-    metadata.compression = {
-      applied: false,
-      from_bytes: originalSize,
-      to_bytes: originalSize,
-      format: null,
-    };
-
-    if (file.type && file.type.startsWith("image/")) {
-      try {
-        const sharpModule = await import("sharp").catch(() => null);
-        const sharp = sharpModule?.default;
-        if (sharp) {
-          const pipeline = sharp(originalBuffer).rotate();
-          const compressedBuffer = await pipeline.webp({ quality: 75 }).toBuffer();
-          if (compressedBuffer.length < originalBuffer.length * 0.95) {
-            uploadBuffer = compressedBuffer;
-            uploadMime = "image/webp";
-            compressedSize = compressedBuffer.length;
-            compressionFormat = "webp";
-            metadata.compression = {
-              applied: true,
-              from_bytes: originalSize,
-              to_bytes: compressedSize,
-              format: compressionFormat,
-            };
-          }
-        }
-      } catch (compressionError) {
-        console.warn("[workflow] image compression skipped", compressionError);
-      }
-    }
-
-    if (file.type === "application/pdf" || (file.name && file.name.toLowerCase().endsWith(".pdf"))) {
-      const pdfCompressed = await compressPdfWithGhostscript(uploadBuffer);
-      if (pdfCompressed.reduced) {
-        uploadBuffer = pdfCompressed.buffer;
-        uploadMime = "application/pdf";
-        compressedSize = uploadBuffer.length;
-        compressionFormat = pdfCompressed.format;
-        metadata.compression = {
-          applied: true,
-          from_bytes: originalSize,
-          to_bytes: compressedSize,
-          format: compressionFormat,
-        };
-      }
-    }
-
-    // Fail fast if size exceeds storage limit even after compression attempt.
-    if (uploadBuffer.length > STORAGE_OBJECT_MAX_BYTES) {
-      return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
-    }
-    
-    uploadSize = uploadBuffer.length;
-
-    const { error: uploadError } = await supabase.storage.from(DEAL_DOCUMENT_BUCKET).upload(path, uploadBuffer, {
-      contentType: uploadMime,
-      upsert: true,
-    });
-
-    if (uploadError) {
-      console.error("[workflow] failed to upload task attachment", uploadError);
-      if ((uploadError as { statusCode?: string | number }).statusCode === "413" || (uploadError as { status?: number }).status === 413) {
-        return { error: `Файл больше лимита хранилища (${formatBytes(STORAGE_OBJECT_MAX_BYTES)}). Сожмите и попробуйте снова.` };
-      }
-      return { error: "Не удалось загрузить вложение" };
-    }
-    
-    console.log("[workflow] attachment uploaded successfully", { path, bucket: DEAL_DOCUMENT_BUCKET, size: uploadSize });
-  }
 
   if (isAdditional) {
     metadata.guard_optional = true;
@@ -1056,7 +890,6 @@ export async function completeTaskFormAction(
         dealId,
         guardKey,
         guardLabel,
-        file: upload.file,
         documentType: upload.type,
         uploadedBy: sessionUser.user.id,
         isAdditional: true,
@@ -1078,7 +911,6 @@ export async function completeTaskFormAction(
           dealId,
           guardKey: guardKeyForFields,
           guardLabel: guardLabel ?? upload.fieldId,
-          file: upload.file,
           documentType: upload.type,
           uploadedBy: sessionUser.user.id,
           existingPath: upload.existingPath,

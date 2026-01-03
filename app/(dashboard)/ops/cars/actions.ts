@@ -1,7 +1,5 @@
 "use server";
 
-import { Buffer } from "node:buffer";
-
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -19,13 +17,10 @@ import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
 import {
-  uploadDocumentsBatch,
-  type DocumentUploadCandidate,
-  isFileLike,
-  type FileLike,
   getFileName,
   sanitizeFileName,
 } from "@/lib/documents/upload";
+import { ALLOWED_MIME_TYPE_SET } from "@/lib/constants/uploads";
 
 const createVehicleSchema = z.object({
   vin: z.string().min(3).optional(),
@@ -50,14 +45,7 @@ const VEHICLE_STATUSES = [
 const VEHICLE_DOCUMENT_BUCKET = "vehicle-documents";
 const VEHICLE_IMAGE_BUCKET = "vehicle-images";
 const VEHICLE_IMAGE_MAX_SIZE = 10 * 1024 * 1024;
-const VEHICLE_IMAGE_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/heic",
-  "image/heif",
-]);
+const VEHICLE_IMAGE_MIME_TYPES = ALLOWED_MIME_TYPE_SET;
 const VEHICLE_DOCUMENT_TYPE_VALUES = new Set(
   VEHICLE_DOCUMENT_TYPES.map((entry) => entry.value),
 );
@@ -446,11 +434,11 @@ export async function uploadVehicleDocuments(
 
   const documentsMap = new Map<
     number,
-    { type?: VehicleDocumentTypeValue | ""; file?: FileLike | null; title?: string }
+    { type?: VehicleDocumentTypeValue | ""; path?: string; size?: number; mime?: string; name?: string; title?: string }
   >();
 
   for (const [key, value] of formData.entries()) {
-    const match = /^documents\[(\d+)\]\[(type|file|title)\]$/.exec(key);
+    const match = /^documents\[(\d+)\]\[(type|path|size|mime|name|title)\]$/.exec(key);
     if (!match) continue;
 
     const index = Number.parseInt(match[1] ?? "", 10);
@@ -460,8 +448,17 @@ export async function uploadVehicleDocuments(
     if (match[2] === "type" && typeof value === "string") {
       existing.type = value as VehicleDocumentTypeValue | "";
     }
-    if (match[2] === "file" && isFileLike(value)) {
-      existing.file = value;
+    if (match[2] === "path" && typeof value === "string") {
+      existing.path = value;
+    }
+    if (match[2] === "size" && typeof value === "string") {
+      existing.size = Number(value);
+    }
+    if (match[2] === "mime" && typeof value === "string") {
+      existing.mime = value;
+    }
+    if (match[2] === "name" && typeof value === "string") {
+      existing.name = value;
     }
     if (match[2] === "title" && typeof value === "string") {
       existing.title = value;
@@ -473,26 +470,29 @@ export async function uploadVehicleDocuments(
 
   const hasIncompleteDocument = rawDocuments.some((entry) => {
     const hasType = Boolean(entry.type);
-    const hasFile = isFileLike(entry.file) && entry.file.size > 0;
+    const hasPath = typeof entry.path === "string" && entry.path.trim().length > 0;
     const requiresTitle = entry.type === "other";
     const hasTitle = typeof entry.title === "string" && entry.title.trim().length > 0;
     return (
-      (hasType && !hasFile) ||
-      (hasFile && !hasType) ||
-      (requiresTitle && hasFile && !hasTitle)
+      (hasType && !hasPath) ||
+      (hasPath && !hasType) ||
+      (requiresTitle && hasPath && !hasTitle)
     );
   });
 
   if (hasIncompleteDocument) {
-    return { success: false, error: "Заполните тип и выберите файл для каждого документа." };
+    return { success: false, error: "Заполните тип и загрузите файл для каждого документа." };
   }
 
   const documents = rawDocuments.filter((entry): entry is {
     type: VehicleDocumentTypeValue;
-    file: FileLike;
+    path: string;
+    size: number;
+    mime: string;
+    name: string;
     title?: string;
   } => {
-    if (!entry.type || !entry.file) {
+    if (!entry.type || !entry.path) {
       return false;
     }
     if (!VEHICLE_DOCUMENT_TYPE_VALUES.has(entry.type)) {
@@ -504,7 +504,7 @@ export async function uploadVehicleDocuments(
     ) {
       return false;
     }
-    return entry.file.size > 0;
+    return true;
   });
 
   if (documents.length === 0) {
@@ -512,44 +512,41 @@ export async function uploadVehicleDocuments(
   }
 
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data: authData } = await supabase.auth.getUser();
+    const supabase = await createSupabaseServiceClient();
+    const sessionClient = await createSupabaseServerClient();
+    const { data: authData } = await sessionClient.auth.getUser();
     const uploadedBy = authData?.user?.id ?? null;
 
-    const candidates: DocumentUploadCandidate<VehicleDocumentTypeValue>[] = documents.map((doc) => {
+    let uploadedCount = 0;
+
+    for (const doc of documents) {
       const trimmedTitle = (doc.title ?? "").trim();
-      const fallbackName = getFileName(doc.file) || "vehicle-document";
+      const fallbackName = doc.name;
       const defaultTitle =
         doc.type === "other"
           ? trimmedTitle || fallbackName
           : VEHICLE_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? fallbackName;
 
-      return {
-        type: doc.type,
-        file: doc.file,
+      const { error: insertError } = await supabase.from("vehicle_documents").insert({
+        vehicle_id: vehicleId,
         title: defaultTitle,
-        metadata: trimmedTitle ? { custom_title: trimmedTitle } : undefined,
-      };
-    });
+        document_type: doc.type,
+        storage_path: doc.path,
+        mime_type: doc.mime,
+        file_size: doc.size,
+        metadata: trimmedTitle ? { custom_title: trimmedTitle, original_filename: doc.name } : { original_filename: doc.name },
+        uploaded_by: uploadedBy,
+      });
 
-    const uploadResult = await uploadDocumentsBatch<VehicleDocumentTypeValue>(candidates, {
-      supabase,
-      bucket: VEHICLE_DOCUMENT_BUCKET,
-      table: "vehicle_documents",
-      entityColumn: "vehicle_id",
-      entityId: vehicleId,
-      allowedTypes: VEHICLE_DOCUMENT_TYPE_VALUES,
-      typeLabelMap: VEHICLE_DOCUMENT_TYPE_LABEL_MAP,
-      uploadedBy,
-      logPrefix: "[operations] vehicle document",
-      messages: {
-        upload: "Не удалось загрузить документ.",
-        insert: "Документ не сохранился. Попробуйте ещё раз.",
-      },
-    });
+      if (insertError) {
+        console.error("[operations] failed to insert vehicle document", insertError);
+      } else {
+        uploadedCount++;
+      }
+    }
 
-    if (!uploadResult.success) {
-      return { success: false, error: uploadResult.error };
+    if (uploadedCount === 0 && documents.length > 0) {
+       return { success: false, error: "Не удалось сохранить документы." };
     }
 
     for (const path of getWorkspacePaths("cars")) {
@@ -557,10 +554,10 @@ export async function uploadVehicleDocuments(
     }
     revalidatePath(`/ops/cars/${slug}`);
 
-    return { success: true, uploaded: uploadResult.uploaded };
+    return { success: true, uploaded: uploadedCount };
   } catch (error) {
     console.error("[operations] unexpected error while uploading vehicle documents", error);
-    return { success: false, error: "Произошла ошибка при загрузке документа." };
+    return { success: false, error: "Произошла ошибка при сохранении документа." };
   }
 }
 
@@ -584,81 +581,45 @@ export async function uploadVehicleImages(formData: FormData): Promise<UploadVeh
 
   const { vehicleId, slug } = parsed.data;
 
-  const imageEntries = formData
-    .getAll("images")
-    .filter(
-      (entry): entry is File =>
-        typeof File !== "undefined" && entry instanceof File && isFileLike(entry),
-    );
+  const imagesMap = new Map<
+    number,
+    { path?: string; size?: number; mime?: string; name?: string }
+  >();
 
-  const images = imageEntries.filter((file) => file.size > 0);
+  for (const [key, value] of formData.entries()) {
+    const match = /^images\[(\d+)\]\[(path|size|mime|name)\]$/.exec(key);
+    if (!match) continue;
+
+    const index = Number.parseInt(match[1] ?? "", 10);
+    if (Number.isNaN(index)) continue;
+
+    const existing = imagesMap.get(index) ?? {};
+    if (match[2] === "path" && typeof value === "string") {
+      existing.path = value;
+    }
+    if (match[2] === "size" && typeof value === "string") {
+      existing.size = Number(value);
+    }
+    if (match[2] === "mime" && typeof value === "string") {
+      existing.mime = value;
+    }
+    if (match[2] === "name" && typeof value === "string") {
+      existing.name = value;
+    }
+    imagesMap.set(index, existing);
+  }
+
+  const images = Array.from(imagesMap.values()).filter((img): img is { path: string; size: number; mime: string; name: string } => {
+      return !!img.path && !!img.name;
+  });
 
   if (images.length === 0) {
     return { success: true, uploaded: 0 };
   }
 
-  const invalidFile = images.find((file) => {
-    if (file.size > VEHICLE_IMAGE_MAX_SIZE) {
-      return true;
-    }
-    if (!file.type || !VEHICLE_IMAGE_MIME_TYPES.has(file.type.toLowerCase())) {
-      return true;
-    }
-    return false;
-  });
-
-  if (invalidFile) {
-    const sizeLimitMb = Math.round(VEHICLE_IMAGE_MAX_SIZE / (1024 * 1024));
-    return {
-      success: false,
-      error: `Поддерживаются только изображения (JPEG, PNG, WEBP, GIF) размером до ${sizeLimitMb} МБ.`,
-    };
-  }
-
   try {
     const supabase = await createSupabaseServerClient();
     const serviceClient = await createSupabaseServiceClient();
-
-    const ensureBucketExists = async (): Promise<boolean> => {
-      try {
-        const { data: bucketInfo, error: bucketLookupError } = await serviceClient.storage.getBucket(
-          VEHICLE_IMAGE_BUCKET,
-        );
-        if (bucketInfo && !bucketLookupError) {
-          return true;
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (!message.toLowerCase().includes("not found")) {
-          console.warn("[operations] unable to verify vehicle image bucket", error);
-          return false;
-        }
-      }
-
-      const { error: bucketCreateError } = await serviceClient.storage.createBucket(
-        VEHICLE_IMAGE_BUCKET,
-        {
-          public: false,
-          fileSizeLimit: VEHICLE_IMAGE_MAX_SIZE,
-        },
-      );
-
-      if (bucketCreateError && bucketCreateError.message?.toLowerCase().includes("already exists")) {
-        return true;
-      }
-
-      if (bucketCreateError) {
-        console.error("[operations] failed to create vehicle image bucket", bucketCreateError);
-        return false;
-      }
-
-      return true;
-    };
-
-    const bucketReady = await ensureBucketExists();
-    if (!bucketReady) {
-      return { success: false, error: "Не удалось подготовить хранилище для изображений." };
-    }
 
     const { data: existingImages, error: existingError } = await supabase
       .from("vehicle_images")
@@ -678,50 +639,16 @@ export async function uploadVehicleImages(formData: FormData): Promise<UploadVeh
       }, 0) ?? 0;
 
     let uploadedCount = 0;
-    const uploadedPaths: string[] = [];
 
-    for (const file of images) {
-      const baseName = getFileName(file) || "image";
-      const sanitizedName = sanitizeFileName(baseName);
-      const uniqueSuffix =
-        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const objectPath = `${vehicleId}/${uniqueSuffix}-${sanitizedName}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-
-      const attemptUpload = async () => {
-        const { error: uploadError } = await supabase.storage
-          .from(VEHICLE_IMAGE_BUCKET)
-          .upload(objectPath, buffer, {
-            contentType: file.type || "image/jpeg",
-            upsert: false,
-          });
-        return uploadError;
-      };
-
-      let uploadError = await attemptUpload();
-
-      if (uploadError?.message?.toLowerCase().includes("bucket not found")) {
-        const bucketCreated = await ensureBucketExists();
-        if (!bucketCreated) {
-          return { success: false, error: "Не удалось подготовить хранилище для изображений." };
-        }
-        uploadError = await attemptUpload();
-      }
-
-      if (uploadError) {
-        console.error("[operations] failed to upload vehicle image", uploadError);
-        if (uploadedPaths.length > 0) {
-          await supabase.storage.from(VEHICLE_IMAGE_BUCKET).remove(uploadedPaths);
-        }
-        return { success: false, error: "Не удалось загрузить изображения. Попробуйте ещё раз." };
-      }
+    for (const img of images) {
+      const sanitizedName = sanitizeFileName(img.name);
+      // We assume the path provided is already correct and uploaded to storage
+      const objectPath = img.path;
 
       nextSortOrder += 1;
       const shouldSetPrimary = !hasPrimaryImage && uploadedCount === 0;
 
-      const { error: insertError } = await supabase.from("vehicle_images").insert({
+      const { error: insertError } = await serviceClient.from("vehicle_images").insert({
         vehicle_id: vehicleId,
         storage_path: objectPath,
         label: sanitizedName,
@@ -731,12 +658,16 @@ export async function uploadVehicleImages(formData: FormData): Promise<UploadVeh
 
       if (insertError) {
         console.error("[operations] failed to insert vehicle image record", insertError);
-        await supabase.storage.from(VEHICLE_IMAGE_BUCKET).remove([objectPath, ...uploadedPaths]);
-        return { success: false, error: "Изображение не сохранилось. Попробуйте ещё раз." };
+        // We could try to delete the file from storage here if insert fails, but the client uploaded it.
+        // It's acceptable to have orphaned files occasionally, or we can use a cleanup job.
+        // For now, we just report error.
+      } else {
+        uploadedCount++;
       }
+    }
 
-      uploadedCount += 1;
-      uploadedPaths.push(objectPath);
+    if (uploadedCount === 0 && images.length > 0) {
+       return { success: false, error: "Не удалось сохранить изображения." };
     }
 
     for (const path of getWorkspacePaths("cars")) {

@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateMaskInput } from "@/components/ui/date-mask-input";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
 import type {
   OpsSellerDocument,
   OpsSellerProfile,
@@ -53,6 +54,9 @@ import {
   deleteOperationsSellerDocument,
 } from "@/app/(dashboard)/ops/sellers/actions";
 import { sortDocumentOptions } from "@/lib/documents/options";
+import { getSignedUploadUrlAction } from "@/app/(dashboard)/ops/actions/storage";
+import { sanitizeFileName } from "@/lib/documents/upload";
+import { useFileUpload } from "@/hooks/use-file-upload";
 
 import {
   DocumentManager,
@@ -123,7 +127,7 @@ function createDocumentDraft(): DocumentDraft {
   } satisfies DocumentDraft;
 }
 
-const CLIENT_DOCUMENT_ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg";
+const CLIENT_DOCUMENT_ACCEPT_TYPES = ALLOWED_ACCEPT_TYPES;
 const DOCUMENT_OPTIONS = sortDocumentOptions(SELLER_DOCUMENT_TYPES);
 
 function buildInitialState(profile: OpsSellerProfile): FormState {
@@ -158,6 +162,7 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
   const [canConfirmDelete, setCanConfirmDelete] = useState(false);
   
   const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([]);
+  const { upload: uploadFile } = useFileUpload<{ bucket: string; path: string }>();
   const [documentActionError, setDocumentActionError] = useState<string | null>(null);
   const [documentActionMessage, setDocumentActionMessage] = useState<string | null>(null);
   const [deletingDocumentIds, setDeletingDocumentIds] = useState<Set<string>>(() => new Set());
@@ -292,30 +297,54 @@ export function SellerEditDialog({ profile, documents, onSubmit, onDelete }: Sel
     startTransition(async () => {
       // 1. Upload documents if any
       if (documentDrafts.length > 0) {
-        const formData = new FormData();
-        formData.append("sellerId", profile.userId);
-        
-        let hasFiles = false;
-        let documentIndex = 0;
+        const uploadedDocs: { 
+          path: string; 
+          name: string;
+          type: string;
+          documentNumber?: string;
+          expireDate?: string;
+        }[] = [];
+        let uploadError = null;
+
         for (const draft of documentDrafts) {
           if (draft.file && draft.type) {
-            formData.append(`documents[${documentIndex}][type]`, draft.type);
-            formData.append(`documents[${documentIndex}][file]`, draft.file);
-            if (draft.documentNumber) {
-              formData.append(`documents[${documentIndex}][document_number]`, draft.documentNumber);
+            try {
+              const sanitizedName = sanitizeFileName(draft.file.name);
+              const path = `sellers/${profile.userId}/${Date.now()}-${sanitizedName}`;
+
+              const result = await uploadFile(draft.file, getSignedUploadUrlAction, {
+                bucket: "profile-documents",
+                path,
+              });
+
+              if (!result) {
+                throw new Error("Failed to upload file to storage");
+              }
+
+              uploadedDocs.push({
+                path,
+                name: draft.file.name,
+                type: draft.type,
+                documentNumber: draft.documentNumber,
+                expireDate: draft.expireDate
+              });
+            } catch (err: any) {
+              console.error("Upload error:", err);
+              uploadError = err.message;
+              break; 
             }
-            if (draft.expireDate) {
-              formData.append(`documents[${documentIndex}][expire_date]`, draft.expireDate);
-            }
-            documentIndex += 1;
-            hasFiles = true;
           }
         }
 
-        if (hasFiles) {
-          const uploadResult = await uploadOperationsSellerDocuments(formData);
+        if (uploadError) {
+          setErrorMessage(`Ошибка загрузки: ${uploadError}`);
+          return;
+        }
+
+        if (uploadedDocs.length > 0) {
+          const uploadResult = await uploadOperationsSellerDocuments(profile.userId, uploadedDocs);
           if (!uploadResult.success) {
-            setErrorMessage(uploadResult.error);
+            setErrorMessage(uploadResult.error || "Ошибка сохранения документов");
             return;
           }
         }

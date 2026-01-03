@@ -57,6 +57,10 @@ import {
 } from "@/app/(dashboard)/ops/cars/actions";
 import { useAccessControl } from "@/components/providers/access-control-provider";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
+import { ALLOWED_ACCEPT_TYPES } from "@/lib/constants/uploads";
+import { getSignedUploadUrlAction } from "@/app/(dashboard)/ops/actions/storage";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { sanitizeFileName } from "@/lib/documents/upload";
 
 const EMPTY_SELECT_VALUE = "__empty";
 
@@ -105,8 +109,8 @@ function createDocumentDraft(): DocumentDraft {
   } satisfies DocumentDraft;
 }
 
-const VEHICLE_DOCUMENT_ACCEPT_TYPES = ".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp";
-const VEHICLE_IMAGE_ACCEPT_TYPES = ".jpg,.jpeg,.png,.webp,.gif,.heic,.heif";
+const VEHICLE_DOCUMENT_ACCEPT_TYPES = ALLOWED_ACCEPT_TYPES;
+const VEHICLE_IMAGE_ACCEPT_TYPES = ALLOWED_ACCEPT_TYPES;
 
 function buildFormState(vehicle: OpsVehicleData): FormState {
   return {
@@ -158,6 +162,7 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
   const [isPending, startTransition] = useTransition();
   const [isUploadingImages, startImageUpload] = useTransition();
   const [documentDrafts, setDocumentDrafts] = useState<DocumentDraft[]>([]);
+  const { upload: uploadFile } = useFileUpload<{ bucket: string; path: string }>();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isCheckingDelete, setIsCheckingDelete] = useState(false);
   const [canConfirmDelete, setCanConfirmDelete] = useState(false);
@@ -680,32 +685,68 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
     setImageActionError(null);
     setImageActionMessage(null);
 
-    formData.set("vehicleId", vehicle.id);
-    formData.set("slug", slug);
+    const files = formData.getAll("images").filter((entry): entry is File => entry instanceof File);
 
-    startImageUpload(() => {
-      uploadVehicleImages(formData)
-        .then((result: UploadVehicleImagesResult) => {
-          if (!result.success) {
-            setImageActionError(result.error);
-            return;
-          }
-          if (imageUploadFormRef.current) {
-            imageUploadFormRef.current.reset();
-          }
-          setImageActionMessage(
-            result.uploaded > 0
-              ? result.uploaded === 1
-                ? "Фото успешно загружено."
-                : `Загружено ${result.uploaded} фото.`
-              : "Новые фото не выбраны.",
-          );
-          router.refresh();
-        })
-        .catch((error) => {
-          console.error("[operations] vehicle image upload error", error);
-          setImageActionError("Не удалось загрузить изображения. Попробуйте ещё раз.");
+    if (files.length === 0) {
+      setImageActionError("Выберите файлы для загрузки.");
+      return;
+    }
+
+    startImageUpload(async () => {
+      const uploadFormData = new FormData();
+      uploadFormData.set("vehicleId", vehicle.id);
+      uploadFormData.set("slug", slug);
+
+      let uploadedCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const sanitizedName = sanitizeFileName(file.name);
+        // We need a unique path. Using timestamp and random string on client is fine.
+        const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const path = `${vehicle.id}/${uniqueSuffix}-${sanitizedName}`;
+
+        const result = await uploadFile(file, getSignedUploadUrlAction, {
+          bucket: "vehicle-images",
+          path,
         });
+
+        if (!result) {
+          setImageActionError(`Не удалось загрузить файл ${file.name}.`);
+          return;
+        }
+
+        uploadFormData.append(`images[${i}][path]`, result.path);
+        uploadFormData.append(`images[${i}][size]`, String(file.size));
+        uploadFormData.append(`images[${i}][mime]`, file.type || "image/jpeg");
+        uploadFormData.append(`images[${i}][name]`, file.name);
+        uploadedCount++;
+      }
+
+      if (uploadedCount > 0) {
+        uploadVehicleImages(uploadFormData)
+          .then((result: UploadVehicleImagesResult) => {
+            if (!result.success) {
+              setImageActionError(result.error);
+              return;
+            }
+            if (imageUploadFormRef.current) {
+              imageUploadFormRef.current.reset();
+            }
+            setImageActionMessage(
+              result.uploaded > 0
+                ? result.uploaded === 1
+                  ? "Фото успешно загружено."
+                  : `Загружено ${result.uploaded} фото.`
+                : "Новые фото не выбраны.",
+            );
+            router.refresh();
+          })
+          .catch((error) => {
+            console.error("[operations] vehicle image upload error", error);
+            setImageActionError("Не удалось сохранить информацию об изображениях.");
+          });
+      }
     });
   };
 
@@ -752,18 +793,54 @@ export function CarEditDialog({ vehicle, slug, documents, gallery }: CarEditDial
         formData.append("vehicleId", vehicle.id);
         formData.append("slug", slug);
 
-        readyDrafts.forEach((draft, index) => {
-          formData.append(`documents[${index}][type]`, draft.type);
-          formData.append(`documents[${index}][file]`, draft.file);
-          if (draft.type === "other") {
-            formData.append(`documents[${index}][title]`, draft.title.trim());
+        const uploadPromises = readyDrafts.map(async (draft, index) => {
+          const file = draft.file;
+          const sanitizedName = sanitizeFileName(file.name);
+          const path = `${vehicle.id}/${Date.now()}-${sanitizedName}`;
+
+          const result = await uploadFile(file, getSignedUploadUrlAction, {
+            bucket: "vehicle-documents",
+            path,
+          });
+
+          if (!result) {
+            throw new Error(`Не удалось загрузить файл ${file.name}`);
           }
+
+          return {
+            index,
+            path: result.path,
+            size: file.size,
+            mime: file.type || "application/octet-stream",
+            name: file.name,
+            type: draft.type,
+            title: draft.title
+          };
         });
 
-        const uploadResult: UploadVehicleDocumentsResult = await uploadVehicleDocuments(formData);
+        try {
+          const uploadedDocs = await Promise.all(uploadPromises);
+          
+          uploadedDocs.forEach((doc) => {
+            formData.append(`documents[${doc.index}][type]`, doc.type);
+            formData.append(`documents[${doc.index}][path]`, doc.path);
+            formData.append(`documents[${doc.index}][size]`, String(doc.size));
+            formData.append(`documents[${doc.index}][mime]`, doc.mime);
+            formData.append(`documents[${doc.index}][name]`, doc.name);
+            if (doc.type === "other") {
+              formData.append(`documents[${doc.index}][title]`, doc.title.trim());
+            }
+          });
 
-        if (!uploadResult.success) {
-          setErrorMessage(uploadResult.error);
+          const uploadResult: UploadVehicleDocumentsResult = await uploadVehicleDocuments(formData);
+
+          if (!uploadResult.success) {
+            setErrorMessage(uploadResult.error);
+            return;
+          }
+        } catch (error: any) {
+          console.error("Document upload failed", error);
+          setErrorMessage(error.message || "Ошибка при загрузке документов.");
           return;
         }
       }

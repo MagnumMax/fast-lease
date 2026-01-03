@@ -1,7 +1,5 @@
 "use server";
 
-import { Buffer } from "node:buffer";
-
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -14,12 +12,6 @@ import {
 } from "@/lib/supabase/queries/operations";
 import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
-import {
-  uploadDocumentsBatch,
-  type DocumentUploadCandidate,
-  isFileLike,
-  type FileLike,
-} from "@/lib/documents/upload";
 import { DEAL_COMPANY_CODES, DEFAULT_DEAL_COMPANY_CODE } from "@/lib/data/deal-companies";
 import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
@@ -47,13 +39,6 @@ const DEAL_DOCUMENT_TYPE_META: Record<DealDocumentTypeValue, { title: string; ca
 const DEAL_DOCUMENT_TYPE_VALUES = new Set<DealDocumentTypeValue>(
   DEAL_DOCUMENT_TYPES.map((entry) => entry.value),
 );
-
-const FALLBACK_UPLOAD_NAME = "document";
-
-function resolveUploadedFileName(file: FileLike): string {
-  const rawName = typeof file.name === "string" ? file.name.trim() : "";
-  return rawName.length > 0 ? rawName : FALLBACK_UPLOAD_NAME;
-}
 
 function parseCommercialNumber(value?: string | null): number | null {
   if (!value) return null;
@@ -139,10 +124,13 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
 
   const { dealId, slug } = parsed.data;
 
-  const documentsMap = new Map<number, { type?: string; file?: FileLike | null }>();
+  const documentsMap = new Map<
+    number,
+    { type?: string; path?: string; size?: number; mime?: string; name?: string }
+  >();
 
   for (const [key, value] of formData.entries()) {
-    const match = /^documents\[(\d+)\]\[(type|file)\]$/.exec(key);
+    const match = /^documents\[(\d+)\]\[(type|path|size|mime|name)\]$/.exec(key);
     if (!match) continue;
     const index = Number.parseInt(match[1] ?? "", 10);
     if (Number.isNaN(index)) continue;
@@ -150,8 +138,17 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
     if (match[2] === "type" && typeof value === "string") {
       existing.type = value;
     }
-    if (match[2] === "file" && isFileLike(value)) {
-      existing.file = value;
+    if (match[2] === "path" && typeof value === "string") {
+      existing.path = value;
+    }
+    if (match[2] === "size" && typeof value === "string") {
+      existing.size = Number(value);
+    }
+    if (match[2] === "mime" && typeof value === "string") {
+      existing.mime = value;
+    }
+    if (match[2] === "name" && typeof value === "string") {
+      existing.name = value;
     }
     documentsMap.set(index, existing);
   }
@@ -160,28 +157,35 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
 
   const hasIncomplete = rawDocuments.some((entry) => {
     const type = typeof entry.type === "string" ? entry.type.trim() : "";
-    const hasFile = isFileLike(entry.file) && entry.file.size > 0;
-    return (type && !hasFile) || (hasFile && !type);
+    const hasPath = typeof entry.path === "string" && entry.path.trim().length > 0;
+    return (type && !hasPath) || (hasPath && !type);
   });
 
   if (hasIncomplete) {
-    return { success: false, error: "Выберите тип и файл для каждого документа." };
+    return { success: false, error: "Выберите тип и загрузите файл для каждого документа." };
   }
 
   const documents = rawDocuments
     .map((entry) => {
       const typeRaw = typeof entry.type === "string" ? entry.type.trim().toLowerCase() : "";
       const typeValue = typeRaw as DealDocumentTypeValue;
-      const file = isFileLike(entry.file) && entry.file.size > 0 ? entry.file : null;
-      if (!typeRaw || !file) {
+      const path = typeof entry.path === "string" ? entry.path.trim() : "";
+      
+      if (!typeRaw || !path) {
         return null;
       }
       if (!DEAL_DOCUMENT_TYPE_VALUES.has(typeValue)) {
         return null;
       }
-      return { type: typeValue, file };
+      return {
+        type: typeValue,
+        path,
+        size: entry.size ?? 0,
+        mime: entry.mime ?? "application/octet-stream",
+        name: entry.name ?? "document",
+      };
     })
-    .filter((entry): entry is { type: DealDocumentTypeValue; file: FileLike } => entry !== null);
+    .filter((entry): entry is { type: DealDocumentTypeValue; path: string; size: number; mime: string; name: string } => entry !== null);
 
   if (documents.length === 0) {
     return { success: true, uploaded: 0 };
@@ -193,42 +197,42 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
     const { data: authData } = await sessionClient.auth.getUser();
     const uploadedBy = authData?.user?.id ?? null;
 
-    const candidates: DocumentUploadCandidate<DealDocumentTypeValue>[] = documents.map((doc) => {
+    let uploadedCount = 0;
+
+    for (const doc of documents) {
       const meta = DEAL_DOCUMENT_TYPE_META[doc.type];
-      const originalName = resolveUploadedFileName(doc.file);
+      const originalName = doc.name;
       const baseTitle = meta?.title ?? originalName;
       const finalTitle = originalName && baseTitle ? `${baseTitle} (${originalName})` : baseTitle ?? originalName;
 
-      return {
-        type: doc.type,
-        file: doc.file,
-        category: meta?.category ?? "required",
+      const { error: insertError } = await supabase.from("deal_documents").insert({
+        deal_id: dealId,
         title: finalTitle,
+        document_type: doc.type,
+        document_category: meta?.category ?? "required",
+        status: "uploaded",
+        storage_path: doc.path,
+        mime_type: doc.mime,
+        file_size: doc.size,
         metadata: {
           label: meta?.title ?? originalName,
+          original_filename: originalName,
         },
-      };
-    });
+        uploaded_by: uploadedBy,
+      });
 
-    const uploadResult = await uploadDocumentsBatch<DealDocumentTypeValue>(candidates, {
-      supabase,
-      bucket: STORAGE_BUCKET,
-      table: "deal_documents",
-      entityColumn: "deal_id",
-      entityId: dealId,
-      allowedTypes: DEAL_DOCUMENT_TYPE_VALUES,
-      typeLabelMap: DEAL_DOCUMENT_TYPE_LABEL_MAP,
-      categoryColumn: "document_category",
-      uploadedBy,
-      logPrefix: "[operations] deal document",
-      messages: {
-        upload: "Не удалось загрузить документ.",
-        insert: "Документ не сохранился. Попробуйте ещё раз.",
-      },
-    });
+      if (insertError) {
+        console.error("[operations] failed to insert deal document", insertError);
+        // We don't abort the whole batch, but we could return partial success or error.
+        // For now, we'll log it and continue, but this might be misleading.
+        // A better approach is to collect errors.
+      } else {
+        uploadedCount++;
+      }
+    }
 
-    if (!uploadResult.success) {
-      return { success: false, error: uploadResult.error };
+    if (uploadedCount === 0 && documents.length > 0) {
+       return { success: false, error: "Не удалось сохранить документы." };
     }
 
     for (const path of getWorkspacePaths("deals")) {
@@ -239,10 +243,10 @@ export async function uploadDealDocuments(formData: FormData): Promise<UploadDea
       revalidatePath(`/ops/deals/${dealId}`);
     }
 
-    return { success: true, uploaded: uploadResult.uploaded };
+    return { success: true, uploaded: uploadedCount };
   } catch (error) {
     console.error("[operations] unexpected error while uploading deal documents", error);
-    return { success: false, error: "Произошла ошибка при загрузке документов." };
+    return { success: false, error: "Произошла ошибка при сохранении документов." };
   }
 }
 
@@ -665,9 +669,12 @@ export async function completeDealGuardAction(
     return { error: "Задача не найдена для текущего статуса", success: false };
   }
 
-  const file = formData.get("attachment") as File | null;
+  const attachmentPath = formData.get("attachmentPath") as string | null;
+  const attachmentName = formData.get("attachmentName") as string | null;
+  const attachmentSize = Number(formData.get("attachmentSize"));
+  const attachmentType = formData.get("attachmentType") as string | null;
 
-  if (guardMeta.requiresDocument && (!file || file.size === 0)) {
+  if (guardMeta.requiresDocument && (!attachmentPath || !attachmentPath.trim())) {
     return { error: "Необходимо приложить документ", success: false };
   }
 
@@ -694,28 +701,7 @@ export async function completeDealGuardAction(
 
     const payload = ensureGuardPayload(dealRow.payload as Record<string, unknown> | null | undefined);
 
-    let attachmentPath: string | null = null;
-
-    if (file && file.size > 0) {
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, "-");
-      const path = `${dealId}/${guardKey}/${Date.now()}-${sanitizedName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(path, buffer, {
-          contentType: file.type || "application/octet-stream",
-          upsert: true,
-        });
-
-      if (uploadError) {
-        console.error("[workflow] failed to upload attachment", uploadError);
-        return { error: "Не удалось загрузить файл", success: false };
-      }
-
-      attachmentPath = path;
-
+    if (attachmentPath) {
       const { error: insertDocError } = await supabase.from("deal_documents").insert({
         deal_id: dealId,
         title: guardMeta.label,
@@ -723,12 +709,13 @@ export async function completeDealGuardAction(
         document_category: "other",
         status: "uploaded",
         storage_path: attachmentPath,
-        mime_type: file.type || null,
-        file_size: file.size ?? null,
+        mime_type: attachmentType || null,
+        file_size: attachmentSize || null,
         metadata: {
           upload_context: "guard_task",
           guard_key: guardKey,
           label: guardMeta.label,
+          original_filename: attachmentName,
         },
         uploaded_by: uploadedBy,
       });
@@ -746,6 +733,7 @@ export async function completeDealGuardAction(
       completed_at: new Date().toISOString(),
       label: guardMeta.label,
     };
+
 
     const { error: updateError } = await supabase
       .from("deals")

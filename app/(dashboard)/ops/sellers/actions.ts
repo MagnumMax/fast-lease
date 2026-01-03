@@ -18,10 +18,7 @@ import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import {
-  uploadDocumentsBatch,
-  type DocumentUploadCandidate,
-  isFileLike,
-  type FileLike,
+  sanitizeFileName,
 } from "@/lib/documents/upload";
 import {
   normalizeEmail,
@@ -551,62 +548,22 @@ export async function deleteOperationsSeller(
 }
 
 export async function uploadOperationsSellerDocuments(
-  formData: FormData,
+  sellerId: string,
+  documents: { 
+    path: string; 
+    name: string; 
+    type: string; 
+    documentNumber?: string; 
+    expireDate?: string; 
+  }[]
 ): Promise<UploadOperationsSellerDocumentsResult> {
-  const sellerId = formData.get("sellerId");
-
-  if (!sellerId || typeof sellerId !== "string") {
-    return { success: false, error: "Некорректный ID продавца." };
-  }
-
   const sessionUser = await getMutationSessionUser();
   if (!sessionUser) {
     return { success: false, error: READ_ONLY_ACCESS_MESSAGE };
   }
 
-  const documentsMap = new Map<
-    number,
-    {
-      type?: string;
-      file?: FileLike;
-      documentNumber?: string;
-      expireDate?: string;
-    }
-  >();
-
-  for (const [key, value] of formData.entries()) {
-    const match = /^documents\[(\d+)\]\[(type|file|document_number|expire_date)\]$/.exec(key);
-    if (match) {
-      const index = parseInt(match[1], 10);
-      const field = match[2];
-      const existing = documentsMap.get(index) || {};
-
-      if (field === "file" && isFileLike(value)) {
-        existing.file = value;
-      } else if (field === "type" && typeof value === "string") {
-        existing.type = value;
-      } else if (field === "document_number" && typeof value === "string") {
-        existing.documentNumber = value;
-      } else if (field === "expire_date" && typeof value === "string") {
-        existing.expireDate = value;
-      }
-
-      documentsMap.set(index, existing);
-    }
-  }
-
-  const validDocs = Array.from(documentsMap.values()).filter(
-    (doc) => doc.file && doc.type,
-  );
-
-  console.log("[operations] uploading seller documents", {
-    sellerId,
-    filesCount: validDocs.length,
-    uploadedBy: sessionUser.user.id,
-  });
-
-  if (validDocs.length === 0) {
-    return { success: false, error: "Не выбраны файлы для загрузки." };
+  if (documents.length === 0) {
+    return { success: true, uploaded: 0 };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -625,56 +582,45 @@ export async function uploadOperationsSellerDocuments(
   }
 
   const profileId = profileData.id;
+  let uploadedCount = 0;
 
-  const candidates: DocumentUploadCandidate[] = validDocs.map((doc) => {
+  for (const doc of documents) {
+    const sanitizedName = sanitizeFileName(doc.name);
     const typeValue = doc.type as SellerDocumentTypeValue;
     const typeLabel = SELLER_DOCUMENT_TYPE_LABEL_MAP[typeValue] ?? "Документ";
-    
-    return {
-      file: doc.file!,
-      title: typeLabel,
-      type: typeValue,
+
+    const { error: insertError } = await supabase.from("profile_documents").insert({
+      profile_id: profileId,
+      document_category: typeValue, // Using document_category as type column based on previous batch usage
+      storage_path: doc.path,
       metadata: {
-          document_type: typeValue,
-          label: typeLabel,
-          uploaded_via: "ops_dashboard",
-          document_number: doc.documentNumber || null,
-          expire_date: doc.expireDate || null,
-      }
-    };
-  });
+        original_filename: sanitizedName,
+        label: typeLabel,
+        document_type: typeValue,
+        document_number: doc.documentNumber || null,
+        expire_date: doc.expireDate || null,
+        uploaded_via: "ops_dashboard",
+      },
+      uploaded_by: uploadedBy,
+    });
 
-  const uploadResult = await uploadDocumentsBatch<SellerDocumentTypeValue>(candidates, {
-    supabase,
-    bucket: SELLER_DOCUMENT_BUCKET,
-    table: "profile_documents",
-    entityColumn: "profile_id",
-    entityId: profileId,
-    storagePathPrefix: `sellers/${sellerId}`,
-    allowedTypes: SELLER_DOCUMENT_TYPE_VALUES,
-    typeLabelMap: SELLER_DOCUMENT_TYPE_LABEL_MAP,
-    categoryColumn: "document_category",
-    uploadedBy,
-    logPrefix: "[operations] seller document",
-    messages: {
-      upload: "Не удалось загрузить документ.",
-      insert: "Документ не сохранился. Попробуйте ещё раз.",
-    },
-  });
+    if (insertError) {
+      console.error("[operations] failed to insert seller document", insertError);
+    } else {
+      uploadedCount++;
+    }
+  }
 
-  if (!uploadResult.success) {
-    console.error("[operations] batch upload failed", { error: uploadResult.error, sellerId });
-    return { success: false, error: uploadResult.error };
+  if (uploadedCount === 0 && documents.length > 0) {
+     return { success: false, error: "Не удалось сохранить документы." };
   }
   
-  console.log("[operations] batch upload success", { uploaded: uploadResult.uploaded, sellerId });
-
   for (const path of getWorkspacePaths("sellers")) {
     revalidatePath(path);
   }
   revalidatePath(`/ops/sellers/${sellerId}`);
 
-  return { success: true, uploaded: uploadResult.uploaded };
+  return { success: true, uploaded: uploadedCount };
 }
 
 export async function deleteOperationsSellerDocument(

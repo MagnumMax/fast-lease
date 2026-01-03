@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
-import type { OpsClientRecord, OpsClientType } from "@/lib/supabase/queries/operations";
+import type { OpsClientRecord } from "@/lib/supabase/queries/operations";
 import {
   CLIENT_DOCUMENT_TYPES,
   CLIENT_DOCUMENT_TYPE_LABEL_MAP,
@@ -20,13 +20,6 @@ import {
 } from "@/lib/supabase/admin-auth";
 import { getWorkspacePaths } from "@/lib/workspace/routes";
 import { buildSlugWithId } from "@/lib/utils/slugs";
-import {
-  uploadDocumentsBatch,
-  type DocumentUploadCandidate,
-  isFileLike,
-  type FileLike,
-  getFileName,
-} from "@/lib/documents/upload";
 import { getMutationSessionUser } from "@/lib/auth/guards";
 import { READ_ONLY_ACCESS_MESSAGE } from "@/lib/access-control/messages";
 
@@ -798,14 +791,17 @@ export async function uploadClientDocuments(
     number,
     {
       type?: ClientDocumentTypeValue | "";
-      file?: FileLike | null;
+      path?: string;
+      size?: number;
+      mime?: string;
+      name?: string;
       context?: "personal" | "company";
       documentNumber?: string;
       expireDate?: string;
     }
   >();
   for (const [key, value] of formData.entries()) {
-    const match = /^documents\[(\d+)\]\[(type|file|context|document_number|expire_date)\]$/.exec(key);
+    const match = /^documents\[(\d+)\]\[(type|path|size|mime|name|context|document_number|expire_date)\]$/.exec(key);
     if (!match) continue;
     const index = Number.parseInt(match[1] ?? "", 10);
     if (Number.isNaN(index)) continue;
@@ -813,8 +809,17 @@ export async function uploadClientDocuments(
     if (match[2] === "type" && typeof value === "string") {
       existing.type = value as ClientDocumentTypeValue | "";
     }
-    if (match[2] === "file" && isFileLike(value)) {
-      existing.file = value;
+    if (match[2] === "path" && typeof value === "string") {
+      existing.path = value;
+    }
+    if (match[2] === "size" && typeof value === "string") {
+      existing.size = Number(value);
+    }
+    if (match[2] === "mime" && typeof value === "string") {
+      existing.mime = value;
+    }
+    if (match[2] === "name" && typeof value === "string") {
+      existing.name = value;
     }
     if (match[2] === "context" && typeof value === "string") {
       const normalized = value.toLowerCase();
@@ -832,12 +837,12 @@ export async function uploadClientDocuments(
   const rawDocuments = Array.from(documentsMap.values());
   const hasIncompleteDocument = rawDocuments.some((entry) => {
     const hasType = Boolean(entry.type);
-    const hasFile = isFileLike(entry.file) && entry.file.size > 0;
-    return (hasType && !hasFile) || (hasFile && !hasType);
+    const hasPath = typeof entry.path === "string" && entry.path.trim().length > 0;
+    return (hasType && !hasPath) || (hasPath && !hasType);
   });
 
   if (hasIncompleteDocument) {
-    return { success: false, error: "Выберите тип и файл для каждого документа." };
+    return { success: false, error: "Выберите тип и загрузите файл для каждого документа." };
   }
 
   const documents = rawDocuments
@@ -845,7 +850,7 @@ export async function uploadClientDocuments(
       if (!entry.type || !CLIENT_DOCUMENT_TYPE_VALUES.has(entry.type)) {
         return null;
       }
-      if (!isFileLike(entry.file) || entry.file.size <= 0) {
+      if (!entry.path) {
         return null;
       }
       const context =
@@ -853,7 +858,10 @@ export async function uploadClientDocuments(
         (entry.type === "company_license" ? "company" : ("personal" as "personal" | "company"));
       return {
         type: entry.type,
-        file: entry.file,
+        path: entry.path,
+        size: entry.size ?? 0,
+        mime: entry.mime ?? "application/octet-stream",
+        name: entry.name ?? "document",
         context,
         documentNumber: entry.documentNumber,
         expireDate: entry.expireDate,
@@ -864,7 +872,10 @@ export async function uploadClientDocuments(
         entry,
       ): entry is {
         type: ClientDocumentTypeValue;
-        file: FileLike;
+        path: string;
+        size: number;
+        mime: string;
+        name: string;
         context: "personal" | "company";
         documentNumber: string | undefined;
         expireDate: string | undefined;
@@ -892,47 +903,41 @@ export async function uploadClientDocuments(
       return { success: false, error: "Не удалось найти профиль покупателя." };
     }
 
-    const candidates: DocumentUploadCandidate<ClientDocumentTypeValue>[] = documents.map((doc) => {
+    let uploadedCount = 0;
+
+    for (const doc of documents) {
       const category =
         CLIENT_DOCUMENT_CATEGORY_MAP[doc.type] ?? (doc.context === "company" ? "company" : "identity");
-      const fallbackName = getFileName(doc.file) || "client-document";
+      const fallbackName = doc.name;
       const defaultLabel = CLIENT_DOCUMENT_TYPE_LABEL_MAP[doc.type] ?? fallbackName;
 
-      return {
-        type: doc.type,
-        file: doc.file,
-        context: doc.context,
-        category,
+      const { error: insertError } = await serviceClient.from("profile_documents").insert({
+        profile_id: profileId,
+        document_type: doc.type,
+        document_category: category,
+        storage_path: doc.path,
+        mime_type: doc.mime,
+        file_size: doc.size,
         title: defaultLabel,
         metadata: {
           label: defaultLabel,
           uploaded_via: "ops_dashboard",
           document_number: doc.documentNumber || null,
           expire_date: doc.expireDate || null,
+          original_filename: doc.name,
         },
-      };
-    });
+        uploaded_by: uploadedBy,
+      });
 
-    const uploadResult = await uploadDocumentsBatch<ClientDocumentTypeValue>(candidates, {
-      supabase,
-      bucket: CLIENT_DOCUMENT_BUCKET,
-      table: "profile_documents",
-      entityColumn: "profile_id",
-      entityId: profileId,
-      storagePathPrefix: `clients/${clientId}`,
-      allowedTypes: CLIENT_DOCUMENT_TYPE_VALUES,
-      typeLabelMap: CLIENT_DOCUMENT_TYPE_LABEL_MAP,
-      categoryColumn: "document_category",
-      uploadedBy,
-      logPrefix: "[operations] client document",
-      messages: {
-        upload: "Не удалось загрузить документ.",
-        insert: "Документ не сохранился. Попробуйте ещё раз.",
-      },
-    });
+      if (insertError) {
+        console.error("[operations] failed to insert client document", insertError);
+      } else {
+        uploadedCount++;
+      }
+    }
 
-    if (!uploadResult.success) {
-      return { success: false, error: uploadResult.error };
+    if (uploadedCount === 0 && documents.length > 0) {
+       return { success: false, error: "Не удалось сохранить документы." };
     }
 
     for (const path of getWorkspacePaths("clients")) {
@@ -943,10 +948,10 @@ export async function uploadClientDocuments(
       revalidatePath(`/ops/clients/${clientId}`);
     }
 
-    return { success: true, uploaded: uploadResult.uploaded };
+    return { success: true, uploaded: uploadedCount };
   } catch (error) {
     console.error("[operations] unexpected error while uploading client documents", error);
-    return { success: false, error: "Произошла ошибка при загрузке документов." };
+    return { success: false, error: "Произошла ошибка при сохранении документов." };
   }
 }
 

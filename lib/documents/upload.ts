@@ -1,6 +1,8 @@
-import { Buffer } from "node:buffer";
+import { Buffer } from "buffer";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+
+import { MAX_FILE_SIZE_BYTES } from "@/lib/constants/files";
 
 export type FileLike = (File | Blob) & { name?: string };
 
@@ -69,12 +71,63 @@ function coerceMetadata(value?: Record<string, unknown>): Record<string, unknown
   return { ...value };
 }
 
+const TRANSLITERATION_MAP: Record<string, string> = {
+  а: "a",
+  б: "b",
+  в: "v",
+  г: "g",
+  д: "d",
+  е: "e",
+  ё: "yo",
+  ж: "zh",
+  з: "z",
+  и: "i",
+  й: "y",
+  к: "k",
+  л: "l",
+  м: "m",
+  н: "n",
+  о: "o",
+  п: "p",
+  р: "r",
+  с: "s",
+  т: "t",
+  у: "u",
+  ф: "f",
+  х: "kh",
+  ц: "ts",
+  ч: "ch",
+  ш: "sh",
+  щ: "shch",
+  ъ: "",
+  ы: "y",
+  ь: "",
+  э: "e",
+  ю: "yu",
+  я: "ya",
+};
+
+export function transliterate(text: string): string {
+  return text
+    .toLowerCase()
+    .split("")
+    .map((char) => TRANSLITERATION_MAP[char] || char)
+    .join("");
+}
+
 export function sanitizeFileName(original: string): string {
   const fallback = "document";
   if (typeof original !== "string" || original.trim().length === 0) {
     return fallback;
   }
-  const normalized = original.replace(/[^\w.\-]+/g, "-").replace(/-+/g, "-");
+  
+  // 1. Transliterate cyrillic to latin
+  const transliterated = transliterate(original);
+  
+  // 2. Replace non-alphanumeric chars (except dot and hyphen) with hyphen
+  // Note: we use transliterated string which is now mostly safe ASCII
+  const normalized = transliterated.replace(/[^\w.\-]+/g, "-").replace(/-+/g, "-");
+  
   const trimmed = normalized.replace(/^-+|-+$/g, "");
   return trimmed.length ? trimmed : fallback;
 }
@@ -145,6 +198,11 @@ export async function uploadDocumentsBatch<TType extends string = string>(
       const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const objectPath = `${storagePathPrefix ?? entityId}/${uniqueSuffix}-${sanitizedName}`;
       const buffer = Buffer.from(await candidate.file.arrayBuffer());
+
+      if (buffer.length > MAX_FILE_SIZE_BYTES) {
+         console.warn(`${logPrefix} file too large`, { size: buffer.length, max: MAX_FILE_SIZE_BYTES });
+         return { success: false, error: `Файл слишком большой (макс. ${MAX_FILE_SIZE_BYTES / 1024 / 1024} МБ)` };
+      }
 
       const { error: uploadError } = await supabase.storage.from(bucket).upload(objectPath, buffer, {
         contentType: candidate.file.type || "application/octet-stream",
