@@ -29,7 +29,6 @@ export interface CalculationResult {
   monthlyPayment: number;
   totalInterest: number;
   insuranceAnnual: number; // Годовая страховка
-  totalInsurance: number;
   totalClientCost: number; // Итого для клиента (First payment + Платежи + Выкуп если есть)
   initialPayment: number; // Сумма первого месяца (First payment + Страховка)
   buyoutAmount: number; // Выкупная стоимость (для вывода)
@@ -60,10 +59,7 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
 
   // Common Insurance Calculation
   // Insurance = PriceVat * (InsuranceRate / 100)
-  // Insurance is always calculated for full years (rounded up)
   const insuranceAnnual = priceVat * (insuranceRateAnnual / 100);
-  const insuranceYears = Math.ceil(termMonths / 12);
-  const totalInsurance = insuranceAnnual * insuranceYears;
 
   // Schedule container
   const schedule: PaymentScheduleItem[] = [];
@@ -80,8 +76,9 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     const adminFee = priceVat * 0.01;
 
     // Calculate Equity part of the First Payment
-    // Equity = Total First payment - Insurance - Admin Fee
-    const firstPaymentEquityGross = firstPaymentTotal - insuranceAnnual - adminFee;
+    // Equity = Total First payment - Admin Fee
+    // Insurance is not financed and stays inside equity.
+    const firstPaymentEquityGross = firstPaymentTotal - adminFee;
     
     // Net Equity (removing VAT from the equity part)
     // Note: In Excel, the entire First payment is VAT inclusive.
@@ -123,7 +120,8 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
 
     // 5. Monthly Payment (Gross)
     // Payment = (MonthlyPrincipal + MonthlyInterest) * 1.05
-    monthlyLeasePayment = (monthlyPrincipal + monthlyInterest) * 1.05;
+    const monthlyLeasePaymentRaw = (monthlyPrincipal + monthlyInterest) * 1.05;
+    monthlyLeasePayment = Math.round(monthlyLeasePaymentRaw);
 
     // Rates for display
     effectiveMonthlyRate = interestRateAnnual / 12;
@@ -132,19 +130,13 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     // 6. Total Client Cost
     // FirstPayment (Total First payment) + (MonthlyPayment * numRegularPayments) + Buyout
     // Note: Insurance is already inside FirstPayment
-    // But we need to check if totalInsurance is Annual * Term/12. 
-    // If the first year is paid in First payment, subsequent years might be extra?
     // User instruction: "First payment + Insurance" is the 1st payment.
     // For now, TotalClientCost = First payment + Payments + Buyout.
-    // However, if term > 12 months, usually insurance is renewed.
-    // The previous logic added totalInsurance separately.
     // If term is 36 months, 1st year is in First payment. 2nd and 3rd year are extra?
     // Excel "Total" column matches sum of payments.
     // Let's assume TotalClientCost = Sum of all schedule payments.
     const sumOfPayments = firstPaymentTotal + (monthlyLeasePayment * numRegularPayments) + buyoutAmount;
-    totalClientCost = sumOfPayments; // + (totalInsurance - insuranceAnnual)? 
-    // If Excel total matches sum of payments, then extra insurance is not in the schedule or total?
-    // We'll stick to Sum of Schedule for now.
+    totalClientCost = sumOfPayments;
 
     // 7. Generate Schedule
     let currentPrincipalBalance = principal;
@@ -193,28 +185,32 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
   } else {
     // Standard logic: 
     // "1 month payment = First payment" (First payment includes insurance)
-    // Equity = First payment - Insurance
-    const equityFirstPayment = firstPaymentTotal - insuranceAnnual;
+    // Equity = First payment
+    // Insurance is not financed and stays inside equity.
+    const equityFirstPayment = firstPaymentTotal;
     
     // Principal = PriceVat - Equity
     principal = Math.max(0, priceVat - equityFirstPayment);
     buyoutAmount = 0; 
 
     // Interest calculation (Flat Rate on Principal)
-    // Interest is usually calculated for the full term?
-    // If Month 1 is First payment, then we finance the rest for (Term - 1) months?
     // Standard usually means "Interest on Principal for Term".
-    totalInterest = principal * (interestRateAnnual / 100) * (termMonths / 12);
-    
+    const totalInterestRaw = principal * (interestRateAnnual / 100) * (termMonths / 12);
+
     // Payoff
-    const payoffWithInterest = principal + totalInterest;
+    const payoffWithInterest = principal + totalInterestRaw;
 
-    // Number of regular payments (Month 2 to Term)
-    const numRegularPayments = Math.max(1, termMonths - 1);
+    // Number of regular payments (Month 2 to Term+1)
+    // Regular payments count equals termMonths, first payment is month 1.
+    const numRegularPayments = Math.max(1, termMonths);
 
-    // Monthly Payment
+    // Monthly Payment (rounded to match schedule display)
     // We amortize the Payoff over the remaining months
-    monthlyLeasePayment = payoffWithInterest / numRegularPayments;
+    const monthlyLeasePaymentRaw = payoffWithInterest / numRegularPayments;
+    monthlyLeasePayment = Math.round(monthlyLeasePaymentRaw);
+
+    // Total interest aligned with rounded payment amounts
+    totalInterest = (monthlyLeasePayment * numRegularPayments) - principal;
     
     // Rates
     effectiveMonthlyRate = interestRateAnnual / 12;
@@ -240,7 +236,7 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
         balance: currentPrincipalBalance // Balance reflects actual debt (Price - Equity)
     });
 
-    // Months 2..Term
+    // Months 2..Term+1
     for (let i = 0; i < numRegularPayments; i++) {
         currentPrincipalBalance -= monthlyPrincipal;
         schedule.push({
@@ -267,7 +263,6 @@ export function calculateCommercialOffer(input: CalculationInput): CalculationRe
     monthlyPayment: monthlyLeasePayment,
     totalInterest,
     insuranceAnnual,
-    totalInsurance,
     totalClientCost,
     initialPayment,
     buyoutAmount,

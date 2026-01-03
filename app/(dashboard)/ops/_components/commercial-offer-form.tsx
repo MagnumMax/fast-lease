@@ -135,6 +135,11 @@ function formatCurrencyAED(value: number | null): string {
   return `AED ${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
+function formatCurrencyPlain(value: number | null): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
 function formatPercent(value: number | null): string {
   if (value == null || Number.isNaN(value)) return "—";
   return `${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
@@ -467,9 +472,9 @@ export function CommercialOfferForm({
         { label: "Итого к погашению", value: "—" },
         { label: "Ежемесячный платёж", value: "—" },
         { label: "Доход по процентам", value: "—" },
-        { label: "Страховые платежи", value: "—" },
+        { label: "Годовая страховка", value: "—" },
         { label: "Сумма первого месяца", value: "—" },
-        { label: "Итого для покупателя (страх. + первый взнос)", value: "—" },
+        { label: "Итого для покупателя", value: "—" },
       ];
     }
 
@@ -481,9 +486,9 @@ export function CommercialOfferForm({
       { label: "Итого к погашению", value: formatCurrencyAED(result.financedAmount + result.totalInterest) },
       { label: "Ежемесячный платёж", value: formatCurrencyAED(result.monthlyPayment) },
       { label: "Доход по процентам", value: formatCurrencyAED(result.totalInterest) },
-      { label: "Страховые платежи", value: formatCurrencyAED(result.totalInsurance) },
+      { label: "Годовая страховка", value: formatCurrencyAED(result.insuranceAnnual) },
       { label: "Сумма первого месяца", value: formatCurrencyAED(result.initialPayment) },
-      { label: "Итого для покупателя (страх. + first payment)", value: formatCurrencyAED(result.totalClientCost) },
+      { label: "Итого для покупателя", value: formatCurrencyAED(result.totalClientCost) },
     ];
   }, [calculationResult]);
 
@@ -665,32 +670,36 @@ export function CommercialOfferForm({
                       <TableRow key={row.month} className="text-xs">
                         <TableCell className="font-medium">{row.month}</TableCell>
                         <TableCell>{row.label}</TableCell>
-                        <TableCell className="text-right">{formatCurrencyAED(row.amount)}</TableCell>
+                        <TableCell className="text-right">{formatCurrencyPlain(row.amount)}</TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatCurrencyAED(row.principal)}
+                          {formatCurrencyPlain(row.principal)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatCurrencyAED(row.interest)}
+                          {formatCurrencyPlain(row.interest)}
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">
-                          {formatCurrencyAED(row.vat)}
+                          {formatCurrencyPlain(row.vat)}
                         </TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrencyAED(row.balance)}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrencyPlain(row.balance)}</TableCell>
                       </TableRow>
                     ))}
                     <TableRow className="bg-muted/50 text-xs font-semibold hover:bg-muted/50">
                       <TableCell colSpan={2}>Итого</TableCell>
                       <TableCell className="text-right">
-                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.amount, 0))}
+                        {formatCurrencyPlain(calculationResult.schedule.reduce((acc, row) => acc + row.amount, 0))}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.principal, 0))}
+                        {formatCurrencyPlain(
+                          calculationResult.schedule.reduce((acc, row) => acc + row.principal, 0),
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.interest, 0))}
+                        {formatCurrencyPlain(
+                          calculationResult.schedule.reduce((acc, row) => acc + row.interest, 0),
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {formatCurrencyAED(calculationResult.schedule.reduce((acc, row) => acc + row.vat, 0))}
+                        {formatCurrencyPlain(calculationResult.schedule.reduce((acc, row) => acc + row.vat, 0))}
                       </TableCell>
                       <TableCell className="text-right">—</TableCell>
                     </TableRow>
